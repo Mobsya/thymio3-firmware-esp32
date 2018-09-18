@@ -1,0 +1,226 @@
+//_____________________________________________________________________________
+//
+// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+//_____________________________________________________________________________
+//
+// PROJECT   Thymio-III
+//_____________________________________________________________________________
+//
+//! \file    main.c
+//! \brief   This module provides the useful functions to use the xxx
+//!
+//! \author  Vincent Gonet
+//!
+//! \version $Id: main.c 18076 2017-04-20 12:28:12Z v.gonet $
+//_____________________________________________________________________________
+
+//-----------------------------------------------------------------------------
+// Include Section
+//-----------------------------------------------------------------------------
+
+#include <string.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+#include "soc/timer_group_struct.h"
+#include "soc/timer_group_reg.h"
+
+#include "sdkconfig.h"
+
+#include "esp_log.h"
+
+#include "gpio.h"
+#include "i2c.h"
+#include "leds.h"
+#include "power.h"
+#include "uart.h"
+#include "wifi_update.h"
+
+// I2C modules
+#include "bh1745nuc.h"
+#include "lsm303c.h"
+#include "lsm6ds3us.h"
+#include "stm32.h"
+
+#include "timer_hw.h"
+
+//-----------------------------------------------------------------------------
+// Constants/Macros Definitions
+//-----------------------------------------------------------------------------
+
+// Set the SSID and Password via "make menuconfig"
+#define DEFAULT_WIFI_SSID           CONFIG_WIFI_SSID
+#define DEFAULT_WIFI_PASSWORD       CONFIG_WIFI_PASSWORD
+
+//-----------------------------------------------------------------------------
+// Types Definitions
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Exported Global Data
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Private Data
+//-----------------------------------------------------------------------------
+
+static const char* Tag = "main";
+
+//-----------------------------------------------------------------------------
+// Private Functions Prototypes
+//-----------------------------------------------------------------------------
+
+static void FeedWatchdog(void);
+
+//-----------------------------------------------------------------------------
+// Inline Code Definition
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Functions Implementation
+//-----------------------------------------------------------------------------
+
+void LedsTask(void* pvParameter)
+{
+  ESP_LOGI(Tag, "Start Leds Task");
+
+  Leds_Init();
+
+  //leds_SetProxIRBrightness(32, 32, 32, 32, 32, 32, 32, 32);
+  //Leds_SetTopBrightness(2, 0, 0);
+  //Leds_SetSingleBrightness(E_Led_Battery_1, 2);
+  Leds_SetSingleBrightness(E_Led_Circle_4, 2);
+  //Leds_SetCircleBrightness(2, 2, 2, 2, 2, 2, 2, 2);
+  //Leds_SetBottomLeftBrightness(0, 32, 0);
+  //Leds_SetBottomRightBrightness(0, 32, 5);
+  //Power_EnableVA();
+
+  while (1)
+  {
+    Leds_Task();
+
+    FeedWatchdog();
+    vTaskDelay(1 / portTICK_PERIOD_MS);
+  }
+}
+
+//_____________________________________________________________________________
+
+void SensorsTask(void* pvParameter)
+{
+  ESP_LOGI(Tag, "Start Sensors Task");
+
+  I2C_Init();
+
+  //STM32_CheckId();
+  //BH1745NUC_Init();
+  LSM303C_Init();
+  //LSM6DS3US_Init();
+
+  while (1)
+  {
+    //STM32_CheckId();
+    //BH1745NUC_CheckManufacturerId();
+    //(void)BH1745NUC_GetIlluminance_lux();
+    //LSM303C_CheckManufacturerId();
+    LSM303C_GetAcceleration();
+    //LSM6DS3US_CheckManufacturerId();
+    //LSM6DS3US_GetAcceleration();
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+}
+
+//_____________________________________________________________________________
+
+void AsebaTask(void* pvParameter)
+{
+  ESP_LOGI(Tag, "Start Aseba Task");
+
+  uint8_t data[6] = "hello\n";
+  int len = 0;
+
+  UART_Init();
+
+  while (1)
+  {
+	len = UART_Read(data);
+	UART_Write(data, len);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+  }
+}
+
+//_____________________________________________________________________________
+
+void WifiTask(void* pvParameter)
+{
+  NVS_Init();
+  WifiUpdate_Init();
+  WifiUpdate_Connect(DEFAULT_WIFI_SSID, DEFAULT_WIFI_PASSWORD);
+
+  while (1)
+  {
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+  }
+}
+
+//_____________________________________________________________________________
+
+int app_main(void)
+{
+  static int appCore1 = 0;
+  static int appCore2 = 1;
+
+  Gpio_Init();
+  Power_Init();
+  //TimerHw_Init();
+
+  //xTaskCreate(&LedsTask, "leds", 2048, NULL, 1, NULL);
+  //xTaskCreate(&SensorsTask, "sensors", 2048, NULL, 5, NULL);
+  xTaskCreatePinnedToCore(
+    LedsTask,  // Function to implement the task
+    "leds",    // Name of the task
+    2048,            // Stack size in words
+    NULL,           // Task input parameter
+    1,              // Priority of the task
+    NULL,           // Task handle
+    appCore1);       // Core where the task should run
+
+  xTaskCreatePinnedToCore(
+    SensorsTask,      // Function to implement the task
+    "sensors",        // Name of the task
+    2048,           // Stack size in words
+    NULL,          // Task input parameter
+    5,             // Priority of the task
+    NULL,          // Task handle
+    appCore1);      // Core where the task should run
+
+  xTaskCreatePinnedToCore(
+    AsebaTask,      // Function to implement the task
+    "aseba",        // Name of the task
+    2048,           // Stack size in words
+    NULL,          // Task input parameter
+    5,             // Priority of the task
+    NULL,          // Task handle
+    appCore1);      // Core where the task should run
+
+  xTaskCreatePinnedToCore(
+    WifiTask,      // Function to implement the task
+    "wifi",        // Name of the task
+    2048,           // Stack size in words
+    NULL,          // Task input parameter
+    4,             // Priority of the task
+    NULL,          // Task handle
+    appCore2);      // Core where the task should run
+
+  return 0;
+}
+
+//_____________________________________________________________________________
+
+static void FeedWatchdog(void)
+{
+  TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
+  TIMERG0.wdt_feed     = 1u;
+  TIMERG0.wdt_wprotect = 0u;
+}
