@@ -80,38 +80,38 @@
 
 enum
 {
-  E_MeasurementTime_160ms,
-  E_MeasurementTime_320ms,
-  E_MeasurementTime_640ms,
-  E_MeasurementTime_1280ms,
-  E_MeasurementTime_2560ms,
-  E_MeasurementTime_5120ms
+  E_MeasurementTime_160ms,   //!< RGBC data are updated every 160 [ms]
+  E_MeasurementTime_320ms,   //!< RGBC data are updated every 320 [ms]
+  E_MeasurementTime_640ms,   //!< RGBC data are updated every 640 [ms]
+  E_MeasurementTime_1280ms,  //!< RGBC data are updated every 1280 [ms]
+  E_MeasurementTime_2560ms,  //!< RGBC data are updated every 2560 [ms]
+  E_MeasurementTime_5120ms   //!< RGBC data are updated every 5120 [ms]
 };
 typedef uint8_t T_MeasurementTime;  //!< RGBC measurement time
 
 enum
 {
-  E_ADCGain_1x,
-  E_ADCGain_2x,
-  E_ADCGain_16x
+  E_ADCGain_1x,  //!< ADC gain is 1
+  E_ADCGain_2x,  //!< ADC gain is 2
+  E_ADCGain_16x  //!< ADC gain is 16
 };
 typedef uint8_t T_ADCGain;  //!< ADC gain
 
 enum
 {
-  E_Persistence_ToggledAtEachMeasurement,
-  E_Persistence_UpdateAfterEachMeasurement,
-  E_Persistence_UpdateAfter4,
-  E_Persistence_UpdateAfter8
+  E_Persistence_ToggledAtEachMeasurement,    //!< Interrupt status is toggled at each measurement end
+  E_Persistence_UpdateAfterEachMeasurement,  //!< Interrupt status is updated at each measurement end
+  E_Persistence_UpdateAfter4,                //!< Interrupt status is updated if 4 consecutive threshold judgments are the same
+  E_Persistence_UpdateAfter8                 //!< Interrupt status is updated if 8 consecutive threshold judgments are the same
 };
 typedef uint8_t T_Persistence;  //!< Persistence
 
 enum
 {
-  E_InterruptSource_Red,
-  E_InterruptSource_Green,
-  E_InterruptSource_Blue,
-  E_InterruptSource_Clear
+  E_InterruptSource_Red,    //!< Interrupt source is red channel
+  E_InterruptSource_Green,  //!< Interrupt source is green channel
+  E_InterruptSource_Blue,   //!< Interrupt source is blue channel
+  E_InterruptSource_Clear   //!< Interrupt source is clear channel
 };
 typedef uint8_t T_InterruptSource;  //!< Interrupt source
 
@@ -141,34 +141,42 @@ static uint8_t Threshold[THRESHOLD_BYTE_NUM] =
 
 //! \brief     Update the RGBC measurement time
 //! \pre       None
-//! \param     None
+//! \param     time The measurement time
 //! \return    None
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdateMeasurementTime.svg
 static void UpdateMeasurementTime(T_MeasurementTime time);
 
 //! \brief     Update the ADC gain
 //! \pre       None
-//! \param     None
+//! \param     gain The selected ADC gain
 //! \return    None
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdateADCGain.svg
 static void UpdateADCGain(T_ADCGain gain);
 
 //! \brief     Update the persistence
 //! \pre       None
-//! \param     None
+//! \param     persistence The selected persistence
 //! \return    None
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdatePersistence.svg
 static void UpdatePersistence(T_Persistence persistence);
 
 //! \brief     Update the interrupt source
 //! \pre       None
-//! \param     None
+//! \param     source The selected interrupt source
 //! \return    None
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdateInterruptSource.svg
 static void UpdateInterruptSource(T_InterruptSource source);
 
 //! \brief     Update the threshold
 //! \pre       None
-//! \param     None
+//! \param     threshold The selected threshold
 //! \return    None
 static void UpdateThreshold(uint8_t* threshold);
 
+//! \brief     Update the Mode Control 3 register
+//! \pre       None
+//! \param     None
+//! \return    None
 static void UpdateModeControl3(void);
 
 //! \brief     Enable the RGBC measurement
@@ -187,14 +195,14 @@ static void EnableInterruptPin(void);
 //! \pre       None
 //! \param     None
 //! \return    None
-//! \image     html ReadIlluminance.svg
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\ReadIlluminance.svg
 static void ReadIlluminance(void);
 
 //! \brief     Read the manufacturer ID
 //! \pre       None
 //! \param     None
 //! \return    None
-//! \image     html ReadManufacturerId.svg
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\ReadManufacturerId.svg
 static void ReadManufacturerId(uint8_t* data);
 
 #if 0
@@ -272,7 +280,7 @@ void BH1745NUC_Init(void)
 
 void BH1745NUC_CheckManufacturerId(void)
 {
-  uint8_t id = 0x00;
+  uint8_t id = 0x00u;
 
   ReadManufacturerId(&id);
 
@@ -286,7 +294,7 @@ void BH1745NUC_CheckManufacturerId(void)
 
 void BH1745NUC_ReadRegisters(void)
 {
-  uint8_t table[38];
+  uint8_t table[38u];
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, SYSTEM_CONTROL_REG_ADDRESS, table, 38u);
 

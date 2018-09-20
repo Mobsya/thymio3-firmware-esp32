@@ -43,6 +43,8 @@
 #include "lsm6ds3us.h"
 #include "stm32.h"
 
+#include "aseba_esp32.h"
+
 #include "timer_hw.h"
 
 //-----------------------------------------------------------------------------
@@ -90,8 +92,8 @@ void LedsTask(void* pvParameter)
   //leds_SetProxIRBrightness(32, 32, 32, 32, 32, 32, 32, 32);
   //Leds_SetTopBrightness(2, 0, 0);
   //Leds_SetSingleBrightness(E_Led_Battery_1, 2);
-  Leds_SetSingleBrightness(E_Led_Circle_4, 2);
-  //Leds_SetCircleBrightness(2, 2, 2, 2, 2, 2, 2, 2);
+  //Leds_SetSingleBrightness(E_Led_Circle_1, 2);
+  //Leds_SetCircleBrightness(1, 1, 1, 1, 1, 1, 1, 1);
   //Leds_SetBottomLeftBrightness(0, 32, 0);
   //Leds_SetBottomRightBrightness(0, 32, 5);
   //Power_EnableVA();
@@ -114,17 +116,17 @@ void SensorsTask(void* pvParameter)
   I2C_Init();
 
   //STM32_CheckId();
-  //BH1745NUC_Init();
-  LSM303C_Init();
+  BH1745NUC_Init();
+  //LSM303C_Init();
   //LSM6DS3US_Init();
 
   while (1)
   {
     //STM32_CheckId();
-    //BH1745NUC_CheckManufacturerId();
+    BH1745NUC_CheckManufacturerId();
     //(void)BH1745NUC_GetIlluminance_lux();
     //LSM303C_CheckManufacturerId();
-    LSM303C_GetAcceleration();
+    //LSM303C_GetAcceleration();
     //LSM6DS3US_CheckManufacturerId();
     //LSM6DS3US_GetAcceleration();
     vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -137,16 +139,19 @@ void AsebaTask(void* pvParameter)
 {
   ESP_LOGI(Tag, "Start Aseba Task");
 
-  uint8_t data[6] = "hello\n";
-  int len = 0;
+  //uint8_t data[6] = "hello\n";
+  //int len = 0;
 
   UART_Init();
+  AsebaESP32_Init();
 
   while (1)
   {
-	len = UART_Read(data);
-	UART_Write(data, len);
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+	//len = UART_Read(data);
+	//UART_Write(data, len);
+	AsebaESP32_Run();
+	//UART_Task();
+    //vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
 
@@ -203,7 +208,7 @@ int app_main(void)
     5,             // Priority of the task
     NULL,          // Task handle
     appCore1);      // Core where the task should run
-
+#if 0
   xTaskCreatePinnedToCore(
     WifiTask,      // Function to implement the task
     "wifi",        // Name of the task
@@ -212,8 +217,80 @@ int app_main(void)
     4,             // Priority of the task
     NULL,          // Task handle
     appCore2);      // Core where the task should run
-
+#endif
   return 0;
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_poweroff = {
+	"_poweroff",
+	"Poweroff",
+	{
+		{0,0}
+	}
+};
+
+//_____________________________________________________________________________
+
+void power_off(AsebaVMState *vm) {
+        unsigned int flags;
+
+    // Protect against two racing poweroff:
+    //  One from the softirq (button)
+    //  One from the VM
+#if 0
+    RAISE_IPL(flags,1);
+
+	behavior_stop(B_ALL);
+
+ 	play_sound_block(SOUND_POWEROFF);
+
+	// Shutdown all peripherals ...
+	switch_off();
+
+	// Switch off USB
+	// If we are connected to a PC, disconnect.
+	// If we are NOT connected to a PC but 5V is present
+	// ( == charger ) we need to keep the transciever on
+	if(usb_uart_configured())
+		USBDeviceDetach();
+
+	// In any case, disable the usb interrupt. It's safer
+	_USB1IE = 0;
+
+
+	CHARGE_ENABLE_DIR = 1;
+
+	analog_enter_poweroff_mode();
+#endif
+}
+
+//_____________________________________________________________________________
+
+void update_aseba_variables_write(void) {
+#if 0
+	static unsigned int old_timer[2];
+	int i;
+
+	for(i = 0; i < 2; i++) {
+		if(vmVariables.timers[i] != old_timer[i]) {
+			old_timer[i] = vmVariables.timers[i];
+			timer[i] = 0;
+		}
+	}
+
+	pid_motor_set_target((int *) vmVariables.target);
+#endif
+}
+
+void update_aseba_variables_read(void) {
+	// TODO: REMOVE ME (move to behavior ? /!\ behavior == IPL 1 !! race wrt aseba !)
+#if 0
+	usb_uart_tick();
+
+	motor_get_vind((int *) vmVariables.uind);
+#endif
 }
 
 //_____________________________________________________________________________

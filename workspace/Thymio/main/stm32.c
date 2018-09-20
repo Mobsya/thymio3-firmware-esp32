@@ -56,7 +56,7 @@ static const char* Tag = "stm32";
 //! \pre       None
 //! \param     None
 //! \return    None
-//! \image     None
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\ReadId.svg
 static void ReadId(uint8_t* data);
 
 //-----------------------------------------------------------------------------

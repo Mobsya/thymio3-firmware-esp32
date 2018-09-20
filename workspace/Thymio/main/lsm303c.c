@@ -155,21 +155,21 @@ static void UpdateOutputDataRate(T_Acc_OutputDataRate rate);
 //! \pre       None
 //! \param     None
 //! \return    None
-//! \image     html ReadAcceleration.svg
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\lsm303c\ReadAcceleration.svg
 static void ReadAcceleration(void);
 
 //! \brief     Read the accelerometer manufacturer ID
 //! \pre       None
 //! \param     None
 //! \return    None
-//! \image     html ReadAccManufacturerId.svg
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\lsm303c\ReadAccManufacturerId.svg
 static void ReadAccManufacturerId(uint8_t* data);
 
 //! \brief     Read the magnetic sensor manufacturer ID
 //! \pre       None
 //! \param     None
 //! \return    None
-//! \image     html ReadMagManufacturerId.svg
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\lsm303c\ReadMagManufacturerId.svg
 static void ReadMagManufacturerId(uint8_t* data);
 
 //-----------------------------------------------------------------------------
