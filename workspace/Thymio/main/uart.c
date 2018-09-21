@@ -174,7 +174,7 @@ int UART_Read(uint8_t* data)
 
 int UART_ReadByte(uint8_t* data)
 {
-  int length = uart_read_bytes(UART_NUM, data, 1u, 0u);
+  int length = uart_read_bytes(UART_NUM, data, 1u, 500u);
 
   return length;
 }

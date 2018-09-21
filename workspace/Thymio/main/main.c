@@ -69,6 +69,9 @@
 
 static const char* Tag = "main";
 
+static int16_t Target[2] = {0, 0};
+static int16_t OldTarget[2] = {0, 0};
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -113,17 +116,20 @@ void SensorsTask(void* pvParameter)
 {
   ESP_LOGI(Tag, "Start Sensors Task");
 
-  I2C_Init();
+  //I2C_Init();
 
   //STM32_CheckId();
-  BH1745NUC_Init();
+  //BH1745NUC_Init();
   //LSM303C_Init();
   //LSM6DS3US_Init();
+  //Target[0] = 0x4512;
+  //Target[1] = 0xF018;
 
   while (1)
   {
     //STM32_CheckId();
-    BH1745NUC_CheckManufacturerId();
+	//STM32_UpdateMotorLeftTarget(Target);
+    //BH1745NUC_CheckManufacturerId();
     //(void)BH1745NUC_GetIlluminance_lux();
     //LSM303C_CheckManufacturerId();
     //LSM303C_GetAcceleration();
@@ -165,7 +171,7 @@ void WifiTask(void* pvParameter)
 
   while (1)
   {
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
   }
 }
 
@@ -179,6 +185,7 @@ int app_main(void)
   Gpio_Init();
   Power_Init();
   //TimerHw_Init();
+  I2C_Init();
 
   //xTaskCreate(&LedsTask, "leds", 2048, NULL, 1, NULL);
   //xTaskCreate(&SensorsTask, "sensors", 2048, NULL, 5, NULL);
@@ -282,6 +289,22 @@ void update_aseba_variables_write(void) {
 
 	pid_motor_set_target((int *) vmVariables.target);
 #endif
+//#if 0
+  Target[0] = vmVariables.target[0];
+  Target[1] = vmVariables.target[1];
+
+  if (Target[0] != OldTarget[0])
+  {
+    STM32_UpdateMotorLeftTarget(Target);
+    OldTarget[0] = Target[0];
+  }
+
+  if (Target[1] != OldTarget[1])
+  {
+    STM32_UpdateMotorRightTarget(Target);
+    OldTarget[1] = Target[1];
+  }
+//#endif
 }
 
 void update_aseba_variables_read(void) {

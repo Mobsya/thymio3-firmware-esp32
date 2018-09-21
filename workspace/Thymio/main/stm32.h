@@ -53,4 +53,18 @@ extern void STM32_Init(void);
 //! \return    None
 extern void STM32_CheckId(void);
 
+//! \brief     Update the motor left target
+//! \pre       None
+//! \param     target The target applied to the motor left
+//! \return    None
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateMotorLeftTarget.svg
+extern void STM32_UpdateMotorLeftTarget(int16_t* target);
+
+//! \brief     Update the motor right target
+//! \pre       None
+//! \param     target The target applied to the motor right
+//! \return    None
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateMotorRightTarget.svg
+extern void STM32_UpdateMotorRightTarget(int16_t* target);
+
 #endif // STM32_H_

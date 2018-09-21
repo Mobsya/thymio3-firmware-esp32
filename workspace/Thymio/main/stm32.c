@@ -29,8 +29,10 @@
 
 #define SLAVE_ADDRESS          0x04u  //!< Slave address
 
-#define WHO_AM_I_REG_ADDRESS   0x0Fu  //!< Who_AM_I register address (Read only)
-#define BUTTON_REG_ADDRESS     0x00u
+#define WHO_AM_I_REG_ADDRESS               0x0Fu  //!< Who_AM_I register address           (Read only)
+#define MOTOR_LEFT_TARGET_REG_ADDRESS      0x10u  //!< Motor left target register address  (Read/Write)
+#define MOTOR_RIGHT_TARGET_REG_ADDRESS     0x11u  //!< Motor right target register address (Read/Write)
+#define BUTTON_REG_ADDRESS                 0x12u
 
 #define STM32_ID               0xBCu  //!< ID of the STM32
 
@@ -84,6 +86,30 @@ void STM32_CheckId(void)
   {
     ESP_LOGE(Tag, "Invalid ID: %d", id);
   }
+}
+
+//_____________________________________________________________________________
+
+void STM32_UpdateMotorLeftTarget(int16_t* target)
+{
+  uint8_t data[2];
+
+  data[0] = (uint8_t)(target[0]);
+  data[1] = (uint8_t)((target[0]) >> 8);
+
+  I2C_WriteToAddress(SLAVE_ADDRESS, MOTOR_LEFT_TARGET_REG_ADDRESS, data, 2u);
+}
+
+//_____________________________________________________________________________
+
+void STM32_UpdateMotorRightTarget(int16_t* target)
+{
+  uint8_t data[2];
+
+  data[0] = (uint8_t)(target[1]);
+  data[1] = (uint8_t)((target[1]) >> 8);
+
+  I2C_WriteToAddress(SLAVE_ADDRESS, MOTOR_RIGHT_TARGET_REG_ADDRESS, data, 2u);
 }
 
 //_____________________________________________________________________________
