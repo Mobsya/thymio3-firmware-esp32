@@ -24,6 +24,8 @@
 
 #include "i2c.h"
 
+#include "aseba_esp32.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -325,6 +327,11 @@ void BH1745NUC_ReadRegisters(void)
 T_Illuminance* BH1745NUC_GetIlluminance_lux(void)
 {
   ReadIlluminance();
+
+  vmVariables.illuminance[0] = Illuminance.Red;
+  vmVariables.illuminance[1] = Illuminance.Green;
+  vmVariables.illuminance[2] = Illuminance.Blue;
+  vmVariables.illuminance[3] = Illuminance.Clear;
 
   return &Illuminance;
 }

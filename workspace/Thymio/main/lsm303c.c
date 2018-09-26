@@ -25,6 +25,8 @@
 
 #include "i2c.h"
 
+#include "aseba_esp32.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -214,6 +216,10 @@ T_Acceleration* LSM303C_GetAcceleration(void)
   ReadAcceleration();
 
   // TODO Acceleration.X * SENSITIVITY_ACC, Acceleration.Y * SENSITIVITY_ACC, Acceleration.Z * SENSITIVITY_ACC
+
+  vmVariables.acc[0] = Acceleration.X;
+  vmVariables.acc[1] = Acceleration.Y;
+  vmVariables.acc[2] = Acceleration.Z;
 
   return &Acceleration;
 }

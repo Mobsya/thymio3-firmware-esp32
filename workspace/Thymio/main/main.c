@@ -34,6 +34,7 @@
 #include "i2c.h"
 #include "leds.h"
 #include "power.h"
+#include "sound.h"
 #include "uart.h"
 #include "wifi_update.h"
 
@@ -122,8 +123,6 @@ void SensorsTask(void* pvParameter)
   //BH1745NUC_Init();
   //LSM303C_Init();
   //LSM6DS3US_Init();
-  //Target[0] = 0x4512;
-  //Target[1] = 0xF018;
 
   while (1)
   {
@@ -158,6 +157,23 @@ void AsebaTask(void* pvParameter)
 	AsebaESP32_Run();
 	//UART_Task();
     //vTaskDelay(10 / portTICK_PERIOD_MS);
+  }
+}
+
+//_____________________________________________________________________________
+
+void SoundTask(void* pvParameter)
+{
+  ESP_LOGI(Tag, "Start Sound Task");
+
+  Sound_Init();
+
+  while (1)
+  {
+	Sound_Task();
+
+	FeedWatchdog();
+    vTaskDelay(5 / portTICK_PERIOD_MS);
   }
 }
 
@@ -216,6 +232,15 @@ int app_main(void)
     NULL,          // Task handle
     appCore1);      // Core where the task should run
 #if 0
+  xTaskCreatePinnedToCore(
+    SoundTask,      // Function to implement the task
+    "sound",        // Name of the task
+    2048,           // Stack size in words
+    NULL,          // Task input parameter
+    5,             // Priority of the task
+    NULL,          // Task handle
+    appCore1);      // Core where the task should run
+
   xTaskCreatePinnedToCore(
     WifiTask,      // Function to implement the task
     "wifi",        // Name of the task

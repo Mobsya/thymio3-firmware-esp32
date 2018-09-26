@@ -267,6 +267,7 @@ const AsebaVMDescription vmDescription = {
 		second value is the name of the variable which will be displayed in aseba studio
 		******/
 
+        {4, "illuminance"},
 		{0, NULL} // Null terminated
 	}
 };

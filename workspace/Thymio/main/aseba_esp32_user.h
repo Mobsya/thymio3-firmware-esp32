@@ -86,6 +86,7 @@ struct _vmVariables
   /*****
     ---> PUT YOUR VARIABLES HERE <---
   ******/
+  int16_t illuminance[4];
   int16_t freeSpace[VM_VARIABLES_FREE_SPACE];
 };
 

@@ -38,7 +38,7 @@
 // Number of opcodes in an aseba bytecode script.
 // @note Should be a multiple of (766 + 768).
 #define VM_BYTECODE_SIZE    (766 + 768)
-#define VM_STACK_SIZE        128
+#define VM_STACK_SIZE        256  // FIXME to check with the original value 128
 
 #define SET_EVENT(event) (events_flags |= (1 << event))
 
