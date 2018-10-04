@@ -37,7 +37,14 @@ typedef struct
   uint16_t X;
   uint16_t Y;
   uint16_t Z;
-} T_Acceleration;  //!< Acceleration
+} T_Acc_Axis;  //!< Axis
+
+typedef struct
+{
+  uint16_t X;
+  uint16_t Y;
+  uint16_t Z;
+} T_Mag_Axis;  //!< Axis
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -51,28 +58,40 @@ typedef struct
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the LSM303C device
+//! \brief     Initialize the accelerometer of the LSM303C device
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void LSM303C_Init(void);
+extern void LSM303C_InitAccelerometer(void);
 
-//! \brief     Check the manufacturer ID
+//! \brief     Check the accelerometer manufacturer ID
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void LSM303C_CheckManufacturerId(void);
+extern void LSM303C_CheckAccManufacturerId(void);
 
 //! \brief     Get the acceleration in [???]
 //! \pre       First initialize the LSM303C device
 //! \param     None
 //! \return    None
-extern T_Acceleration* LSM303C_GetAcceleration(void);
+extern T_Acc_Axis* LSM303C_GetAcceleration(void);
 
-//! \brief     Get the angular position in [???]
+//! \brief     Initialize the magnetometer of the LSM303C device
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void LSM303C_InitMagnetometer(void);
+
+//! \brief     Check the magnetometer manufacturer ID
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void LSM303C_CheckMagManufacturerId(void);
+
+//! \brief     Get the magnetic field in [???]
 //! \pre       First initialize the LSM303C device
 //! \param     None
 //! \return    None
-extern T_Acceleration* LSM303C_GetAngularPosition(void);
+extern T_Mag_Axis* LSM303C_GetMagneticField(void);
 
 #endif // LSM303C_H_

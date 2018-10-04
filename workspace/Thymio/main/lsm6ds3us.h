@@ -51,11 +51,11 @@ typedef struct
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the LSM303C device
+//! \brief     Initialize the accelerometer of the LSM6DS3US device
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void LSM6DS3US_Init(void);
+extern void LSM6DS3US_InitAccelerometer(void);
 
 //! \brief     Check the manufacturer ID
 //! \pre       None
@@ -64,9 +64,21 @@ extern void LSM6DS3US_Init(void);
 extern void LSM6DS3US_CheckManufacturerId(void);
 
 //! \brief     Get the acceleration in [???]
-//! \pre       First initialize the LSM303C device
+//! \pre       First initialize the LSM6DS3US device
 //! \param     None
 //! \return    None
 extern T_Axis* LSM6DS3US_GetAcceleration(void);
+
+//! \brief     Initialize the gyroscope of the LSM6DS3US device
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void LSM6DS3US_InitGyroscope(void);
+
+//! \brief     Get the angular position in [???]
+//! \pre       First initialize the LSM6DS3US device
+//! \param     None
+//! \return    None
+extern T_Axis* LSM6DS3US_GetAngularPosition(void);
 
 #endif // LSM6DS3US_H_

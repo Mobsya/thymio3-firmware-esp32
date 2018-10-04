@@ -27,12 +27,14 @@
 #include "gpio.h"
 #include "i2c.h"
 
+#include "aseba_esp32.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define SA0_PIN_STATE                    1u  //!< ADDR pin state used to set the slave address
-#define LSM6DS3US_ADDRESS             0x6Au  //!< Device address
+#define SA0_PIN_STATE                           1u  //!< ADDR pin state used to set the slave address
+#define LSM6DS3US_ADDRESS                    0x6Au  //!< Device address
 
 #define SLAVE_ADDRESS                 (LSM6DS3US_ADDRESS | SA0_PIN_STATE)  //!< Slave address
 
@@ -79,10 +81,22 @@
 #define OUTZ_H_XL_REG_ADDRESS                0x2Du  //!< High byte of linear acceleration sensor Z-axis output register address (Read only)
 // TODO last registers
 
-#define MANUFACTURER_ID   0x69u  //!< Manufacturer ID
+// Manufacturer ID
+#define MANUFACTURER_ID                      0x69u  //!< Manufacturer ID
 
+// Register bits mask
+// CTRL1_XL bits mask
+#define ACC_ODR_XL_BIT_MASK                  0x0Fu  //!< Mask of bit ODR_XL
+
+// CTRL2_G bits mask
+#define GYR_ODR_G_BIT_MASK                   0x0Fu  //!< Mask of bit ODR_G
+
+// Register bits position
 // CTRL1_XL bits position
-#define ODR_BIT_POS          4u  //!< Position of LSB bit ODR
+#define ACC_ODR_XL_BIT_POS                      4u  //!< Position of LSB bit ODR_XL
+
+// CTRL2_G bits position
+#define GYR_ODR_G_BIT_POS                       4u  //!< Position of LSB bit ODR_G
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -103,6 +117,20 @@ enum
   E_Acc_OutputDataRate_6660Hz
 };
 typedef uint8_t T_Acc_OutputDataRate;  //!< Accelerometer output data rate
+
+enum
+{
+  E_Gyro_OutputDataRate_PowerDown,
+  E_Gyro_OutputDataRate_12_5Hz,
+  E_Gyro_OutputDataRate_26Hz,
+  E_Gyro_OutputDataRate_52Hz,
+  E_Gyro_OutputDataRate_104Hz,
+  E_Gyro_OutputDataRate_208Hz,
+  E_Gyro_OutputDataRate_416Hz,
+  E_Gyro_OutputDataRate_833Hz,
+  E_Gyro_OutputDataRate_1660Hz
+};
+typedef uint8_t T_Gyro_OutputDataRate;  //!< Gyroscope output data rate
 
 
 //-----------------------------------------------------------------------------
@@ -128,7 +156,7 @@ static T_Axis AngularPosition;
 //! \pre       None
 //! \param     None
 //! \return    None
-static void UpdateOutputDataRate(T_Acc_OutputDataRate rate);
+static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate);
 
 //! \brief     Read the acceleration
 //! \pre       None
@@ -143,6 +171,12 @@ static void ReadAcceleration(void);
 //! \return    None
 //! \image     html ReadAngle.svg
 static void ReadAngularPosition(void);
+
+//! \brief     Update the gyroscope output data rate
+//! \pre       None
+//! \param     None
+//! \return    None
+static void UpdateGyroOutputDataRate(T_Gyro_OutputDataRate rate);
 
 //! \brief     Read the manufacturer ID
 //! \pre       None
@@ -159,24 +193,14 @@ static void ReadManufacturerId(uint8_t* data);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void LSM6DS3US_Init(void)
+//-----------------------------------------------------------------------------
+// Accelerometer
+//-----------------------------------------------------------------------------
+
+void LSM6DS3US_InitAccelerometer(void)
 {
   Gpio_ConfigurePin(&PinConfig);
-  UpdateOutputDataRate(E_Acc_OutputDataRate_104Hz);
-}
-
-//_____________________________________________________________________________
-
-void LSM6DS3US_CheckManufacturerId(void)
-{
-  uint8_t id = 0x00;
-
-  ReadManufacturerId(&id);
-
-  if (id != MANUFACTURER_ID)
-  {
-    ESP_LOGE(Tag, "Invalid manufacturer ID: %d", id);
-  }
+  UpdateAccOutputDataRate(E_Acc_OutputDataRate_104Hz);
 }
 
 //_____________________________________________________________________________
@@ -187,21 +211,16 @@ T_Axis* LSM6DS3US_GetAcceleration(void)
 
   //ConvertAcceleration(int16_t input);
 
+  vmVariables.acc_bis[0] = Acceleration.X;
+  vmVariables.acc_bis[1] = Acceleration.Y;
+  vmVariables.acc_bis[2] = Acceleration.Z;
+
   return &Acceleration;
 }
 
 //_____________________________________________________________________________
 
-T_Axis* LSM6DS3US_GetAngularPosition(void)
-{
-  ReadAngularPosition();
-
-  return &AngularPosition;
-}
-
-//_____________________________________________________________________________
-
-static void UpdateOutputDataRate(T_Acc_OutputDataRate rate)
+static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate)
 {
   uint8_t data = 0x00u;
 
@@ -209,13 +228,14 @@ static void UpdateOutputDataRate(T_Acc_OutputDataRate rate)
   {
     I2C_ReadFromAddress(SLAVE_ADDRESS, CTRL1_XL_REG_ADDRESS, &data, 1u);
 
-	data |= (rate << ODR_BIT_POS);
+    data &= ACC_ODR_XL_BIT_MASK;
+	data |= (rate << ACC_ODR_XL_BIT_POS);
 
 	I2C_WriteToAddress(SLAVE_ADDRESS, CTRL1_XL_REG_ADDRESS, &data, 1u);
   }
   else
   {
-    ESP_LOGE(Tag, "Invalid output data rate: %d", rate);
+    ESP_LOGE(Tag, "Invalid accelerometer output data rate: %d", rate);
   }
 }
 
@@ -236,21 +256,6 @@ static void ReadAcceleration(void)
 
 //_____________________________________________________________________________
 
-static void ReadAngularPosition(void)
-{
-  uint8_t position[6u];
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, OUTX_L_G_REG_ADDRESS, position, 6u);
-
-  AngularPosition.X = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
-  AngularPosition.Y = (int16_t)((uint16_t)position[3u] << 8u) | position[2u];
-  AngularPosition.Z = (int16_t)((uint16_t)position[5u] << 8u) | position[4u];
-
-  //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", AngularPosition.X, AngularPosition.Y,  AngularPosition.Z);
-}
-
-//_____________________________________________________________________________
-
 #if 0
 static void ConvertAcceleration(int16_t input)
 {
@@ -264,6 +269,80 @@ static void ConvertAcceleration(int16_t input)
   }
 }
 #endif
+
+//-----------------------------------------------------------------------------
+// Gyroscope
+//-----------------------------------------------------------------------------
+
+void LSM6DS3US_InitGyroscope(void)
+{
+  UpdateGyroOutputDataRate(E_Gyro_OutputDataRate_104Hz);
+}
+
+//_____________________________________________________________________________
+
+T_Axis* LSM6DS3US_GetAngularPosition(void)
+{
+  ReadAngularPosition();
+
+  vmVariables.gyro[0] = AngularPosition.X;
+  vmVariables.gyro[1] = AngularPosition.Y;
+  vmVariables.gyro[2] = AngularPosition.Z;
+
+  return &AngularPosition;
+}
+
+//_____________________________________________________________________________
+
+static void UpdateGyroOutputDataRate(T_Gyro_OutputDataRate rate)
+{
+  uint8_t data = 0x00u;
+
+  if (rate <= E_Gyro_OutputDataRate_1660Hz)
+  {
+    I2C_ReadFromAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
+
+    data &= GYR_ODR_G_BIT_MASK;
+	data |= (rate << GYR_ODR_G_BIT_POS);
+
+	I2C_WriteToAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
+  }
+  else
+  {
+    ESP_LOGE(Tag, "Invalid gyroscope output data rate: %d", rate);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void ReadAngularPosition(void)
+{
+  uint8_t position[6u];
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, OUTX_L_G_REG_ADDRESS, position, 6u);
+
+  AngularPosition.X = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
+  AngularPosition.Y = (int16_t)((uint16_t)position[3u] << 8u) | position[2u];
+  AngularPosition.Z = (int16_t)((uint16_t)position[5u] << 8u) | position[4u];
+
+  //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", AngularPosition.X, AngularPosition.Y,  AngularPosition.Z);
+}
+
+//-----------------------------------------------------------------------------
+// Common
+//-----------------------------------------------------------------------------
+
+void LSM6DS3US_CheckManufacturerId(void)
+{
+  uint8_t id = 0x00;
+
+  ReadManufacturerId(&id);
+
+  if (id != MANUFACTURER_ID)
+  {
+    ESP_LOGE(Tag, "Invalid manufacturer ID: %d", id);
+  }
+}
 
 //_____________________________________________________________________________
 

@@ -60,6 +60,13 @@
 
 #define MANUFACTURER_ID               0xE0u  //!< Manufacturer ID
 
+// Register bits mask
+// MODE_CONTROL2 bits mask
+#define ADC_GAIN_BIT_MASK             0xFCu  //!< Mask of bit ADC_GAIN
+
+// INTERRUPT bits mask
+#define INT_SOURCE_BIT_MASK           0xF3u  //!< Mask of bit INT_SOURCE
+
 // MODE_CONTROL2 bits position
 #define RGBC_EN_BIT_POS                  4u  //!< Position of bit RGBC_EN
 
@@ -328,10 +335,10 @@ T_Illuminance* BH1745NUC_GetIlluminance_lux(void)
 {
   ReadIlluminance();
 
-  vmVariables.illuminance[0] = Illuminance.Red;
-  vmVariables.illuminance[1] = Illuminance.Green;
-  vmVariables.illuminance[2] = Illuminance.Blue;
-  vmVariables.illuminance[3] = Illuminance.Clear;
+  vmVariables.color[0] = Illuminance.Red;
+  vmVariables.color[1] = Illuminance.Green;
+  vmVariables.color[2] = Illuminance.Blue;
+  vmVariables.color[3] = Illuminance.Clear;
 
   return &Illuminance;
 }
@@ -366,6 +373,7 @@ static void UpdateADCGain(T_ADCGain gain)
   {
     I2C_ReadFromAddress(SLAVE_ADDRESS, MODE_CONTROL2_REG_ADDRESS, &data, 1u);
 
+    data &= ADC_GAIN_BIT_MASK;
     data |= gain;
 
     I2C_WriteToAddress(SLAVE_ADDRESS, MODE_CONTROL2_REG_ADDRESS, &data, 1u);
@@ -399,6 +407,7 @@ static void UpdateInterruptSource(T_InterruptSource source)
   {
     I2C_ReadFromAddress(SLAVE_ADDRESS, INTERRUPT_REG_ADDRESS, &data, 1u);
 
+    data &= INT_SOURCE_BIT_MASK;
     data |= (source << INT_SOURCE_BIT_POS);
 
     I2C_WriteToAddress(SLAVE_ADDRESS, INTERRUPT_REG_ADDRESS, &data, 1u);

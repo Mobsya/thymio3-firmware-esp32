@@ -19,9 +19,12 @@
 //-----------------------------------------------------------------------------
 
 #include <esp_log.h>
+
 #include "stm32.h"
 
 #include "i2c.h"
+
+#include "aseba_esp32.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -32,7 +35,9 @@
 #define WHO_AM_I_REG_ADDRESS               0x0Fu  //!< Who_AM_I register address           (Read only)
 #define MOTOR_LEFT_TARGET_REG_ADDRESS      0x10u  //!< Motor left target register address  (Read/Write)
 #define MOTOR_RIGHT_TARGET_REG_ADDRESS     0x11u  //!< Motor right target register address (Read/Write)
-#define BUTTON_REG_ADDRESS                 0x12u
+#define BATTERY_VOLTAGE_REG_ADDRESS        0x12u  //!< Battery voltage register address    (Read only)
+#define INDUCED_VOLTAGE_REG_ADDRESS        0x13u  //!< Induced voltage register address    (Read only)
+#define BUTTON_REG_ADDRESS                 0x14u
 
 #define STM32_ID               0xBCu  //!< ID of the STM32
 
@@ -59,7 +64,7 @@ static const char* Tag = "stm32";
 //! \param     None
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\ReadId.svg
-static void ReadId(uint8_t* data);
+static void ReadId(uint8_t* id);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -114,7 +119,37 @@ void STM32_UpdateMotorRightTarget(int16_t* target)
 
 //_____________________________________________________________________________
 
-static void ReadId(uint8_t* data)
+void STM32_GetBatteryVoltage(int16_t* voltage)
 {
-  I2C_ReadFromAddress(SLAVE_ADDRESS, WHO_AM_I_REG_ADDRESS, data, 1u);
+  uint8_t data[4];
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, BATTERY_VOLTAGE_REG_ADDRESS, data, 4u);
+
+  voltage[0] = ((data[1] << 8) | data[0]);
+  voltage[1] = ((data[3] << 8) | data[2]);
+
+  vmVariables.vbat[0] = voltage[0];
+  vmVariables.vbat[1] = voltage[1];
+}
+
+//_____________________________________________________________________________
+
+void STM32_GetInducedVoltage(int16_t* voltage)
+{
+  uint8_t data[4];
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, INDUCED_VOLTAGE_REG_ADDRESS, data, 4u);
+
+  voltage[0] = ((data[1] << 8) | data[0]);
+  voltage[1] = ((data[3] << 8) | data[2]);
+
+  vmVariables.uind[0] = voltage[0];
+  vmVariables.uind[1] = voltage[1];
+}
+
+//_____________________________________________________________________________
+
+static void ReadId(uint8_t* id)
+{
+  I2C_ReadFromAddress(SLAVE_ADDRESS, WHO_AM_I_REG_ADDRESS, id, 1u);
 }

@@ -120,21 +120,36 @@ void SensorsTask(void* pvParameter)
   //I2C_Init();
 
   //STM32_CheckId();
-  //BH1745NUC_Init();
-  //LSM303C_Init();
-  //LSM6DS3US_Init();
+  BH1745NUC_Init();
+
+  LSM303C_InitAccelerometer();
+  LSM303C_InitMagnetometer();
+
+  LSM6DS3US_InitAccelerometer();
+  LSM6DS3US_InitGyroscope();
+
+  //int16_t voltage[2] = {0,0};
 
   while (1)
   {
     //STM32_CheckId();
 	//STM32_UpdateMotorLeftTarget(Target);
+	//STM32_GetBatteryVoltage(voltage);
+
     //BH1745NUC_CheckManufacturerId();
-    //(void)BH1745NUC_GetIlluminance_lux();
-    //LSM303C_CheckManufacturerId();
-    //LSM303C_GetAcceleration();
+    (void)BH1745NUC_GetIlluminance_lux();
+
+	//LSM303C_InitMagnetometer();
+    //LSM303C_CheckAccManufacturerId();
+    //LSM303C_CheckMagManufacturerId();
+    LSM303C_GetAcceleration();
+    LSM303C_GetMagneticField();
+
     //LSM6DS3US_CheckManufacturerId();
-    //LSM6DS3US_GetAcceleration();
-    vTaskDelay(100 / portTICK_PERIOD_MS);
+    LSM6DS3US_GetAcceleration();
+    LSM6DS3US_GetAngularPosition();
+
+    vTaskDelay(200 / portTICK_PERIOD_MS);
   }
 }
 
@@ -200,55 +215,52 @@ int app_main(void)
 
   Gpio_Init();
   Power_Init();
-  //TimerHw_Init();
   I2C_Init();
 
-  //xTaskCreate(&LedsTask, "leds", 2048, NULL, 1, NULL);
-  //xTaskCreate(&SensorsTask, "sensors", 2048, NULL, 5, NULL);
   xTaskCreatePinnedToCore(
-    LedsTask,  // Function to implement the task
-    "leds",    // Name of the task
-    2048,            // Stack size in words
-    NULL,           // Task input parameter
-    1,              // Priority of the task
-    NULL,           // Task handle
-    appCore1);       // Core where the task should run
+    LedsTask,     // Function to implement the task
+    "leds",       // Name of the task
+    2048,         // Stack size in words
+    NULL,         // Task input parameter
+    1,            // Priority of the task
+    NULL,         // Task handle
+    appCore1);    // Core where the task should run
 
   xTaskCreatePinnedToCore(
-    SensorsTask,      // Function to implement the task
-    "sensors",        // Name of the task
-    2048,           // Stack size in words
-    NULL,          // Task input parameter
-    5,             // Priority of the task
-    NULL,          // Task handle
-    appCore1);      // Core where the task should run
+    SensorsTask,  // Function to implement the task
+    "sensors",    // Name of the task
+    2048,         // Stack size in words
+    NULL,         // Task input parameter
+    5,            // Priority of the task
+    NULL,         // Task handle
+    appCore1);    // Core where the task should run
 
   xTaskCreatePinnedToCore(
-    AsebaTask,      // Function to implement the task
-    "aseba",        // Name of the task
-    2048,           // Stack size in words
-    NULL,          // Task input parameter
-    5,             // Priority of the task
-    NULL,          // Task handle
-    appCore1);      // Core where the task should run
+    AsebaTask,    // Function to implement the task
+    "aseba",      // Name of the task
+    2048,         // Stack size in words
+    NULL,         // Task input parameter
+    5,            // Priority of the task
+    NULL,         // Task handle
+    appCore1);    // Core where the task should run
 #if 0
   xTaskCreatePinnedToCore(
-    SoundTask,      // Function to implement the task
-    "sound",        // Name of the task
-    2048,           // Stack size in words
-    NULL,          // Task input parameter
-    5,             // Priority of the task
-    NULL,          // Task handle
-    appCore1);      // Core where the task should run
+    SoundTask,    // Function to implement the task
+    "sound",      // Name of the task
+    2048,         // Stack size in words
+    NULL,         // Task input parameter
+    5,            // Priority of the task
+    NULL,         // Task handle
+    appCore1);    // Core where the task should run
 
   xTaskCreatePinnedToCore(
-    WifiTask,      // Function to implement the task
-    "wifi",        // Name of the task
-    2048,           // Stack size in words
-    NULL,          // Task input parameter
-    4,             // Priority of the task
-    NULL,          // Task handle
-    appCore2);      // Core where the task should run
+    WifiTask,     // Function to implement the task
+    "wifi",       // Name of the task
+    2048,         // Stack size in words
+    NULL,         // Task input parameter
+    4,            // Priority of the task
+    NULL,         // Task handle
+    appCore2);    // Core where the task should run
 #endif
   return 0;
 }

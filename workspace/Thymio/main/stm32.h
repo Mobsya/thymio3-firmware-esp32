@@ -67,4 +67,16 @@ extern void STM32_UpdateMotorLeftTarget(int16_t* target);
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateMotorRightTarget.svg
 extern void STM32_UpdateMotorRightTarget(int16_t* target);
 
+//! \brief     Get the battery voltage
+//! \pre       None
+//! \param     voltage The battery voltage read by the ADC
+//! \return    None
+extern void STM32_GetBatteryVoltage(int16_t* voltage);
+
+//! \brief     Get the induced voltage
+//! \pre       None
+//! \param     voltage The induced voltage read by the ADC
+//! \return    None
+extern void STM32_GetInducedVoltage(int16_t* voltage);
+
 #endif // STM32_H_
