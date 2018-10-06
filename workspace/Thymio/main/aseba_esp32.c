@@ -291,11 +291,15 @@ static const AsebaLocalEventDescription localEvents[] = {
 	{ "prox.comm", "Data received on the proximity communication"},
 	{ "tap", "A tap is detected"},
 	{ "acc", "Accelerometer values updated"},
+	{ "acc_bis", "Accelerometer bis values updated"},
+	{ "compass", "Compass values updated"},
+	{ "gyro", "Gyroscope values updated"},
 	{ "mic", "Fired when microphone intensity is above threshold"},
 	{ "sound.finished", "Fired when the playback of a user initiated sound is finished"},
 	{ "temperature", "Temperature value updated"},
 	{ "rc5", "RC5 message received"},
 	{ "motor", "Motor timer"},
+	{ "color", "Color values updated"},
 	{ "timer0", "Timer 0"},
 	{ "timer1", "Timer 1"},
 	{ NULL, NULL }
@@ -843,7 +847,7 @@ void AsebaESP32_Run(void)
     // If a local event is pending, then execute it
     if (event != -1)
     {
-      Leds_SetSingleBrightness(E_Led_Battery_1, 2);
+      //Leds_SetSingleBrightness(E_Led_Battery_1, 2);  FIXME only for debug
       CLEAR_EVENT(event);
 
       vmVariables.source = vmState.nodeId;

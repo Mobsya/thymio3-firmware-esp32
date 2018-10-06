@@ -25,8 +25,6 @@
 
 #include "i2c.h"
 
-#include "aseba_esp32.h"
-
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -215,9 +213,6 @@ typedef uint8_t T_Mag_FullScaleConfig;
 
 static const char* Tag = "lsm303c";
 
-static T_Acc_Axis Acceleration;
-static T_Mag_Axis MagneticField;
-
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -239,7 +234,7 @@ static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate);
 //! \param     None
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\lsm303c\ReadAcceleration.svg
-static void ReadAcceleration(void);
+static void ReadAcceleration(T_Acc_Axis* acceleration);
 
 //! \brief     Read the accelerometer manufacturer ID
 //! \pre       None
@@ -288,7 +283,7 @@ static void UpdateMagFullScaleConfig(T_Mag_FullScaleConfig config);
 //! \param     None
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\lsm303c\ReadMagneticField.svg TODO
-static void ReadMagneticField(void);
+static void ReadMagneticField(T_Mag_Axis* magneticField);
 
 //! \brief     Read the magnetometer manufacturer ID
 //! \pre       None
@@ -331,17 +326,11 @@ void LSM303C_CheckAccManufacturerId(void)
 
 //_____________________________________________________________________________
 
-T_Acc_Axis* LSM303C_GetAcceleration(void)
+void LSM303C_GetAcceleration(T_Acc_Axis* acceleration)
 {
-  ReadAcceleration();
+  ReadAcceleration(acceleration);
 
   // TODO Acceleration.X * SENSITIVITY_ACC, Acceleration.Y * SENSITIVITY_ACC, Acceleration.Z * SENSITIVITY_ACC
-
-  vmVariables.acc[0] = Acceleration.X;
-  vmVariables.acc[1] = Acceleration.Y;
-  vmVariables.acc[2] = Acceleration.Z;
-
-  return &Acceleration;
 }
 
 //_____________________________________________________________________________
@@ -388,15 +377,15 @@ static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate)
 
 //_____________________________________________________________________________
 
-static void ReadAcceleration(void)
+static void ReadAcceleration(T_Acc_Axis* acceleration)
 {
-  uint8_t acceleration[6u];
+  uint8_t acc[6u];
 
-  I2C_ReadFromAddress(ACC_SLAVE_ADDRESS, OUT_X_L_A_REG_ADDRESS, acceleration, 6u);
+  I2C_ReadFromAddress(ACC_SLAVE_ADDRESS, OUT_X_L_A_REG_ADDRESS, acc, 6u);
 
-  Acceleration.X = (uint16_t)((uint16_t)acceleration[1u] << 8u) | acceleration[0u];
-  Acceleration.Y = (uint16_t)((uint16_t)acceleration[3u] << 8u) | acceleration[2u];
-  Acceleration.Z = (uint16_t)((uint16_t)acceleration[5u] << 8u) | acceleration[4u];
+  acceleration->X = (uint16_t)((uint16_t)acc[1u] << 8u) | acc[0u];
+  acceleration->Y = (uint16_t)((uint16_t)acc[3u] << 8u) | acc[2u];
+  acceleration->Z = (uint16_t)((uint16_t)acc[5u] << 8u) | acc[4u];
 
   //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", Acceleration.X,  Acceleration.Y,  Acceleration.Z);
 }
@@ -438,17 +427,11 @@ void LSM303C_CheckMagManufacturerId(void)
 
 //_____________________________________________________________________________
 
-T_Mag_Axis* LSM303C_GetMagneticField(void)
+void LSM303C_GetMagneticField(T_Mag_Axis* field)
 {
-  ReadMagneticField();
+  ReadMagneticField(field);
 
   // TODO MagneticField.X * SENSITIVITY_ACC, MagneticField.Y * SENSITIVITY_ACC, MagneticField.Z * SENSITIVITY_ACC
-
-  vmVariables.compass[0] = MagneticField.X;
-  vmVariables.compass[1] = MagneticField.Y;
-  vmVariables.compass[2] = MagneticField.Z;
-
-  return &MagneticField;
 }
 
 //_____________________________________________________________________________
@@ -579,15 +562,15 @@ static void UpdateMagFullScaleConfig(T_Mag_FullScaleConfig config)
 
 //_____________________________________________________________________________
 
-static void ReadMagneticField(void)
+static void ReadMagneticField(T_Mag_Axis* magneticField)
 {
   uint8_t field[6u];
 
   I2C_ReadFromAddress(MAG_SLAVE_ADDRESS, OUT_X_L_M_REG_ADDRESS, field, 6u);
 
-  MagneticField.X = (uint16_t)((uint16_t)field[1u] << 8u) | field[0u];
-  MagneticField.Y = (uint16_t)((uint16_t)field[3u] << 8u) | field[2u];
-  MagneticField.Z = (uint16_t)((uint16_t)field[5u] << 8u) | field[4u];
+  magneticField->X = (uint16_t)((uint16_t)field[1u] << 8u) | field[0u];
+  magneticField->Y = (uint16_t)((uint16_t)field[3u] << 8u) | field[2u];
+  magneticField->Z = (uint16_t)((uint16_t)field[5u] << 8u) | field[4u];
 
   //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", MagneticField.X,  MagneticField.Y,  MagneticField.Z);
 }

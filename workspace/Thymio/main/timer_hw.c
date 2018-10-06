@@ -77,7 +77,7 @@ static volatile uint32_t SystemTimestamp = 0UL;  //!< System timestamp increment
 
 static struct PrivateTimer TableTimers[MAX_TIMERS_ALLOWED];  //!< Table containing the timers created
 
-static const T_GpioPinConfig PinConfig = {SOUND_OUT_PIN, E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable};
+//static const T_GpioPinConfig PinConfig = {SOUND_OUT_PIN, E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable};
 
 //xQueueHandle timer_queue;
 
@@ -97,7 +97,7 @@ void IRAM_ATTR timer_group0_isr(void *para);
 
 void TimerHw_Init(void)
 {
-  Gpio_ConfigurePin(&PinConfig);
+  //Gpio_ConfigurePin(&PinConfig);
 
   double timer_interval_sec = 0.00002;  //= 20us
   //double timer_interval_sec = 1.0;
@@ -398,7 +398,7 @@ void IRAM_ATTR timer_group0_isr(void *para)
   //evt.timer_idx = timer_idx;
   //evt.timer_counter_value = timer_counter_value;
 
-  Gpio_TogglePinLevel(SOUND_OUT_PIN);
+  //Gpio_TogglePinLevel(SOUND_OUT_PIN);
   //Leds_Task();
 
   // Clear the interrupt

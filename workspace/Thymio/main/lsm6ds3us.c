@@ -27,8 +27,6 @@
 #include "gpio.h"
 #include "i2c.h"
 
-#include "aseba_esp32.h"
-
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -145,9 +143,6 @@ static const char* Tag = "lsm6ds3us";
 
 static const T_GpioPinConfig PinConfig = {ACC_INT_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable};
 
-static T_Axis Acceleration;
-static T_Axis AngularPosition;
-
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -163,14 +158,14 @@ static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate);
 //! \param     None
 //! \return    None
 //! \image     html ReadAcceleration.svg
-static void ReadAcceleration(void);
+static void ReadAcceleration(T_Axis* acceleration);
 
 //! \brief     Read the angular position
 //! \pre       None
 //! \param     None
 //! \return    None
 //! \image     html ReadAngle.svg
-static void ReadAngularPosition(void);
+static void ReadAngularPosition(T_Axis* angularPosition);
 
 //! \brief     Update the gyroscope output data rate
 //! \pre       None
@@ -205,17 +200,11 @@ void LSM6DS3US_InitAccelerometer(void)
 
 //_____________________________________________________________________________
 
-T_Axis* LSM6DS3US_GetAcceleration(void)
+void LSM6DS3US_GetAcceleration(T_Axis* acceleration)
 {
-  ReadAcceleration();
+  ReadAcceleration(acceleration);
 
-  //ConvertAcceleration(int16_t input);
-
-  vmVariables.acc_bis[0] = Acceleration.X;
-  vmVariables.acc_bis[1] = Acceleration.Y;
-  vmVariables.acc_bis[2] = Acceleration.Z;
-
-  return &Acceleration;
+  // TODO ConvertAcceleration(int16_t input);
 }
 
 //_____________________________________________________________________________
@@ -241,15 +230,15 @@ static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate)
 
 //_____________________________________________________________________________
 
-static void ReadAcceleration(void)
+static void ReadAcceleration(T_Axis* acceleration)
 {
-  uint8_t acceleration[6u];
+  uint8_t acc[6u];
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, OUTX_L_XL_REG_ADDRESS, acceleration, 6u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, OUTX_L_XL_REG_ADDRESS, acc, 6u);
 
-  Acceleration.X = (int16_t)((uint16_t)acceleration[1u] << 8u) | acceleration[0u];
-  Acceleration.Y = (int16_t)((uint16_t)acceleration[3u] << 8u) | acceleration[2u];
-  Acceleration.Z = (int16_t)((uint16_t)acceleration[5u] << 8u) | acceleration[4u];
+  acceleration->X = (int16_t)((uint16_t)acc[1u] << 8u) | acc[0u];
+  acceleration->Y = (int16_t)((uint16_t)acc[3u] << 8u) | acc[2u];
+  acceleration->Z = (int16_t)((uint16_t)acc[5u] << 8u) | acc[4u];
 
   //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", Acceleration.X,  Acceleration.Y,  Acceleration.Z);
 }
@@ -281,15 +270,11 @@ void LSM6DS3US_InitGyroscope(void)
 
 //_____________________________________________________________________________
 
-T_Axis* LSM6DS3US_GetAngularPosition(void)
+void LSM6DS3US_GetAngularPosition(T_Axis* angularPosition)
 {
-  ReadAngularPosition();
+  ReadAngularPosition(angularPosition);
 
-  vmVariables.gyro[0] = AngularPosition.X;
-  vmVariables.gyro[1] = AngularPosition.Y;
-  vmVariables.gyro[2] = AngularPosition.Z;
-
-  return &AngularPosition;
+  // TODO Calculate angular position
 }
 
 //_____________________________________________________________________________
@@ -315,15 +300,15 @@ static void UpdateGyroOutputDataRate(T_Gyro_OutputDataRate rate)
 
 //_____________________________________________________________________________
 
-static void ReadAngularPosition(void)
+static void ReadAngularPosition(T_Axis* angularPosition)
 {
   uint8_t position[6u];
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, OUTX_L_G_REG_ADDRESS, position, 6u);
 
-  AngularPosition.X = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
-  AngularPosition.Y = (int16_t)((uint16_t)position[3u] << 8u) | position[2u];
-  AngularPosition.Z = (int16_t)((uint16_t)position[5u] << 8u) | position[4u];
+  angularPosition->X = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
+  angularPosition->Y = (int16_t)((uint16_t)position[3u] << 8u) | position[2u];
+  angularPosition->Z = (int16_t)((uint16_t)position[5u] << 8u) | position[4u];
 
   //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", AngularPosition.X, AngularPosition.Y,  AngularPosition.Z);
 }

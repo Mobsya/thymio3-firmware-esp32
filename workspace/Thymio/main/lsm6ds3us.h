@@ -67,7 +67,7 @@ extern void LSM6DS3US_CheckManufacturerId(void);
 //! \pre       First initialize the LSM6DS3US device
 //! \param     None
 //! \return    None
-extern T_Axis* LSM6DS3US_GetAcceleration(void);
+extern void LSM6DS3US_GetAcceleration(T_Axis* acceleration);
 
 //! \brief     Initialize the gyroscope of the LSM6DS3US device
 //! \pre       None
@@ -79,6 +79,6 @@ extern void LSM6DS3US_InitGyroscope(void);
 //! \pre       First initialize the LSM6DS3US device
 //! \param     None
 //! \return    None
-extern T_Axis* LSM6DS3US_GetAngularPosition(void);
+extern void LSM6DS3US_GetAngularPosition(T_Axis* angularPosition);
 
 #endif // LSM6DS3US_H_

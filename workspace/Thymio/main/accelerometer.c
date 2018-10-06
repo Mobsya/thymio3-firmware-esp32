@@ -6,22 +6,23 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    bh1745nuc.h
-//! \brief   This module provides the useful functions to use the color sensor BH1745NUC
+//! \file    accelerometer.c
+//! \brief   This module provides the useful functions to use the accelerometer
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: bh1745nuc.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \version $Id: accelerometer.c 18076 2017-04-20 12:28:12Z v.gonet $
 //_____________________________________________________________________________
-
-#ifndef BH1745NUC_H_
-#define BH1745NUC_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <stdint.h>
+#include "accelerometer.h"
+
+#include "aseba_esp32.h"
+#include "lsm303c.h"
+#include "lsm6ds3us.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -31,16 +32,19 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
-typedef struct
-{
-  uint16_t Red;
-  uint16_t Green;
-  uint16_t Blue;
-  uint16_t Clear;
-} T_Illuminance;  //!< RGBC illuminance
-
 //-----------------------------------------------------------------------------
 // Exported Global Data
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Private Data
+//-----------------------------------------------------------------------------
+
+static T_Acc_Axis Acceleration_3;
+static T_Axis     Acceleration_6;
+
+//-----------------------------------------------------------------------------
+// Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -48,27 +52,32 @@ typedef struct
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Exported Functions Prototypes
+// Functions Implementation
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the color sensor
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void BH1745NUC_Init(void);
+void Accelerometer_Init(void)
+{
+  LSM303C_InitAccelerometer();
+  LSM6DS3US_InitAccelerometer();
+}
 
-//! \brief     Check the manufacturer ID
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void BH1745NUC_CheckManufacturerId(void);
+//_____________________________________________________________________________
 
-extern void BH1745NUC_ReadRegisters(void);
+void Accelerometer_GetAcceleration(void)
+{
+  LSM303C_GetAcceleration(&Acceleration_3);
 
-//! \brief     Get the RGBC illuminance in [lux]
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void BH1745NUC_GetIlluminance_lux(T_Illuminance* illuminance);
+  vmVariables.acc[0] = Acceleration_3.X;
+  vmVariables.acc[1] = Acceleration_3.Y;
+  vmVariables.acc[2] = Acceleration_3.Z;
 
-#endif // BH1745NUC_H_
+  SET_EVENT(EVENT_ACC);
+
+  LSM6DS3US_GetAcceleration(&Acceleration_6);
+
+  vmVariables.acc_bis[0] = Acceleration_6.X;
+  vmVariables.acc_bis[1] = Acceleration_6.Y;
+  vmVariables.acc_bis[2] = Acceleration_6.Z;
+
+  SET_EVENT(EVENT_ACC_BIS);
+}

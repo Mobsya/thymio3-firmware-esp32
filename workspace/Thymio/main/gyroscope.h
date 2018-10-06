@@ -6,22 +6,20 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    bh1745nuc.h
-//! \brief   This module provides the useful functions to use the color sensor BH1745NUC
+//! \file    gyroscope.h
+//! \brief   This module provides the useful functions to use the gyroscope
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: bh1745nuc.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \version $Id: gyroscope.h 18076 2017-04-20 12:28:12Z v.gonet $
 //_____________________________________________________________________________
 
-#ifndef BH1745NUC_H_
-#define BH1745NUC_H_
+#ifndef GYROSCOPE_H_
+#define GYROSCOPE_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
-
-#include <stdint.h>
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -30,14 +28,6 @@
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
-
-typedef struct
-{
-  uint16_t Red;
-  uint16_t Green;
-  uint16_t Blue;
-  uint16_t Clear;
-} T_Illuminance;  //!< RGBC illuminance
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -51,24 +41,16 @@ typedef struct
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the color sensor
+//! \brief     Initialize the gyroscope
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void BH1745NUC_Init(void);
+extern void Gyroscope_Init(void);
 
-//! \brief     Check the manufacturer ID
-//! \pre       None
+//! \brief     Get the angular position
+//! \pre       First initialize the gyroscope
 //! \param     None
 //! \return    None
-extern void BH1745NUC_CheckManufacturerId(void);
+extern void Gyroscope_GetAngularPosition(void);
 
-extern void BH1745NUC_ReadRegisters(void);
-
-//! \brief     Get the RGBC illuminance in [lux]
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void BH1745NUC_GetIlluminance_lux(T_Illuminance* illuminance);
-
-#endif // BH1745NUC_H_
+#endif // GYROSCOPE_H_

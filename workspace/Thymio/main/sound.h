@@ -57,4 +57,6 @@ extern void Sound_Generate(void);
 
 extern void Sound_Add(float frequency, float amplitude);
 
+extern void Sound_Enable(void);
+
 #endif // SOUND_H_

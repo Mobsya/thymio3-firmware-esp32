@@ -31,6 +31,11 @@
 
 #include "sound.h"
 
+#include "board.h"
+#include "gpio.h"
+
+#include "leds.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -84,8 +89,8 @@ void Sound_Init(void)
     SoundTable[pos] = 0;
   }
 
-  Sound_Add(1, 50);
-  Sound_Add(5, 50);
+  //Sound_Add(1, 50);
+  //Sound_Add(5, 50);
 
   dac_output_enable(DAC_CHANNEL_1);
 }
@@ -133,4 +138,12 @@ void Sound_Add(float frequency, float amplitude)
   }
 
   count++;
+}
+
+//_____________________________________________________________________________
+
+void Sound_Enable(void)
+{
+  // TODO GPIO0 shall be set in output on ESP32 and input on STM32 and next we can drive this pin
+  //Gpio_SetPinLevel(GPIO0_PIN, E_GpioLevel_High);
 }

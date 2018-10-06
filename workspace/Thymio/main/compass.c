@@ -6,22 +6,22 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    bh1745nuc.h
-//! \brief   This module provides the useful functions to use the color sensor BH1745NUC
+//! \file    compass.c
+//! \brief   This module provides the useful functions to use the compass
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: bh1745nuc.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \version $Id: compass.c 18076 2017-04-20 12:28:12Z v.gonet $
 //_____________________________________________________________________________
-
-#ifndef BH1745NUC_H_
-#define BH1745NUC_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <stdint.h>
+#include "compass.h"
+
+#include "aseba_esp32.h"
+#include "lsm303c.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -31,16 +31,18 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
-typedef struct
-{
-  uint16_t Red;
-  uint16_t Green;
-  uint16_t Blue;
-  uint16_t Clear;
-} T_Illuminance;  //!< RGBC illuminance
-
 //-----------------------------------------------------------------------------
 // Exported Global Data
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Private Data
+//-----------------------------------------------------------------------------
+
+static T_Mag_Axis MagneticField;
+
+//-----------------------------------------------------------------------------
+// Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -48,27 +50,23 @@ typedef struct
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Exported Functions Prototypes
+// Functions Implementation
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the color sensor
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void BH1745NUC_Init(void);
+void Compass_Init(void)
+{
+  LSM303C_InitMagnetometer();
+}
 
-//! \brief     Check the manufacturer ID
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void BH1745NUC_CheckManufacturerId(void);
+//_____________________________________________________________________________
 
-extern void BH1745NUC_ReadRegisters(void);
+void Compass_GetMagneticField(void)
+{
+  LSM303C_GetMagneticField(&MagneticField);
 
-//! \brief     Get the RGBC illuminance in [lux]
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void BH1745NUC_GetIlluminance_lux(T_Illuminance* illuminance);
+  vmVariables.compass[0] = MagneticField.X;
+  vmVariables.compass[1] = MagneticField.Y;
+  vmVariables.compass[2] = MagneticField.Z;
 
-#endif // BH1745NUC_H_
+  SET_EVENT(EVENT_COMPASS);
+}

@@ -74,7 +74,7 @@ extern void LSM303C_CheckAccManufacturerId(void);
 //! \pre       First initialize the LSM303C device
 //! \param     None
 //! \return    None
-extern T_Acc_Axis* LSM303C_GetAcceleration(void);
+extern void LSM303C_GetAcceleration(T_Acc_Axis* acceleration);
 
 //! \brief     Initialize the magnetometer of the LSM303C device
 //! \pre       None
@@ -92,6 +92,6 @@ extern void LSM303C_CheckMagManufacturerId(void);
 //! \pre       First initialize the LSM303C device
 //! \param     None
 //! \return    None
-extern T_Mag_Axis* LSM303C_GetMagneticField(void);
+extern void LSM303C_GetMagneticField(T_Mag_Axis* field);
 
 #endif // LSM303C_H_

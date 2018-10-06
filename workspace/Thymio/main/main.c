@@ -39,9 +39,10 @@
 #include "wifi_update.h"
 
 // I2C modules
-#include "bh1745nuc.h"
-#include "lsm303c.h"
-#include "lsm6ds3us.h"
+#include "accelerometer.h"
+#include "color_sensor.h"
+#include "compass.h"
+#include "gyroscope.h"
 #include "stm32.h"
 
 #include "aseba_esp32.h"
@@ -120,13 +121,18 @@ void SensorsTask(void* pvParameter)
   //I2C_Init();
 
   //STM32_CheckId();
-  BH1745NUC_Init();
 
-  LSM303C_InitAccelerometer();
-  LSM303C_InitMagnetometer();
+  //BH1745NUC_Init();
+  ColorSensor_Init();
+  Accelerometer_Init();
+  Compass_Init();
+  Gyroscope_Init();
 
-  LSM6DS3US_InitAccelerometer();
-  LSM6DS3US_InitGyroscope();
+  //LSM303C_InitAccelerometer();
+  //LSM303C_InitMagnetometer();
+
+  //LSM6DS3US_InitAccelerometer();
+  //LSM6DS3US_InitGyroscope();
 
   //int16_t voltage[2] = {0,0};
 
@@ -137,17 +143,21 @@ void SensorsTask(void* pvParameter)
 	//STM32_GetBatteryVoltage(voltage);
 
     //BH1745NUC_CheckManufacturerId();
-    (void)BH1745NUC_GetIlluminance_lux();
+    //(void)BH1745NUC_GetIlluminance_lux();
+	ColorSensor_GetColor();
+	Accelerometer_GetAcceleration();
+	Compass_GetMagneticField();
+	Gyroscope_GetAngularPosition();
 
 	//LSM303C_InitMagnetometer();
     //LSM303C_CheckAccManufacturerId();
     //LSM303C_CheckMagManufacturerId();
-    LSM303C_GetAcceleration();
-    LSM303C_GetMagneticField();
+    //LSM303C_GetAcceleration();
+    //LSM303C_GetMagneticField();
 
     //LSM6DS3US_CheckManufacturerId();
-    LSM6DS3US_GetAcceleration();
-    LSM6DS3US_GetAngularPosition();
+    //LSM6DS3US_GetAcceleration();
+    //LSM6DS3US_GetAngularPosition();
 
     vTaskDelay(200 / portTICK_PERIOD_MS);
   }
