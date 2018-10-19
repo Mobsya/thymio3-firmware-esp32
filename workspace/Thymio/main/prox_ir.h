@@ -6,20 +6,22 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    stm32.h
-//! \brief   This module provides the useful functions to communicate with the STM32
+//! \file    prox_ir.h
+//! \brief   This module provides the useful functions to use the proximity IR sensors
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: stm32.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \version $Id: prox_ir.h 18076 2017-04-20 12:28:12Z v.gonet $
 //_____________________________________________________________________________
 
-#ifndef STM32_H_
-#define STM32_H_
+#ifndef PROX_IR_H_
+#define PROX_IR_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
+
+#include "stdint.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -41,43 +43,35 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the xxx
+//! \brief     Initialize the proximity IR sensors
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void STM32_Init(void);
+extern void ProxIR_Init(void);
 
-//! \brief     Check the ID of the STM32
-//! \pre       None
+//! \brief     Run the proximity IR sensors task
+//! \pre       First initialize the proximity IR sensors
 //! \param     None
 //! \return    None
-extern void STM32_CheckId(void);
+//extern void GroundIR_Task(void);
+extern int16_t ProxIR_Run(uint16_t tick);
 
-//! \brief     Update the left motor target
-//! \pre       None
-//! \param     target The target applied to the left motor
+//! \brief     Enable the network
+//! \pre       First initialize the proximity IR sensors
+//! \param     None
 //! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateLeftMotorTarget.svg
-extern void STM32_UpdateLeftMotorTarget(int16_t* target);
+extern void ProxIR_EnableNetwork(void);
 
-//! \brief     Update the right motor target
-//! \pre       None
-//! \param     target The target applied to the right motor
+//! \brief     Disable the network
+//! \pre       First initialize the proximity IR sensors
+//! \param     None
 //! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateRightMotorTarget.svg
-extern void STM32_UpdateRightMotorTarget(int16_t* target);
+extern void ProxIR_DisableNetwork(void);
 
-//! \brief     Get the battery voltage
-//! \pre       None
-//! \param     voltage The battery voltage read by the ADC
+//! \brief     Shut down the proximity IR sensors
+//! \pre       First initialize the proximity IR sensors
+//! \param     None
 //! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\GetBattery.svg
-extern void STM32_GetBatteryVoltage(int16_t* voltage);
+extern void ProxIR_Shutdown(void);
 
-//! \brief     Get the induced voltage
-//! \pre       None
-//! \param     voltage The induced voltage read by the ADC
-//! \return    None
-extern void STM32_GetInducedVoltage(int16_t* voltage);
-
-#endif // STM32_H_
+#endif // PROX_IR_H_

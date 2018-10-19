@@ -6,20 +6,22 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    stm32.h
-//! \brief   This module provides the useful functions to communicate with the STM32
+//! \file    adc.h
+//! \brief   This module provides the useful functions to use the internal ADC
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: stm32.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \version $Id: adc.h 18076 2017-04-20 12:28:12Z v.gonet $
 //_____________________________________________________________________________
 
-#ifndef STM32_H_
-#define STM32_H_
+#ifndef ADC_H_
+#define ADC_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
+
+#include "stdint.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -41,43 +43,35 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the xxx
+//! \brief     Initialize the internal ADC
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void STM32_Init(void);
+extern void ADC_Init(void);
 
-//! \brief     Check the ID of the STM32
-//! \pre       None
+//! \brief     Acquire the ADC values
+//! \pre       First initialize the internal ADC
 //! \param     None
 //! \return    None
-extern void STM32_CheckId(void);
+extern void ADC_AcquireValues(uint16_t* value);
 
-//! \brief     Update the left motor target
-//! \pre       None
-//! \param     target The target applied to the left motor
+#if 0
+//! \brief     Get the microphone value
+//! \pre       First initialize the internal ADC
+//! \param     None
 //! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateLeftMotorTarget.svg
-extern void STM32_UpdateLeftMotorTarget(int16_t* target);
+extern uint16_t ADC_GetMicrophoneValue(void);
 
-//! \brief     Update the right motor target
-//! \pre       None
-//! \param     target The target applied to the right motor
+//! \brief     Get the left ground IR value
+//! \pre       First initialize the internal ADC
+//! \param     None
 //! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateRightMotorTarget.svg
-extern void STM32_UpdateRightMotorTarget(int16_t* target);
+extern uint16_t ADC_GetLeftGroundIRValue(void);
 
-//! \brief     Get the battery voltage
-//! \pre       None
-//! \param     voltage The battery voltage read by the ADC
+//! \brief     Get the right ground IR value
+//! \pre       First initialize the internal ADC
+//! \param     None
 //! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\GetBattery.svg
-extern void STM32_GetBatteryVoltage(int16_t* voltage);
-
-//! \brief     Get the induced voltage
-//! \pre       None
-//! \param     voltage The induced voltage read by the ADC
-//! \return    None
-extern void STM32_GetInducedVoltage(int16_t* voltage);
-
-#endif // STM32_H_
+extern uint16_t ADC_GetRightGroundIRValue(void);
+#endif
+#endif // ADC_H_

@@ -29,6 +29,18 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
+typedef enum
+{
+  E_Volume_ppp = 16,
+  E_Volume_pp  = 32,
+  E_Volume_p   = 48,
+  E_Volume_mp  = 64,
+  E_Volume_mf  = 80,
+  E_Volume_f   = 96,
+  E_Volume_ff  = 112,
+  E_Volume_fff = 127
+} T_Volume;
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -40,6 +52,8 @@
 //-----------------------------------------------------------------------------
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
+
+extern void Sound_InitSine(T_Volume volume);
 
 //! \brief     Initialize the xxx
 //! \pre       None
@@ -58,5 +72,9 @@ extern void Sound_Generate(void);
 extern void Sound_Add(float frequency, float amplitude);
 
 extern void Sound_Enable(void);
+
+void Sound_PlayNote(uint16_t note, uint32_t duration_us, T_Volume volume);
+
+extern void Sound_Record(void);
 
 #endif // SOUND_H_

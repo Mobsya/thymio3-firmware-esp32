@@ -342,13 +342,13 @@ void update_aseba_variables_write(void) {
 
   if (Target[0] != OldTarget[0])
   {
-    STM32_UpdateMotorLeftTarget(Target);
+    STM32_UpdateLeftMotorTarget(Target);
     OldTarget[0] = Target[0];
   }
 
   if (Target[1] != OldTarget[1])
   {
-    STM32_UpdateMotorRightTarget(Target);
+    STM32_UpdateRightMotorTarget(Target);
     OldTarget[1] = Target[1];
   }
 //#endif

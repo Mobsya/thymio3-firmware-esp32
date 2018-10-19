@@ -6,20 +6,22 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    stm32.h
-//! \brief   This module provides the useful functions to communicate with the STM32
+//! \file    ground_ir.h
+//! \brief   This module provides the useful functions to use the Ground IR sensors
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: stm32.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \version $Id: ground_ir.h 18076 2017-04-20 12:28:12Z v.gonet $
 //_____________________________________________________________________________
 
-#ifndef STM32_H_
-#define STM32_H_
+#ifndef GROUND_IR_H_
+#define GROUND_IR_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
+
+#include "stdint.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -41,43 +43,23 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the xxx
+//! \brief     Initialize the ground IR sensors
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void STM32_Init(void);
+extern void GroundIR_Init(void);
 
-//! \brief     Check the ID of the STM32
-//! \pre       None
+//! \brief     Run the ground IR sensors task
+//! \pre       First initialize the Ground IR sensors
 //! \param     None
 //! \return    None
-extern void STM32_CheckId(void);
+//extern void GroundIR_Task(void);
+extern void GroundIR_Run(uint16_t left, uint16_t right, uint16_t tick);
 
-//! \brief     Update the left motor target
-//! \pre       None
-//! \param     target The target applied to the left motor
+//! \brief     Shut down the ground IR sensors
+//! \pre       First initialize the Ground IR sensors
+//! \param     None
 //! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateLeftMotorTarget.svg
-extern void STM32_UpdateLeftMotorTarget(int16_t* target);
+extern void GroundIR_Shutdown(void);
 
-//! \brief     Update the right motor target
-//! \pre       None
-//! \param     target The target applied to the right motor
-//! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateRightMotorTarget.svg
-extern void STM32_UpdateRightMotorTarget(int16_t* target);
-
-//! \brief     Get the battery voltage
-//! \pre       None
-//! \param     voltage The battery voltage read by the ADC
-//! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\GetBattery.svg
-extern void STM32_GetBatteryVoltage(int16_t* voltage);
-
-//! \brief     Get the induced voltage
-//! \pre       None
-//! \param     voltage The induced voltage read by the ADC
-//! \return    None
-extern void STM32_GetInducedVoltage(int16_t* voltage);
-
-#endif // STM32_H_
+#endif // GROUND_IR_H_

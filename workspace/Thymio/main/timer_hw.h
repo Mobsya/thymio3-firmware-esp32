@@ -42,18 +42,6 @@
 struct PrivateTimer;
 typedef struct PrivateTimer T_TimerHw;  //!< Definition of T_Timer type
 
-/*
- * A sample structure to pass events
- * from the timer interrupt handler to the main program.
- */
-typedef struct
-{
-  int type;  // the type of timer's event
-  int timer_group;
-  int timer_idx;
-  uint64_t timer_counter_value;
-} timer_event_t;
-
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -72,7 +60,9 @@ typedef struct
 //! \return    None
 extern void TimerHw_Init(void);
 
-//extern void TimerHw_Task(void);
+extern void TimerHw_StartTimer(uint16_t interval, uint32_t duration);
+
+extern void TimerHw_Task(void);
 //extern void TimerHw_Task(void* pvParameter);
 
 //! \brief     Get the system timestamp (number of 100us since boot)
@@ -135,5 +125,13 @@ extern bool TimerHw_IsSchedulerFlagSet(void);
 //! \param     None
 //! \return    None
 extern void TimerHw_ResetSchedulerFlag(void);
+
+extern void TimerHw_Callback125us(void* arg);
+
+extern void TimerHw_Callback500us(void* arg);
+
+extern void TimerHw_Callback200ms(void* arg);
+
+extern void oneshot_timer_callback(void* arg);
 
 #endif // TIMER_HW_H_

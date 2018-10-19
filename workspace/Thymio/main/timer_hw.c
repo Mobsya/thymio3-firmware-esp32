@@ -30,6 +30,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 //#include "freertos/queue.h"
+#include <freertos/semphr.h>
 
 //#include "xtensa/xtruntime.h"
 
@@ -69,6 +70,8 @@ struct PrivateTimer
 
 static bool TimerSchedulerFlag = false;  //!< Scheduler timer flag (100 [us] scheduling)
 
+//xSemaphoreHandle SoundSemaphore;
+
 //-----------------------------------------------------------------------------
 // Private Data
 //-----------------------------------------------------------------------------
@@ -77,7 +80,7 @@ static volatile uint32_t SystemTimestamp = 0UL;  //!< System timestamp increment
 
 static struct PrivateTimer TableTimers[MAX_TIMERS_ALLOWED];  //!< Table containing the timers created
 
-//static const T_GpioPinConfig PinConfig = {SOUND_OUT_PIN, E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable};
+static const T_GpioPinConfig PinConfig = {IR_PULSE_FRONT_PIN, E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable};
 
 //xQueueHandle timer_queue;
 
@@ -85,7 +88,13 @@ static struct PrivateTimer TableTimers[MAX_TIMERS_ALLOWED];  //!< Table containi
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
-void IRAM_ATTR timer_group0_isr(void *para);
+//static void periodic_timer_callback(void* arg);
+
+esp_timer_handle_t Timer125us;
+esp_timer_handle_t Timer500us;
+esp_timer_handle_t Timer200ms;
+
+esp_timer_handle_t oneshot_timer;
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -97,34 +106,54 @@ void IRAM_ATTR timer_group0_isr(void *para);
 
 void TimerHw_Init(void)
 {
-  //Gpio_ConfigurePin(&PinConfig);
+  Gpio_ConfigurePin(&PinConfig);
 
-  double timer_interval_sec = 0.00002;  //= 20us
-  //double timer_interval_sec = 1.0;
+  // Configuration of Timer125us
+  const esp_timer_create_args_t timer125us_args =
+  {
+    .callback = &TimerHw_Callback125us,
+    .name = "timer125us"
+  };
+  
+  ESP_ERROR_CHECK(esp_timer_create(&timer125us_args, &Timer125us));
+  // The timer has been created but is not running yet
 
-  /* Select and initialize basic parameters of the timer */
-  timer_config_t config;
-  config.divider = TIMER_DIVIDER;
-  config.counter_dir = TIMER_COUNT_UP;
-  config.counter_en = TIMER_PAUSE;
-  config.alarm_en = TIMER_ALARM_EN;
-  config.intr_type = TIMER_INTR_LEVEL;
-  config.auto_reload = true;
+  ESP_ERROR_CHECK(esp_timer_start_periodic(Timer125us, 125));
+#if 0
+  // Configuration of Timer500us
+  const esp_timer_create_args_t timer500us_args =
+  {
+    .callback = &TimerHw_Callback500us,
+    .name = "timer500us"
+  };
 
-  timer_init(TIMER_GROUP_0, TIMER_NUM, &config);
+  ESP_ERROR_CHECK(esp_timer_create(&timer500us_args, &Timer500us));
+  // The timer has been created but is not running yet
 
-  /* Timer's counter will initially start from value below.
-	 Also, if auto_reload is set, this value will be automatically reload on alarm */
-  timer_set_counter_value(TIMER_GROUP_0, TIMER_NUM, 0x00000000ULL);
+  ESP_ERROR_CHECK(esp_timer_start_periodic(Timer500us, 700));
 
-  /* Configure the alarm value and the interrupt on alarm. */
-  timer_set_alarm_value(TIMER_GROUP_0, TIMER_NUM, timer_interval_sec * TIMER_SCALE);
-  //timer_set_alarm_value(TIMER_GROUP_0, TIMER_NUM, timer_interval_sec);
-  timer_enable_intr(TIMER_GROUP_0, TIMER_NUM);
-  timer_isr_register(TIMER_GROUP_0, TIMER_NUM, timer_group0_isr,
-  (void *) TIMER_NUM, ESP_INTR_FLAG_IRAM, NULL);
+  // Configuration of Timer200ms
+  const esp_timer_create_args_t timer200ms_args =
+  {
+    .callback = &TimerHw_Callback200ms,
+    .name = "timer200ms"
+  };
 
-  timer_start(TIMER_GROUP_0, TIMER_NUM);
+  ESP_ERROR_CHECK(esp_timer_create(&timer200ms_args, &Timer200ms));
+  // The timer has been created but is not running yet
+
+  ESP_ERROR_CHECK(esp_timer_start_periodic(Timer200ms, 200000));
+#endif
+
+  const esp_timer_create_args_t oneshot_timer_args =
+  {
+    .callback = &oneshot_timer_callback,
+    /* argument specified here will be passed to timer callback function */
+    .arg = (void*) Timer125us,
+    .name = "one-shot"
+  };
+
+  ESP_ERROR_CHECK(esp_timer_create(&oneshot_timer_args, &oneshot_timer));
 
   //M_CriticalSectionEnter();
   //uint32_t volatile register ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
@@ -146,10 +175,30 @@ void TimerHw_Init(void)
 }
 
 //_____________________________________________________________________________
+
+void TimerHw_StartTimer(uint16_t interval, uint32_t duration)
+{
+  ESP_ERROR_CHECK(esp_timer_start_periodic(Timer125us, interval));
+  //ESP_ERROR_CHECK(esp_timer_start_once(oneshot_timer, duration));
+}
+
+//_____________________________________________________________________________
 #if 0
 void TimerHw_Task(void)
 {
   //ESP_ERROR_CHECK(esp_timer_start_once(periodic_timer, 60));
+  while (1)
+  {
+	if(SoundSemaphore != NULL )
+	{
+      if (xSemaphoreTake(SoundSemaphore, 0))
+      {
+        Gpio_TogglePinLevel(IR_PULSE_FRONT_PIN);
+      }
+	}
+
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+  }
 }
 #endif
 #if 0
@@ -373,59 +422,4 @@ void TimerHw_ResetSchedulerFlag(void)
   //portEXIT_CRITICAL(&myMutex);
   //XTOS_RESTORE_INTLEVEL(ilevel);
   //M_CriticalSectionExit();
-}
-
-//_____________________________________________________________________________
-
-void IRAM_ATTR timer_group0_isr(void *para)
-{
-  int timer_idx = (int) para;
-
-  // Retrieve the interrupt status and the counter value
-  // from the timer that reported the interrupt
-  uint32_t intr_status = TIMERG0.int_st_timers.val;
-
-  TIMERG0.hw_timer[timer_idx].update = 1;
-
-  //uint64_t timer_counter_value =
-    //((uint64_t) TIMERG0.hw_timer[timer_idx].cnt_high) << 32
-    //| TIMERG0.hw_timer[timer_idx].cnt_low;
-
-  // Prepare basic event data
-  //that will be then sent back to the main program task */
-  //timer_event_t evt;
-  //evt.timer_group = 0;
-  //evt.timer_idx = timer_idx;
-  //evt.timer_counter_value = timer_counter_value;
-
-  //Gpio_TogglePinLevel(SOUND_OUT_PIN);
-  //Leds_Task();
-
-  // Clear the interrupt
-  if ((intr_status & BIT(timer_idx)) && timer_idx == TIMER_NUM)
-  {
-//#if 0
-    for (uint8_t i = 0u; i < MAX_TIMERS_ALLOWED; i++)
-    {
-      if (TableTimers[i].StartedFlag)
-      {
-        TableTimers[i].Elapsed_ms++;
-      }
-    }
-//#endif
-
-    //Gpio_TogglePinLevel(TEST_PIN);
-    //evt.type = TEST_WITH_RELOAD;
-    TIMERG0.int_clr_timers.t1 = 1;
-  }
-  //else
-  //{
-    //evt.type = -1; // not supported even type
-  //}
-
-  // After the alarm has been triggered, we need enable it again, so it is triggered the next time
-  TIMERG0.hw_timer[timer_idx].config.alarm_en = TIMER_ALARM_EN;
-
-  /* Now just send the event data back to the main program task */
-  //xQueueSendFromISR(timer_queue, &evt, NULL);
 }

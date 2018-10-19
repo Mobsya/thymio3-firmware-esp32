@@ -18,7 +18,7 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <esp_log.h>
+#include "esp_log.h"
 
 #include "leds.h"
 
@@ -95,9 +95,9 @@ void Leds_Init(void)
 
 void Leds_Task(void)
 {
-  static uint8_t row = 0;
+  static uint8_t row = 0u;
 
-  ShiftRegisters_Fill(&LedsTable[row][0], REGISTERS_NUM);
+  ShiftRegisters_Fill(&LedsTable[row][0u], REGISTERS_NUM);
 
   row++;
 

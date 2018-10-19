@@ -6,16 +6,16 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    stm32.h
-//! \brief   This module provides the useful functions to communicate with the STM32
+//! \file    timer.h
+//! \brief   This module provides the useful functions to use the timer
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: stm32.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \version $Id: timer.h 18076 2017-04-20 12:28:12Z v.gonet $
 //_____________________________________________________________________________
 
-#ifndef STM32_H_
-#define STM32_H_
+#ifndef TIMER_H_
+#define TIMER_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
@@ -41,43 +41,20 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
+extern void Timer_CreateSemaphore(void);
+
+extern void Timer_CheckSemaphore(void);
+
 //! \brief     Initialize the xxx
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void STM32_Init(void);
+extern void Timer_Init(int timer_idx, bool auto_reload, double timer_interval_sec);
 
-//! \brief     Check the ID of the STM32
-//! \pre       None
+//! \brief     Run the xxx task
+//! \pre       First initialize the xxx
 //! \param     None
 //! \return    None
-extern void STM32_CheckId(void);
+extern void Timer_Task(void);
 
-//! \brief     Update the left motor target
-//! \pre       None
-//! \param     target The target applied to the left motor
-//! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateLeftMotorTarget.svg
-extern void STM32_UpdateLeftMotorTarget(int16_t* target);
-
-//! \brief     Update the right motor target
-//! \pre       None
-//! \param     target The target applied to the right motor
-//! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateRightMotorTarget.svg
-extern void STM32_UpdateRightMotorTarget(int16_t* target);
-
-//! \brief     Get the battery voltage
-//! \pre       None
-//! \param     voltage The battery voltage read by the ADC
-//! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\GetBattery.svg
-extern void STM32_GetBatteryVoltage(int16_t* voltage);
-
-//! \brief     Get the induced voltage
-//! \pre       None
-//! \param     voltage The induced voltage read by the ADC
-//! \return    None
-extern void STM32_GetInducedVoltage(int16_t* voltage);
-
-#endif // STM32_H_
+#endif // TIMER_H_
