@@ -1,0 +1,141 @@
+//_____________________________________________________________________________
+//
+// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+//_____________________________________________________________________________
+//
+// PROJECT   Thymio-III
+//_____________________________________________________________________________
+//
+//! \file    sensors.c
+//! \brief   This module provides the useful functions to use the no-I2C sensors
+//!
+//! \author  Vincent Gonet
+//!
+//! \version $Id: sensors.c 18076 2017-04-20 12:28:12Z v.gonet $
+//_____________________________________________________________________________
+
+//-----------------------------------------------------------------------------
+// Include Section
+//-----------------------------------------------------------------------------
+
+#include "sensors.h"
+
+#include "adc.h"
+#include "ground_ir.h"
+#include "leds.h"
+#include "prox_ir.h"
+
+//-----------------------------------------------------------------------------
+// Constants/Macros Definitions
+//-----------------------------------------------------------------------------
+
+#define PERIOD_100_ms   799  // 125us * 800 = 100ms
+
+//-----------------------------------------------------------------------------
+// Types Definitions
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Exported Global Data
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Private Data
+//-----------------------------------------------------------------------------
+
+static int16_t PeriodAccumulator = 0;
+
+//-----------------------------------------------------------------------------
+// Private Functions Prototypes
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Inline Code Definition
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Functions Implementation
+//-----------------------------------------------------------------------------
+
+void Sensors_Init(void)
+{
+  ADC_Init();
+   //Leds_Init();
+
+  GroundIR_Init();
+  ProxIR_Init();
+}
+
+//_____________________________________________________________________________
+
+void Sensors_Task(void)
+{
+  static uint16_t tick = 0u;
+
+  uint16_t sensors[4];
+
+  ADC_AcquireValues(sensors);
+
+  //Leds_Task();
+
+  PeriodAccumulator += ProxIR_Run(tick);
+  //PeriodAccumulator = 0;
+
+  if (PeriodAccumulator > 100)
+  {
+    PeriodAccumulator = 100;
+  }
+
+  if (PeriodAccumulator < -100)
+  {
+    PeriodAccumulator = -100;
+  }
+
+  // The ground IR sensors need a period of 100ms (frequency = 10Hz),
+  // The ground IR sensors trigger at time = 50, need 6 cycles
+  GroundIR_Run(sensors[1], sensors[2], tick);
+
+  if (PeriodAccumulator < 0)
+  {
+    if (tick == PERIOD_100_ms)
+    {
+      PeriodAccumulator++;
+      tick++;
+	}
+    else if (tick > PERIOD_100_ms)
+	{
+      tick = 0u;
+	}
+    else
+    {
+      tick++;
+	}
+  }
+  else if (PeriodAccumulator > 0)
+  {
+    if (tick == (PERIOD_100_ms - 1u))
+    {
+      PeriodAccumulator--;
+	  tick = 0u;
+	}
+    else if (tick++ >= PERIOD_100_ms)
+    { // We have to re-check as per_acc might be set when time == PERIOD_100MS
+	  tick = 0u;
+	}
+  }
+  else
+  {
+    if (tick++ >= PERIOD_100_ms)
+    {
+	  tick = 0u;
+    }
+  }
+#if 0
+  tick++;
+
+  if (tick > PERIOD_100_ms)
+  {
+    tick = 0u;
+  }
+#endif
+}
