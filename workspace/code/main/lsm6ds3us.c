@@ -218,9 +218,9 @@ static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate)
     I2C_ReadFromAddress(SLAVE_ADDRESS, CTRL1_XL_REG_ADDRESS, &data, 1u);
 
     data &= ACC_ODR_XL_BIT_MASK;
-	data |= (rate << ACC_ODR_XL_BIT_POS);
+    data |= (rate << ACC_ODR_XL_BIT_POS);
 
-	I2C_WriteToAddress(SLAVE_ADDRESS, CTRL1_XL_REG_ADDRESS, &data, 1u);
+    I2C_WriteToAddress(SLAVE_ADDRESS, CTRL1_XL_REG_ADDRESS, &data, 1u);
   }
   else
   {
@@ -288,9 +288,9 @@ static void UpdateGyroOutputDataRate(T_Gyro_OutputDataRate rate)
     I2C_ReadFromAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
 
     data &= GYR_ODR_G_BIT_MASK;
-	data |= (rate << GYR_ODR_G_BIT_POS);
+    data |= (rate << GYR_ODR_G_BIT_POS);
 
-	I2C_WriteToAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
+    I2C_WriteToAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
   }
   else
   {

@@ -60,7 +60,7 @@ static int16_t PeriodAccumulator = 0;
 void Sensors_Init(void)
 {
   ADC_Init();
-   //Leds_Init();
+  //Leds_Init();
 
   GroundIR_Init();
   ProxIR_Init();
@@ -101,33 +101,34 @@ void Sensors_Task(void)
     {
       PeriodAccumulator++;
       tick++;
-	}
+    }
     else if (tick > PERIOD_100_ms)
-	{
+    {
       tick = 0u;
-	}
+    }
     else
     {
       tick++;
-	}
+    }
   }
   else if (PeriodAccumulator > 0)
   {
     if (tick == (PERIOD_100_ms - 1u))
     {
       PeriodAccumulator--;
-	  tick = 0u;
-	}
+      tick = 0u;
+    }
     else if (tick++ >= PERIOD_100_ms)
-    { // We have to re-check as per_acc might be set when time == PERIOD_100MS
-	  tick = 0u;
-	}
+    {
+      // We have to re-check as per_acc might be set when time == PERIOD_100MS
+      tick = 0u;
+    }
   }
   else
   {
     if (tick++ >= PERIOD_100_ms)
     {
-	  tick = 0u;
+      tick = 0u;
     }
   }
 #if 0

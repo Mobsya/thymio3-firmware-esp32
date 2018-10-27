@@ -147,20 +147,20 @@ void SensorTask(void* pvParameter)
       /* The semaphore can now be used. Its handle is stored in the
       xSemahore variable. Calling xSemaphoreTake() on the semaphore here
       will fail until the semaphore has first been given. */
-	  if (xSemaphoreTake(Timer125usSemaphore, 0) == pdTRUE) //portMAX_DELAY );
-	  {
-	    //Gpio_TogglePinLevel(IR_PULSE_FRONT_PIN);
-	    Sensors_Task();
-	    Leds_Task();
+      if (xSemaphoreTake(Timer125usSemaphore, 0) == pdTRUE) //portMAX_DELAY );
+      {
+        //Gpio_TogglePinLevel(IR_PULSE_FRONT_PIN);
+        Sensors_Task();
+        Leds_Task();
 
-	    xSemaphoreGive(Timer10msSemaphore);
-	  }
+        xSemaphoreGive(Timer10msSemaphore);
+      }
     }
 
     FeedWatchdog();
   }
-	//vTaskDelete(NULL);
-    //vTaskDelay(100 / portTICK_PERIOD_MS);
+  //vTaskDelete(NULL);
+  //vTaskDelay(100 / portTICK_PERIOD_MS);
 }
 
 //_____________________________________________________________________________
@@ -184,40 +184,40 @@ void CommTask(void* pvParameter)
   Gyroscope_Init();
 #endif
 
-  int16_t voltage[2] = {0,0};
-  int16_t current[2] = {0,0};
+  int16_t voltage[2] = {0, 0};
+  int16_t current[2] = {0, 0};
 
   //int16_t frequency = 0;
 
   while (1)
   {
     if (Timer200msSemaphore == NULL)
-	{
-	  /* There was insufficient FreeRTOS heap available for the semaphore to
-	  be created successfully. */
-	}
+    {
+      /* There was insufficient FreeRTOS heap available for the semaphore to
+      be created successfully. */
+    }
     else
     {
-	  if (xSemaphoreTake(Timer200msSemaphore, 0) == pdTRUE) //portMAX_DELAY );
-	  {
-	    //ESP_LOGI(Tag, "Run Sensor Task");
-		//frequency++;
-		//Sound_Task(frequency);
+      if (xSemaphoreTake(Timer200msSemaphore, 0) == pdTRUE) //portMAX_DELAY );
+      {
+        //ESP_LOGI(Tag, "Run Sensor Task");
+        //frequency++;
+        //Sound_Task(frequency);
 
 #if 0
-	    //STM32_CheckId();
-	    //STM32_UpdateMotorLeftTarget(Target);
-		//STM32_GetMotorCurrent(current);
-	    //STM32_GetBatteryVoltage(voltage);
+        //STM32_CheckId();
+        //STM32_UpdateMotorLeftTarget(Target);
+        //STM32_GetMotorCurrent(current);
+        //STM32_GetBatteryVoltage(voltage);
 
-	    //BH1745NUC_CheckManufacturerId();
-	    //(void)BH1745NUC_GetIlluminance_lux();
-	    ColorSensor_GetColor();
-	    Accelerometer_GetAcceleration();
-	    Compass_GetMagneticField();
-	    Gyroscope_GetAngularPosition();
+        //BH1745NUC_CheckManufacturerId();
+        //(void)BH1745NUC_GetIlluminance_lux();
+        ColorSensor_GetColor();
+        Accelerometer_GetAcceleration();
+        Compass_GetMagneticField();
+        Gyroscope_GetAngularPosition();
 #endif
-	  }
+      }
     }
 
     //FeedWatchdog();
@@ -251,65 +251,65 @@ void AsebaTask(void* pvParameter)
 #endif
 
 //#if 0
-while (1)
-{
-  if (Timer10msSemaphore == NULL)
+  while (1)
   {
-    /* There was insufficient FreeRTOS heap available for the semaphore to
-  	be created successfully. */
+    if (Timer10msSemaphore == NULL)
+    {
+      /* There was insufficient FreeRTOS heap available for the semaphore to
+      be created successfully. */
+    }
+    else
+    {
+      /* The semaphore can now be used. Its handle is stored in the
+      xSemahore variable.  Calling xSemaphoreTake() on the semaphore here
+      will fail until the semaphore has first been given. */
+      if (xSemaphoreTake(Timer10msSemaphore, 0) == pdTRUE) //portMAX_DELAY );
+      {
+        //ESP_LOGI(Tag, "Run Aseba Task");
+        //Gpio_TogglePinLevel(IR_SENSE_FRONT_1_PIN);
+        //len = UART_Read(data);
+        //UART_Write(data, len);
+        AsebaESP32_Run();
+        Behavior_SetIRSensorsLeds();
+        //UART_Task();
+
+        xSemaphoreGive(Timer200msSemaphore);
+      }
+    }
+
+    //FeedWatchdog();
+
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
-  else
-  {
-  	/* The semaphore can now be used. Its handle is stored in the
-  	xSemahore variable.  Calling xSemaphoreTake() on the semaphore here
-  	will fail until the semaphore has first been given. */
-  	if (xSemaphoreTake(Timer10msSemaphore, 0) == pdTRUE) //portMAX_DELAY );
-  	{
-  	  //ESP_LOGI(Tag, "Run Aseba Task");
-  	  //Gpio_TogglePinLevel(IR_SENSE_FRONT_1_PIN);
-      //len = UART_Read(data);
-  	  //UART_Write(data, len);
-  	  AsebaESP32_Run();
-  	  Behavior_SetIRSensorsLeds();
-  	  //UART_Task();
-
-  	  xSemaphoreGive(Timer200msSemaphore);
-  	}
-  }
-
-  //FeedWatchdog();
-
-  vTaskDelay(10 / portTICK_PERIOD_MS);
-}
 //#endif
 
 #if 0
   while (1)
   {
     if (Timer10msSemaphore == NULL)
-	{
-	  /* There was insufficient FreeRTOS heap available for the semaphore to
-	  be created successfully. */
-	}
-	else
-	{
-	  /* The semaphore can now be used. Its handle is stored in the
-	  xSemahore variable.  Calling xSemaphoreTake() on the semaphore here
-	  will fail until the semaphore has first been given. */
-	  if (xSemaphoreTake(Timer10msSemaphore, 0) == pdTRUE) //portMAX_DELAY );
-	  {
-		ESP_LOGI(Tag, "Run Aseba Task");
-		//Gpio_TogglePinLevel(IR_SENSE_FRONT_1_PIN);
-		//len = UART_Read(data);
-		//UART_Write(data, len);
-		//AsebaESP32_Run();
-		//UART_Task();
+    {
+      /* There was insufficient FreeRTOS heap available for the semaphore to
+      be created successfully. */
+    }
+    else
+    {
+      /* The semaphore can now be used. Its handle is stored in the
+      xSemahore variable.  Calling xSemaphoreTake() on the semaphore here
+      will fail until the semaphore has first been given. */
+      if (xSemaphoreTake(Timer10msSemaphore, 0) == pdTRUE) //portMAX_DELAY );
+      {
+        ESP_LOGI(Tag, "Run Aseba Task");
+        //Gpio_TogglePinLevel(IR_SENSE_FRONT_1_PIN);
+        //len = UART_Read(data);
+        //UART_Write(data, len);
+        //AsebaESP32_Run();
+        //UART_Task();
 
-	    xSemaphoreGive(Timer200msSemaphore);
-	  }
-	}
+        xSemaphoreGive(Timer200msSemaphore);
+      }
+    }
 
-	vTaskDelay(100 / portTICK_PERIOD_MS);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
   }
 #endif
 }
@@ -437,64 +437,71 @@ int app_main(void)
 
 //_____________________________________________________________________________
 
-AsebaNativeFunctionDescription AsebaNativeDescription_poweroff = {
-    "_poweroff",
-    "Poweroff",
-    {
-        {0,0}
-    }
+AsebaNativeFunctionDescription AsebaNativeDescription_poweroff =
+{
+  "_poweroff",
+  "Poweroff",
+  {
+    {0, 0}
+  }
 };
 
 //_____________________________________________________________________________
 
-void power_off(AsebaVMState *vm) {
-        unsigned int flags;
+void power_off(AsebaVMState* vm)
+{
+  unsigned int flags;
 
-    // Protect against two racing poweroff:
-    //  One from the softirq (button)
-    //  One from the VM
+  // Protect against two racing poweroff:
+  //  One from the softirq (button)
+  //  One from the VM
 #if 0
-    RAISE_IPL(flags,1);
+  RAISE_IPL(flags, 1);
 
-    behavior_stop(B_ALL);
+  behavior_stop(B_ALL);
 
-    play_sound_block(SOUND_POWEROFF);
+  play_sound_block(SOUND_POWEROFF);
 
-    // Shutdown all peripherals ...
-    switch_off();
+  // Shutdown all peripherals ...
+  switch_off();
 
-    // Switch off USB
-    // If we are connected to a PC, disconnect.
-    // If we are NOT connected to a PC but 5V is present
-    // ( == charger ) we need to keep the transciever on
-    if(usb_uart_configured())
-        USBDeviceDetach();
+  // Switch off USB
+  // If we are connected to a PC, disconnect.
+  // If we are NOT connected to a PC but 5V is present
+  // ( == charger ) we need to keep the transciever on
+  if (usb_uart_configured())
+  {
+    USBDeviceDetach();
+  }
 
-    // In any case, disable the usb interrupt. It's safer
-    _USB1IE = 0;
+  // In any case, disable the usb interrupt. It's safer
+  _USB1IE = 0;
 
 
-    CHARGE_ENABLE_DIR = 1;
+  CHARGE_ENABLE_DIR = 1;
 
-    analog_enter_poweroff_mode();
+  analog_enter_poweroff_mode();
 #endif
 }
 
 //_____________________________________________________________________________
 
-void update_aseba_variables_write(void) {
+void update_aseba_variables_write(void)
+{
 #if 0
-    static unsigned int old_timer[2];
-    int i;
+  static unsigned int old_timer[2];
+  int i;
 
-    for(i = 0; i < 2; i++) {
-        if(vmVariables.timers[i] != old_timer[i]) {
-            old_timer[i] = vmVariables.timers[i];
-            timer[i] = 0;
-        }
+  for (i = 0; i < 2; i++)
+  {
+    if (vmVariables.timers[i] != old_timer[i])
+    {
+      old_timer[i] = vmVariables.timers[i];
+      timer[i] = 0;
     }
+  }
 
-    pid_motor_set_target((int *) vmVariables.target);
+  pid_motor_set_target((int*) vmVariables.target);
 #endif
 //#if 0
   Target[0] = vmVariables.target[0];
@@ -516,12 +523,13 @@ void update_aseba_variables_write(void) {
 
 //_____________________________________________________________________________
 
-void update_aseba_variables_read(void) {
-    // TODO: REMOVE ME (move to behavior ? /!\ behavior == IPL 1 !! race wrt aseba !)
+void update_aseba_variables_read(void)
+{
+  // TODO: REMOVE ME (move to behavior ? /!\ behavior == IPL 1 !! race wrt aseba !)
 #if 0
-    usb_uart_tick();
+  usb_uart_tick();
 
-    motor_get_vind((int *) vmVariables.uind);
+  motor_get_vind((int*) vmVariables.uind);
 #endif
 }
 
@@ -536,7 +544,7 @@ static void FeedWatchdog(void)
 
 //_____________________________________________________________________________
 
-void IRAM_ATTR timer_group0_isr(void *para)
+void IRAM_ATTR timer_group0_isr(void* para)
 {
   static BaseType_t higherPriorityTaskWoken = false;
 
@@ -557,23 +565,23 @@ void IRAM_ATTR timer_group0_isr(void *para)
   }
   else if ((intr_status & BIT(timer_idx)) && timer_idx == TIMER_1)
   {
-	TIMERG0.int_clr_timers.t1 = 1;
+    TIMERG0.int_clr_timers.t1 = 1;
 
-	//configASSERT(LedsHandle);
-	//Gpio_TogglePinLevel(IR_SENSE_FRONT_1_PIN);
+    //configASSERT(LedsHandle);
+    //Gpio_TogglePinLevel(IR_SENSE_FRONT_1_PIN);
     //Sensors_Task();
     //higherPriorityTaskWoken = pdFALSE;
 //#if 0
-	//vTaskNotifyGiveFromISR(TimerSemaphore, NULL);
-	xSemaphoreGiveFromISR(Timer125usSemaphore, &higherPriorityTaskWoken);
+    //vTaskNotifyGiveFromISR(TimerSemaphore, NULL);
+    xSemaphoreGiveFromISR(Timer125usSemaphore, &higherPriorityTaskWoken);
     //vTaskNotifyGiveFromISR(LedsHandle, &higherPriorityTaskWoken);
 
     //TaskToNotify = NULL;
-	//Timer125usSemaphore = NULL;
-	  if (higherPriorityTaskWoken != pdFALSE)
-	  {
-	    portYIELD_FROM_ISR();
-	  }
+    //Timer125usSemaphore = NULL;
+    if (higherPriorityTaskWoken != pdFALSE)
+    {
+      portYIELD_FROM_ISR();
+    }
 //#endif
   }
   else
@@ -612,7 +620,7 @@ static void Timer_Init(int timer_idx, bool auto_reload, double timer_interval_se
   timer_set_alarm_value(TIMER_GROUP_0, timer_idx, timer_interval_sec * TIMER_SCALE);
   timer_enable_intr(TIMER_GROUP_0, timer_idx);
   timer_isr_register(TIMER_GROUP_0, timer_idx, timer_group0_isr,
-                     (void *) timer_idx, ESP_INTR_FLAG_IRAM, NULL);
+                     (void*) timer_idx, ESP_INTR_FLAG_IRAM, NULL);
 
   //timer_start(TIMER_GROUP_0, timer_idx);
 

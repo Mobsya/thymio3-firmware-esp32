@@ -53,9 +53,9 @@ struct _vmVariables
 {
   int16_t id;  // NodeID
   int16_t source; // source
-  int16_t args[VM_VARIABLES_ARG_SIZE]; 	// args
-  int16_t fwversion[2]; 	// fwversion
-  int16_t productid; 	// Product ID
+  int16_t args[VM_VARIABLES_ARG_SIZE];  // args
+  int16_t fwversion[2];   // fwversion
+  int16_t productid;  // Product ID
   int16_t buttons[5];
   int16_t buttons_state[5];
   int16_t buttons_mean[5];

@@ -58,11 +58,12 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
-typedef struct {
-    int type;  // the type of timer's event
-    int timer_group;
-    int timer_idx;
-    uint64_t timer_counter_value;
+typedef struct
+{
+  int type;  // the type of timer's event
+  int timer_group;
+  int timer_idx;
+  uint64_t timer_counter_value;
 } timer_event_t;
 
 //-----------------------------------------------------------------------------
@@ -102,7 +103,7 @@ static const char* Tag = "timer";
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void IRAM_ATTR timer_group0_isr(void *para)
+void IRAM_ATTR timer_group0_isr(void* para)
 {
 //#if 0
   BaseType_t higherPriorityTaskWoken;
@@ -121,30 +122,30 @@ void IRAM_ATTR timer_group0_isr(void *para)
   // Clear the interrupt and update the alarm time for the timer with without reload
   if ((intr_status & BIT(timer_idx)) && timer_idx == TIMER_0)
   {
-	//Gpio_TogglePinLevel(IR_PULSE_FRONT_PIN);
+    //Gpio_TogglePinLevel(IR_PULSE_FRONT_PIN);
 #if 0
-	ColorSensor_GetColor();
-	Accelerometer_GetAcceleration();
-	Compass_GetMagneticField();
-	Gyroscope_GetAngularPosition();
+    ColorSensor_GetColor();
+    Accelerometer_GetAcceleration();
+    Compass_GetMagneticField();
+    Gyroscope_GetAngularPosition();
 #endif
     TIMERG0.int_clr_timers.t0 = 1;
   }
   else if ((intr_status & BIT(timer_idx)) && timer_idx == TIMER_1)
   {
-	TIMERG0.int_clr_timers.t1 = 1;
+    TIMERG0.int_clr_timers.t1 = 1;
 
-	Gpio_TogglePinLevel(IR_SENSE_FRONT_1_PIN);
+    Gpio_TogglePinLevel(IR_SENSE_FRONT_1_PIN);
     //Sensors_Task();
     higherPriorityTaskWoken = pdFALSE;
 //#if 0
-	//vTaskNotifyGiveFromISR(TimerSemaphore, NULL);
-	xSemaphoreGiveFromISR(Timer125usSemaphore, &higherPriorityTaskWoken);
+    //vTaskNotifyGiveFromISR(TimerSemaphore, NULL);
+    xSemaphoreGiveFromISR(Timer125usSemaphore, &higherPriorityTaskWoken);
     //vTaskNotifyGiveFromISR(LedsHandle, &higherPriorityTaskWoken);
 
     //TaskToNotify = NULL;
-	Timer125usSemaphore = NULL;
-	portYIELD_FROM_ISR();
+    Timer125usSemaphore = NULL;
+    portYIELD_FROM_ISR();
 //#endif
   }
   else
@@ -186,7 +187,7 @@ void Timer_Init(int timer_idx, bool auto_reload, double timer_interval_sec)
   timer_set_alarm_value(TIMER_GROUP_0, timer_idx, timer_interval_sec * TIMER_SCALE);
   timer_enable_intr(TIMER_GROUP_0, timer_idx);
   timer_isr_register(TIMER_GROUP_0, timer_idx, timer_group0_isr,
-                     (void *) timer_idx, ESP_INTR_FLAG_IRAM, NULL);
+                     (void*) timer_idx, ESP_INTR_FLAG_IRAM, NULL);
 
   timer_start(TIMER_GROUP_0, timer_idx);
 

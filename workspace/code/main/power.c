@@ -43,7 +43,8 @@ static const T_GpioPinConfig PinConfig = {VA_ENABLE_PIN,
                                           E_GpioMode_Output,
                                           E_GpioResistor_None,
                                           E_GpioLevel_Low,
-                                          E_GpioInterrupt_Disable};
+                                          E_GpioInterrupt_Disable
+                                         };
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes

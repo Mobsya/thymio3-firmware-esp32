@@ -157,7 +157,7 @@ static int PerformCalibration(uint16_t raw, T_Sensor sensor)
   else
   {
     // Calibration disabled if settings are negative
-	return value;
+    return value;
   }
 }
 
@@ -178,17 +178,17 @@ static int16_t Calibrate(int16_t value, T_Sensor sensor)
       else
       {
         ProxCalibMaxCounter[sensor] = 0;
-	  }
+      }
     }
   }
   else
   {
-	ProxCalibMaxCounter[sensor] = 0;
+    ProxCalibMaxCounter[sensor] = 0;
   }
 
   if (ProxGroundMax[sensor] < 500)
   {
-	ret = value;
+    ret = value;
   }
   else
   {

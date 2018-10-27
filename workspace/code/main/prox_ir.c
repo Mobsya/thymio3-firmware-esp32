@@ -106,7 +106,7 @@ static void ResetRx(void);
 
 static void ir_tx(int value);
 
-static mcpwm_dev_t *MCPWM[2] = {&MCPWM0, &MCPWM1};
+static mcpwm_dev_t* MCPWM[2] = {&MCPWM0, &MCPWM1};
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -131,7 +131,7 @@ void ProxIR_Init(void)
     if (settings.prox_min[sensor] == 0)
     {
       settings.prox_min[sensor] = DEFAULT_CALIB;
-	}
+    }
   }
 
   // TODO configuration of Capture, Timers, ...
@@ -192,7 +192,7 @@ int16_t ProxIR_Run(uint16_t tick)
       if (NetworkStatus == E_NetworkStatus_WillBeEnabled)
       {
         NetworkStatus = E_NetworkStatus_Enabled;
-		ir_tx(vmVariables.ir_tx_data);
+        ir_tx(vmVariables.ir_tx_data);
       }
       else
       {
@@ -202,7 +202,7 @@ int16_t ProxIR_Run(uint16_t tick)
 
     case 5: // First pulse should be emitted by now. (max pulse: 8000, emition time: 960, back is delayed by 960: 9920 => 5.
 //      ret = ir_prox_rx_oa();
-	  break;
+      break;
 
     default:
       if ((NetworkStatus == E_NetworkStatus_Enabled) && last_tx)
@@ -217,7 +217,7 @@ int16_t ProxIR_Run(uint16_t tick)
         {
           // We sent the two pulses, now start to listen
 //          ret = ir_prox_rx(tick);
-		}
+        }
         else
         {
           // Wait the local echo
@@ -276,8 +276,8 @@ static int PerformCalibration(uint16_t raw, T_Sensor sensor)
   }
   else
   {
-	// Calibration disabled if settings are negative
-	return value;
+    // Calibration disabled if settings are negative
+    return value;
   }
 }
 
@@ -294,13 +294,13 @@ static int16_t Calibrate(int16_t value, T_Sensor sensor)
       if (value < settings.prox_min[sensor])
       {
         settings.prox_min[sensor] = value;
-		set_save_settings();
-	  }
+        set_save_settings();
+      }
       else
       {
         ProxCalibMaxCounter[sensor] = 0;
       }
-	}
+    }
   }
   else
   {
@@ -313,7 +313,7 @@ static int16_t Calibrate(int16_t value, T_Sensor sensor)
   }
   else
   {
-    ret = value - (3*((unsigned int) settings.prox_min[sensor])) / 4 + 800;
+    ret = value - (3 * ((unsigned int) settings.prox_min[sensor])) / 4 + 800;
   }
 
   if (ret < 0)
@@ -331,12 +331,12 @@ static void ResetRx(void)
   for (uint8_t sensor = 0u; sensor < SENSORS_NUM; sensor++)
   {
 #if 0
-	while (ic_bufne(sensor))
-	{
-	  ic_buf(sensor);
-	}
+    while (ic_bufne(sensor))
+    {
+      ic_buf(sensor);
+    }
 #endif
-	edge[sensor] = 0;
+    edge[sensor] = 0;
   }
 }
 
@@ -364,29 +364,29 @@ static int16_t ir_prox_rx_oa(void)
         // Validity check
         if (temp[0] < 2000)
         {
-		  if(temp[0] > 100)
-		  {
+          if (temp[0] > 100)
+          {
             vmVariables.prox[sensor] = PerformCalibration((temp[1] - temp[0]), sensor);
-		  }
+          }
           else if (!sensors_prox_drift())
           {
             ret = ((temp[0] & 0x3) - 2) * 5; // Should use random here ....
-		  }
-		}
+          }
+        }
         else if (!sensors_prox_drift())
         {
           ret = ((temp[0] & 0x3) - 1) * 5; // Should use random here ....
-		}
+        }
       }
     }
 
     // Reset the calibration counter if the sensor did not see something:
-	// => perform_calib was not triggered, thus, ProxCalibMaxCounter was not updated
-	// So, do it here.
-	if (!vmVariables.prox[sensor])
-	{
+    // => perform_calib was not triggered, thus, ProxCalibMaxCounter was not updated
+    // So, do it here.
+    if (!vmVariables.prox[sensor])
+    {
       ProxCalibMaxCounter[sensor] = 0;
-	}
+    }
   }
 
   return ret;
@@ -403,23 +403,26 @@ static void ir_tx(int value)
 
 static void IRAM_ATTR isr_handler()
 {
-    uint32_t mcpwm_intr_status;
-    capture evt;
-    mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val; //Read interrupt status
-    if (mcpwm_intr_status & CAP0_INT_EN) { //Check for interrupt on rising edge on CAP0 signal
-        evt.capture_signal = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0); //get capture signal counter value
-        evt.sel_cap_signal = MCPWM_SELECT_CAP0;
+  uint32_t mcpwm_intr_status;
+  capture evt;
+  mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val; //Read interrupt status
+  if (mcpwm_intr_status & CAP0_INT_EN)   //Check for interrupt on rising edge on CAP0 signal
+  {
+    evt.capture_signal = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0); //get capture signal counter value
+    evt.sel_cap_signal = MCPWM_SELECT_CAP0;
 //        xQueueSendFromISR(cap_queue, &evt, NULL);
-    }
-    if (mcpwm_intr_status & CAP1_INT_EN) { //Check for interrupt on rising edge on CAP1 signal
-        evt.capture_signal = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP1); //get capture signal counter value
-        evt.sel_cap_signal = MCPWM_SELECT_CAP1;
+  }
+  if (mcpwm_intr_status & CAP1_INT_EN)   //Check for interrupt on rising edge on CAP1 signal
+  {
+    evt.capture_signal = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP1); //get capture signal counter value
+    evt.sel_cap_signal = MCPWM_SELECT_CAP1;
 //        xQueueSendFromISR(cap_queue, &evt, NULL);
-    }
-    if (mcpwm_intr_status & CAP2_INT_EN) { //Check for interrupt on rising edge on CAP2 signal
-        evt.capture_signal = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP2); //get capture signal counter value
-        evt.sel_cap_signal = MCPWM_SELECT_CAP2;
+  }
+  if (mcpwm_intr_status & CAP2_INT_EN)   //Check for interrupt on rising edge on CAP2 signal
+  {
+    evt.capture_signal = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP2); //get capture signal counter value
+    evt.sel_cap_signal = MCPWM_SELECT_CAP2;
 //        xQueueSendFromISR(cap_queue, &evt, NULL);
-    }
-    MCPWM[MCPWM_UNIT_0]->int_clr.val = mcpwm_intr_status;
+  }
+  MCPWM[MCPWM_UNIT_0]->int_clr.val = mcpwm_intr_status;
 }

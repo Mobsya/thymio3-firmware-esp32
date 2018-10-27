@@ -96,11 +96,11 @@ void UART_Task(void)
   while (1)
   {
     // Waiting for UART event
-	if (xQueueReceive(UartQueue, (void*)&event, (portTickType)portMAX_DELAY))
-	{
+    if (xQueueReceive(UartQueue, (void*)&event, (portTickType)portMAX_DELAY))
+    {
       bzero(data, RX_BUFFER_SIZE);
 
-      switch(event.type)
+      switch (event.type)
       {
         // Event of UART receving data
         case UART_DATA:
@@ -142,9 +142,9 @@ void UART_Task(void)
         default:
           break;
       }
-	}
+    }
 
-	vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
 #endif

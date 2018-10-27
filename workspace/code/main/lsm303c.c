@@ -365,9 +365,9 @@ static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate)
     I2C_ReadFromAddress(ACC_SLAVE_ADDRESS, CTRL_REG1_A_REG_ADDRESS, &data, 1u);
 
     data &= ACC_ODR_BIT_MASK;
-	data |= (rate << ACC_ODR_BIT_POS);
+    data |= (rate << ACC_ODR_BIT_POS);
 
-	I2C_WriteToAddress(ACC_SLAVE_ADDRESS, CTRL_REG1_A_REG_ADDRESS, &data, 1u);
+    I2C_WriteToAddress(ACC_SLAVE_ADDRESS, CTRL_REG1_A_REG_ADDRESS, &data, 1u);
   }
   else
   {
@@ -466,9 +466,9 @@ static void UpdateMagOutputDataRate(T_Mag_OutputDataRate rate)
     I2C_ReadFromAddress(MAG_SLAVE_ADDRESS, CTRL_REG1_M_REG_ADDRESS, &data, 1u);
 
     data &= MAG_DO_BIT_MASK;
-	data |= (rate << MAG_DO_BIT_POS);
+    data |= (rate << MAG_DO_BIT_POS);
 
-	I2C_WriteToAddress(MAG_SLAVE_ADDRESS, CTRL_REG1_M_REG_ADDRESS, &data, 1u);
+    I2C_WriteToAddress(MAG_SLAVE_ADDRESS, CTRL_REG1_M_REG_ADDRESS, &data, 1u);
   }
   else
   {
@@ -508,9 +508,9 @@ static void UpdateMagXYOperativeMode(T_Mag_OperativeMode mode)
     I2C_ReadFromAddress(MAG_SLAVE_ADDRESS, CTRL_REG1_M_REG_ADDRESS, &data, 1u);
 
     data &= MAG_OM_BIT_MASK;
-	data |= (mode << MAG_OM_BIT_POS);
+    data |= (mode << MAG_OM_BIT_POS);
 
-	I2C_WriteToAddress(MAG_SLAVE_ADDRESS, CTRL_REG1_M_REG_ADDRESS, &data, 1u);
+    I2C_WriteToAddress(MAG_SLAVE_ADDRESS, CTRL_REG1_M_REG_ADDRESS, &data, 1u);
   }
   else
   {
@@ -529,9 +529,9 @@ static void UpdateMagZOperativeMode(T_Mag_OperativeMode mode)
     I2C_ReadFromAddress(MAG_SLAVE_ADDRESS, CTRL_REG4_M_REG_ADDRESS, &data, 1u);
 
     data &= MAG_OMZ_BIT_MASK;
-	data |= (mode << MAG_OMZ_BIT_POS);
+    data |= (mode << MAG_OMZ_BIT_POS);
 
-	I2C_WriteToAddress(MAG_SLAVE_ADDRESS, CTRL_REG4_M_REG_ADDRESS, &data, 1u);
+    I2C_WriteToAddress(MAG_SLAVE_ADDRESS, CTRL_REG4_M_REG_ADDRESS, &data, 1u);
   }
   else
   {
@@ -550,9 +550,9 @@ static void UpdateMagFullScaleConfig(T_Mag_FullScaleConfig config)
     I2C_ReadFromAddress(MAG_SLAVE_ADDRESS, CTRL_REG2_M_REG_ADDRESS, &data, 1u);
 
     data &= MAG_FS_BIT_MASK;
-	data |= (config << MAG_FS_BIT_POS);
+    data |= (config << MAG_FS_BIT_POS);
 
-	I2C_WriteToAddress(MAG_SLAVE_ADDRESS, CTRL_REG2_M_REG_ADDRESS, &data, 1u);
+    I2C_WriteToAddress(MAG_SLAVE_ADDRESS, CTRL_REG2_M_REG_ADDRESS, &data, 1u);
   }
   else
   {

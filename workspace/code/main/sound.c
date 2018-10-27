@@ -83,7 +83,8 @@ static const T_GpioPinConfig PinConfig = {GPIO0_PIN,
                                           E_GpioMode_Output,
                                           E_GpioResistor_None,
                                           E_GpioLevel_Low,
-                                          E_GpioInterrupt_Disable};
+                                          E_GpioInterrupt_Disable
+                                         };
 
 int clk_8m_div = 4;      // RTC 8M clock divider (division is by clk_8m_div+1, i.e. 0 means 8MHz frequency)
 int frequency_step = 8;  // Frequency step for CW generator
@@ -122,9 +123,9 @@ void Sound_Task(int16_t note)
 {
   Sound_SetFrequency(clk_8m_div, note);
 
-    /* Tune parameters of channel 2 only
-     * to see and compare changes against channel 1
-     */
+  /* Tune parameters of channel 2 only
+   * to see and compare changes against channel 1
+   */
   Sound_ScaleOutput(scale);
   Sound_OffsetOutput(offset);
   Sound_InvertOutput(invert);

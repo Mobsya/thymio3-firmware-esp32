@@ -120,13 +120,15 @@ extern void Leds_SetSingleBrightness(T_Led led, uint8_t brightness);
 //! \pre       First initialize the LEDs
 //! \param     None
 //! \return    None
-extern void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7);
+extern void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
+                                     uint8_t l7);
 
 //! \brief     Set the brightness of each proximity IR LED
 //! \pre       First initialize the LEDs
 //! \param     None
 //! \return    None
-extern void leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7);
+extern void leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
+                                     uint8_t l7);
 
 //! \brief     Set the brightness of the top RGB LED
 //! \pre       First initialize the LEDs

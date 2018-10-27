@@ -60,7 +60,8 @@ static const uint8_t LedsOff[REGISTERS_NUM] = {LED_OFF_BANK_0,
                                                LED_OFF_BANK_1,
                                                LED_OFF_BANK_2,
                                                LED_OFF_BANK_3,
-                                               LED_OFF_BANK_4};
+                                               LED_OFF_BANK_4
+                                              };
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -124,7 +125,7 @@ void Leds_SetSingleBrightness(T_Led led, uint8_t brightness)
     polarity = (LedsOff[bank] & position);
 
     //ESP_LOGI(Tag, "bank = %d, pin = %d, position = %d, polarity = %d", bank, pin, position, polarity);
-  
+
     for (uint8_t row = MIN_BRIGHTNESS; row < MAX_BRIGHTNESS; row++)
     {
       if (row < brightness)
@@ -155,7 +156,8 @@ void Leds_SetSingleBrightness(T_Led led, uint8_t brightness)
 
 //_____________________________________________________________________________
 
-void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
+void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
+                              uint8_t l7)
 {
   Leds_SetSingleBrightness(E_Led_Circle_0, l0);
   Leds_SetSingleBrightness(E_Led_Circle_1, l1);
@@ -169,7 +171,8 @@ void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, ui
 
 //_____________________________________________________________________________
 
-void leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
+void leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
+                              uint8_t l7)
 {
   Leds_SetSingleBrightness(E_Led_Front_IR_0,    l0);
   Leds_SetSingleBrightness(E_Led_Front_IR_1,    l1);

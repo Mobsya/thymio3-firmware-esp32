@@ -27,23 +27,23 @@
 #include "aseba/common/types.h"
 
 
-/************** 
- * Interface USB-HW (Interrupt) <-> Usb buffer 
+/**************
+ * Interface USB-HW (Interrupt) <-> Usb buffer
  **************/
 
 /** The MTU of the underling hardware */
-#define ASEBA_USB_MTU	64
+#define ASEBA_USB_MTU 64
 
 /** callback from the usb layer asking for more data
  * put the datas in the pointer and return the size written to send more data
  * return 0 to send nothing
  */
-unsigned char AsebaTxReady(unsigned char *data);
+unsigned char AsebaTxReady(unsigned char* data);
 
-/** callback from the usb layer, data is a pointer to the data and size is the size .... 
+/** callback from the usb layer, data is a pointer to the data and size is the size ....
  * Return true if the data where consumed, false if not.
  */
-int AsebaUsbBulkRecv(unsigned char *data, unsigned char size);
+int AsebaUsbBulkRecv(unsigned char* data, unsigned char size);
 
 
 
@@ -51,8 +51,8 @@ int AsebaUsbBulkRecv(unsigned char *data, unsigned char size);
  * Interface Fifos <-> Aseba VM (Main() code)
  *************/
 
-void AsebaSendBuffer(AsebaVMState *vm, const uint8_t * data, uint16_t length);
-uint16_t AsebaGetBuffer(AsebaVMState *vm, uint8_t* data, uint16_t maxLength, uint16_t* source);
+void AsebaSendBuffer(AsebaVMState* vm, const uint8_t* data, uint16_t length);
+uint16_t AsebaGetBuffer(AsebaVMState* vm, uint8_t* data, uint16_t maxLength, uint16_t* source);
 
 /*************
  * Interface Fifos <-> RF part
@@ -62,12 +62,12 @@ int AsebaFifoRxFull(void);
 unsigned char AsebaFifoTxPop(void);
 unsigned char AsebaFifoTxPeek(void);
 int AsebaFifoTxEmpty(void);
- 
+
 
 /*************
- * Init, and other random stuff 
+ * Init, and other random stuff
  *************/
-void AsebaFifoInit(unsigned char * sendQueue, size_t sendQueueSize, unsigned char * recvQueue, size_t recvQueueSize);
+void AsebaFifoInit(unsigned char* sendQueue, size_t sendQueueSize, unsigned char* recvQueue, size_t recvQueueSize);
 int AsebaFifoRecvBufferEmpty(void);
 int AsebaFifoTxBusy(void);
 

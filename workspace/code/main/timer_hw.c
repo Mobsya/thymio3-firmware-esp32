@@ -114,7 +114,7 @@ void TimerHw_Init(void)
     .callback = &TimerHw_Callback125us,
     .name = "timer125us"
   };
-  
+
   ESP_ERROR_CHECK(esp_timer_create(&timer125us_args, &Timer125us));
   // The timer has been created but is not running yet
 
@@ -189,13 +189,13 @@ void TimerHw_Task(void)
   //ESP_ERROR_CHECK(esp_timer_start_once(periodic_timer, 60));
   while (1)
   {
-	if(SoundSemaphore != NULL )
-	{
+    if (SoundSemaphore != NULL)
+    {
       if (xSemaphoreTake(SoundSemaphore, 0))
       {
         Gpio_TogglePinLevel(IR_PULSE_FRONT_PIN);
       }
-	}
+    }
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
   }
