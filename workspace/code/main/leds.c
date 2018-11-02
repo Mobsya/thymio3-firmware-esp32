@@ -36,9 +36,6 @@
 #define LED_OFF_BANK_3          0x0Fu  // LSB --> U16.QA
 #define LED_OFF_BANK_4          0x0Fu  // LSB --> U14.QA
 
-#define MIN_BRIGHTNESS             0u
-#define MAX_BRIGHTNESS            32u
-
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -89,12 +86,12 @@ void Leds_Init(void)
 
   ShiftRegisters_Fill(&LedsTable[0][0], REGISTERS_NUM);
 
-  //ESP_LOGI(Tag, "LEDs are initialized");
+  ESP_LOGI(Tag, "LEDs are initialized");
 }
 
 //_____________________________________________________________________________
 
-void Leds_Task(void)
+void Leds_RunTask(void)
 {
   static uint8_t row = 0u;
 
@@ -123,8 +120,6 @@ void Leds_SetSingleBrightness(T_Led led, uint8_t brightness)
     pin = (led & 0x07u);
     position = (1u << pin);
     polarity = (LedsOff[bank] & position);
-
-    //ESP_LOGI(Tag, "bank = %d, pin = %d, position = %d, polarity = %d", bank, pin, position, polarity);
 
     for (uint8_t row = MIN_BRIGHTNESS; row < MAX_BRIGHTNESS; row++)
     {

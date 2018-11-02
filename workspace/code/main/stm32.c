@@ -90,7 +90,7 @@ void STM32_CheckId(void)
 
   if (id != STM32_ID)
   {
-    //ESP_LOGE(Tag, "Invalid ID: %d", id);
+    ESP_LOGE(Tag, "Invalid ID: %d", id);
   }
 }
 

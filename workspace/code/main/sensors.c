@@ -29,7 +29,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define PERIOD_100_ms   799  // 125us * 800 = 100ms
+#define PERIOD_100_ms   799u  // 125us * 800 = 100ms
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -72,14 +72,17 @@ void Sensors_Task(void)
 {
   static uint16_t tick = 0u;
 
-  uint16_t sensors[4];
+  int16_t sensors[4];
 
-  ADC_AcquireValues(sensors);
+  if ((tick == 50) || (tick == 53) || (tick == 56))
+  {
+    ADC_AcquireValues(sensors);
+  }
 
-  //Leds_Task();
+  //Leds_RunTask();
 
-  PeriodAccumulator += ProxIR_Run(tick);
-  //PeriodAccumulator = 0;
+  //PeriodAccumulator += ProxIR_Run(tick);
+  PeriodAccumulator = 0;
 
   if (PeriodAccumulator > 100)
   {
@@ -122,6 +125,10 @@ void Sensors_Task(void)
     {
       // We have to re-check as per_acc might be set when time == PERIOD_100MS
       tick = 0u;
+    }
+    else
+    {
+      // Do nothing
     }
   }
   else

@@ -24,8 +24,6 @@
 //#include <flash/flash.h>
 //#include <error/error.h>
 
-#include "esp_log.h"
-
 #include "thymio-buffer.h"
 #include "aseba/vm/natives.h"
 #include "aseba/common/consts.h"
@@ -78,8 +76,6 @@ AsebaVMState vmState =
 //-----------------------------------------------------------------------------
 // Private Data
 //-----------------------------------------------------------------------------
-
-static const char* Tag = "aseba_esp32";
 
 static unsigned char update_calib;
 
@@ -931,11 +927,8 @@ void AsebaESP32_Run(void)
     first = true;
   }
 
-  //ESP_LOGI(Tag, "1");
-
   //while (1)
   {
-    //ESP_LOGI(Tag, "2");
     // Sync Aseba with the state of the system
     update_aseba_variables_read();
 
@@ -949,32 +942,31 @@ void AsebaESP32_Run(void)
     // Do not process events in step by step mode
     if (AsebaMaskIsSet(vmState.flags, ASEBA_VM_STEP_BY_STEP_MASK))
     {
-      //ESP_LOGI(Tag, "3");
       //continue;
     }
-
-    // If we are not executing an event, there is nothing to do
-    if (AsebaMaskIsSet(vmState.flags, ASEBA_VM_EVENT_ACTIVE_MASK))
+    else
     {
-      //ESP_LOGI(Tag, "4");
-      //continue;
+      // If we are not executing an event, there is nothing to do
+      if (AsebaMaskIsSet(vmState.flags, ASEBA_VM_EVENT_ACTIVE_MASK))
+      {
+        //continue;
+      }
+      else
+      {
+        int event = ffs(events_flags) - 1;
+
+        // If a local event is pending, then execute it
+        if (event != -1)
+        {
+          //Leds_SetSingleBrightness(E_Led_Battery_1, 2);  FIXME only for debug
+          CLEAR_EVENT(event);
+
+          vmVariables.source = vmState.nodeId;
+
+          AsebaVMSetupEvent(&vmState, ASEBA_EVENT_LOCAL_EVENTS_START - event);
+        }
+      }
     }
-
-    int event = ffs(events_flags) - 1;
-
-    // If a local event is pending, then execute it
-    if (event != -1)
-    {
-      //ESP_LOGI(Tag, "5");
-      //Leds_SetSingleBrightness(E_Led_Battery_1, 2);  FIXME only for debug
-      CLEAR_EVENT(event);
-
-      vmVariables.source = vmState.nodeId;
-
-      AsebaVMSetupEvent(&vmState, ASEBA_EVENT_LOCAL_EVENTS_START - event);
-    }
-
-    //ESP_LOGI(Tag, "6");
 
     //vTaskDelay(10 / portTICK_PERIOD_MS);
   }

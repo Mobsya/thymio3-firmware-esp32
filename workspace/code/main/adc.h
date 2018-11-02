@@ -53,7 +53,7 @@ extern void ADC_Init(void);
 //! \pre       First initialize the internal ADC
 //! \param     None
 //! \return    None
-extern void ADC_AcquireValues(uint16_t* value);
+extern void ADC_AcquireValues(int16_t* value);
 
 #if 0
 //! \brief     Get the microphone value

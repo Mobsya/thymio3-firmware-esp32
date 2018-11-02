@@ -62,6 +62,8 @@ extern void TimerHw_Init(void);
 
 extern void TimerHw_StartTimer(uint16_t interval, uint32_t duration);
 
+extern void TimerHw_StartTimer60us(void);
+
 extern void TimerHw_Task(void);
 //extern void TimerHw_Task(void* pvParameter);
 
@@ -125,6 +127,8 @@ extern bool TimerHw_IsSchedulerFlagSet(void);
 //! \param     None
 //! \return    None
 extern void TimerHw_ResetSchedulerFlag(void);
+
+extern void TimerHw_Callback60us(void* arg);
 
 extern void TimerHw_Callback125us(void* arg);
 

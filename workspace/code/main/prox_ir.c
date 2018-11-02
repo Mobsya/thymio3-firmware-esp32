@@ -94,11 +94,14 @@ static uint16_t last_tx;
 
 static uint8_t edge[SENSORS_NUM];
 
+static bool FrontPulseIsInProgress = false;
+static bool BackPulseIsInProgress = false;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
-static int PerformCalibration(uint16_t raw, T_Sensor sensor);
+static int16_t PerformCalibration(int16_t raw, T_Sensor sensor);
 
 static int16_t Calibrate(int16_t value, T_Sensor sensor);
 
@@ -134,6 +137,8 @@ void ProxIR_Init(void)
     }
   }
 
+  TimerHw_Init();
+
   // TODO configuration of Capture, Timers, ...
   mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_0, IR_SENSE_FRONT_1_PIN);
   mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_1, IR_SENSE_FRONT_2_PIN);
@@ -159,16 +164,23 @@ int16_t ProxIR_Run(uint16_t tick)
   switch (tick)
   {
     case 5:
+      TimerHw_StartTimer60us();
+
       Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_High);
+
+      FrontPulseIsInProgress = true;
       break;
 
-    case 8:
-      Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_Low);
+    case 6:
+      TimerHw_StartTimer60us();
+
       Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_High);
+
+      BackPulseIsInProgress = true;
       break;
 
     case 11:
-      Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
+      //Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
       break;
 
     default:
@@ -258,34 +270,30 @@ void ProxIR_DisableNetwork(void)
 
 //_____________________________________________________________________________
 
-static int PerformCalibration(uint16_t raw, T_Sensor sensor)
+static int16_t PerformCalibration(int16_t raw, T_Sensor sensor)
 {
-  int value;
-
-  if (raw > 32767)
-  {
-    return 0;  // Sanity check
-  }
-
-  value = raw;
+  int16_t value = raw;
+  int16_t calibration = 0;
 
   if (settings.prox_min[sensor] > 0)
   {
     // On the fly re-calibration
-    return Calibrate(value, sensor);
+	calibration = Calibrate(value, sensor);
   }
   else
   {
     // Calibration disabled if settings are negative
-    return value;
+    calibration = value;
   }
+
+  return calibration;
 }
 
 //_____________________________________________________________________________
 
 static int16_t Calibrate(int16_t value, T_Sensor sensor)
 {
-  int ret;
+  int16_t ret;
 
   if ((value - CALIB_HYSTERESIS) < settings.prox_min[sensor])
   {
@@ -397,6 +405,24 @@ static int16_t ir_prox_rx_oa(void)
 static void ir_tx(int value)
 {
 
+}
+
+//_____________________________________________________________________________
+
+void TimerHw_Callback60us(void* arg)
+{
+  if (FrontPulseIsInProgress)
+  {
+    Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_Low);
+
+    FrontPulseIsInProgress = false;
+  }
+  else if (BackPulseIsInProgress)
+  {
+    Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
+
+    BackPulseIsInProgress = false;
+  }
 }
 
 //_____________________________________________________________________________

@@ -61,7 +61,7 @@ void ADC_Init(void)
 
 //_____________________________________________________________________________
 
-void ADC_AcquireValues(uint16_t* value)
+void ADC_AcquireValues(int16_t* value)
 {
   value[0] = adc1_get_raw(ADC1_CHANNEL_0);  // MICROPHONE_PIN
   value[1] = adc1_get_raw(ADC1_CHANNEL_3);  // IR_SENSE_GROUND_LEFT_PIN

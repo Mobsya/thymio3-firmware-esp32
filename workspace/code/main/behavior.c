@@ -106,7 +106,7 @@ void Behavior_SetIRSensorsLeds(void)
       s = 0;
     }
 
-    brightness = ((int32_t)s * 32) / delta;
+    brightness = ((int32_t)s * MAX_BRIGHTNESS) / delta;
     Leds_SetSingleBrightness(led[index], brightness);
 
     // The Front IR sensor has 2 LEDs (E_Led_Front_IR_2A and E_Led_Front_IR_2B)
@@ -119,7 +119,7 @@ void Behavior_SetIRSensorsLeds(void)
   for (uint8_t index = 0u; index < GROUND_IR_SENSOR_NUM; index++)
   {
     s = (vmVariables.ground_delta[index] > 0) ? vmVariables.ground_delta[index] : 0;
-    brightness = ((int32_t)s * 32) / max[index + PROX_IR_SENSOR_NUM];
+    brightness = ((int32_t)s * MAX_BRIGHTNESS) / max[index + PROX_IR_SENSOR_NUM];
 
     Leds_SetSingleBrightness(led[index + PROX_IR_SENSOR_NUM], brightness);
   }

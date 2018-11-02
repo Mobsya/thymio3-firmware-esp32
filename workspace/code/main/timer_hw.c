@@ -80,8 +80,6 @@ static volatile uint32_t SystemTimestamp = 0UL;  //!< System timestamp increment
 
 static struct PrivateTimer TableTimers[MAX_TIMERS_ALLOWED];  //!< Table containing the timers created
 
-static const T_GpioPinConfig PinConfig = {IR_PULSE_FRONT_PIN, E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable};
-
 //xQueueHandle timer_queue;
 
 //-----------------------------------------------------------------------------
@@ -90,11 +88,15 @@ static const T_GpioPinConfig PinConfig = {IR_PULSE_FRONT_PIN, E_GpioMode_Output,
 
 //static void periodic_timer_callback(void* arg);
 
+esp_timer_handle_t Timer60us;
+
+#if 0
 esp_timer_handle_t Timer125us;
 esp_timer_handle_t Timer500us;
 esp_timer_handle_t Timer200ms;
 
 esp_timer_handle_t oneshot_timer;
+#endif
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -106,19 +108,17 @@ esp_timer_handle_t oneshot_timer;
 
 void TimerHw_Init(void)
 {
-  Gpio_ConfigurePin(&PinConfig);
-
   // Configuration of Timer125us
-  const esp_timer_create_args_t timer125us_args =
+  const esp_timer_create_args_t timer60us_args =
   {
-    .callback = &TimerHw_Callback125us,
-    .name = "timer125us"
+    .callback = &TimerHw_Callback60us,
+    .name = "timer60us"
   };
 
-  ESP_ERROR_CHECK(esp_timer_create(&timer125us_args, &Timer125us));
+  ESP_ERROR_CHECK(esp_timer_create(&timer60us_args, &Timer60us));
   // The timer has been created but is not running yet
 
-  ESP_ERROR_CHECK(esp_timer_start_periodic(Timer125us, 125));
+  //ESP_ERROR_CHECK(esp_timer_start_periodic(Timer125us, 125));
 #if 0
   // Configuration of Timer500us
   const esp_timer_create_args_t timer500us_args =
@@ -144,7 +144,7 @@ void TimerHw_Init(void)
 
   ESP_ERROR_CHECK(esp_timer_start_periodic(Timer200ms, 200000));
 #endif
-
+#if 0
   const esp_timer_create_args_t oneshot_timer_args =
   {
     .callback = &oneshot_timer_callback,
@@ -154,7 +154,7 @@ void TimerHw_Init(void)
   };
 
   ESP_ERROR_CHECK(esp_timer_create(&oneshot_timer_args, &oneshot_timer));
-
+#endif
   //M_CriticalSectionEnter();
   //uint32_t volatile register ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
   //portMUX_TYPE myMutex = portMUX_INITIALIZER_UNLOCKED;
@@ -178,8 +178,15 @@ void TimerHw_Init(void)
 
 void TimerHw_StartTimer(uint16_t interval, uint32_t duration)
 {
-  ESP_ERROR_CHECK(esp_timer_start_periodic(Timer125us, interval));
+  //ESP_ERROR_CHECK(esp_timer_start_periodic(Timer125us, interval));
   //ESP_ERROR_CHECK(esp_timer_start_once(oneshot_timer, duration));
+}
+
+//_____________________________________________________________________________
+
+void TimerHw_StartTimer60us(void)
+{
+  ESP_ERROR_CHECK(esp_timer_start_once(Timer60us, 52));
 }
 
 //_____________________________________________________________________________
@@ -193,7 +200,7 @@ void TimerHw_Task(void)
     {
       if (xSemaphoreTake(SoundSemaphore, 0))
       {
-        Gpio_TogglePinLevel(IR_PULSE_FRONT_PIN);
+
       }
     }
 

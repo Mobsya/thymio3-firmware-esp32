@@ -27,6 +27,9 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
+#define MIN_BRIGHTNESS             0u
+#define MAX_BRIGHTNESS            32u
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -108,7 +111,7 @@ extern void Leds_Init(void);
 //! \pre       First initialize the LEDs
 //! \param     None
 //! \return    None
-extern void Leds_Task(void);
+extern void Leds_RunTask(void);
 
 //! \brief     Set the brightness of a single LED
 //! \pre       First initialize the LEDs

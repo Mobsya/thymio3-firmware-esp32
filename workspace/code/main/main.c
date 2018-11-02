@@ -71,13 +71,6 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
-static const T_GpioPinConfig PinConfig[2] =
-{
-  // PinNumber           Mode               Resistor             Level            Interrupt
-  {IR_SENSE_FRONT_1_PIN,   E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
-  {IR_SENSE_FRONT_2_PIN, E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable}
-};
-
 SemaphoreHandle_t Timer125usSemaphore = NULL;
 SemaphoreHandle_t Timer10msSemaphore = NULL;
 SemaphoreHandle_t Timer200msSemaphore = NULL;
@@ -149,9 +142,8 @@ void SensorTask(void* pvParameter)
       will fail until the semaphore has first been given. */
       if (xSemaphoreTake(Timer125usSemaphore, 0) == pdTRUE) //portMAX_DELAY );
       {
-        //Gpio_TogglePinLevel(IR_PULSE_FRONT_PIN);
         Sensors_Task();
-        Leds_Task();
+        Leds_RunTask();
 
         xSemaphoreGive(Timer10msSemaphore);
       }
@@ -176,13 +168,14 @@ void CommTask(void* pvParameter)
   //I2C_Init();
 
   //STM32_CheckId();
-#if 0
+  //ColorSensor_Init();
+//#if 0
   //BH1745NUC_Init();
   ColorSensor_Init();
   Accelerometer_Init();
   Compass_Init();
   Gyroscope_Init();
-#endif
+//#endif
 
   int16_t voltage[2] = {0, 0};
   int16_t current[2] = {0, 0};
@@ -203,25 +196,39 @@ void CommTask(void* pvParameter)
         //ESP_LOGI(Tag, "Run Sensor Task");
         //frequency++;
         //Sound_Task(frequency);
-
 #if 0
-        //STM32_CheckId();
-        //STM32_UpdateMotorLeftTarget(Target);
-        //STM32_GetMotorCurrent(current);
-        //STM32_GetBatteryVoltage(voltage);
-
-        //BH1745NUC_CheckManufacturerId();
-        //(void)BH1745NUC_GetIlluminance_lux();
         ColorSensor_GetColor();
         Accelerometer_GetAcceleration();
         Compass_GetMagneticField();
         Gyroscope_GetAngularPosition();
 #endif
+//#if 0
+        //STM32_CheckId();
+    	//ColorSensor_GetColor();
+        STM32_GetMotorCurrent(current);
+        STM32_GetBatteryVoltage(voltage);
+        //STM32_UpdateLeftMotorTarget(Target);
+        //STM32_UpdateLeftMotorTarget(Target);
+
+        Accelerometer_GetAcceleration();
+        //STM32_GetMotorCurrent(current);
+        ColorSensor_GetColor();
+        //STM32_GetBatteryVoltage(voltage);
+        //STM32_UpdateLeftMotorTarget(Target);
+        Compass_GetMagneticField();
+        //STM32_GetMotorCurrent(current);
+        Gyroscope_GetAngularPosition();
+        //STM32_GetBatteryVoltage(voltage);
+        //ColorSensor_GetColor();
+
+        //BH1745NUC_CheckManufacturerId();
+
+//#endif
       }
     }
 
     //FeedWatchdog();
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    vTaskDelay(200 / portTICK_PERIOD_MS);
   }
 }
 
@@ -266,7 +273,6 @@ void AsebaTask(void* pvParameter)
       if (xSemaphoreTake(Timer10msSemaphore, 0) == pdTRUE) //portMAX_DELAY );
       {
         //ESP_LOGI(Tag, "Run Aseba Task");
-        //Gpio_TogglePinLevel(IR_SENSE_FRONT_1_PIN);
         //len = UART_Read(data);
         //UART_Write(data, len);
         AsebaESP32_Run();
@@ -299,7 +305,6 @@ void AsebaTask(void* pvParameter)
       if (xSemaphoreTake(Timer10msSemaphore, 0) == pdTRUE) //portMAX_DELAY );
       {
         ESP_LOGI(Tag, "Run Aseba Task");
-        //Gpio_TogglePinLevel(IR_SENSE_FRONT_1_PIN);
         //len = UART_Read(data);
         //UART_Write(data, len);
         //AsebaESP32_Run();
@@ -567,22 +572,12 @@ void IRAM_ATTR timer_group0_isr(void* para)
   {
     TIMERG0.int_clr_timers.t1 = 1;
 
-    //configASSERT(LedsHandle);
-    //Gpio_TogglePinLevel(IR_SENSE_FRONT_1_PIN);
-    //Sensors_Task();
-    //higherPriorityTaskWoken = pdFALSE;
-//#if 0
-    //vTaskNotifyGiveFromISR(TimerSemaphore, NULL);
     xSemaphoreGiveFromISR(Timer125usSemaphore, &higherPriorityTaskWoken);
-    //vTaskNotifyGiveFromISR(LedsHandle, &higherPriorityTaskWoken);
 
-    //TaskToNotify = NULL;
-    //Timer125usSemaphore = NULL;
     if (higherPriorityTaskWoken != pdFALSE)
     {
       portYIELD_FROM_ISR();
     }
-//#endif
   }
   else
   {
@@ -594,12 +589,6 @@ void IRAM_ATTR timer_group0_isr(void* para)
 
 static void Timer_Init(int timer_idx, bool auto_reload, double timer_interval_sec)
 {
-  //Gpio_ConfigurePin(&PinConfig);
-  for (uint16_t index = 0u; index < 2; index++)
-  {
-    Gpio_ConfigurePin(&PinConfig[index]);
-  }
-
   // Select and initialize basic parameters of the timer
   timer_config_t config;
 

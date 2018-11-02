@@ -74,15 +74,6 @@ typedef struct
 // Private Data
 //-----------------------------------------------------------------------------
 
-//static const T_GpioPinConfig PinConfig = {IR_PULSE_FRONT_PIN, E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable};
-
-static const T_GpioPinConfig PinConfig[2] =
-{
-  // PinNumber           Mode               Resistor             Level            Interrupt
-  {IR_PULSE_FRONT_PIN,   E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
-  {IR_SENSE_FRONT_1_PIN, E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable}
-};
-
 //xQueueHandle timer_queue;
 
 SemaphoreHandle_t Timer125usSemaphore = NULL;
@@ -122,7 +113,6 @@ void IRAM_ATTR timer_group0_isr(void* para)
   // Clear the interrupt and update the alarm time for the timer with without reload
   if ((intr_status & BIT(timer_idx)) && timer_idx == TIMER_0)
   {
-    //Gpio_TogglePinLevel(IR_PULSE_FRONT_PIN);
 #if 0
     ColorSensor_GetColor();
     Accelerometer_GetAcceleration();
@@ -135,7 +125,6 @@ void IRAM_ATTR timer_group0_isr(void* para)
   {
     TIMERG0.int_clr_timers.t1 = 1;
 
-    Gpio_TogglePinLevel(IR_SENSE_FRONT_1_PIN);
     //Sensors_Task();
     higherPriorityTaskWoken = pdFALSE;
 //#if 0
@@ -161,12 +150,6 @@ void IRAM_ATTR timer_group0_isr(void* para)
 
 void Timer_Init(int timer_idx, bool auto_reload, double timer_interval_sec)
 {
-  //Gpio_ConfigurePin(&PinConfig);
-  for (uint16_t index = 0u; index < 2; index++)
-  {
-    Gpio_ConfigurePin(&PinConfig[index]);
-  }
-
   // Select and initialize basic parameters of the timer
   timer_config_t config;
 

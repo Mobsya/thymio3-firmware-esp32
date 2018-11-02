@@ -73,7 +73,7 @@ static int16_t ProxGroundMax[SENSORS_NUM];  // the calibration is not stored in 
 
 static const char* Tag = "ground_ir";
 
-static int PerformCalibration(uint16_t raw, T_Sensor sensor);
+static int16_t PerformCalibration(int16_t raw, T_Sensor sensor);
 
 static int16_t Calibrate(int16_t value, T_Sensor sensor);
 
@@ -92,12 +92,12 @@ void GroundIR_Init(void)
     Gpio_ConfigurePin(&PinConfig[index]);
   }
 
-  //ESP_LOGI(Tag, "Ground IR sensors are initialized");
+  ESP_LOGI(Tag, "Ground IR sensors are initialized");
 }
 
 //_____________________________________________________________________________
 
-void GroundIR_Run(uint16_t left, uint16_t right, uint16_t tick)
+void GroundIR_Run(int16_t left, int16_t right, uint16_t tick)
 {
   switch (tick)
   {
@@ -138,34 +138,30 @@ void GroundIR_Shutdown(void)
 
 //_____________________________________________________________________________
 
-static int PerformCalibration(uint16_t raw, T_Sensor sensor)
+static int16_t PerformCalibration(int16_t raw, T_Sensor sensor)
 {
-  int value;
-
-  if (raw > 32767)
-  {
-    return 0;  // Sanity check
-  }
-
-  value = raw;
+  int16_t value = raw;
+  int16_t calibration = 0;
 
   if (settings.prox_ground_max[sensor] >= 0)
   {
     // On the fly re-calibration
-    return Calibrate(value, sensor);
+    calibration = Calibrate(value, sensor);
   }
   else
   {
     // Calibration disabled if settings are negative
-    return value;
+    calibration = value;
   }
+
+  return calibration;
 }
 
 //_____________________________________________________________________________
 
 static int16_t Calibrate(int16_t value, T_Sensor sensor)
 {
-  int ret;
+  int16_t ret;
 
   if ((value + CALIB_HYSTERESIS) > ProxGroundMax[sensor])
   {
@@ -192,7 +188,7 @@ static int16_t Calibrate(int16_t value, T_Sensor sensor)
   }
   else
   {
-    ret = ((int32_t)value * 1024) / ProxGroundMax[sensor];
+    ret = (int16_t)(((int32_t)value * 1024) / ProxGroundMax[sensor]);
   }
 
   if (ret < 0)
