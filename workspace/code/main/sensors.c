@@ -18,6 +18,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include "esp_log.h"
+
 #include "sensors.h"
 
 #include "adc.h"
@@ -43,6 +45,8 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
+static const char* Tag = "sensors";
+
 static int16_t PeriodAccumulator = 0;
 
 //-----------------------------------------------------------------------------
@@ -64,11 +68,13 @@ void Sensors_Init(void)
 
   GroundIR_Init();
   ProxIR_Init();
+
+  ESP_LOGI(Tag, "Sensors are initialized");
 }
 
 //_____________________________________________________________________________
 
-void Sensors_Task(void)
+void Sensors_RunTask(void)
 {
   static uint16_t tick = 0u;
 
@@ -81,7 +87,7 @@ void Sensors_Task(void)
 
   //Leds_RunTask();
 
-  //PeriodAccumulator += ProxIR_Run(tick);
+  //PeriodAccumulator += ProxIR_EmitPulse(tick);
   PeriodAccumulator = 0;
 
   if (PeriodAccumulator > 100)

@@ -30,6 +30,8 @@
 
 #include "wifi.h"
 
+#include "aseba_esp32.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -226,7 +228,25 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
 
     case SYSTEM_EVENT_STA_GOT_IP:
       ESP_LOGI(Tag, "SYSTEM_EVENT_STA_GOT_IP");
-      ESP_LOGI(Tag, "got ip:%s", ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
+      const char* ip = ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip);
+
+      uint32_t ip_uint = ipaddr_addr(ip);
+
+      ESP_LOGI(Tag, "got ip:%s", ip);
+      ESP_LOGI(Tag, "%d", ip_uint);
+
+      //ESP_LOGI(Tag, "got ip:%s", ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
+
+      ESP_LOGI(Tag, "%d", (ip_uint & 0x000000FF));
+      ESP_LOGI(Tag, "%d", (ip_uint & 0x0000FF00) >> 8);
+      ESP_LOGI(Tag, "%d", (ip_uint & 0x00FF0000) >> 16);
+      ESP_LOGI(Tag, "%d", (ip_uint & 0xFF000000) >> 24);
+
+      vmVariables.ip[0] = (ip_uint & 0x000000FF);
+      vmVariables.ip[1] = ((ip_uint & 0x0000FF00) >> 8);
+      vmVariables.ip[2] = ((ip_uint & 0x00FF0000) >> 16);
+      vmVariables.ip[3] = ((ip_uint & 0xFF000000) >> 24);
+
       //xEventGroupSetBits(EventGroup, WIFI_CONNECTED_BIT);
       WifiIsConnected = true;
       break;

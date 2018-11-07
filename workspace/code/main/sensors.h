@@ -51,6 +51,6 @@ extern void Sensors_Init(void);
 //! \pre       First initialize the sensors
 //! \param     None
 //! \return    None
-extern void Sensors_Task(void);
+extern void Sensors_RunTask(void);
 
 #endif // SENSORS_H_

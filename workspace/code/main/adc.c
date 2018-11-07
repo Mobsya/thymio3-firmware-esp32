@@ -18,6 +18,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include "esp_log.h"
+
 #include "driver/adc.h"
 
 #include "adc.h"
@@ -38,6 +40,8 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
+static const char* Tag = "adc";
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -57,6 +61,8 @@ void ADC_Init(void)
   adc1_config_channel_atten(ADC1_CHANNEL_3, ADC_ATTEN_DB_0);  // IR_SENSE_GROUND_LEFT_PIN
   adc1_config_channel_atten(ADC1_CHANNEL_6, ADC_ATTEN_DB_0);  // IR_SENSE_GROUND_RIGHT_PIN
   adc1_config_channel_atten(ADC1_CHANNEL_7, ADC_ATTEN_DB_0);  // IR_SENSE_BACK_RIGHT_PIN
+
+  ESP_LOGI(Tag, "ADC channels are initialized");
 }
 
 //_____________________________________________________________________________

@@ -130,7 +130,7 @@ typedef uint8_t T_InterruptSource;  //!< Interrupt source
 // Private Data
 //-----------------------------------------------------------------------------
 
-static const char* Tag = "color_sensor";
+static const char* Tag = "bh1745nuc";
 
 static uint8_t Threshold[THRESHOLD_BYTE_NUM] =
 {
@@ -279,6 +279,8 @@ void BH1745NUC_Init(void)
   UpdateModeControl3();
   EnableMeasurement();
   EnableInterruptPin();
+
+  ESP_LOGI(Tag, "BH1745NUC is initialized");
 }
 
 //_____________________________________________________________________________

@@ -24,6 +24,8 @@
 //#include <flash/flash.h>
 //#include <error/error.h>
 
+#include "esp_log.h"
+
 #include "thymio-buffer.h"
 #include "aseba/vm/natives.h"
 #include "aseba/common/consts.h"
@@ -76,6 +78,8 @@ AsebaVMState vmState =
 //-----------------------------------------------------------------------------
 // Private Data
 //-----------------------------------------------------------------------------
+
+static const char* Tag = "aseba_esp32";
 
 static unsigned char update_calib;
 
@@ -286,6 +290,7 @@ const AsebaVMDescription vmDescription =
     {3, "acc_bis"},
     {3, "gyro"},
     {3, "compass"},
+	{4, "ip"},
     {0, NULL} // Null terminated
   }
 };
@@ -913,6 +918,7 @@ void AsebaESP32_Init(void)
   vmVariables.id = vmState.nodeId;
   vmVariables.productid = PRODUCT_ID;
 
+  ESP_LOGI(Tag, "Aseba is initialized");
 }
 
 //_____________________________________________________________________________
@@ -940,18 +946,10 @@ void AsebaESP32_Run(void)
     update_aseba_variables_write();
 
     // Do not process events in step by step mode
-    if (AsebaMaskIsSet(vmState.flags, ASEBA_VM_STEP_BY_STEP_MASK))
-    {
-      //continue;
-    }
-    else
+    if (!AsebaMaskIsSet(vmState.flags, ASEBA_VM_STEP_BY_STEP_MASK))
     {
       // If we are not executing an event, there is nothing to do
-      if (AsebaMaskIsSet(vmState.flags, ASEBA_VM_EVENT_ACTIVE_MASK))
-      {
-        //continue;
-      }
-      else
+      if (!AsebaMaskIsSet(vmState.flags, ASEBA_VM_EVENT_ACTIVE_MASK))
       {
         int event = ffs(events_flags) - 1;
 
