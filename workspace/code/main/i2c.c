@@ -35,7 +35,7 @@
 
 #define I2C_MASTER_TX_BUF_DISABLE  0            //!< I2C master do not need buffer
 #define I2C_MASTER_RX_BUF_DISABLE  0            //!< I2C master do not need buffer
-#define I2C_MASTER_FREQ_HZ         100000       //!< I2C master clock frequency
+#define I2C_MASTER_FREQ_HZ         50000        //!< I2C master clock frequency (max frequency for STM32 is 100 kHz)
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -91,7 +91,8 @@ void I2C_WriteByte(uint8_t slaveAddress, uint8_t data)
   ESP_ERROR_CHECK(i2c_master_write_byte(cmd, data, ACK_CHECK_EN));
   ESP_ERROR_CHECK(i2c_master_stop(cmd));
 
-  ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS));
+  //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS));
+  i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
 
   i2c_cmd_link_delete(cmd);
 }
@@ -109,7 +110,8 @@ uint8_t I2C_ReadByte(uint8_t slaveAddress, uint8_t registerAddress)
   ESP_ERROR_CHECK(i2c_master_read_byte(cmd, &byte, NACK_VAL));
   ESP_ERROR_CHECK(i2c_master_stop(cmd));
 
-  ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS));
+  //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS));
+  i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
 
   i2c_cmd_link_delete(cmd);
 
@@ -128,32 +130,8 @@ void I2C_WriteToAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data,
   ESP_ERROR_CHECK(i2c_master_write(cmd, data, size, ACK_CHECK_EN));
   ESP_ERROR_CHECK(i2c_master_stop(cmd));
 
-  ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0));
-  i2c_cmd_link_delete(cmd);
-}
-
-//_____________________________________________________________________________
-
-void I2C_ReadFromAddressWithStop(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data, uint16_t size)
-{
-  i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-
-  ESP_ERROR_CHECK(i2c_master_start(cmd));
-  ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (slaveAddress << 1u) | I2C_MASTER_WRITE, ACK_CHECK_EN));
-  ESP_ERROR_CHECK(i2c_master_write_byte(cmd, regAddress, ACK_CHECK_EN));
-  ESP_ERROR_CHECK(i2c_master_stop(cmd));
-
-  ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0));
-  i2c_cmd_link_delete(cmd);
-
-  cmd = i2c_cmd_link_create();
-
-  ESP_ERROR_CHECK(i2c_master_start(cmd));
-  ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (slaveAddress << 1u) | I2C_MASTER_READ, ACK_CHECK_EN));
-  ESP_ERROR_CHECK(i2c_master_read(cmd, data, size, NACK_VAL));
-  ESP_ERROR_CHECK(i2c_master_stop(cmd));
-
-  ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0));
+  //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0));
+  i2c_master_cmd_begin(I2C_NUM_0, cmd, 0);
   i2c_cmd_link_delete(cmd);
 }
 
@@ -167,7 +145,8 @@ void I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data
   ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (slaveAddress << 1u) | I2C_MASTER_WRITE, ACK_CHECK_EN));
   ESP_ERROR_CHECK(i2c_master_write_byte(cmd, regAddress, ACK_CHECK_EN));
 
-  ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0u));
+  //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0u));
+  i2c_master_cmd_begin(I2C_NUM_0, cmd, 0u);
   i2c_cmd_link_delete(cmd);
 
   cmd = i2c_cmd_link_create();
@@ -187,6 +166,7 @@ void I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data
 
   ESP_ERROR_CHECK(i2c_master_stop(cmd));
 
-  ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0u));
+  //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0u));
+  i2c_master_cmd_begin(I2C_NUM_0, cmd, 0u);
   i2c_cmd_link_delete(cmd);
 }

@@ -40,6 +40,7 @@
 #include "i2c.h"
 #include "leds.h"
 #include "power.h"
+#include "prox_ir.h"
 #include "sensors.h"
 #include "sound.h"
 #include "uart.h"
@@ -108,11 +109,10 @@ static void Timer_Init(int timer_idx, bool auto_reload, double timer_interval_se
 
 void SensorTask(void* pvParameter)
 {
-  ESP_LOGI(Tag, "Start Leds Task");
-
-  Sensors_Init();
+  ESP_LOGI(Tag, "Start Sensor Task");
 
   Leds_Init();
+  Sensors_Init();
 
   //leds_SetProxIRBrightness(32, 32, 32, 32, 32, 32, 32, 32);
   //Leds_SetTopBrightness(2, 0, 0);
@@ -142,8 +142,9 @@ void SensorTask(void* pvParameter)
       will fail until the semaphore has first been given. */
       if (xSemaphoreTake(Timer125usSemaphore, 0) == pdTRUE) //portMAX_DELAY );
       {
-        Sensors_Task();
+        Sensors_RunTask();
         Leds_RunTask();
+        Behavior_SetIRSensorsLeds();
 
         xSemaphoreGive(Timer10msSemaphore);
       }
@@ -159,7 +160,7 @@ void SensorTask(void* pvParameter)
 
 void CommTask(void* pvParameter)
 {
-  ESP_LOGI(Tag, "Start Sensors Task");
+  ESP_LOGI(Tag, "Start Comm Task");
 
   Timer200msSemaphore = xSemaphoreCreateBinary();
 
@@ -172,9 +173,9 @@ void CommTask(void* pvParameter)
 //#if 0
   //BH1745NUC_Init();
   ColorSensor_Init();
-  Accelerometer_Init();
-  Compass_Init();
-  Gyroscope_Init();
+  //Accelerometer_Init();
+  //Compass_Init();
+  //Gyroscope_Init();
 //#endif
 
   int16_t voltage[2] = {0, 0};
@@ -202,22 +203,79 @@ void CommTask(void* pvParameter)
         Compass_GetMagneticField();
         Gyroscope_GetAngularPosition();
 #endif
-//#if 0
+
         //STM32_CheckId();
+    	ColorSensor_GetColor();
+
+    	//STM32_UpdateLeftMotorTarget(Target);
+    	//STM32_UpdateRightMotorTarget(Target);
+    	STM32_GetMotorCurrent(current);
+    	STM32_GetBatteryVoltage(voltage);
+
     	//ColorSensor_GetColor();
-        STM32_GetMotorCurrent(current);
-        STM32_GetBatteryVoltage(voltage);
+    	//STM32_GetMotorCurrent(current);
+    	//STM32_CheckId();
+
+    	//STM32_GetMotorCurrent(current);
+    	//STM32_GetBatteryVoltage(voltage);
+    	//ColorSensor_GetColor();
+#if 0
+    	//ColorSensor_GetColor();
+    	STM32_GetBatteryVoltage(voltage);
+    	//ColorSensor_GetColor();
+#endif
+#if 0
+    	ColorSensor_GetColor();
+    	STM32_UpdateLeftMotorTarget(Target);
+    	STM32_UpdateRightMotorTarget(Target);
+    	ColorSensor_GetColor();
+    	STM32_GetMotorCurrent(current);
+    	ColorSensor_GetColor();
+    	STM32_GetBatteryVoltage(voltage);
+    	ColorSensor_GetColor();
+    	STM32_UpdateLeftMotorTarget(Target);
+    	STM32_UpdateRightMotorTarget(Target);
+    	ColorSensor_GetColor();
+    	STM32_GetMotorCurrent(current);
+    	ColorSensor_GetColor();
+    	STM32_GetBatteryVoltage(voltage);
+    	ColorSensor_GetColor();
+    	STM32_UpdateLeftMotorTarget(Target);
+    	STM32_UpdateRightMotorTarget(Target);
+    	ColorSensor_GetColor();
+    	STM32_GetMotorCurrent(current);
+    	ColorSensor_GetColor();
+    	STM32_GetBatteryVoltage(voltage);
+#endif
+
+        //STM32_GetMotorCurrent(current);
+        //STM32_GetBatteryVoltage(voltage);
         //STM32_UpdateLeftMotorTarget(Target);
         //STM32_UpdateLeftMotorTarget(Target);
 
-        Accelerometer_GetAcceleration();
+        //Accelerometer_GetAcceleration();
         //STM32_GetMotorCurrent(current);
+#if 0
         ColorSensor_GetColor();
+        STM32_GetMotorCurrent(current);
+        STM32_GetBatteryVoltage(voltage);
+        STM32_UpdateLeftMotorTarget(Target);
+        STM32_UpdateLeftMotorTarget(Target);
+        ColorSensor_GetColor();
+        STM32_GetMotorCurrent(current);
+        STM32_GetBatteryVoltage(voltage);
+        STM32_UpdateLeftMotorTarget(Target);
+        STM32_UpdateLeftMotorTarget(Target);
+        ColorSensor_GetColor();
+        STM32_GetMotorCurrent(current);
+        STM32_GetBatteryVoltage(voltage);
+#endif
+        //ProxIR_ReadPulseDuration();
         //STM32_GetBatteryVoltage(voltage);
         //STM32_UpdateLeftMotorTarget(Target);
-        Compass_GetMagneticField();
+        //Compass_GetMagneticField();
         //STM32_GetMotorCurrent(current);
-        Gyroscope_GetAngularPosition();
+        //Gyroscope_GetAngularPosition();
         //STM32_GetBatteryVoltage(voltage);
         //ColorSensor_GetColor();
 
@@ -228,7 +286,7 @@ void CommTask(void* pvParameter)
     }
 
     //FeedWatchdog();
-    vTaskDelay(200 / portTICK_PERIOD_MS);
+    vTaskDelay(50 / portTICK_PERIOD_MS);
   }
 }
 
@@ -276,7 +334,7 @@ void AsebaTask(void* pvParameter)
         //len = UART_Read(data);
         //UART_Write(data, len);
         AsebaESP32_Run();
-        Behavior_SetIRSensorsLeds();
+        //Behavior_SetIRSensorsLeds();
         //UART_Task();
 
         xSemaphoreGive(Timer200msSemaphore);
@@ -285,7 +343,7 @@ void AsebaTask(void* pvParameter)
 
     //FeedWatchdog();
 
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(7 / portTICK_PERIOD_MS);
   }
 //#endif
 
@@ -320,7 +378,7 @@ void AsebaTask(void* pvParameter)
 }
 
 //_____________________________________________________________________________
-
+#if 0
 void SoundTask(void* pvParameter)
 {
   ESP_LOGI(Tag, "Start Sound Task");
@@ -335,25 +393,27 @@ void SoundTask(void* pvParameter)
     vTaskDelay(5 / portTICK_PERIOD_MS);
   }
 }
-
+#endif
 //_____________________________________________________________________________
-
+#if 0
 void WifiTask(void* pvParameter)
 {
+  ESP_LOGI(Tag, "Start Wifi Task");
   //NVS_Init();
   //WifiUpdate_Init();
   //WifiUpdate_Connect(DEFAULT_WIFI_SSID, DEFAULT_WIFI_PASSWORD);
 
   WIFI_InitNVS();
   WIFI_Init();
-#if 0
-  while (1)
+//#if 0
+  //while (1)
   {
-    vTaskDelay(200 / portTICK_PERIOD_MS);
+	//vTaskDelete(NULL);
+    //vTaskDelay(200 / portTICK_PERIOD_MS);
   }
-#endif
+//#endif
 }
-
+#endif
 //_____________________________________________________________________________
 
 int app_main(void)
@@ -389,7 +449,7 @@ int app_main(void)
     "sensors",    // Name of the task
     2048,         // Stack size in words
     NULL,         // Task input parameter
-    6,            // Priority of the task
+    2,            // Priority of the task
     NULL,         // Task handle
     appCore1);    // Core where the task should run
 //#endif
@@ -399,7 +459,7 @@ int app_main(void)
     "aseba",      // Name of the task
     2048,         // Stack size in words
     NULL,         // Task input parameter
-    6,            // Priority of the task
+    2,            // Priority of the task
     NULL,         // Task handle
     appCore1);    // Core where the task should run
 //#endif
@@ -409,7 +469,7 @@ int app_main(void)
     "leds",       // Name of the task
     2048,         // Stack size in words
     NULL,         // Task input parameter
-    5,            // Priority of the task
+    2,            // Priority of the task
     NULL,         // Task handle
     appCore1);    // Core where the task should run
 //#endif
@@ -429,13 +489,10 @@ int app_main(void)
     "wifi",       // Name of the task
     2048,         // Stack size in words
     NULL,         // Task input parameter
-    4,            // Priority of the task
+    5,            // Priority of the task
     NULL,         // Task handle
     appCore2);    // Core where the task should run
 #endif
-
-  //Timer_Init(1, 1, 0.000125);
-  //Timer_Init(0, 1, 0.2);
 
   return 0;
 }

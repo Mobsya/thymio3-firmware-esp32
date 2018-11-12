@@ -63,8 +63,6 @@ extern uint8_t I2C_ReadByte(uint8_t slaveAddress, uint8_t registerAddress);
 
 extern void I2C_WriteToAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data, uint16_t size);
 
-extern void I2C_ReadFromAddressWithStop(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data, uint16_t size);
-
 extern void I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data, uint16_t size);
 
 #endif // I2C_H_
