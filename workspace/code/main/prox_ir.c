@@ -18,7 +18,14 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include "esp_log.h"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+
 #include "driver/mcpwm.h"
+#include "soc/rtc.h"
 #include "soc/mcpwm_reg.h"
 #include "soc/mcpwm_struct.h"
 
@@ -41,9 +48,11 @@
 
 #define DEFAULT_CALIB    0x7FFF
 
-#define CAP0_INT_EN BIT(27)  // Capture 0 interrupt bit
-#define CAP1_INT_EN BIT(28)  // Capture 1 interrupt bit
-#define CAP2_INT_EN BIT(29)  // Capture 2 interrupt bit
+#define CAP0_INT_EN     BIT(27)  // Capture 0 interrupt bit
+#define CAP1_INT_EN     BIT(28)  // Capture 1 interrupt bit
+#define CAP2_INT_EN     BIT(29)  // Capture 2 interrupt bit
+
+#define CAP_SIG_NUM          3u  // Three capture signals
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -64,9 +73,10 @@ typedef enum
 
 typedef struct
 {
-  uint32_t capture_signal;
+  uint32_t RisingEdge;
+  uint32_t FallingEdge;
   mcpwm_capture_signal_t sel_cap_signal;
-} capture;
+} Capture;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -75,6 +85,8 @@ typedef struct
 //-----------------------------------------------------------------------------
 // Private Data
 //-----------------------------------------------------------------------------
+
+static const char* Tag = "prox_ir";
 
 static const T_GpioPinConfig PinConfig[PROX_IR_PIN_NUM] =
 {
@@ -97,6 +109,8 @@ static uint8_t edge[SENSORS_NUM];
 static bool FrontPulseIsInProgress = false;
 static bool BackPulseIsInProgress = false;
 
+xQueueHandle cap_queue;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -110,6 +124,8 @@ static void ResetRx(void);
 static void ir_tx(int value);
 
 static mcpwm_dev_t* MCPWM[2] = {&MCPWM0, &MCPWM1};
+
+static void IRAM_ATTR isr_handler();
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -139,6 +155,8 @@ void ProxIR_Init(void)
 
   TimerHw_Init();
 
+  cap_queue = xQueueCreate(1, sizeof(Capture));
+
   // TODO configuration of Capture, Timers, ...
   mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_0, IR_SENSE_FRONT_1_PIN);
   mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_1, IR_SENSE_FRONT_2_PIN);
@@ -155,11 +173,28 @@ void ProxIR_Init(void)
   gpio_pulldown_en(IR_SENSE_FRONT_4_PIN);    // Enable pull down on CAP0 signal
   gpio_pulldown_en(IR_SENSE_FRONT_5_PIN);    // Enable pull down on CAP1 signal
   gpio_pulldown_en(IR_SENSE_BACK_LEFT_PIN);  // Enable pull down on CAP2 signal
+
+//#if 0  // TODO Uncomment when the MCPWM library is up-to-date
+  mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
+
+  //enable interrupt, so each this a rising edge occurs interrupt is triggered
+  MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;    // Enable interrupt on  CAP0, CAP1 and CAP2 signal
+//  MCPWM[MCPWM_UNIT_1]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;    // Enable interrupt on  CAP0, CAP1 and CAP2 signal
+  mcpwm_isr_register(MCPWM_UNIT_0, isr_handler, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
+//  mcpwm_isr_register(MCPWM_UNIT_1, isr_handler, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
+//#endif
+
+  ESP_LOGI(Tag, "Proximity IR sensors are initialized");
 }
 
 //_____________________________________________________________________________
 
-int16_t ProxIR_Run(uint16_t tick)
+int16_t ProxIR_EmitPulse(uint16_t tick)
 {
   switch (tick)
   {
@@ -247,6 +282,48 @@ int16_t ProxIR_Run(uint16_t tick)
   return ret;
 }
 #endif
+
+//_____________________________________________________________________________
+
+void ProxIR_ReadPulseDuration(void)
+{
+  static uint8_t index = 0;
+
+  uint32_t *current_cap_value = (uint32_t *)malloc(sizeof(CAP_SIG_NUM));
+  uint32_t *previous_cap_value = (uint32_t *)malloc(sizeof(CAP_SIG_NUM));
+  uint32_t duration = 0;
+
+  uint32_t pulse[2];
+
+  Capture evt;
+
+  xQueueReceive(cap_queue, &evt, portMAX_DELAY);
+
+  //printf("R %d\n", evt.RisingEdge);
+  //printf("F %d\n", evt.FallingEdge);
+
+  //pulse[0] = (evt.FallingEdge - evt.RisingEdge);
+  //pulse[0] = ((evt.FallingEdge - evt.RisingEdge) * (1000000 / rtc_clk_apb_freq_get()));
+  //pulse[0] = rtc_clk_apb_freq_get();
+
+  //pulse[0] = ((evt.FallingEdge - evt.RisingEdge) / 10000) * (10000000000 / rtc_clk_apb_freq_get());
+  //pulse[0] = ((evt.FallingEdge - evt.RisingEdge) / 10) (100000000 / rtc_clk_apb_freq_get());
+  pulse[0] = ((evt.FallingEdge - evt.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
+  //pulse[0] = ((evt.RisingEdge - evt.FallingEdge) / rtc_clk_apb_freq_get());
+
+  printf("%d\n", pulse[0]);
+
+
+
+
+  //current_cap_value[0] = evt.capture_signal - previous_cap_value[0];
+  //previous_cap_value[0] = evt.capture_signal;
+  //current_cap_value[0] = (current_cap_value[0] / 10000) * (10000000000 / rtc_clk_apb_freq_get());
+  //printf("CAP0 : previous %d us\n", previous_cap_value[0]);
+  //printf("CAP0 : %d us\n", current_cap_value[0]);
+  //printf("%d\n", current_cap_value[0]);
+}
+
 //_____________________________________________________________________________
 
 void ProxIR_EnableNetwork(void)
@@ -430,25 +507,28 @@ void TimerHw_Callback60us(void* arg)
 static void IRAM_ATTR isr_handler()
 {
   uint32_t mcpwm_intr_status;
-  capture evt;
-  mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val; //Read interrupt status
-  if (mcpwm_intr_status & CAP0_INT_EN)   //Check for interrupt on rising edge on CAP0 signal
+  Capture evt;
+  static uint8_t index;
+  static uint32_t tmp = 0;
+
+  mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val;  // Read interrupt status
+
+  if (mcpwm_intr_status & CAP0_INT_EN)  // Check for interrupt on rising edge or falling edge on CAP0 signal
   {
-    evt.capture_signal = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0); //get capture signal counter value
-    evt.sel_cap_signal = MCPWM_SELECT_CAP0;
-//        xQueueSendFromISR(cap_queue, &evt, NULL);
+	if ((index % 2) == 0)  // Rising edge
+	{
+      tmp = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);  // Get capture signal counter value
+	}
+	else  // Falling edge
+	{
+	  evt.RisingEdge = tmp;
+	  evt.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);  // Get capture signal counter value
+      evt.sel_cap_signal = MCPWM_SELECT_CAP0;
+      xQueueSendFromISR(cap_queue, &evt, NULL);
+	}
+
+	index++;
   }
-  if (mcpwm_intr_status & CAP1_INT_EN)   //Check for interrupt on rising edge on CAP1 signal
-  {
-    evt.capture_signal = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP1); //get capture signal counter value
-    evt.sel_cap_signal = MCPWM_SELECT_CAP1;
-//        xQueueSendFromISR(cap_queue, &evt, NULL);
-  }
-  if (mcpwm_intr_status & CAP2_INT_EN)   //Check for interrupt on rising edge on CAP2 signal
-  {
-    evt.capture_signal = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP2); //get capture signal counter value
-    evt.sel_cap_signal = MCPWM_SELECT_CAP2;
-//        xQueueSendFromISR(cap_queue, &evt, NULL);
-  }
+
   MCPWM[MCPWM_UNIT_0]->int_clr.val = mcpwm_intr_status;
 }
