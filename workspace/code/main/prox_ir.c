@@ -194,7 +194,7 @@ void ProxIR_Init(void)
 
 //_____________________________________________________________________________
 
-int16_t ProxIR_EmitPulse(uint16_t tick)
+int16_t ProxIR_EmitPulses(uint16_t tick)
 {
   switch (tick)
   {

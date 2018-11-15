@@ -54,7 +54,7 @@ extern void GroundIR_Init(void);
 //! \param     None
 //! \return    None
 //extern void GroundIR_Task(void);
-extern void GroundIR_Run(int16_t left, int16_t right, uint16_t tick);
+extern void GroundIR_EmitPulses(int16_t left, int16_t right, uint16_t tick);
 
 //! \brief     Shut down the ground IR sensors
 //! \pre       First initialize the Ground IR sensors

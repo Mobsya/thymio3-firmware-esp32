@@ -72,9 +72,11 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
+#if 0
 SemaphoreHandle_t Timer125usSemaphore = NULL;
 SemaphoreHandle_t Timer10msSemaphore = NULL;
 SemaphoreHandle_t Timer200msSemaphore = NULL;
+#endif
 
 //TaskHandle_t LedsHandle = NULL;
 
@@ -107,6 +109,7 @@ static void Timer_Init(int timer_idx, bool auto_reload, double timer_interval_se
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
+#if 0
 void SensorTask(void* pvParameter)
 {
   ESP_LOGI(Tag, "Start Sensor Task");
@@ -155,6 +158,24 @@ void SensorTask(void* pvParameter)
   //vTaskDelete(NULL);
   //vTaskDelay(100 / portTICK_PERIOD_MS);
 }
+#endif
+
+//_____________________________________________________________________________
+
+void LedsTask(void* pvParameter)
+{
+  ESP_LOGI(Tag, "Start Leds Task");
+
+  Leds_Init();
+
+  while (1)
+  {
+    Leds_RunTask();
+    //Behavior_SetIRSensorsLeds();
+    FeedWatchdog();
+    vTaskDelay(1 / portTICK_PERIOD_MS);
+  }
+}
 
 //_____________________________________________________________________________
 
@@ -162,41 +183,22 @@ void CommTask(void* pvParameter)
 {
   ESP_LOGI(Tag, "Start Comm Task");
 
-  Timer200msSemaphore = xSemaphoreCreateBinary();
-
-  //Sound_Init();
-
-  //I2C_Init();
-
-  //STM32_CheckId();
-  //ColorSensor_Init();
-//#if 0
-  //BH1745NUC_Init();
   ColorSensor_Init();
   //Accelerometer_Init();
   //Compass_Init();
   //Gyroscope_Init();
-//#endif
 
   int16_t voltage[2] = {0, 0};
   int16_t current[2] = {0, 0};
 
-  //int16_t frequency = 0;
+  //int16_t target[2] = {0xEFBE, 0xADDE};
+  //int16_t target[2] = {-10, 0};
+  //int16_t target_read[2] = {0x2222, 0x3333};
+  int16_t target_read[2] = {0, 0};
 
   while (1)
   {
-    if (Timer200msSemaphore == NULL)
-    {
-      /* There was insufficient FreeRTOS heap available for the semaphore to
-      be created successfully. */
-    }
-    else
-    {
-      if (xSemaphoreTake(Timer200msSemaphore, 0) == pdTRUE) //portMAX_DELAY );
-      {
         //ESP_LOGI(Tag, "Run Sensor Task");
-        //frequency++;
-        //Sound_Task(frequency);
 #if 0
         ColorSensor_GetColor();
         Accelerometer_GetAcceleration();
@@ -204,72 +206,64 @@ void CommTask(void* pvParameter)
         Gyroscope_GetAngularPosition();
 #endif
 
-        //STM32_CheckId();
+        STM32_CheckId();
     	ColorSensor_GetColor();
 
-    	//STM32_UpdateLeftMotorTarget(Target);
-    	//STM32_UpdateRightMotorTarget(Target);
     	STM32_GetMotorCurrent(current);
     	STM32_GetBatteryVoltage(voltage);
 
-    	//ColorSensor_GetColor();
-    	//STM32_GetMotorCurrent(current);
-    	//STM32_CheckId();
+    	//STM32_UpdateLeftMotorTarget(target);
+    	//STM32_UpdateRightMotorTarget(target);
 
-    	//STM32_GetMotorCurrent(current);
-    	//STM32_GetBatteryVoltage(voltage);
-    	//ColorSensor_GetColor();
+    	STM32_GetLeftMotorTarget(target_read);
+    	STM32_GetRightMotorTarget(target_read);
+
 #if 0
+    	STM32_GetMotorCurrent(current);
     	//ColorSensor_GetColor();
     	STM32_GetBatteryVoltage(voltage);
-    	//ColorSensor_GetColor();
-#endif
-#if 0
+
+    	//STM32_UpdateLeftMotorTarget(target);
+    	STM32_GetRightMotorTarget(target_read);
+    	STM32_CheckId();
+    	STM32_GetLeftMotorTarget(target_read);
+
+        //target[0] = 0xD0;
+        //target[1] = 0xFA;
+
     	ColorSensor_GetColor();
-    	STM32_UpdateLeftMotorTarget(Target);
-    	STM32_UpdateRightMotorTarget(Target);
-    	ColorSensor_GetColor();
+    	STM32_UpdateLeftMotorTarget(target);
+
     	STM32_GetMotorCurrent(current);
-    	ColorSensor_GetColor();
+    	STM32_CheckId();
+    	STM32_GetLeftMotorTarget(target_read);
+    	STM32_GetMotorCurrent(current);
+    	STM32_GetRightMotorTarget(target_read);
     	STM32_GetBatteryVoltage(voltage);
     	ColorSensor_GetColor();
-    	STM32_UpdateLeftMotorTarget(Target);
-    	STM32_UpdateRightMotorTarget(Target);
+
     	ColorSensor_GetColor();
     	STM32_GetMotorCurrent(current);
-    	ColorSensor_GetColor();
-    	STM32_GetBatteryVoltage(voltage);
-    	ColorSensor_GetColor();
-    	STM32_UpdateLeftMotorTarget(Target);
-    	STM32_UpdateRightMotorTarget(Target);
-    	ColorSensor_GetColor();
+    	STM32_CheckId();
+
     	STM32_GetMotorCurrent(current);
-    	ColorSensor_GetColor();
     	STM32_GetBatteryVoltage(voltage);
+
+    	STM32_GetMotorCurrent(current);
+    	STM32_CheckId();
+
+    	STM32_GetMotorCurrent(current);
+    	STM32_GetBatteryVoltage(voltage);
+
+    	STM32_GetMotorCurrent(current);
+    	STM32_CheckId();
+
+    	STM32_GetMotorCurrent(current);
+    	STM32_GetBatteryVoltage(voltage);
+    	ColorSensor_GetColor();
 #endif
 
-        //STM32_GetMotorCurrent(current);
-        //STM32_GetBatteryVoltage(voltage);
-        //STM32_UpdateLeftMotorTarget(Target);
-        //STM32_UpdateLeftMotorTarget(Target);
 
-        //Accelerometer_GetAcceleration();
-        //STM32_GetMotorCurrent(current);
-#if 0
-        ColorSensor_GetColor();
-        STM32_GetMotorCurrent(current);
-        STM32_GetBatteryVoltage(voltage);
-        STM32_UpdateLeftMotorTarget(Target);
-        STM32_UpdateLeftMotorTarget(Target);
-        ColorSensor_GetColor();
-        STM32_GetMotorCurrent(current);
-        STM32_GetBatteryVoltage(voltage);
-        STM32_UpdateLeftMotorTarget(Target);
-        STM32_UpdateLeftMotorTarget(Target);
-        ColorSensor_GetColor();
-        STM32_GetMotorCurrent(current);
-        STM32_GetBatteryVoltage(voltage);
-#endif
         //ProxIR_ReadPulseDuration();
         //STM32_GetBatteryVoltage(voltage);
         //STM32_UpdateLeftMotorTarget(Target);
@@ -281,11 +275,6 @@ void CommTask(void* pvParameter)
 
         //BH1745NUC_CheckManufacturerId();
 
-//#endif
-      }
-    }
-
-    //FeedWatchdog();
     vTaskDelay(50 / portTICK_PERIOD_MS);
   }
 }
@@ -296,85 +285,14 @@ void AsebaTask(void* pvParameter)
 {
   ESP_LOGI(Tag, "Start Aseba Task");
 
-  Timer10msSemaphore = xSemaphoreCreateBinary();
-
-  //uint8_t data[6] = "hello\n";
-  //int len = 0;
-
   UART_Init();
   AsebaESP32_Init();
 
-#if 0
   while (1)
   {
-    //len = UART_Read(data);
-    //UART_Write(data, len);
     AsebaESP32_Run();
-    //UART_Task();
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(15 / portTICK_PERIOD_MS);
   }
-#endif
-
-//#if 0
-  while (1)
-  {
-    if (Timer10msSemaphore == NULL)
-    {
-      /* There was insufficient FreeRTOS heap available for the semaphore to
-      be created successfully. */
-    }
-    else
-    {
-      /* The semaphore can now be used. Its handle is stored in the
-      xSemahore variable.  Calling xSemaphoreTake() on the semaphore here
-      will fail until the semaphore has first been given. */
-      if (xSemaphoreTake(Timer10msSemaphore, 0) == pdTRUE) //portMAX_DELAY );
-      {
-        //ESP_LOGI(Tag, "Run Aseba Task");
-        //len = UART_Read(data);
-        //UART_Write(data, len);
-        AsebaESP32_Run();
-        //Behavior_SetIRSensorsLeds();
-        //UART_Task();
-
-        xSemaphoreGive(Timer200msSemaphore);
-      }
-    }
-
-    //FeedWatchdog();
-
-    vTaskDelay(7 / portTICK_PERIOD_MS);
-  }
-//#endif
-
-#if 0
-  while (1)
-  {
-    if (Timer10msSemaphore == NULL)
-    {
-      /* There was insufficient FreeRTOS heap available for the semaphore to
-      be created successfully. */
-    }
-    else
-    {
-      /* The semaphore can now be used. Its handle is stored in the
-      xSemahore variable.  Calling xSemaphoreTake() on the semaphore here
-      will fail until the semaphore has first been given. */
-      if (xSemaphoreTake(Timer10msSemaphore, 0) == pdTRUE) //portMAX_DELAY );
-      {
-        ESP_LOGI(Tag, "Run Aseba Task");
-        //len = UART_Read(data);
-        //UART_Write(data, len);
-        //AsebaESP32_Run();
-        //UART_Task();
-
-        xSemaphoreGive(Timer200msSemaphore);
-      }
-    }
-
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-  }
-#endif
 }
 
 //_____________________________________________________________________________
@@ -432,9 +350,12 @@ int app_main(void)
   Power_Init();
   I2C_Init();
 
+  Sensors_Init();
+
   //Timer125usSemaphore = xSemaphoreCreateBinary();
 
-  Timer_Init(1, 1, 0.000125);
+  Timer_Init(1, 1, 0.000125);  // TODO Move to Sensors_Init();
+  timer_start(TIMER_GROUP_0, 1);
   //timer_start(TIMER_GROUP_0, 1);
   //Timer_Init(0, 1, 0.2);
 
@@ -445,11 +366,21 @@ int app_main(void)
 
 //#if 0
   xTaskCreatePinnedToCore(
+    LedsTask,  // Function to implement the task
+    "leds",    // Name of the task
+    2048,         // Stack size in words
+    NULL,         // Task input parameter
+    2,            // Priority of the task
+    NULL,         // Task handle
+    appCore1);    // Core where the task should run
+//#endif
+//#if 0
+  xTaskCreatePinnedToCore(
     CommTask,  // Function to implement the task
     "sensors",    // Name of the task
     2048,         // Stack size in words
     NULL,         // Task input parameter
-    2,            // Priority of the task
+    3,            // Priority of the task
     NULL,         // Task handle
     appCore1);    // Core where the task should run
 //#endif
@@ -459,11 +390,11 @@ int app_main(void)
     "aseba",      // Name of the task
     2048,         // Stack size in words
     NULL,         // Task input parameter
-    2,            // Priority of the task
+    4,            // Priority of the task
     NULL,         // Task handle
     appCore1);    // Core where the task should run
 //#endif
-//#if 0
+#if 0
   xTaskCreatePinnedToCore(
     SensorTask,     // Function to implement the task
     "leds",       // Name of the task
@@ -472,7 +403,7 @@ int app_main(void)
     2,            // Priority of the task
     NULL,         // Task handle
     appCore1);    // Core where the task should run
-//#endif
+#endif
 #if 0
   xTaskCreatePinnedToCore(
     SoundTask,    // Function to implement the task
@@ -608,7 +539,7 @@ static void FeedWatchdog(void)
 
 void IRAM_ATTR timer_group0_isr(void* para)
 {
-  static BaseType_t higherPriorityTaskWoken = false;
+  //static BaseType_t higherPriorityTaskWoken = false;
 
   int timer_idx = (int) para;
 
@@ -629,12 +560,16 @@ void IRAM_ATTR timer_group0_isr(void* para)
   {
     TIMERG0.int_clr_timers.t1 = 1;
 
+    Sensors_RunTask();
+
+#if 0
     xSemaphoreGiveFromISR(Timer125usSemaphore, &higherPriorityTaskWoken);
 
     if (higherPriorityTaskWoken != pdFALSE)
     {
       portYIELD_FROM_ISR();
     }
+#endif
   }
   else
   {
@@ -670,5 +605,5 @@ static void Timer_Init(int timer_idx, bool auto_reload, double timer_interval_se
 
   //timer_start(TIMER_GROUP_0, timer_idx);
 
-  ESP_LOGI(Tag, "Timer %d is initialized and started", timer_idx);
+  ESP_LOGI(Tag, "Timer %d is initialized", timer_idx);
 }

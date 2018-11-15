@@ -97,7 +97,7 @@ void GroundIR_Init(void)
 
 //_____________________________________________________________________________
 
-void GroundIR_Run(int16_t left, int16_t right, uint16_t tick)
+void GroundIR_EmitPulses(int16_t left, int16_t right, uint16_t tick)
 {
   switch (tick)
   {

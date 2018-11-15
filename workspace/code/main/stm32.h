@@ -60,12 +60,24 @@ extern void STM32_CheckId(void);
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateLeftMotorTarget.svg
 extern void STM32_UpdateLeftMotorTarget(int16_t* target);
 
+//! \brief     Get the left motor target
+//! \pre       None
+//! \param     target The target of the motors
+//! \return    None
+extern void STM32_GetLeftMotorTarget(int16_t* target);
+
 //! \brief     Update the right motor target
 //! \pre       None
 //! \param     target The target applied to the right motor
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateRightMotorTarget.svg
 extern void STM32_UpdateRightMotorTarget(int16_t* target);
+
+//! \brief     Get the right motor target
+//! \pre       None
+//! \param     target The target of the motors
+//! \return    None
+extern void STM32_GetRightMotorTarget(int16_t* target);
 
 //! \brief     Get the battery voltage
 //! \pre       None
