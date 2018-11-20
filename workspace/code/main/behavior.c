@@ -24,6 +24,7 @@
 
 #include "aseba_esp32.h"
 #include "leds.h"
+#include "stm32.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -46,9 +47,21 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
+static uint16_t behavior = 0u;
+
+#define ENABLED(b)              (behavior & b)   //({behavior & b;})
+#define ENABLE(b)               (behavior |= b)  //do {behavior |= b;} while(0)
+#define DISABLE(b)              (behavior &= ~b) //do {behavior &= ~b;} while(0)
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
+
+//! \brief     Set the buttons LEDs
+//! \pre       None
+//! \param     None
+//! \return    None
+static void Behavior_SetButtonsLeds(void);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -82,6 +95,10 @@ void Behavior_SetIRSensorsLeds(void)
     {
       min[index] = vmVariables.prox[index];
     }
+    else
+    {
+      // Do nothing
+    }
   }
 
   for (uint8_t index = 0u; index < GROUND_IR_SENSOR_NUM; index++)
@@ -110,7 +127,7 @@ void Behavior_SetIRSensorsLeds(void)
     Leds_SetSingleBrightness(led[index], brightness);
 
     // The Front IR sensor has 2 LEDs (E_Led_Front_IR_2A and E_Led_Front_IR_2B)
-    if (index == 2)
+    if (index == 2u)
     {
       Leds_SetSingleBrightness(led[index] + 1, brightness);
     }
@@ -127,7 +144,110 @@ void Behavior_SetIRSensorsLeds(void)
 
 //_____________________________________________________________________________
 
-void xxx_Task(void)
+void Behavior_Run(void)
 {
+  if (ENABLED(B_LEDS_BUTTON))
+  {
+    Behavior_SetButtonsLeds();
+  }
+}
 
+//_____________________________________________________________________________
+
+void Behavior_Start(uint16_t b)
+{
+  //ENABLE(b);
+
+  behavior |= b;
+}
+
+//_____________________________________________________________________________
+
+void Behavior_Stop(uint16_t b)
+{
+  //DISABLE(b);
+
+  behavior &= ~b;
+}
+
+//_____________________________________________________________________________
+
+static void Behavior_SetButtonsLeds(void)
+{
+  static uint8_t brightness[BUTTON_NUM] = {MIN_BRIGHTNESS, MIN_BRIGHTNESS, MIN_BRIGHTNESS,
+		                                   MIN_BRIGHTNESS, MIN_BRIGHTNESS};
+  uint8_t* buttonState;
+
+  buttonState = STM32_GetButtonStatus();
+
+  for (T_Button index = E_Button_Backward; index <= E_Button_Right; index++)
+  {
+    if (buttonState[index] != 0u)
+    {
+      brightness[index] += 3u;
+
+      if (brightness[index] > MAX_BRIGHTNESS)
+      {
+        brightness[index] = MAX_BRIGHTNESS;
+      }
+    }
+    else
+    {
+      brightness[index] = MIN_BRIGHTNESS;
+    }
+  }
+
+  if (brightness[E_Button_Center] > MIN_BRIGHTNESS)
+  {
+    for (T_Led index = E_Led_Button_0; index <= E_Led_Button_1; index++)
+    {
+      Leds_SetSingleBrightness(index, brightness[E_Button_Center]);
+    }
+  }
+  else
+  {
+    if (brightness[E_Button_Backward] != MIN_BRIGHTNESS)
+    {
+      Leds_SetSingleBrightness(E_Led_Button_2, brightness[E_Button_Backward]);
+    }
+
+    if (brightness[E_Button_Left] != MIN_BRIGHTNESS)
+    {
+      Leds_SetSingleBrightness(E_Led_Button_3, brightness[E_Button_Left]);
+    }
+
+    if (brightness[E_Button_Forward] != MIN_BRIGHTNESS)
+    {
+      Leds_SetSingleBrightness(E_Led_Button_0, brightness[E_Button_Forward]);
+    }
+
+    if (brightness[E_Button_Right] != MIN_BRIGHTNESS)
+    {
+      Leds_SetSingleBrightness(E_Led_Button_1, brightness[E_Button_Right]);
+    }
+  }
+
+  if ((brightness[E_Button_Backward] == MIN_BRIGHTNESS) &&
+      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
+  {
+    Leds_SetSingleBrightness(E_Led_Button_2, MIN_BRIGHTNESS);
+  }
+
+  if ((brightness[E_Button_Left] == MIN_BRIGHTNESS) &&
+      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
+  {
+    Leds_SetSingleBrightness(E_Led_Button_3, MIN_BRIGHTNESS);
+  }
+
+  if ((brightness[E_Button_Forward] == MIN_BRIGHTNESS) &&
+      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
+  {
+    Leds_SetSingleBrightness(E_Led_Button_0, MIN_BRIGHTNESS);
+  }
+
+  if ((brightness[E_Button_Right] == MIN_BRIGHTNESS) &&
+      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
+  {
+    Leds_SetSingleBrightness(E_Led_Button_1, MIN_BRIGHTNESS);
+  }
 }

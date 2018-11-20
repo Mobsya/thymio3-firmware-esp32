@@ -30,17 +30,18 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define SLAVE_ADDRESS          0x04u  //!< Slave address
+#define SLAVE_ADDRESS                   0x04u  //!< Slave address
 
-#define WHO_AM_I_REG_ADDRESS               0x0Fu  //!< Who_AM_I register address           (Read only)
-#define LEFT_MOTOR_TARGET_REG_ADDRESS      0x10u  //!< Left Motor target register address  (Write only)
-#define RIGHT_MOTOR_TARGET_REG_ADDRESS     0x11u  //!< Right Motor target register address (Write only)
-#define BATTERY_VOLTAGE_REG_ADDRESS        0x12u  //!< Battery voltage register address    (Read only)
-#define INDUCED_VOLTAGE_REG_ADDRESS        0x13u  //!< Induced voltage register address    (Read only)
-#define MOTOR_CURRENT_REG_ADDRESS          0x14u  //!< Motor current register address      (Read only)
-#define BUTTON_REG_ADDRESS                 0x15u
+#define WHO_AM_I_REG_ADDRESS            0x0Fu  //!< Who_AM_I register address           (Read only)
+#define LEFT_MOTOR_TARGET_REG_ADDRESS   0x10u  //!< Left Motor target register address  (Read/Write)
+#define RIGHT_MOTOR_TARGET_REG_ADDRESS  0x11u  //!< Right Motor target register address (Read/Write)
+#define BATTERY_VOLTAGE_REG_ADDRESS     0x12u  //!< Battery voltage register address    (Read only)
+#define INDUCED_VOLTAGE_REG_ADDRESS     0x13u  //!< Induced voltage register address    (Read only)
+#define MOTOR_CURRENT_REG_ADDRESS       0x14u  //!< Motor current register address      (Read only)
+#define BUTTON_STATUS_REG_ADDRESS       0x15u  //!< Button status register address      (Read only)
+#define BUTTON_RAW_DATA_REG_ADDRESS     0x16u  //!< Button raw data register address    (Read only)
 
-#define STM32_ID               0xBCu  //!< ID of the STM32
+#define STM32_ID                        0xBCu  //!< ID of the STM32
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -55,6 +56,8 @@
 //-----------------------------------------------------------------------------
 
 static const char* Tag = "stm32";
+
+static uint8_t ButtonStatus[BUTTON_NUM] = {0u, 0u, 0u, 0u, 0u};
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -191,6 +194,49 @@ void STM32_GetMotorCurrent(int16_t* current)
 
   vmVariables.imot[0] = current[0];
   vmVariables.imot[1] = current[1];
+}
+
+//_____________________________________________________________________________
+
+void STM32_ReadButtonStatus(void)
+{
+  uint8_t data;
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, BUTTON_STATUS_REG_ADDRESS, &data, 1u);
+
+  for (int16_t index = 0; index < 5; index++)
+  {
+	ButtonStatus[index] = ((data & (1 << index)) >> index);
+    vmVariables.buttons_state[index] = (int16_t)ButtonStatus[index];
+  }
+}
+
+//_____________________________________________________________________________
+
+uint8_t* STM32_GetButtonStatus(void)
+{
+  return ButtonStatus;
+}
+
+//_____________________________________________________________________________
+
+void STM32_GetButtonRawData(int16_t* rawData)
+{
+  uint8_t data[10];
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, BUTTON_RAW_DATA_REG_ADDRESS, data, 10u);
+
+  rawData[0] = ((data[1] << 8) | data[0]);
+  rawData[1] = ((data[3] << 8) | data[2]);
+  rawData[2] = ((data[5] << 8) | data[4]);
+  rawData[3] = ((data[7] << 8) | data[6]);
+  rawData[4] = ((data[9] << 8) | data[8]);
+
+  vmVariables.buttons[0] = rawData[0];
+  vmVariables.buttons[1] = rawData[1];
+  vmVariables.buttons[2] = rawData[2];
+  vmVariables.buttons[3] = rawData[3];
+  vmVariables.buttons[4] = rawData[4];
 }
 
 //_____________________________________________________________________________

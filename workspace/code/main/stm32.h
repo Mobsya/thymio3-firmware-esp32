@@ -21,6 +21,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#define BUTTON_NUM   5u
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -28,6 +30,15 @@
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
+
+typedef enum
+{
+  E_Button_Backward,  // Button 1
+  E_Button_Left,      // Button 2
+  E_Button_Center,    // Button 3
+  E_Button_Forward,   // Button 4
+  E_Button_Right      // Button 5
+} T_Button;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -97,5 +108,23 @@ extern void STM32_GetInducedVoltage(int16_t* voltage);
 //! \param     current The motor current calculated by the motor controller
 //! \return    None
 extern void STM32_GetMotorCurrent(int16_t* current);
+
+//! \brief     Read the button status
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void STM32_ReadButtonStatus(void);
+
+//! \brief     Get the button status
+//! \pre       None
+//! \param     None
+//! \return    None
+extern uint8_t* STM32_GetButtonStatus(void);
+
+//! \brief     Get the button raw data
+//! \pre       None
+//! \param     rawData The raw data of the buttons
+//! \return    None
+extern void STM32_GetButtonRawData(int16_t* rawData);
 
 #endif // STM32_H_

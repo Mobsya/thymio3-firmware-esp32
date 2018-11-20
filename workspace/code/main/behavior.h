@@ -21,9 +21,16 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include <stdint.h>
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
+
+#define B_LEDS_BUTTON   (1 << 1)
+#define B_MODE			(1 << 10)
+
+#define B_ALWAYS		B_LEDS_BUTTON  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_LEDS_SD | B_SOUND_BUTTON | B_LEDS_BUTTON)
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -41,16 +48,28 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the xxx
+//! \brief     Set the LEDs
 //! \pre       None
 //! \param     None
 //! \return    None
 extern void Behavior_SetIRSensorsLeds(void);
 
-//! \brief     Run the xxx task
-//! \pre       First initialize the xxx
+//! \brief     Run the behaviors
+//! \pre       None
 //! \param     None
 //! \return    None
-extern void xxx_Task(void);
+extern void Behavior_Run(void);
+
+//! \brief     Enable the behavior
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void Behavior_Start(uint16_t b);
+
+//! \brief     Disable the behavior
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void Behavior_Stop(uint16_t b);
 
 #endif // BEHAVIOR_H_

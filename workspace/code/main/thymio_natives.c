@@ -27,7 +27,7 @@
 #include "leds.h"
 //#include "sd.h"
 //#include "playback.h"
-//#include "behavior.h"
+#include "behavior.h"
 //#include "tone.h"
 //#include "ir_prox.h"
 #include "rf.h"
@@ -335,9 +335,9 @@ void set_buttons_leds(AsebaVMState* vm)
   int l2 = vm->variables[AsebaNativePopArg(vm)];
   int l3 = vm->variables[AsebaNativePopArg(vm)];
   int l4 = vm->variables[AsebaNativePopArg(vm)];
-#if 0  // FIXME
-  behavior_stop(B_LEDS_BUTTON);
-#endif
+
+  Behavior_Stop(B_LEDS_BUTTON);
+
   Leds_SetSingleBrightness(E_Led_Button_0, l1);
   Leds_SetSingleBrightness(E_Led_Button_1, l2);
   Leds_SetSingleBrightness(E_Led_Button_2, l3);

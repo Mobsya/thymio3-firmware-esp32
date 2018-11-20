@@ -39,6 +39,7 @@
 #include "gpio.h"
 #include "i2c.h"
 #include "leds.h"
+#include "mode.h"
 #include "power.h"
 #include "prox_ir.h"
 #include "sensors.h"
@@ -184,9 +185,9 @@ void CommTask(void* pvParameter)
   ESP_LOGI(Tag, "Start Comm Task");
 
   ColorSensor_Init();
-  //Accelerometer_Init();
-  //Compass_Init();
-  //Gyroscope_Init();
+  Accelerometer_Init();
+  Compass_Init();
+  Gyroscope_Init();
 
   int16_t voltage[2] = {0, 0};
   int16_t current[2] = {0, 0};
@@ -195,28 +196,32 @@ void CommTask(void* pvParameter)
   //int16_t target[2] = {-10, 0};
   //int16_t target_read[2] = {0x2222, 0x3333};
   int16_t target_read[2] = {0, 0};
+  int16_t button_status = 0;
+  int16_t button_raw[5] = {0, 0, 0, 0, 0};
 
   while (1)
   {
-        //ESP_LOGI(Tag, "Run Sensor Task");
-#if 0
         ColorSensor_GetColor();
+//#if 0
+        Accelerometer_GetTapSource();
         Accelerometer_GetAcceleration();
         Compass_GetMagneticField();
         Gyroscope_GetAngularPosition();
-#endif
+//#endif
 
         STM32_CheckId();
-    	ColorSensor_GetColor();
-
+        STM32_GetButtonRawData(button_raw);
+        STM32_ReadButtonStatus();
     	STM32_GetMotorCurrent(current);
     	STM32_GetBatteryVoltage(voltage);
 
     	//STM32_UpdateLeftMotorTarget(target);
     	//STM32_UpdateRightMotorTarget(target);
 
-    	STM32_GetLeftMotorTarget(target_read);
-    	STM32_GetRightMotorTarget(target_read);
+    	//STM32_GetLeftMotorTarget(target_read);
+    	//STM32_GetRightMotorTarget(target_read);
+
+    	Behavior_Run();
 
 #if 0
     	STM32_GetMotorCurrent(current);
@@ -351,6 +356,7 @@ int app_main(void)
   I2C_Init();
 
   Sensors_Init();
+  Mode_Init();
 
   //Timer125usSemaphore = xSemaphoreCreateBinary();
 
