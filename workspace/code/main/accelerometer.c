@@ -18,6 +18,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include "esp_log.h"
+
 #include "accelerometer.h"
 
 #include "aseba_esp32.h"
@@ -40,8 +42,12 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
+static const char* Tag = "accelerometer";
+
 static T_Acc_Axis Acceleration_3;
 static T_Axis     Acceleration_6;
+
+static uint8_t TapSource;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -59,6 +65,8 @@ void Accelerometer_Init(void)
 {
   LSM303C_InitAccelerometer();
   LSM6DS3US_InitAccelerometer();
+
+  ESP_LOGI(Tag, "Accelerometers are initialized");
 }
 
 //_____________________________________________________________________________
@@ -80,4 +88,18 @@ void Accelerometer_GetAcceleration(void)
   vmVariables.acc_bis[2] = Acceleration_6.Z;
 
   SET_EVENT(EVENT_ACC_BIS);
+}
+
+//_____________________________________________________________________________
+
+void Accelerometer_GetTapSource(void)
+{
+  LSM6DS3US_GetTapSource(&TapSource);
+
+  vmVariables.acc_tap = TapSource;
+
+  if (TapSource > 0)
+  {
+    SET_EVENT(EVENT_TAP);
+  }
 }

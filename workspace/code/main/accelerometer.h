@@ -53,4 +53,10 @@ extern void Accelerometer_Init(void);
 //! \return    None
 extern void Accelerometer_GetAcceleration(void);
 
+//! \brief     Get the acceleration tap source
+//! \pre       First initialize the accelerometer
+//! \param     None
+//! \return    None
+extern void Accelerometer_GetTapSource(void);
+
 #endif // ACCELEROMETER_H_

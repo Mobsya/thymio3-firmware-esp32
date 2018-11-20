@@ -19,7 +19,7 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <esp_log.h>
+#include "esp_log.h"
 
 #include "lsm303c.h"
 
@@ -308,6 +308,8 @@ void LSM303C_InitAccelerometer(void)
 {
   UpdateAccBlockDataUpdate(E_Acc_BlockDataUpdate_Ready);
   UpdateAccOutputDataRate(E_Acc_OutputDataRate_100Hz);
+
+  ESP_LOGI(Tag, "LSM303C accelerometer is initialized");
 }
 
 //_____________________________________________________________________________
@@ -409,6 +411,8 @@ void LSM303C_InitMagnetometer(void)
   UpdateMagXYOperativeMode(E_Mag_OperativeMode_HighPerf);
   UpdateMagZOperativeMode(E_Mag_OperativeMode_HighPerf);
   UpdateMagFullScaleConfig(E_Mag_FullScaleConfig_16gauss);
+
+  ESP_LOGI(Tag, "LSM303C magnetometer is initialized");
 }
 
 //_____________________________________________________________________________

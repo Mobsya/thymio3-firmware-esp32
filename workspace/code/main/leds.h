@@ -78,10 +78,10 @@ enum
   E_Led_Circle_7,        // U16.QH -->
 
   // LEDs connected to U14
-  E_Led_Button_0,        // U14.QA -->
-  E_Led_Button_2,        // U14.QB -->
-  E_Led_Button_3,        // U14.QC -->
-  E_Led_Button_1,        // U14.QD -->
+  E_Led_Button_0,        // U14.QA --> D1
+  E_Led_Button_2,        // U14.QB --> D3
+  E_Led_Button_3,        // U14.QC --> D4
+  E_Led_Button_1,        // U14.QD --> D5
   E_Led_Circle_5,        // U14.QE -->
   E_Led_Circle_6,        // U14.QF -->
   E_Led_Temp_Red,        // U14.QG -->

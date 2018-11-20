@@ -18,6 +18,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include "esp_log.h"
+
 #include "compass.h"
 
 #include "aseba_esp32.h"
@@ -39,6 +41,8 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
+static const char* Tag = "compass";
+
 static T_Mag_Axis MagneticField;
 
 //-----------------------------------------------------------------------------
@@ -56,6 +60,8 @@ static T_Mag_Axis MagneticField;
 void Compass_Init(void)
 {
   LSM303C_InitMagnetometer();
+
+  ESP_LOGI(Tag, "Compass is initialized");
 }
 
 //_____________________________________________________________________________

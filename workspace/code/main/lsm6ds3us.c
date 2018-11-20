@@ -19,7 +19,7 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <esp_log.h>
+#include "esp_log.h"
 
 #include "lsm6ds3us.h"
 
@@ -78,6 +78,8 @@
 #define OUTZ_L_XL_REG_ADDRESS                0x2Cu  //!< Low byte of linear acceleration sensor Z-axis output register address  (Read only)
 #define OUTZ_H_XL_REG_ADDRESS                0x2Du  //!< High byte of linear acceleration sensor Z-axis output register address (Read only)
 // TODO last registers
+#define TAP_CFG_REG_ADDRESS                  0x58u  //!< Tap recognition configuration register address                         (Read/Write)
+#define TAP_THS_6D_REG_ADDRESS               0x59u  //!< Portrait/landscape position and tap threshold register address         (Read/Write)
 
 // Manufacturer ID
 #define MANUFACTURER_ID                      0x69u  //!< Manufacturer ID
@@ -89,12 +91,21 @@
 // CTRL2_G bits mask
 #define GYR_ODR_G_BIT_MASK                   0x0Fu  //!< Mask of bit ODR_G
 
+// TAP_CFG bits mask
+#define ACC_TAP_EN_BIT_MASK                  0xF1u  //!< Mask of bit TAP_x_EN
+
+// TAP_THS_6D bits mask
+#define TAP_THS_BIT_MASK                     0xE0u  //!< Mask of bit TAP_THS
+
 // Register bits position
 // CTRL1_XL bits position
 #define ACC_ODR_XL_BIT_POS                      4u  //!< Position of LSB bit ODR_XL
 
 // CTRL2_G bits position
 #define GYR_ODR_G_BIT_POS                       4u  //!< Position of LSB bit ODR_G
+
+// TAP_CFG bits position
+#define ACC_TAP_EN_BIT_POS                      1u  //!< Position of LSB bit TAP_x_EN
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -118,6 +129,29 @@ typedef uint8_t T_Acc_OutputDataRate;  //!< Accelerometer output data rate
 
 enum
 {
+  E_Acc_Tap_DisableAll = 0x00,
+  E_Acc_Tap_EnableZ    = 0x01,
+  E_Acc_Tap_EnableY    = 0x02,
+  E_Acc_Tap_EnableYZ   = 0x03,
+  E_Acc_Tap_EnableX    = 0x04,
+  E_Acc_Tap_EnableXZ   = 0x05,
+  E_Acc_Tap_EnableXY   = 0x06,
+  E_Acc_Tap_EnableAll  = 0x07
+};
+typedef uint8_t T_Acc_Tap;  //!< Accelerometer tap recognition
+
+enum
+{
+  E_Acc_TapThreshold_Low     = 0x01,
+  E_Acc_TapThreshold_MidLow  = 0x08,
+  E_Acc_TapThreshold_Mid     = 0x10,
+  E_Acc_TapThreshold_MidHigh = 0x18,
+  E_Acc_TapThreshold_High    = 0x1F
+};
+typedef uint8_t T_Acc_TapThreshold;  //!< Accelerometer tap threshold
+
+enum
+{
   E_Gyro_OutputDataRate_PowerDown,
   E_Gyro_OutputDataRate_12_5Hz,
   E_Gyro_OutputDataRate_26Hz,
@@ -129,7 +163,6 @@ enum
   E_Gyro_OutputDataRate_1660Hz
 };
 typedef uint8_t T_Gyro_OutputDataRate;  //!< Gyroscope output data rate
-
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -153,12 +186,30 @@ static const T_GpioPinConfig PinConfig = {ACC_INT_PIN, E_GpioMode_Input, E_GpioR
 //! \return    None
 static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate);
 
+//! \brief     Configure the accelerometer tap recognition
+//! \pre       None
+//! \param     None
+//! \return    None
+static void ConfigureTap(T_Acc_Tap config);
+
+//! \brief     Update the accelerometer tap threshold
+//! \pre       None
+//! \param     None
+//! \return    None
+static void UpdateTapThreshold(T_Acc_TapThreshold threshold);
+
 //! \brief     Read the acceleration
 //! \pre       None
 //! \param     None
 //! \return    None
 //! \image     html ReadAcceleration.svg
 static void ReadAcceleration(T_Axis* acceleration);
+
+//! \brief     Read the acceleration tap source
+//! \pre       None
+//! \param     None
+//! \return    None
+static void ReadTapSource(uint8_t* source);
 
 //! \brief     Read the angular position
 //! \pre       None
@@ -195,7 +246,13 @@ static void ReadManufacturerId(uint8_t* data);
 void LSM6DS3US_InitAccelerometer(void)
 {
   Gpio_ConfigurePin(&PinConfig);
+
   UpdateAccOutputDataRate(E_Acc_OutputDataRate_104Hz);
+
+  ConfigureTap(E_Acc_Tap_EnableAll);
+  UpdateTapThreshold(E_Acc_TapThreshold_MidLow);
+
+  ESP_LOGI(Tag, "LSM6DS3US accelerometer is initialized");
 }
 
 //_____________________________________________________________________________
@@ -205,6 +262,13 @@ void LSM6DS3US_GetAcceleration(T_Axis* acceleration)
   ReadAcceleration(acceleration);
 
   // TODO ConvertAcceleration(int16_t input);
+}
+
+//_____________________________________________________________________________
+
+void LSM6DS3US_GetTapSource(uint8_t* source)
+{
+  ReadTapSource(source);
 }
 
 //_____________________________________________________________________________
@@ -230,6 +294,40 @@ static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate)
 
 //_____________________________________________________________________________
 
+static void ConfigureTap(T_Acc_Tap config)
+{
+  uint8_t data = 0x00u;
+
+  if (config <= E_Acc_Tap_EnableAll)
+  {
+    I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_CFG_REG_ADDRESS, &data, 1u);
+
+    data &= ACC_TAP_EN_BIT_MASK;
+    data |= (config << ACC_TAP_EN_BIT_POS);
+
+    I2C_WriteToAddress(SLAVE_ADDRESS, TAP_CFG_REG_ADDRESS, &data, 1u);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateTapThreshold(T_Acc_TapThreshold threshold)
+{
+  uint8_t data = 0x00u;
+
+  if (threshold <= E_Acc_TapThreshold_High)
+  {
+    I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_THS_6D_REG_ADDRESS, &data, 1u);
+
+	data &= TAP_THS_BIT_MASK;
+	data |= threshold;
+
+    I2C_WriteToAddress(SLAVE_ADDRESS, TAP_THS_6D_REG_ADDRESS, &data, 1u);
+  }
+}
+
+//_____________________________________________________________________________
+
 static void ReadAcceleration(T_Axis* acceleration)
 {
   uint8_t acc[6u];
@@ -241,6 +339,17 @@ static void ReadAcceleration(T_Axis* acceleration)
   acceleration->Z = (int16_t)((uint16_t)acc[5u] << 8u) | acc[4u];
 
   //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", Acceleration.X,  Acceleration.Y,  Acceleration.Z);
+}
+
+//_____________________________________________________________________________
+
+static void ReadTapSource(uint8_t* source)
+{
+  uint8_t src;
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_SRC_REG_ADDRESS, &src, 1u);
+
+  *source = src;
 }
 
 //_____________________________________________________________________________
@@ -266,6 +375,8 @@ static void ConvertAcceleration(int16_t input)
 void LSM6DS3US_InitGyroscope(void)
 {
   UpdateGyroOutputDataRate(E_Gyro_OutputDataRate_104Hz);
+
+  ESP_LOGI(Tag, "LSM6DS3US gyroscope is initialized");
 }
 
 //_____________________________________________________________________________

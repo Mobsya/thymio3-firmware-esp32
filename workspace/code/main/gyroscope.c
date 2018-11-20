@@ -18,6 +18,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include "esp_log.h"
+
 #include "gyroscope.h"
 
 #include "aseba_esp32.h"
@@ -39,6 +41,8 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
+static const char* Tag = "gyroscope";
+
 static T_Axis AngularPosition;
 
 //-----------------------------------------------------------------------------
@@ -56,6 +60,8 @@ static T_Axis AngularPosition;
 void Gyroscope_Init(void)
 {
   LSM6DS3US_InitGyroscope();
+
+  ESP_LOGI(Tag, "Gyroscope is initialized");
 }
 
 //_____________________________________________________________________________

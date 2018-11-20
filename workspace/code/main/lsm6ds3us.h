@@ -69,6 +69,12 @@ extern void LSM6DS3US_CheckManufacturerId(void);
 //! \return    None
 extern void LSM6DS3US_GetAcceleration(T_Axis* acceleration);
 
+//! \brief     Get the acceleration tap source
+//! \pre       First initialize the LSM6DS3US device
+//! \param     None
+//! \return    None
+extern void LSM6DS3US_GetTapSource(uint8_t* source);
+
 //! \brief     Initialize the gyroscope of the LSM6DS3US device
 //! \pre       None
 //! \param     None
