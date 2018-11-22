@@ -175,7 +175,8 @@ void Behavior_Stop(uint16_t b)
 static void Behavior_SetButtonsLeds(void)
 {
   static uint8_t brightness[BUTTON_NUM] = {MIN_BRIGHTNESS, MIN_BRIGHTNESS, MIN_BRIGHTNESS,
-		                                   MIN_BRIGHTNESS, MIN_BRIGHTNESS};
+                                           MIN_BRIGHTNESS, MIN_BRIGHTNESS
+                                          };
   uint8_t* buttonState;
 
   buttonState = STM32_GetButtonStatus();

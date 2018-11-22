@@ -182,8 +182,9 @@ void ProxIR_Init(void)
   mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
   mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
 
-  //enable interrupt, so each this a rising edge occurs interrupt is triggered
-  MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;    // Enable interrupt on  CAP0, CAP1 and CAP2 signal
+  // Enable interrupt on CAP0, CAP1 and CAP2 signal,
+  // so each this a rising or falling edge occurs interrupt is triggered
+  MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;
 //  MCPWM[MCPWM_UNIT_1]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;    // Enable interrupt on  CAP0, CAP1 and CAP2 signal
   mcpwm_isr_register(MCPWM_UNIT_0, isr_handler, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
 //  mcpwm_isr_register(MCPWM_UNIT_1, isr_handler, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
@@ -289,8 +290,8 @@ void ProxIR_ReadPulseDuration(void)
 {
   static uint8_t index = 0;
 
-  uint32_t *current_cap_value = (uint32_t *)malloc(sizeof(CAP_SIG_NUM));
-  uint32_t *previous_cap_value = (uint32_t *)malloc(sizeof(CAP_SIG_NUM));
+  uint32_t* current_cap_value = (uint32_t*)malloc(sizeof(CAP_SIG_NUM));
+  uint32_t* previous_cap_value = (uint32_t*)malloc(sizeof(CAP_SIG_NUM));
   uint32_t duration = 0;
 
   uint32_t pulse[2];
@@ -355,7 +356,7 @@ static int16_t PerformCalibration(int16_t raw, T_Sensor sensor)
   if (settings.prox_min[sensor] > 0)
   {
     // On the fly re-calibration
-	calibration = Calibrate(value, sensor);
+    calibration = Calibrate(value, sensor);
   }
   else
   {
@@ -515,19 +516,19 @@ static void IRAM_ATTR isr_handler()
 
   if (mcpwm_intr_status & CAP0_INT_EN)  // Check for interrupt on rising edge or falling edge on CAP0 signal
   {
-	if ((index % 2) == 0)  // Rising edge
-	{
+    if ((index % 2) == 0)  // Rising edge
+    {
       tmp = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);  // Get capture signal counter value
-	}
-	else  // Falling edge
-	{
-	  evt.RisingEdge = tmp;
-	  evt.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);  // Get capture signal counter value
+    }
+    else  // Falling edge
+    {
+      evt.RisingEdge = tmp;
+      evt.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);  // Get capture signal counter value
       evt.sel_cap_signal = MCPWM_SELECT_CAP0;
       xQueueSendFromISR(cap_queue, &evt, NULL);
-	}
+    }
 
-	index++;
+    index++;
   }
 
   MCPWM[MCPWM_UNIT_0]->int_clr.val = mcpwm_intr_status;

@@ -73,7 +73,8 @@ void I2C_Init(void)
   conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
 
   ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
-  ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, ESP_INTR_FLAG_IRAM));  // TODO ESP_INTR_FLAG_IRAM
+  ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, conf.mode, I2C_MASTER_RX_BUF_DISABLE,
+                                     I2C_MASTER_TX_BUF_DISABLE, ESP_INTR_FLAG_IRAM));
 
   ESP_LOGI(Tag, "I2C is initialized");
 }
@@ -169,21 +170,7 @@ void I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data
 
   ESP_ERROR_CHECK(i2c_master_start(cmd));
   ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (slaveAddress << 1u) | I2C_MASTER_READ, ACK_CHECK_ENABLE));
-
-#if 0
-  if (size > 1u)
-  {
-    ESP_ERROR_CHECK(i2c_master_read(cmd, &data[0u], (size - 1u), ACK_VAL));      // TODO remove this line and send directly the buffer with LAST NACK
-    ESP_ERROR_CHECK(i2c_master_read(cmd, &data[size - 1u], 1u, I2C_MASTER_NACK));
-  }
-  else
-  {
-    ESP_ERROR_CHECK(i2c_master_read(cmd, &data[0u], 1u, NACK_VAL));
-  }
-#endif
-
   ESP_ERROR_CHECK(i2c_master_read(cmd, &data[0u], size, I2C_MASTER_LAST_NACK));
-
   ESP_ERROR_CHECK(i2c_master_stop(cmd));
 
   //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0u));

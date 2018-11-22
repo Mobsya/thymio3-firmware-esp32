@@ -319,8 +319,8 @@ static void UpdateTapThreshold(T_Acc_TapThreshold threshold)
   {
     I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_THS_6D_REG_ADDRESS, &data, 1u);
 
-	data &= TAP_THS_BIT_MASK;
-	data |= threshold;
+    data &= TAP_THS_BIT_MASK;
+    data |= threshold;
 
     I2C_WriteToAddress(SLAVE_ADDRESS, TAP_THS_6D_REG_ADDRESS, &data, 1u);
   }

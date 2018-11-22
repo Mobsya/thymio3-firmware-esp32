@@ -290,7 +290,7 @@ const AsebaVMDescription vmDescription =
     {3, "acc_bis"},
     {3, "gyro"},
     {3, "compass"},
-	{4, "ip"},
+    {4, "ip"},
     {0, NULL} // Null terminated
   }
 };

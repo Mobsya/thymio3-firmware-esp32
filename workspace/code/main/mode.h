@@ -6,31 +6,24 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    behavior.h
-//! \brief   This module provides the useful functions to handle the behavior
+//! \file    mode.h
+//! \brief   This module provides the useful functions to use the modes
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: behavior.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \version $Id: mode.h 18076 2017-04-20 12:28:12Z v.gonet $
 //_____________________________________________________________________________
 
-#ifndef BEHAVIOR_H_
-#define BEHAVIOR_H_
+#ifndef MODE_H_
+#define MODE_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <stdint.h>
-
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
-
-#define B_LEDS_BUTTON   (1 << 1)
-#define B_MODE          (1 << 10)
-
-#define B_ALWAYS    B_LEDS_BUTTON  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_LEDS_SD | B_SOUND_BUTTON | B_LEDS_BUTTON)
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -48,28 +41,16 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Set the LEDs
+//! \brief     Initialize the modes
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void Behavior_SetIRSensorsLeds(void);
+extern void Mode_Init(void);
 
-//! \brief     Run the behaviors
-//! \pre       None
+//! \brief     Run the xxx task
+//! \pre       First initialize the xxx
 //! \param     None
 //! \return    None
-extern void Behavior_Run(void);
+extern void xxx_Task(void);
 
-//! \brief     Enable the behavior
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void Behavior_Start(uint16_t b);
-
-//! \brief     Disable the behavior
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void Behavior_Stop(uint16_t b);
-
-#endif // BEHAVIOR_H_
+#endif // MODE_H_

@@ -6,31 +6,25 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    behavior.h
-//! \brief   This module provides the useful functions to handle the behavior
+//! \file    mode.c
+//! \brief   This module provides the useful functions to use the modes
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: behavior.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \version $Id: mode.c 18076 2017-04-20 12:28:12Z v.gonet $
 //_____________________________________________________________________________
-
-#ifndef BEHAVIOR_H_
-#define BEHAVIOR_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <stdint.h>
+#include "mode.h"
+
+#include "behavior.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
-
-#define B_LEDS_BUTTON   (1 << 1)
-#define B_MODE          (1 << 10)
-
-#define B_ALWAYS    B_LEDS_BUTTON  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_LEDS_SD | B_SOUND_BUTTON | B_LEDS_BUTTON)
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -41,35 +35,47 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// Private Data
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Private Functions Prototypes
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Exported Functions Prototypes
+// Functions Implementation
 //-----------------------------------------------------------------------------
 
-//! \brief     Set the LEDs
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void Behavior_SetIRSensorsLeds(void);
+void Mode_Init(void)
+{
+#if 0  // TODO when the mode are defined
+  // Init the defaults behaviors + our behavior.
 
-//! \brief     Run the behaviors
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void Behavior_Run(void);
+  vm_active = vm_enabled;
 
-//! \brief     Enable the behavior
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void Behavior_Start(uint16_t b);
+  init_mode(MODE_MENU);
 
-//! \brief     Disable the behavior
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void Behavior_Stop(uint16_t b);
+  if (vm_active)
+  {
+    _selecting = 0;
+  }
+  else
+  {
+    _selecting = MODE_FOLLOW; // Bypass the "VM exit mode"
+    set_mode_color(_selecting);
+  }
+#endif
 
-#endif // BEHAVIOR_H_
+  Behavior_Start(B_ALWAYS | B_MODE);
+}
+
+//_____________________________________________________________________________
+
+void xxx_Task(void)
+{
+
+}
