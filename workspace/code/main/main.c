@@ -184,13 +184,14 @@ void CommTask(void* pvParameter)
 {
   ESP_LOGI(Tag, "Start Comm Task");
 
-  ColorSensor_Init();
+  //ColorSensor_Init();
   Accelerometer_Init();
   Compass_Init();
   Gyroscope_Init();
 
   int16_t voltage[2] = {0, 0};
   int16_t current[2] = {0, 0};
+  int16_t pwm[2] = {0, 0};
 
   //int16_t target[2] = {0xEFBE, 0xADDE};
   //int16_t target[2] = {-10, 0};
@@ -201,84 +202,85 @@ void CommTask(void* pvParameter)
 
   while (1)
   {
-        ColorSensor_GetColor();
+    ColorSensor_GetColor();
 //#if 0
-        Accelerometer_GetTapSource();
-        Accelerometer_GetAcceleration();
-        Compass_GetMagneticField();
-        Gyroscope_GetAngularPosition();
+    Accelerometer_GetTapSource();
+    Accelerometer_GetAcceleration();
+    Compass_GetMagneticField();
+    Gyroscope_GetAngularPosition();
 //#endif
 
-        STM32_CheckId();
-        STM32_GetButtonRawData(button_raw);
-        STM32_ReadButtonStatus();
-    	STM32_GetMotorCurrent(current);
-    	STM32_GetBatteryVoltage(voltage);
+    STM32_CheckId();
+    STM32_GetMotorCurrent(current);
+    STM32_GetBatteryVoltage(voltage);
+    STM32_GetPwmDutyCycle(pwm);
+    STM32_GetButtonRawData(button_raw);
+    STM32_ReadButtonStatus();
 
-    	//STM32_UpdateLeftMotorTarget(target);
-    	//STM32_UpdateRightMotorTarget(target);
+    //STM32_UpdateLeftMotorTarget(target);
+    //STM32_UpdateRightMotorTarget(target);
 
-    	//STM32_GetLeftMotorTarget(target_read);
-    	//STM32_GetRightMotorTarget(target_read);
+    //STM32_GetLeftMotorTarget(target_read);
+    //STM32_GetRightMotorTarget(target_read);
 
-    	Behavior_Run();
+    Behavior_Run();
 
 #if 0
-    	STM32_GetMotorCurrent(current);
-    	//ColorSensor_GetColor();
-    	STM32_GetBatteryVoltage(voltage);
+    STM32_GetMotorCurrent(current);
+    //ColorSensor_GetColor();
+    STM32_GetBatteryVoltage(voltage);
 
-    	//STM32_UpdateLeftMotorTarget(target);
-    	STM32_GetRightMotorTarget(target_read);
-    	STM32_CheckId();
-    	STM32_GetLeftMotorTarget(target_read);
+    //STM32_UpdateLeftMotorTarget(target);
+    STM32_GetRightMotorTarget(target_read);
+    STM32_CheckId();
+    STM32_GetLeftMotorTarget(target_read);
 
-        //target[0] = 0xD0;
-        //target[1] = 0xFA;
+    //target[0] = 0xD0;
+    //target[1] = 0xFA;
 
-    	ColorSensor_GetColor();
-    	STM32_UpdateLeftMotorTarget(target);
+    ColorSensor_GetColor();
+    STM32_UpdateLeftMotorTarget(target);
 
-    	STM32_GetMotorCurrent(current);
-    	STM32_CheckId();
-    	STM32_GetLeftMotorTarget(target_read);
-    	STM32_GetMotorCurrent(current);
-    	STM32_GetRightMotorTarget(target_read);
-    	STM32_GetBatteryVoltage(voltage);
-    	ColorSensor_GetColor();
+    STM32_GetMotorCurrent(current);
+    STM32_CheckId();
+    STM32_GetLeftMotorTarget(target_read);
+    STM32_GetMotorCurrent(current);
+    STM32_GetRightMotorTarget(target_read);
+    STM32_GetBatteryVoltage(voltage);
+    ColorSensor_GetColor();
 
-    	ColorSensor_GetColor();
-    	STM32_GetMotorCurrent(current);
-    	STM32_CheckId();
+    ColorSensor_GetColor();
+    STM32_GetMotorCurrent(current);
+    STM32_CheckId();
 
-    	STM32_GetMotorCurrent(current);
-    	STM32_GetBatteryVoltage(voltage);
+    STM32_GetMotorCurrent(current);
+    STM32_GetBatteryVoltage(voltage);
 
-    	STM32_GetMotorCurrent(current);
-    	STM32_CheckId();
+    STM32_GetMotorCurrent(current);
+    STM32_CheckId();
 
-    	STM32_GetMotorCurrent(current);
-    	STM32_GetBatteryVoltage(voltage);
+    STM32_GetMotorCurrent(current);
+    STM32_GetBatteryVoltage(voltage);
 
-    	STM32_GetMotorCurrent(current);
-    	STM32_CheckId();
+    STM32_GetMotorCurrent(current);
+    STM32_CheckId();
 
-    	STM32_GetMotorCurrent(current);
-    	STM32_GetBatteryVoltage(voltage);
-    	ColorSensor_GetColor();
+    STM32_GetMotorCurrent(current);
+    STM32_GetBatteryVoltage(voltage);
+    ColorSensor_GetColor();
 #endif
 
 
-        //ProxIR_ReadPulseDuration();
-        //STM32_GetBatteryVoltage(voltage);
-        //STM32_UpdateLeftMotorTarget(Target);
-        //Compass_GetMagneticField();
-        //STM32_GetMotorCurrent(current);
-        //Gyroscope_GetAngularPosition();
-        //STM32_GetBatteryVoltage(voltage);
-        //ColorSensor_GetColor();
+    //ProxIR_ReadPulseDuration();
+    //STM32_GetBatteryVoltage(voltage);
+    //STM32_UpdateLeftMotorTarget(Target);
+    //Compass_GetMagneticField();
+    //STM32_GetMotorCurrent(current);
+    //Gyroscope_GetAngularPosition();
+    //STM32_GetBatteryVoltage(voltage);
+    //ColorSensor_GetColor();
 
-        //BH1745NUC_CheckManufacturerId();
+    //BH1745NUC_CheckManufacturerId();
 
     vTaskDelay(50 / portTICK_PERIOD_MS);
   }
@@ -331,7 +333,7 @@ void WifiTask(void* pvParameter)
 //#if 0
   //while (1)
   {
-	//vTaskDelete(NULL);
+    //vTaskDelete(NULL);
     //vTaskDelay(200 / portTICK_PERIOD_MS);
   }
 //#endif
@@ -357,6 +359,8 @@ int app_main(void)
 
   Sensors_Init();
   Mode_Init();
+
+  ColorSensor_Init();
 
   //Timer125usSemaphore = xSemaphoreCreateBinary();
 

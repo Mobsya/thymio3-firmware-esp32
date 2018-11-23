@@ -38,8 +38,9 @@
 #define BATTERY_VOLTAGE_REG_ADDRESS     0x12u  //!< Battery voltage register address    (Read only)
 #define INDUCED_VOLTAGE_REG_ADDRESS     0x13u  //!< Induced voltage register address    (Read only)
 #define MOTOR_CURRENT_REG_ADDRESS       0x14u  //!< Motor current register address      (Read only)
-#define BUTTON_STATUS_REG_ADDRESS       0x15u  //!< Button status register address      (Read only)
-#define BUTTON_RAW_DATA_REG_ADDRESS     0x16u  //!< Button raw data register address    (Read only)
+#define PWM_DUTY_CYCLE_REG_ADDRESS      0x15u  //!< PWM duty cycle register address     (Read only)
+#define BUTTON_STATUS_REG_ADDRESS       0x16u  //!< Button status register address      (Read only)
+#define BUTTON_RAW_DATA_REG_ADDRESS     0x17u  //!< Button raw data register address    (Read only)
 
 #define STM32_ID                        0xBCu  //!< ID of the STM32
 
@@ -111,6 +112,18 @@ void STM32_UpdateLeftMotorTarget(int16_t* target)
 
 //_____________________________________________________________________________
 
+void STM32_UpdateRightMotorTarget(int16_t* target)
+{
+  uint8_t data[2];
+
+  data[0] = (uint8_t)(target[1]);
+  data[1] = (uint8_t)((target[1]) >> 8);
+
+  I2C_WriteToAddress(SLAVE_ADDRESS, RIGHT_MOTOR_TARGET_REG_ADDRESS, data, 2u);
+}
+
+//_____________________________________________________________________________
+
 void STM32_GetLeftMotorTarget(int16_t* target)
 {
   uint8_t data[2];
@@ -120,20 +133,8 @@ void STM32_GetLeftMotorTarget(int16_t* target)
   target[0] = ((data[1] << 8) | data[0]);
 
 #if 0  // TODO
-    vmVariables.target[0] = target[0];
+  vmVariables.target[0] = target[0];
 #endif
-}
-
-//_____________________________________________________________________________
-
-void STM32_UpdateRightMotorTarget(int16_t* target)
-{
-  uint8_t data[2];
-
-  data[0] = (uint8_t)(target[1]);
-  data[1] = (uint8_t)((target[1]) >> 8);
-
-  I2C_WriteToAddress(SLAVE_ADDRESS, RIGHT_MOTOR_TARGET_REG_ADDRESS, data, 2u);
 }
 
 //_____________________________________________________________________________
@@ -149,6 +150,21 @@ void STM32_GetRightMotorTarget(int16_t* target)
 #if 0  // TODO
   vmVariables.target[1] = target[1];
 #endif
+}
+
+//_____________________________________________________________________________
+
+void STM32_GetPwmDutyCycle(int16_t* dutyCycle)
+{
+  uint8_t data[4];
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, PWM_DUTY_CYCLE_REG_ADDRESS, data, 4u);
+
+  dutyCycle[0] = ((data[1] << 8) | data[0]);
+  dutyCycle[1] = ((data[3] << 8) | data[2]);
+
+  vmVariables.pwm[0] = dutyCycle[0];
+  vmVariables.pwm[1] = dutyCycle[1];
 }
 
 //_____________________________________________________________________________
@@ -206,7 +222,13 @@ void STM32_ReadButtonStatus(void)
 
   for (int16_t index = 0; index < 5; index++)
   {
-	ButtonStatus[index] = ((data & (1 << index)) >> index);
+    ButtonStatus[index] = ((data & (1 << index)) >> index);
+
+    if (ButtonStatus[index] != vmVariables.buttons_state[index])
+    {
+      SET_EVENT(index);
+    }
+
     vmVariables.buttons_state[index] = (int16_t)ButtonStatus[index];
   }
 }
