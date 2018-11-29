@@ -21,11 +21,13 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#define BUTTON_NUM   5u
+#include <stdbool.h>
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
+
+#define BUTTON_NUM   5u
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -52,11 +54,17 @@ typedef enum
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the xxx
+//! \brief     Read the status
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void STM32_Init(void);
+extern void STM32_ReadStatus(void);
+
+//! \brief     Check that the USB port is open
+//! \pre       None
+//! \param     None
+//! \return    True if the USB port is open, false otherwise
+extern bool STM32_IsUSBPortOpen(void);
 
 //! \brief     Check the ID of the STM32
 //! \pre       None

@@ -73,8 +73,9 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
-#if 0
 SemaphoreHandle_t Timer125usSemaphore = NULL;
+
+#if 0
 SemaphoreHandle_t Timer10msSemaphore = NULL;
 SemaphoreHandle_t Timer200msSemaphore = NULL;
 #endif
@@ -163,20 +164,49 @@ void SensorTask(void* pvParameter)
 
 //_____________________________________________________________________________
 
-void LedsTask(void* pvParameter)
+void SensorTask(void* pvParameter)
 {
-  ESP_LOGI(Tag, "Start Leds Task");
+  static bool first = true;
+
+  ESP_LOGI(Tag, "Start Sensor Task");
+
+  // Attempt to create a semaphore
+  Timer125usSemaphore = xSemaphoreCreateBinary();
+
+  timer_start(TIMER_GROUP_0, 1);
 
   Leds_Init();
 
   while (1)
   {
-    Leds_RunTask();
-    //Behavior_SetIRSensorsLeds();
+	if (Timer125usSemaphore != NULL)
+	{
+	  if (xSemaphoreTake(Timer125usSemaphore, 0) == pdTRUE) //portMAX_DELAY );
+      {
+	    if (first)
+	    {
+	      ESP_LOGI(Tag, "First run Leds Task");
+	      first = false;
+	    }
+
+	    Leds_RunTask();
+	    Sensors_RunTask();
+	    //Behavior_SetIRSensorsLeds();
+	    //ESP_LOGI(Tag, "Run Leds Task");
+      }
+	  else
+	  {
+	    // There was insufficient FreeRTOS heap available for the semaphore to
+	    // be created successfully
+	  }
+	}
+
     FeedWatchdog();
-    vTaskDelay(1 / portTICK_PERIOD_MS);
   }
 }
+
+
+
 
 //_____________________________________________________________________________
 
@@ -185,9 +215,9 @@ void CommTask(void* pvParameter)
   ESP_LOGI(Tag, "Start Comm Task");
 
   //ColorSensor_Init();
-  Accelerometer_Init();
-  Compass_Init();
-  Gyroscope_Init();
+  //Accelerometer_Init();
+  //Compass_Init();
+  //Gyroscope_Init();
 
   int16_t voltage[2] = {0, 0};
   int16_t current[2] = {0, 0};
@@ -202,15 +232,18 @@ void CommTask(void* pvParameter)
 
   while (1)
   {
+	//ESP_LOGI(Tag, "Run Comm Task");
+
     ColorSensor_GetColor();
-//#if 0
+#if 0
     Accelerometer_GetTapSource();
     Accelerometer_GetAcceleration();
     Compass_GetMagneticField();
     Gyroscope_GetAngularPosition();
-//#endif
+#endif
 
     STM32_CheckId();
+    STM32_ReadStatus();
     STM32_GetMotorCurrent(current);
     STM32_GetBatteryVoltage(voltage);
     STM32_GetPwmDutyCycle(pwm);
@@ -297,8 +330,13 @@ void AsebaTask(void* pvParameter)
 
   while (1)
   {
-    AsebaESP32_Run();
-    vTaskDelay(3 / portTICK_PERIOD_MS);
+	//ESP_LOGI(Tag, "Run Aseba Task");
+	//if (STM32_IsUSBPortOpen())
+	{
+      AsebaESP32_Run();
+	}
+
+    vTaskDelay(15 / portTICK_PERIOD_MS);
   }
 }
 
@@ -365,7 +403,7 @@ int app_main(void)
   //Timer125usSemaphore = xSemaphoreCreateBinary();
 
   Timer_Init(1, 1, 0.000125);  // TODO Move to Sensors_Init();
-  timer_start(TIMER_GROUP_0, 1);
+  //timer_start(TIMER_GROUP_0, 1);
   //timer_start(TIMER_GROUP_0, 1);
   //Timer_Init(0, 1, 0.2);
 
@@ -376,33 +414,33 @@ int app_main(void)
 
 //#if 0
   xTaskCreatePinnedToCore(
-    LedsTask,  // Function to implement the task
-    "leds",    // Name of the task
-    2048,         // Stack size in words
-    NULL,         // Task input parameter
-    2,            // Priority of the task
-    NULL,         // Task handle
-    appCore1);    // Core where the task should run
+    CommTask,    // Function to implement the task
+    "sensors",   // Name of the task
+    2048,        // Stack size in words
+    NULL,        // Task input parameter
+    3,           // Priority of the task
+    NULL,        // Task handle
+    appCore1);   // Core where the task should run
 //#endif
 //#if 0
   xTaskCreatePinnedToCore(
-    CommTask,  // Function to implement the task
-    "sensors",    // Name of the task
-    2048,         // Stack size in words
-    NULL,         // Task input parameter
-    3,            // Priority of the task
-    NULL,         // Task handle
-    appCore1);    // Core where the task should run
+    AsebaTask,   // Function to implement the task
+    "aseba",     // Name of the task
+    2048,        // Stack size in words
+    NULL,        // Task input parameter
+    4,           // Priority of the task
+    NULL,        // Task handle
+    appCore1);   // Core where the task should run
 //#endif
 //#if 0
   xTaskCreatePinnedToCore(
-    AsebaTask,    // Function to implement the task
-    "aseba",      // Name of the task
-    2048,         // Stack size in words
-    NULL,         // Task input parameter
-    4,            // Priority of the task
-    NULL,         // Task handle
-    appCore1);    // Core where the task should run
+    SensorTask,  // Function to implement the task
+    "sensor",    // Name of the task
+    2048,        // Stack size in words
+    NULL,        // Task input parameter
+    2,           // Priority of the task
+    NULL,        // Task handle
+    appCore1);   // Core where the task should run
 //#endif
 #if 0
   xTaskCreatePinnedToCore(
@@ -559,7 +597,7 @@ static void FeedWatchdog(void)
 
 void IRAM_ATTR timer_group0_isr(void* para)
 {
-  //static BaseType_t higherPriorityTaskWoken = false;
+  static BaseType_t higherPriorityTaskWoken = false;
 
   int timer_idx = (int) para;
 
@@ -580,11 +618,10 @@ void IRAM_ATTR timer_group0_isr(void* para)
   {
     TIMERG0.int_clr_timers.t1 = 1;
 
-    Sensors_RunTask();
+    //Sensors_RunTask();
 
-#if 0
     xSemaphoreGiveFromISR(Timer125usSemaphore, &higherPriorityTaskWoken);
-
+#if 0
     if (higherPriorityTaskWoken != pdFALSE)
     {
       portYIELD_FROM_ISR();

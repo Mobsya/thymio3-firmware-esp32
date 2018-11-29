@@ -186,7 +186,14 @@ void TimerHw_StartTimer(uint16_t interval, uint32_t duration)
 
 void TimerHw_StartTimer60us(void)
 {
-  ESP_ERROR_CHECK(esp_timer_start_once(Timer60us, 52));
+  ESP_ERROR_CHECK(esp_timer_start_once(Timer60us, 60));
+}
+
+//_____________________________________________________________________________
+
+void TimerHw_StartTimer375us(void)
+{
+  ESP_ERROR_CHECK(esp_timer_start_once(Timer60us, 375));
 }
 
 //_____________________________________________________________________________

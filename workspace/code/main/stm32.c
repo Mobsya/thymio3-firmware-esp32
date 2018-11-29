@@ -32,6 +32,7 @@
 
 #define SLAVE_ADDRESS                   0x04u  //!< Slave address
 
+#define STATUS_REG_ADDRESS              0x0Eu  //!< Status register address             (Read only)
 #define WHO_AM_I_REG_ADDRESS            0x0Fu  //!< Who_AM_I register address           (Read only)
 #define LEFT_MOTOR_TARGET_REG_ADDRESS   0x10u  //!< Left Motor target register address  (Read/Write)
 #define RIGHT_MOTOR_TARGET_REG_ADDRESS  0x11u  //!< Right Motor target register address (Read/Write)
@@ -43,6 +44,10 @@
 #define BUTTON_RAW_DATA_REG_ADDRESS     0x17u  //!< Button raw data register address    (Read only)
 
 #define STM32_ID                        0xBCu  //!< ID of the STM32
+
+#define USB_PORT_IS_OPEN_BIT_MASK       0x01u
+
+#define USB_PORT_IS_OPEN_BIT_POS           0u
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -57,6 +62,8 @@
 //-----------------------------------------------------------------------------
 
 static const char* Tag = "stm32";
+
+static uint8_t Status = 0;
 
 static uint8_t ButtonStatus[BUTTON_NUM] = {0u, 0u, 0u, 0u, 0u};
 
@@ -79,9 +86,20 @@ static void ReadId(uint8_t* id);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void STM32_Init(void)
+void STM32_ReadStatus(void)
 {
+  uint8_t data;
 
+  I2C_ReadFromAddress(SLAVE_ADDRESS, STATUS_REG_ADDRESS, &data, 1u);
+
+  Status = data;
+}
+
+//_____________________________________________________________________________
+
+bool STM32_IsUSBPortOpen(void)
+{
+  return ((Status & (1 << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
 }
 
 //_____________________________________________________________________________
