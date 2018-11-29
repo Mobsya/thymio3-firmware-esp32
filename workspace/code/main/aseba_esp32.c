@@ -683,7 +683,6 @@ void __attribute__((noreturn)) error_handler(const char* file, int line, int id,
 // return 0 if not the case
 int init_aseba_and_fifo(void)
 {
-
 #if 0
   int ret;
 
@@ -821,6 +820,7 @@ void set_save_settings(void)
   update_calib = 1;
 }
 
+#if 0
 //Called from the vm, escape hatch to handle messages specific to thymio.
 //Returns true if a message was handled
 int AsebaHandleDeviceInfoMessages(AsebaVMState* vm, uint16_t id, uint16_t* data, uint16_t dataLength)
@@ -903,6 +903,7 @@ int AsebaHandleDeviceInfoMessages(AsebaVMState* vm, uint16_t id, uint16_t* data,
   }
   return 0;
 }
+#endif
 
 //#if 0
 void AsebaESP32_Init(void)
@@ -915,6 +916,9 @@ void AsebaESP32_Init(void)
 #endif
 
   AsebaVMInit(&vmState);
+
+  vmState.nodeId = 1;
+
   vmVariables.id = vmState.nodeId;
   vmVariables.productid = PRODUCT_ID;
 

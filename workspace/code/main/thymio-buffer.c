@@ -270,19 +270,37 @@ static void uartSendUInt8(uint8_t value)
 
 static void uartSendUInt16(uint16_t value)
 {
-  UART_Write((uint8_t*)&value, 2);
+//#if 0
+  uint8_t data[2] =
+  {
+    (uint8_t)(value & 0x00FF),
+	(uint8_t)((value >> 8) & 0x00FF)
+  };
+
+  UART_Write(data, 2);
+//#endif
+
+#if 0
+  uint8_t val1 = (uint8_t)(value & 0x00FF);
+  uint8_t val2 = (uint8_t)((value >> 8) & 0x00FF);
+
+  UART_Write(&val1, 1);
+  UART_Write(&val2, 1);
+#endif
+
+  //UART_Write((uint8_t*)&value, 2);
   UART_WaitUntilTxFifoIsEmpty();
   //while (e_uart1_sending());
 }
 
 void AsebaSendBuffer(AsebaVMState* vm, const uint8_t* data, uint16_t length)
 {
-  uartSendUInt16(length - 2);
+  uartSendUInt16(length - 2u);
   uartSendUInt16(vmState.nodeId);
 
   //UART_Write(data, length);
 //#if 0
-  for (uint16_t i = 0; i < length; i++)
+  for (uint16_t i = 0u; i < length; i++)
   {
     uartSendUInt8(*data++);
   }

@@ -298,7 +298,7 @@ void AsebaTask(void* pvParameter)
   while (1)
   {
     AsebaESP32_Run();
-    vTaskDelay(15 / portTICK_PERIOD_MS);
+    vTaskDelay(3 / portTICK_PERIOD_MS);
   }
 }
 
@@ -455,6 +455,8 @@ void power_off(AsebaVMState* vm)
 {
   unsigned int flags;
 
+  switch_off();
+
   // Protect against two racing poweroff:
   //  One from the softirq (button)
   //  One from the VM
@@ -534,6 +536,14 @@ void update_aseba_variables_read(void)
 
   motor_get_vind((int*) vmVariables.uind);
 #endif
+}
+
+//_____________________________________________________________________________
+
+void switch_off(void)
+{
+  //STM32_UpdateLeftMotorTarget(0);
+  //STM32_UpdateRightMotorTarget(0);
 }
 
 //_____________________________________________________________________________
