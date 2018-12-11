@@ -121,8 +121,6 @@ uint8_t I2C_ReadByte(uint8_t slaveAddress, uint8_t registerAddress)
 
 void I2C_WriteToAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data, uint16_t size)
 {
-  esp_err_t error = ESP_FAIL;
-
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 
   ESP_ERROR_CHECK(i2c_master_start(cmd));
@@ -132,13 +130,7 @@ void I2C_WriteToAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data,
   ESP_ERROR_CHECK(i2c_master_stop(cmd));
 
   //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0));
-  //i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
-  error = i2c_master_cmd_begin(I2C_NUM_0, cmd, 0);
-
-  if (error != ESP_OK)
-  {
-    ESP_LOGE(Tag, "Write to address error %d", error);
-  }
+  i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
 
   i2c_cmd_link_delete(cmd);
 }
@@ -147,8 +139,6 @@ void I2C_WriteToAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data,
 
 void I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data, uint16_t size)
 {
-  esp_err_t error = ESP_FAIL;
-
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 
   ESP_ERROR_CHECK(i2c_master_start(cmd));
@@ -156,13 +146,7 @@ void I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data
   ESP_ERROR_CHECK(i2c_master_write_byte(cmd, regAddress, ACK_CHECK_ENABLE));
 
   //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0u));
-  //i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
-  error = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
-
-  if (error != ESP_OK)
-  {
-    ESP_LOGE(Tag, "Read to address (W) error %d", error);
-  }
+  i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
 
   i2c_cmd_link_delete(cmd);
 
@@ -174,13 +158,7 @@ void I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data
   ESP_ERROR_CHECK(i2c_master_stop(cmd));
 
   //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0u));
-  //i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
-  error = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
-
-  if (error != ESP_OK)
-  {
-    ESP_LOGE(Tag, "Read to address (R) error %d", error);
-  }
+  i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
 
   i2c_cmd_link_delete(cmd);
 }

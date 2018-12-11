@@ -26,6 +26,7 @@
 #include "uart.h"
 
 #include "board.h"
+#include "stm32.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -90,7 +91,10 @@ void UART_Init(void)
 
 void UART_Write(const uint8_t* data, uint16_t size)
 {
-  uart_write_bytes(UART_NUM, (const char*)data, size);
+  if (STM32_IsUSBPortOpen())
+  {
+    uart_write_bytes(UART_NUM, (const char*)data, size);
+  }
 }
 
 //_____________________________________________________________________________
