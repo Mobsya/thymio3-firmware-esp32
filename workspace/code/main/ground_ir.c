@@ -43,8 +43,8 @@
 
 typedef enum
 {
-  E_Sensor_Right,
-  E_Sensor_Left
+  E_Sensor_Left,
+  E_Sensor_Right
 } T_Sensor;
 
 //-----------------------------------------------------------------------------
@@ -60,12 +60,13 @@ static const T_GpioPinConfig PinConfig[GROUND_IR_PIN_NUM] =
   // PinNumber                Mode               Resistor             Level            Interrupt
   {IR_PULSE_GROUND_LEFT_PIN,  E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
   {IR_PULSE_GROUND_RIGHT_PIN, E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable}
-//  {IR_SENSE_GROUND_LEFT_PIN,  E_GpioMode_Input,  E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
-//  {IR_SENSE_GROUND_RIGHT_PIN, E_GpioMode_Input,  E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable}
 };
 
 static uint8_t ProxCalibMaxCounter[SENSORS_NUM];
 static int16_t ProxGroundMax[SENSORS_NUM];  // the calibration is not stored in settings
+
+static bool LeftPulseIsInProgress = false;
+static bool RightPulseIsInProgress = false;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -102,22 +103,30 @@ void GroundIR_EmitPulses(int16_t left, int16_t right, uint16_t tick)
   switch (tick)
   {
     case 50:
+      vmVariables.ground_ambiant[0] = left;
+      vmVariables.ground_ambiant[1] = right;
+
+      //TimerHw_StartRightTimer375us();
+
       Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_High);
-      vmVariables.ground_ambiant[0] = right;
-      vmVariables.ground_ambiant[1] = left;
+      //RightPulseIsInProgress = true;
       break;
 
     case 53:
+      vmVariables.ground_reflected[1] = right;
+      vmVariables.ground_delta[1] = PerformCalibration((right - vmVariables.ground_ambiant[1]), E_Sensor_Right);
+      //TimerHw_StartLeftTimer375us();
+
       Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_Low);
       Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_High);
-      vmVariables.ground_reflected[0] = right;
-      vmVariables.ground_delta[0] = PerformCalibration((right - vmVariables.ground_ambiant[0]), E_Sensor_Right);
+      //LeftPulseIsInProgress = true;
       break;
 
     case 56:
+      vmVariables.ground_reflected[0] = left;
+      vmVariables.ground_delta[0] = PerformCalibration((left - vmVariables.ground_ambiant[0]), E_Sensor_Left);
+
       Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_Low);
-      vmVariables.ground_reflected[1] = left;
-      vmVariables.ground_delta[1] = PerformCalibration((left - vmVariables.ground_ambiant[1]), E_Sensor_Left);
 
       SET_EVENT(EVENT_PROX);
       break;
@@ -197,4 +206,32 @@ static int16_t Calibrate(int16_t value, T_Sensor sensor)
   }
 
   return ret;
+}
+
+//_____________________________________________________________________________
+
+void TimerHw_CallbackRight375us(void* arg)
+{
+  if (RightPulseIsInProgress)
+  {
+    Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_Low);
+    RightPulseIsInProgress = false;
+
+    // Start the timer to generate the left pulse
+    //TimerHw_StartTimer375us();
+
+    //Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_High);
+    //LeftPulseIsInProgress = true;
+  }
+}
+
+//_____________________________________________________________________________
+
+void TimerHw_CallbackLeft375us(void* arg)
+{
+  if (LeftPulseIsInProgress)
+  {
+    Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_Low);
+    LeftPulseIsInProgress = false;
+  }
 }

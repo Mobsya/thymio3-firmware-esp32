@@ -37,10 +37,10 @@
 #define SOUND_OUT_PIN                  25u
 
 // IR ground pins
-#define IR_PULSE_GROUND_LEFT_PIN       32u
-#define IR_SENSE_GROUND_LEFT_PIN       39u
-#define IR_PULSE_GROUND_RIGHT_PIN      33u
-#define IR_SENSE_GROUND_RIGHT_PIN      34u
+#define IR_PULSE_GROUND_LEFT_PIN       33u
+#define IR_PULSE_GROUND_RIGHT_PIN      32u
+#define IR_SENSE_GROUND_LEFT_PIN       34u
+#define IR_SENSE_GROUND_RIGHT_PIN      39u
 
 // IR back pins
 #define IR_PULSE_BACK_PIN              26u
