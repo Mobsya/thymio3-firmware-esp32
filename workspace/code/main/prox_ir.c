@@ -93,8 +93,6 @@ static const T_GpioPinConfig PinConfig[PROX_IR_PIN_NUM] =
   // PinNumber                Mode               Resistor             Level            Interrupt
   {IR_PULSE_BACK_PIN,  E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
   {IR_PULSE_FRONT_PIN, E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable}
-//  {IR_SENSE_GROUND_LEFT_PIN,  E_GpioMode_Input,  E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
-//  {IR_SENSE_GROUND_RIGHT_PIN, E_GpioMode_Input,  E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable}
 };
 
 static uint8_t ProxCalibMaxCounter[SENSORS_NUM];
@@ -153,8 +151,6 @@ void ProxIR_Init(void)
     }
   }
 
-  TimerHw_Init();
-
   cap_queue = xQueueCreate(1, sizeof(Capture));
 
   // TODO configuration of Capture, Timers, ...
@@ -200,18 +196,16 @@ int16_t ProxIR_EmitPulses(uint16_t tick)
   switch (tick)
   {
     case 5:
-      TimerHw_StartTimer60us();
+      TimerHw_StartFrontTimer60us();
 
       Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_High);
-
       FrontPulseIsInProgress = true;
       break;
 
     case 6:
-      TimerHw_StartTimer60us();
+      TimerHw_StartBackTimer60us();
 
       Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_High);
-
       BackPulseIsInProgress = true;
       break;
 
@@ -487,18 +481,27 @@ static void ir_tx(int value)
 
 //_____________________________________________________________________________
 
-void TimerHw_Callback60us(void* arg)
+void TimerHw_CallbackFront60us(void* arg)
 {
   if (FrontPulseIsInProgress)
   {
     Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_Low);
-
     FrontPulseIsInProgress = false;
+
+    //TimerHw_StartTimer60us();
+
+    //Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_High);
+    //BackPulseIsInProgress = true;
   }
-  else if (BackPulseIsInProgress)
+}
+
+//_____________________________________________________________________________
+
+void TimerHw_CallbackBack60us(void* arg)
+{
+  if (BackPulseIsInProgress)
   {
     Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
-
     BackPulseIsInProgress = false;
   }
 }

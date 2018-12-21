@@ -88,15 +88,11 @@ static struct PrivateTimer TableTimers[MAX_TIMERS_ALLOWED];  //!< Table containi
 
 //static void periodic_timer_callback(void* arg);
 
-esp_timer_handle_t Timer60us;
+esp_timer_handle_t FrontTimer60us;
+esp_timer_handle_t BackTimer60us;
 
-#if 0
-esp_timer_handle_t Timer125us;
-esp_timer_handle_t Timer500us;
-esp_timer_handle_t Timer200ms;
-
-esp_timer_handle_t oneshot_timer;
-#endif
+esp_timer_handle_t RightTimer375us;
+esp_timer_handle_t LeftTimer375us;
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -108,14 +104,44 @@ esp_timer_handle_t oneshot_timer;
 
 void TimerHw_Init(void)
 {
-  // Configuration of Timer125us
-  const esp_timer_create_args_t timer60us_args =
+  // Configuration of FrontTimer60us
+  const esp_timer_create_args_t frontTimer60us_args =
   {
-    .callback = &TimerHw_Callback60us,
-    .name = "timer60us"
+    .callback = &TimerHw_CallbackFront60us,
+    .name = "frontTimer60us"
   };
 
-  ESP_ERROR_CHECK(esp_timer_create(&timer60us_args, &Timer60us));
+  ESP_ERROR_CHECK(esp_timer_create(&frontTimer60us_args, &FrontTimer60us));
+  // The timer has been created but is not running yet
+
+  // Configuration of BackTimer60us
+  const esp_timer_create_args_t backTimer60us_args =
+  {
+    .callback = &TimerHw_CallbackBack60us,
+    .name = "backTimer60us"
+  };
+
+  ESP_ERROR_CHECK(esp_timer_create(&backTimer60us_args, &BackTimer60us));
+  // The timer has been created but is not running yet
+
+  // Configuration of RightTimer375us
+  const esp_timer_create_args_t rightTimer375us_args =
+  {
+    .callback = &TimerHw_CallbackRight375us,
+    .name = "rightTimer375us"
+  };
+
+  ESP_ERROR_CHECK(esp_timer_create(&rightTimer375us_args, &RightTimer375us));
+  // The timer has been created but is not running yet
+
+  // Configuration of LeftTimer375us
+  const esp_timer_create_args_t leftTimer375us_args =
+  {
+    .callback = &TimerHw_CallbackLeft375us,
+    .name = "leftTimer375us"
+  };
+
+  ESP_ERROR_CHECK(esp_timer_create(&leftTimer375us_args, &LeftTimer375us));
   // The timer has been created but is not running yet
 
   //ESP_ERROR_CHECK(esp_timer_start_periodic(Timer125us, 125));
@@ -184,16 +210,30 @@ void TimerHw_StartTimer(uint16_t interval, uint32_t duration)
 
 //_____________________________________________________________________________
 
-void TimerHw_StartTimer60us(void)
+void TimerHw_StartFrontTimer60us(void)
 {
-  ESP_ERROR_CHECK(esp_timer_start_once(Timer60us, 60));
+  ESP_ERROR_CHECK(esp_timer_start_once(FrontTimer60us, 60));
 }
 
 //_____________________________________________________________________________
 
-void TimerHw_StartTimer375us(void)
+void TimerHw_StartBackTimer60us(void)
 {
-  ESP_ERROR_CHECK(esp_timer_start_once(Timer60us, 375));
+  ESP_ERROR_CHECK(esp_timer_start_once(BackTimer60us, 60));
+}
+
+//_____________________________________________________________________________
+
+void TimerHw_StartRightTimer375us(void)
+{
+  ESP_ERROR_CHECK(esp_timer_start_once(RightTimer375us, 375));
+}
+
+//_____________________________________________________________________________
+
+void TimerHw_StartLeftTimer375us(void)
+{
+  ESP_ERROR_CHECK(esp_timer_start_once(LeftTimer375us, 375));
 }
 
 //_____________________________________________________________________________

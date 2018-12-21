@@ -62,7 +62,13 @@ extern void TimerHw_Init(void);
 
 extern void TimerHw_StartTimer(uint16_t interval, uint32_t duration);
 
-extern void TimerHw_StartTimer60us(void);
+extern void TimerHw_StartFrontTimer60us(void);
+
+extern void TimerHw_StartBackTimer60us(void);
+
+extern void TimerHw_StartRightTimer375us(void);
+
+extern void TimerHw_StartLeftTimer375us(void);
 
 extern void TimerHw_Task(void);
 //extern void TimerHw_Task(void* pvParameter);
@@ -128,14 +134,12 @@ extern bool TimerHw_IsSchedulerFlagSet(void);
 //! \return    None
 extern void TimerHw_ResetSchedulerFlag(void);
 
-extern void TimerHw_Callback60us(void* arg);
+extern void TimerHw_CallbackFront60us(void* arg);
 
-extern void TimerHw_Callback125us(void* arg);
+extern void TimerHw_CallbackBack60us(void* arg);
 
-extern void TimerHw_Callback500us(void* arg);
+extern void TimerHw_CallbackRight375us(void* arg);
 
-extern void TimerHw_Callback200ms(void* arg);
-
-extern void oneshot_timer_callback(void* arg);
+extern void TimerHw_CallbackLeft375us(void* arg);
 
 #endif // TIMER_HW_H_

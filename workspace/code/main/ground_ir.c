@@ -100,6 +100,8 @@ void GroundIR_Init(void)
 
 void GroundIR_EmitPulses(int16_t left, int16_t right, uint16_t tick)
 {
+  //Gpio_TogglePinLevel(IR_PULSE_GROUND_RIGHT_PIN);
+//#if 0
   switch (tick)
   {
     case 50:
@@ -109,6 +111,7 @@ void GroundIR_EmitPulses(int16_t left, int16_t right, uint16_t tick)
       //TimerHw_StartRightTimer375us();
 
       Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_High);
+
       //RightPulseIsInProgress = true;
       break;
 
@@ -135,6 +138,7 @@ void GroundIR_EmitPulses(int16_t left, int16_t right, uint16_t tick)
       // Do nothing
       break;
   }
+//#endif
 }
 
 //_____________________________________________________________________________
@@ -214,7 +218,7 @@ void TimerHw_CallbackRight375us(void* arg)
 {
   if (RightPulseIsInProgress)
   {
-    Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_Low);
+    //Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_Low);
     RightPulseIsInProgress = false;
 
     // Start the timer to generate the left pulse
@@ -231,7 +235,7 @@ void TimerHw_CallbackLeft375us(void* arg)
 {
   if (LeftPulseIsInProgress)
   {
-    Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_Low);
+    //Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_Low);
     LeftPulseIsInProgress = false;
   }
 }

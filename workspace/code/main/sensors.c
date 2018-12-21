@@ -26,6 +26,7 @@
 #include "ground_ir.h"
 #include "leds.h"
 #include "prox_ir.h"
+#include "timer_hw.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -68,6 +69,7 @@ void Sensors_Init(void)
 
   GroundIR_Init();
   ProxIR_Init();
+  //TimerHw_Init();
 
   ESP_LOGI(Tag, "Sensors are initialized");
 }
@@ -102,7 +104,7 @@ void Sensors_RunTask(void)
 
   // The ground IR sensors need a period of 100ms (frequency = 10Hz),
   // The ground IR sensors trigger at time = 50, need 6 cycles
-  //GroundIR_EmitPulses(sensors[1], sensors[2], tick);
+  GroundIR_EmitPulses(sensors[1], sensors[2], tick);
   //GroundIR_EmitPulses(0, 0, tick);
 
   if (PeriodAccumulator < 0)
@@ -145,12 +147,4 @@ void Sensors_RunTask(void)
       tick = 0u;
     }
   }
-#if 0
-  tick++;
-
-  if (tick > PERIOD_100_ms)
-  {
-    tick = 0u;
-  }
-#endif
 }
