@@ -22,6 +22,7 @@
 
 #include "board.h"
 #include "gpio.h"
+#include "stm32.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -78,4 +79,11 @@ void Power_EnableVA(void)
 void Power_DisableVA(void)
 {
   Gpio_SetPinLevel(VA_ENABLE_PIN, E_GpioLevel_Low);
+}
+
+//_____________________________________________________________________________
+
+void Power_SwitchOff(void)
+{
+  Power_DisableVA();
 }

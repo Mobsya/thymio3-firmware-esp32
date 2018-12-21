@@ -59,4 +59,10 @@ extern void Power_EnableVA(void);
 //! \return    None
 extern void Power_DisableVA(void);
 
+//! \brief     Switch off the ESP32 and its peripherals
+//! \pre       First initialize the power
+//! \param     None
+//! \return    None
+extern void Power_SwitchOff(void);
+
 #endif // POWER_H_

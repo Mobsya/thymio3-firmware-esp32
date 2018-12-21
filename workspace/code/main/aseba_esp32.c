@@ -291,6 +291,7 @@ const AsebaVMDescription vmDescription =
     {3, "gyro"},
     {3, "compass"},
     {4, "ip"},
+	{2, "settings"},
     {0, NULL} // Null terminated
   }
 };

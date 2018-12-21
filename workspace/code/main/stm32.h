@@ -33,6 +33,12 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
+typedef struct
+{
+  int16_t LeftMotor;   //!< Correction factor of the left motor
+  int16_t RightMotor;  //!< Correction factor of the right motor
+} T_Settings;
+
 typedef enum
 {
   E_Button_Backward,  // Button 1
@@ -54,6 +60,12 @@ typedef enum
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
+//! \brief     Update the settings
+//! \pre       None
+//! \param     settings The settings applied to the motors
+//! \return    None
+extern void STM32_UpdateSettings(T_Settings settings);
+
 //! \brief     Read the status
 //! \pre       None
 //! \param     None
@@ -65,6 +77,18 @@ extern void STM32_ReadStatus(void);
 //! \param     None
 //! \return    True if the USB port is open, false otherwise
 extern bool STM32_IsUSBPortOpen(void);
+
+//! \brief     Check that the STM32 is ready to switch off
+//! \pre       None
+//! \param     None
+//! \return    True if the STM32 is ready to switch off, false otherwise
+extern bool STM32_IsReadyToSwitchOff(void);
+
+//! \brief     Allow the STM32 to switch off (sleep mode)
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void STM32_AllowToSwitchOff(void);
 
 //! \brief     Check the ID of the STM32
 //! \pre       None

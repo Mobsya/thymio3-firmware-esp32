@@ -32,10 +32,11 @@
 
 #define SLAVE_ADDRESS                   0x04u  //!< Slave address
 
-#define STATUS_REG_ADDRESS              0x0Eu  //!< Status register address             (Read only)
-#define WHO_AM_I_REG_ADDRESS            0x0Fu  //!< Who_AM_I register address           (Read only)
-#define LEFT_MOTOR_TARGET_REG_ADDRESS   0x10u  //!< Left Motor target register address  (Read/Write)
-#define RIGHT_MOTOR_TARGET_REG_ADDRESS  0x11u  //!< Right Motor target register address (Read/Write)
+#define SETTINGS_REG_ADDRESS            0x0Du  //!< Settings register address           (Read/Write)
+#define STATUS_REG_ADDRESS              0x0Eu  //!< Status register address             (Read/Write)
+#define WHO_AM_I_REG_ADDRESS            0x0Fu  //!< WHO_AM_I register address           (Read only)
+#define LEFT_MOTOR_TARGET_REG_ADDRESS   0x10u  //!< Left motor target register address  (Read/Write)
+#define RIGHT_MOTOR_TARGET_REG_ADDRESS  0x11u  //!< Right motor target register address (Read/Write)
 #define BATTERY_VOLTAGE_REG_ADDRESS     0x12u  //!< Battery voltage register address    (Read only)
 #define INDUCED_VOLTAGE_REG_ADDRESS     0x13u  //!< Induced voltage register address    (Read only)
 #define MOTOR_CURRENT_REG_ADDRESS       0x14u  //!< Motor current register address      (Read only)
@@ -45,9 +46,14 @@
 
 #define STM32_ID                        0xBCu  //!< ID of the STM32
 
+// Status register bit mask
 #define USB_PORT_IS_OPEN_BIT_MASK       0x01u
+#define READY_TO_SWITCH_OFF_BIT_MASK    0x02u
 
-#define USB_PORT_IS_OPEN_BIT_POS           0u
+// Status register bit position
+#define USB_PORT_IS_OPEN_BIT_POS           0u  // This bit is set by the STM32
+#define READY_TO_SWITCH_OFF_BIT_POS        1u  // This bit is set by the STM32
+#define OK_TO_SWITCH_OFF_BIT_POS           2u  // This bit is set by the ESP32
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -86,6 +92,20 @@ static void ReadId(uint8_t* id);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
+void STM32_UpdateSettings(T_Settings settings)
+{
+  uint8_t data[4];
+
+  data[0] = (uint8_t)(settings.LeftMotor);
+  data[1] = (uint8_t)((settings.LeftMotor) >> 8);
+  data[2] = (uint8_t)(settings.RightMotor);
+  data[3] = (uint8_t)((settings.RightMotor) >> 8);
+
+  I2C_WriteToAddress(SLAVE_ADDRESS, SETTINGS_REG_ADDRESS, data, 4u);
+}
+
+//_____________________________________________________________________________
+
 void STM32_ReadStatus(void)
 {
   uint8_t data;
@@ -100,6 +120,22 @@ void STM32_ReadStatus(void)
 bool STM32_IsUSBPortOpen(void)
 {
   return ((Status & (1 << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
+}
+
+//_____________________________________________________________________________
+
+bool STM32_IsReadyToSwitchOff(void)
+{
+  return ((Status & (1 << READY_TO_SWITCH_OFF_BIT_POS)) == READY_TO_SWITCH_OFF_BIT_MASK);
+}
+
+//_____________________________________________________________________________
+
+void STM32_AllowToSwitchOff(void)
+{
+  uint8_t data = (Status | (1 << OK_TO_SWITCH_OFF_BIT_POS));
+
+  I2C_WriteToAddress(SLAVE_ADDRESS, STATUS_REG_ADDRESS, &data, 1u);
 }
 
 //_____________________________________________________________________________

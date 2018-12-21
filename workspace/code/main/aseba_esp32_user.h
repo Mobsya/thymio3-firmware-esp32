@@ -91,6 +91,7 @@ struct _vmVariables
   int16_t gyro[3];
   int16_t compass[3];
   int16_t ip[4];
+  int16_t settings[2];
   int16_t freeSpace[VM_VARIABLES_FREE_SPACE];
 };
 
