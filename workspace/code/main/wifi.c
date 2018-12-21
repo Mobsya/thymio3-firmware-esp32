@@ -90,6 +90,12 @@ static const char* Tag = "wifi";
 
 static bool WifiIsConnected = false;
 
+static uint32_t IpForAseba = 0u;
+
+static EventGroupHandle_t EventGroup;
+
+const int WIFI_CONNECTED_BIT = BIT0;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -106,6 +112,8 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event);
 
 void WIFI_Init(void)
 {
+  EventGroup = xEventGroupCreate();
+
   // Initialize the TCP Stack
   tcpip_adapter_init();
 
@@ -116,27 +124,29 @@ void WIFI_Init(void)
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-  // Configure RAM as the WIFI parameters storage
-  ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-
-  // WIFI as Station Mode (connect to another wifi)
-  ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-
   wifi_config_t wifi_config =
   {
     .sta =
     {
       .ssid = CONFIG_WIFI_SSID,
       .password = CONFIG_WIFI_PASSWORD,
-      .scan_method = DEFAULT_SCAN_METHOD,
-      .sort_method = DEFAULT_SORT_METHOD,
-      .threshold.rssi = DEFAULT_RSSI,
-      .threshold.authmode = DEFAULT_AUTHMODE,
+      //.scan_method = DEFAULT_SCAN_METHOD,
+      //.sort_method = DEFAULT_SORT_METHOD,
+      //.threshold.rssi = DEFAULT_RSSI,
+      //.threshold.authmode = DEFAULT_AUTHMODE,
+	  //.bssid_set = false
     },
   };
 
-  ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+  // WIFI as Station Mode (connect to another wifi)
+  ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+
+  // Configure RAM as the WIFI parameters storage
+  ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+
+  ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
   ESP_ERROR_CHECK(esp_wifi_start());
+  ESP_ERROR_CHECK(esp_wifi_connect());
 }
 
 //_____________________________________________________________________________
@@ -156,9 +166,33 @@ void WIFI_InitNVS(void)
 
 //_____________________________________________________________________________
 
+void WIFI_Connect(void)
+{
+  ESP_ERROR_CHECK(esp_wifi_connect());
+}
+
+//_____________________________________________________________________________
+
+void WIFI_Disconnect(void)
+{
+  ESP_ERROR_CHECK(esp_wifi_disconnect());
+}
+
+//_____________________________________________________________________________
+
 bool WIFI_IsConnected(void)
 {
   return WifiIsConnected;
+}
+
+//_____________________________________________________________________________
+
+void WIFI_GetIPAddress(void)
+{
+  vmVariables.ip[0] = (IpForAseba & 0x000000FF);
+  vmVariables.ip[1] = ((IpForAseba & 0x0000FF00) >> 8);
+  vmVariables.ip[2] = ((IpForAseba & 0x00FF0000) >> 16);
+  vmVariables.ip[3] = ((IpForAseba & 0xFF000000) >> 24);
 }
 
 //_____________________________________________________________________________
@@ -230,13 +264,14 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
       ESP_LOGI(Tag, "SYSTEM_EVENT_STA_GOT_IP");
       const char* ip = ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip);
 
-      uint32_t ip_uint = ipaddr_addr(ip);
+      //uint32_t ip_uint = ipaddr_addr(ip);
+      IpForAseba = ipaddr_addr(ip);
 
       ESP_LOGI(Tag, "got ip:%s", ip);
-      ESP_LOGI(Tag, "%d", ip_uint);
+      //ESP_LOGI(Tag, "%d", ip_uint);
 
       //ESP_LOGI(Tag, "got ip:%s", ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
-
+#if 0
       ESP_LOGI(Tag, "%d", (ip_uint & 0x000000FF));
       ESP_LOGI(Tag, "%d", (ip_uint & 0x0000FF00) >> 8);
       ESP_LOGI(Tag, "%d", (ip_uint & 0x00FF0000) >> 16);
@@ -246,8 +281,8 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
       vmVariables.ip[1] = ((ip_uint & 0x0000FF00) >> 8);
       vmVariables.ip[2] = ((ip_uint & 0x00FF0000) >> 16);
       vmVariables.ip[3] = ((ip_uint & 0xFF000000) >> 24);
-
-      //xEventGroupSetBits(EventGroup, WIFI_CONNECTED_BIT);
+#endif
+      xEventGroupSetBits(EventGroup, WIFI_CONNECTED_BIT);
       WifiIsConnected = true;
       break;
 
@@ -266,7 +301,7 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
     case SYSTEM_EVENT_STA_DISCONNECTED:
       ESP_LOGI(Tag, "SYSTEM_EVENT_STA_DISCONNECTED");
       ESP_ERROR_CHECK(esp_wifi_connect());
-      //xEventGroupClearBits(EventGroup, WIFI_CONNECTED_BIT);
+      xEventGroupClearBits(EventGroup, WIFI_CONNECTED_BIT);
       break;
 
     default:

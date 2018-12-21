@@ -33,13 +33,15 @@
 #include "wifi_update.h"
 #include "ota_update.h"
 
+#include "aseba_esp32.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
 #define NORM_C(c) (((c) >= 32 && (c) < 127) ? (c) : '.')
 
-const int WIFI_UPDATE_CONNECTED_BIT = BIT0;
+const int CONNECTED_BIT = BIT0;
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -69,6 +71,8 @@ static EventGroupHandle_t EventGroup;
 // Indicates that we should trigger a re-boot after sending the response.
 static int RebootAfterReply;
 
+static uint32_t IpForAseba = 0u;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -89,28 +93,61 @@ static void NetworkTask(void* pvParameters);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void NVS_Init(void)
+void WIFIUpdate_InitNVS(void)
 {
-  //Initialize NVS
-  esp_err_t ret = nvs_flash_init();
-  if (ret == ESP_ERR_NVS_NO_FREE_PAGES)
+  esp_err_t result = nvs_flash_init();
+
+  if ((result == ESP_ERR_NVS_NO_FREE_PAGES) || (result == ESP_ERR_NVS_NEW_VERSION_FOUND))
   {
     ESP_ERROR_CHECK(nvs_flash_erase());
-    ret = nvs_flash_init();
+    result = nvs_flash_init();
   }
-  ESP_ERROR_CHECK(ret);
+
+  ESP_ERROR_CHECK(result);
 }
 
 //_____________________________________________________________________________
 
-void WifiUpdate_Init(void)
+void WIFIUpdate_Init(void)
 {
-  ESP_LOGI(Tag, "networkInit");
+  EventGroup = xEventGroupCreate();
 
-  ESP_ERROR_CHECK(esp_event_loop_init(EventHandler, NULL));
+  // Initialize the TCP Stack
   tcpip_adapter_init();
 
-  EventGroup = xEventGroupCreate();
+  // Initialize the system event handler
+  ESP_ERROR_CHECK(esp_event_loop_init(EventHandler, NULL));
+
+  // Configure the WIFI
+  wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+  ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+  wifi_config_t wifi_config =
+  {
+    .sta =
+	{
+	  .ssid = CONFIG_WIFI_SSID,
+	  .password = CONFIG_WIFI_PASSWORD,
+	  //.scan_method = DEFAULT_SCAN_METHOD,
+	  //.sort_method = DEFAULT_SORT_METHOD,
+	  //.threshold.rssi = DEFAULT_RSSI,
+	  //.threshold.authmode = DEFAULT_AUTHMODE,
+      //.bssid_set = false
+	},
+  };
+
+  // WIFI as Station Mode (connect to another wifi)
+  ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+
+  // Configure RAM as the WIFI parameters storage
+  ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+
+  ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+  ESP_ERROR_CHECK(esp_wifi_start());
+  ESP_ERROR_CHECK(esp_wifi_connect());
+
+  //ESP_LOGI(Tag, "WIFI configuration SSID %s...", wifi_config.sta.ssid);
+
   xTaskCreate(&NetworkTask, "NetworkTask", 32768, NULL, 5, NULL);
 
   OtaUpdate_Init();
@@ -145,9 +182,19 @@ void WifiUpdate_Disconnect(void)
 
 //_____________________________________________________________________________
 
-bool WifiUpdate_IsConnected(void)
+bool WIFIUpdate_IsConnected(void)
 {
-  return xEventGroupGetBits(EventGroup) & WIFI_UPDATE_CONNECTED_BIT;
+  return xEventGroupGetBits(EventGroup) & CONNECTED_BIT;
+}
+
+//_____________________________________________________________________________
+
+void WIFIUpdate_GetIPAddress(void)
+{
+  vmVariables.ip[0] = (IpForAseba & 0x000000FF);
+  vmVariables.ip[1] = ((IpForAseba & 0x0000FF00) >> 8);
+  vmVariables.ip[2] = ((IpForAseba & 0x00FF0000) >> 16);
+  vmVariables.ip[3] = ((IpForAseba & 0xFF000000) >> 24);
 }
 
 //_____________________________________________________________________________
@@ -157,42 +204,47 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
   switch (event->event_id)
   {
     case SYSTEM_EVENT_STA_START:
-      ESP_LOGI(Tag, "EventHandler: SYSTEM_EVENT_STA_START");
+      ESP_LOGI(Tag, "SYSTEM_EVENT_STA_START");
       esp_wifi_connect();
       break;
 
     case SYSTEM_EVENT_STA_GOT_IP:
-      ESP_LOGI(Tag, "EventHandler: SYSTEM_EVENT_STA_GOT_IP");
-      xEventGroupSetBits(EventGroup, WIFI_UPDATE_CONNECTED_BIT);
+      ESP_LOGI(Tag, "SYSTEM_EVENT_STA_GOT_IP");
+
+      const char* ip = ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip);
+      IpForAseba = ipaddr_addr(ip);
+
+      xEventGroupSetBits(EventGroup, CONNECTED_BIT);
+      //WifiIsConnected = true;
       break;
 
     case SYSTEM_EVENT_STA_DISCONNECTED:
-      ESP_LOGI(Tag, "EventHandler: SYSTEM_EVENT_STA_DISCONNECTED");
+      ESP_LOGI(Tag, "SYSTEM_EVENT_STA_DISCONNECTED");
       // try to re-connect
       esp_wifi_connect();
-      xEventGroupClearBits(EventGroup, WIFI_UPDATE_CONNECTED_BIT);
+      xEventGroupClearBits(EventGroup, CONNECTED_BIT);
       break;
 
     case SYSTEM_EVENT_AP_START:
-      ESP_LOGI(Tag, "EventHandler: SYSTEM_EVENT_AP_START");
+      ESP_LOGI(Tag, "SYSTEM_EVENT_AP_START");
       break;
 
     case SYSTEM_EVENT_AP_STOP:
-      ESP_LOGI(Tag, "EventHandler: SYSTEM_EVENT_AP_STADISCONNECTED");
+      ESP_LOGI(Tag, "SYSTEM_EVENT_AP_STADISCONNECTED");
       break;
 
     case SYSTEM_EVENT_AP_STACONNECTED:
-      ESP_LOGI(Tag, "EventHandler: SYSTEM_EVENT_AP_STACONNECTED: " MACSTR " id=%d",
+      ESP_LOGI(Tag, "SYSTEM_EVENT_AP_STACONNECTED: " MACSTR " id=%d",
                MAC2STR(event->event_info.sta_connected.mac), event->event_info.sta_connected.aid);
       break;
 
     case SYSTEM_EVENT_AP_STADISCONNECTED:
-      ESP_LOGI(Tag, "EventHandler: SYSTEM_EVENT_AP_STADISCONNECTED: " MACSTR " id=%d",
+      ESP_LOGI(Tag, "SYSTEM_EVENT_AP_STADISCONNECTED: " MACSTR " id=%d",
                MAC2STR(event->event_info.sta_disconnected.mac), event->event_info.sta_disconnected.aid);
       break;
 
     case SYSTEM_EVENT_AP_PROBEREQRECVED:
-      ESP_LOGI(Tag, "EventHandler: SYSTEM_EVENT_AP_STADISCONNECTED: " MACSTR " rssi=%d",
+      ESP_LOGI(Tag, "SYSTEM_EVENT_AP_STADISCONNECTED: " MACSTR " rssi=%d",
                MAC2STR(event->event_info.ap_probereqrecved.mac), event->event_info.ap_probereqrecved.rssi);
       break;
 
@@ -332,7 +384,7 @@ static void NetworkTask(void* pvParameters)
   while (1)
   {
     // Barrier for the connection (we need to be connected to an AP).
-    xEventGroupWaitBits(EventGroup, WIFI_UPDATE_CONNECTED_BIT, false, true, portMAX_DELAY);
+    xEventGroupWaitBits(EventGroup, CONNECTED_BIT, false, true, portMAX_DELAY);
     ESP_LOGI(Tag, "NetworkTask: connected to access point");
 
     // Create TCP socket.

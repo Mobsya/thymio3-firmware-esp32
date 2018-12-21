@@ -51,6 +51,12 @@ extern void WIFI_Init(void);
 
 extern void WIFI_InitNVS(void);
 
+extern void WIFI_Connect(void);
+
+extern void WIFI_Disconnect(void);
+
 extern bool WIFI_IsConnected(void);
+
+extern void WIFI_GetIPAddress(void);
 
 #endif // WIFI_H_
