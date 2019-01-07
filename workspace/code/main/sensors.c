@@ -69,7 +69,7 @@ void Sensors_Init(void)
 
   GroundIR_Init();
   ProxIR_Init();
-  //TimerHw_Init();
+  TimerHw_Init();
 
   ESP_LOGI(Tag, "Sensors are initialized");
 }
@@ -89,7 +89,7 @@ void Sensors_RunTask(void)
 //#endif
   //Leds_RunTask();
 
-  //PeriodAccumulator += ProxIR_EmitPulses(tick);
+  PeriodAccumulator += ProxIR_EmitPulses(tick);
   //PeriodAccumulator = 0;
 
   if (PeriodAccumulator > 100)

@@ -58,6 +58,8 @@ extern int16_t ProxIR_EmitPulses(uint16_t tick);
 
 extern void ProxIR_ReadPulseDuration(void);
 
+extern void ProxIR_GetPulseDuration(void);
+
 //! \brief     Enable the network
 //! \pre       First initialize the proximity IR sensors
 //! \param     None

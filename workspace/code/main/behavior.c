@@ -19,11 +19,13 @@
 //-----------------------------------------------------------------------------
 
 #include <stdint.h>
+#include <stdio.h>  // Only for debug
 
 #include "behavior.h"
 
 #include "aseba_esp32.h"
 #include "leds.h"
+#include "prox_ir.h"
 #include "stm32.h"
 
 //-----------------------------------------------------------------------------
@@ -73,8 +75,10 @@ static void Behavior_SetButtonsLeds(void);
 
 void Behavior_SetIRSensorsLeds(void)
 {
-  static int16_t max[IR_SENSOR_NUM] = {4000, 4000, 4000, 4000, 4000, 4000, 4000, 900, 900};
-  static int16_t min[IR_SENSOR_NUM] = {1200, 1200, 1200, 1200, 1200, 1200, 1200, 0, 0};
+  //static int16_t max[IR_SENSOR_NUM] = {4000, 4000, 4000, 4000, 4000, 4000, 4000, 900, 900};
+  static int16_t max[IR_SENSOR_NUM] = {50, 50, 50, 50, 50, 50, 900, 900, 900};
+  //static int16_t min[IR_SENSOR_NUM] = {1200, 1200, 1200, 1200, 1200, 1200, 1200, 0, 0};
+  static int16_t min[IR_SENSOR_NUM] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
   static T_Led led[IR_SENSOR_NUM] = {E_Led_Front_IR_0, E_Led_Front_IR_1, E_Led_Front_IR_2A,
                                      E_Led_Front_IR_3, E_Led_Front_IR_4, E_Led_IR_Back_Left,
@@ -85,12 +89,15 @@ void Behavior_SetIRSensorsLeds(void)
   int16_t delta = 0;
   int16_t brightness = 0;
 
+  //ProxIR_GetPulseDuration();
+
   for (uint8_t index = 0u; index < PROX_IR_SENSOR_NUM; index++)
   {
     if (max[index] < vmVariables.prox[index])
     {
       max[index] = vmVariables.prox[index];
     }
+#if 0
     else if ((vmVariables.prox[index] != 0) && (min[index] > vmVariables.prox[index]))
     {
       min[index] = vmVariables.prox[index];
@@ -99,6 +106,7 @@ void Behavior_SetIRSensorsLeds(void)
     {
       // Do nothing
     }
+#endif
   }
 
   for (uint8_t index = 0u; index < GROUND_IR_SENSOR_NUM; index++)
@@ -113,6 +121,7 @@ void Behavior_SetIRSensorsLeds(void)
   // Do a linear transformation from min-max to led 0-31!
   for (uint8_t index = 0u; index < PROX_IR_SENSOR_NUM; index++)
   {
+#if 0
     // Because of the min&max calculation above, we cannot have a
     // Division by 0 here.
     s = vmVariables.prox[index] - min[index];
@@ -124,6 +133,12 @@ void Behavior_SetIRSensorsLeds(void)
     }
 
     brightness = ((int32_t)s * MAX_BRIGHTNESS) / delta;
+#endif
+    s = (vmVariables.prox[index] > 0) ? vmVariables.prox[index] : 0;
+    brightness = ((int32_t)s * MAX_BRIGHTNESS) / max[index];
+
+    //printf("s = %d, b = %d\n", s, brightness);
+
     Leds_SetSingleBrightness(led[index], brightness);
 
     // The Front IR sensor has 2 LEDs (E_Led_Front_IR_2A and E_Led_Front_IR_2B)
