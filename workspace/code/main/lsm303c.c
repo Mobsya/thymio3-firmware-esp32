@@ -198,7 +198,7 @@ typedef uint8_t T_Mag_OperativeMode;
 
 enum
 {
-  E_Mag_FullScaleConfig_NotUsed,
+  E_Mag_FullScaleConfig_NotUsed = 0,
   E_Mag_FullScaleConfig_16gauss = 3
 };
 typedef uint8_t T_Mag_FullScaleConfig;

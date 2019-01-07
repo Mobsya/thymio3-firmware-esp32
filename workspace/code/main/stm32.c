@@ -69,7 +69,7 @@
 
 static const char* Tag = "stm32";
 
-static uint8_t Status = 0;
+static uint8_t Status = 0u;
 
 static uint8_t ButtonStatus[BUTTON_NUM] = {0u, 0u, 0u, 0u, 0u};
 

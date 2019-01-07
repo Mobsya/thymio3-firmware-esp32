@@ -98,7 +98,7 @@ void Accelerometer_GetTapSource(void)
 
   vmVariables.acc_tap = TapSource;
 
-  if (TapSource > 0)
+  if (TapSource > 0u)
   {
     SET_EVENT(EVENT_TAP);
   }
