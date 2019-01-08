@@ -65,7 +65,8 @@ extern void Sound_Init(void);
 //! \pre       First initialize the xxx
 //! \param     None
 //! \return    None
-extern void Sound_Task(int16_t note);
+extern void Sound_Task(void);
+//extern void Sound_Task(int16_t note);
 
 extern void Sound_SetFrequency(int16_t clk_8m_div, int16_t frequency_step);
 
