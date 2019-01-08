@@ -98,7 +98,7 @@ void GroundIR_Init(void)
 
 //_____________________________________________________________________________
 
-void GroundIR_EmitPulses(int16_t left, int16_t right, uint16_t tick)
+void GroundIR_EmitPulses(uint16_t tick, int16_t left, int16_t right)
 {
   //Gpio_TogglePinLevel(IR_PULSE_GROUND_RIGHT_PIN);
 //#if 0

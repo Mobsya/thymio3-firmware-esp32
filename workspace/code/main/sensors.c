@@ -82,6 +82,7 @@ void Sensors_RunTask(void)
 
   int16_t sensors[4];
 //#if 0
+  //if ((tick == 7) || (tick == 50) || (tick == 53) || (tick == 56))
   if ((tick == 50) || (tick == 53) || (tick == 56))
   {
     ADC_AcquireValues(sensors);
@@ -89,7 +90,7 @@ void Sensors_RunTask(void)
 //#endif
   //Leds_RunTask();
 
-  PeriodAccumulator += ProxIR_EmitPulses(tick);
+  //PeriodAccumulator += ProxIR_EmitPulses(tick, sensors[3]);
   //PeriodAccumulator = 0;
 
   if (PeriodAccumulator > 100)
@@ -104,7 +105,7 @@ void Sensors_RunTask(void)
 
   // The ground IR sensors need a period of 100ms (frequency = 10Hz),
   // The ground IR sensors trigger at time = 50, need 6 cycles
-  GroundIR_EmitPulses(sensors[1], sensors[2], tick);
+  GroundIR_EmitPulses(tick, sensors[1], sensors[2]);
   //GroundIR_EmitPulses(0, 0, tick);
 
   if (PeriodAccumulator < 0)
