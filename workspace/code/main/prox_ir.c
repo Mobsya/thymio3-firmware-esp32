@@ -40,19 +40,19 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define PROX_IR_PIN_NUM      2u  // FIXME
+#define PROX_IR_PULSE_PIN_NUM    2u
 
-#define SENSORS_NUM          7u
+#define SENSORS_NUM              7u
 
-#define CALIB_HYSTERESIS     20
+#define CALIB_HYSTERESIS         20
 
-#define DEFAULT_CALIB    0x7FFF
+#define DEFAULT_CALIB        0x7FFF
 
-#define CAP0_INT_EN     BIT(27)  // Capture 0 interrupt bit
-#define CAP1_INT_EN     BIT(28)  // Capture 1 interrupt bit
-#define CAP2_INT_EN     BIT(29)  // Capture 2 interrupt bit
+#define CAP0_INT_EN         BIT(27)  // Capture 0 interrupt bit
+#define CAP1_INT_EN         BIT(28)  // Capture 1 interrupt bit
+#define CAP2_INT_EN         BIT(29)  // Capture 2 interrupt bit
 
-#define CAP_SIG_NUM          3u  // Three capture signals
+#define CAP_SIG_NUM              3u  // Three capture signals
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -88,7 +88,7 @@ typedef struct
 
 static const char* Tag = "prox_ir";
 
-static const T_GpioPinConfig PinConfig[PROX_IR_PIN_NUM] =
+static const T_GpioPinConfig PinConfig[PROX_IR_PULSE_PIN_NUM] =
 {
   // PinNumber                Mode               Resistor             Level            Interrupt
   {IR_PULSE_BACK_PIN,  E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
@@ -148,7 +148,7 @@ static void IRAM_ATTR isr_handlerUnit1();
 
 void ProxIR_Init(void)
 {
-  for (uint16_t index = 0u; index < PROX_IR_PIN_NUM; index++)
+  for (uint16_t index = 0u; index < PROX_IR_PULSE_PIN_NUM; index++)
   {
     Gpio_ConfigurePin(&PinConfig[index]);
   }
@@ -176,20 +176,23 @@ void ProxIR_Init(void)
 
   // IR_SENSE_BACK_RIGHT_PIN is handled by the internal ADC
 
+#if 0
   gpio_pulldown_en(IR_SENSE_FRONT_1_PIN);    // Enable pull down on CAP0 signal
   gpio_pulldown_en(IR_SENSE_FRONT_2_PIN);    // Enable pull down on CAP1 signal
   gpio_pulldown_en(IR_SENSE_FRONT_3_PIN);    // Enable pull down on CAP2 signal
   gpio_pulldown_en(IR_SENSE_FRONT_4_PIN);    // Enable pull down on CAP0 signal
   gpio_pulldown_en(IR_SENSE_FRONT_5_PIN);    // Enable pull down on CAP1 signal
   gpio_pulldown_en(IR_SENSE_BACK_LEFT_PIN);  // Enable pull down on CAP2 signal
+#endif
 
-//#if 0  // TODO Uncomment when the MCPWM library is up-to-date
+#if 0  // TODO Uncomment when the MCPWM library is up-to-date
   mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
   mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
   mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
   mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
   mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
   mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
+#endif
 
   // Enable interrupt on CAP0, CAP1 and CAP2 signal,
   // so each this a rising or falling edge occurs interrupt is triggered
@@ -204,24 +207,37 @@ void ProxIR_Init(void)
 
 //_____________________________________________________________________________
 
-int16_t ProxIR_EmitPulses(uint16_t tick)
+int16_t ProxIR_EmitPulses(uint16_t tick, int16_t backRight)
 {
   switch (tick)
   {
     case 5:
       TimerHw_StartFrontTimer60us();
 
+      mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
+      mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
+      mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
+      mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
+      mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
+      mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
+
       Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_High);
       FrontPulseIsInProgress = true;
       break;
 
     case 6:
+      //vmVariables.prox[6] = backRight;
+
       TimerHw_StartBackTimer60us();
 
       Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_High);
       BackPulseIsInProgress = true;
       break;
-
+#if 0
+    case 7:
+      vmVariables.prox[6] = backRight;
+      break;
+#endif
     case 11:
       //Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
       //ProxIR_ReadPulseDuration();
@@ -230,6 +246,13 @@ int16_t ProxIR_EmitPulses(uint16_t tick)
 
     case 12:
       ReadUnit1PulseDuration();
+
+      mcpwm_capture_disable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);
+      mcpwm_capture_disable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1);
+      mcpwm_capture_disable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2);
+      mcpwm_capture_disable(MCPWM_UNIT_1, MCPWM_SELECT_CAP0);
+      mcpwm_capture_disable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1);
+      mcpwm_capture_disable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2);
       break;
 
     default:

@@ -90,7 +90,7 @@ void Sensors_RunTask(void)
 //#endif
   //Leds_RunTask();
 
-  //PeriodAccumulator += ProxIR_EmitPulses(tick, sensors[3]);
+  PeriodAccumulator += ProxIR_EmitPulses(tick, sensors[3]);
   //PeriodAccumulator = 0;
 
   if (PeriodAccumulator > 100)
