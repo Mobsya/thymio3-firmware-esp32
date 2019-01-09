@@ -37,6 +37,12 @@
 
 #define IR_SENSOR_NUM           (PROX_IR_SENSOR_NUM + GROUND_IR_SENSOR_NUM)
 
+#define when(cond) if(({static unsigned char prev; \
+						unsigned char c = !!(cond); \
+						unsigned char result = c && !prev; \
+						prev = c; \
+						result;}))
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -53,7 +59,7 @@ static uint16_t behavior = 0u;
 
 #define ENABLED(b)              (behavior & b)   //({behavior & b;})
 #define ENABLE(b)               (behavior |= b)  //do {behavior |= b;} while(0)
-#define DISABLE(b)              (behavior &= ~b) //do {behavior &= ~b;} while(0)
+#define DISABLE(b)              (behavior &= ~b)//do {behavior &= ~b;} while(0)  //(behavior &= ~b)
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -63,7 +69,23 @@ static uint16_t behavior = 0u;
 //! \pre       None
 //! \param     None
 //! \return    None
-static void Behavior_SetButtonsLeds(void);
+static void SetButtonsLeds(void);
+
+//! \brief     Set the IR sensors LEDs
+//! \pre       None
+//! \param     None
+//! \return    None
+static void SetIRSensorsLeds(void);
+
+//! \brief     Set the accelerometer LEDs
+//! \pre       None
+//! \param     None
+//! \return    None
+static void SetAccelerometerLeds(void);
+
+static void RunExplorer(void);  // TODO Move to mode.c
+
+static int body_color_pulse_get(void);  // TODO Move to mode.c
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -73,7 +95,133 @@ static void Behavior_SetButtonsLeds(void);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void Behavior_SetIRSensorsLeds(void)
+void Behavior_Run(void)
+{
+  if (ENABLED(B_LEDS_BUTTON))
+  {
+    SetButtonsLeds();
+  }
+//#if 0  // FIXME
+  if (ENABLED(B_LEDS_PROX))
+  {
+    SetIRSensorsLeds();
+  }
+
+  if (ENABLED(B_LEDS_ACC))
+  {
+    SetAccelerometerLeds();
+  }
+//#endif
+
+#if 0  // FIXME
+  RunExplorer();
+#endif
+}
+
+//_____________________________________________________________________________
+
+void Behavior_Start(uint16_t b)
+{
+  //ENABLE(b);
+
+  behavior |= b;
+}
+
+//_____________________________________________________________________________
+
+void Behavior_Stop(uint16_t b)
+{
+  DISABLE(b);
+
+  //behavior &= ~b;
+}
+
+//_____________________________________________________________________________
+
+static void SetButtonsLeds(void)
+{
+  static uint8_t brightness[BUTTON_NUM] = {MIN_BRIGHTNESS, MIN_BRIGHTNESS, MIN_BRIGHTNESS,
+                                           MIN_BRIGHTNESS, MIN_BRIGHTNESS
+                                          };
+  uint8_t* buttonState;
+
+  buttonState = STM32_GetButtonStatus();
+
+  for (T_Button index = E_Button_Backward; index <= E_Button_Right; index++)
+  {
+    if (buttonState[index] != 0u)
+    {
+      brightness[index] += 3u;
+
+      if (brightness[index] > MAX_BRIGHTNESS)
+      {
+        brightness[index] = MAX_BRIGHTNESS;
+      }
+    }
+    else
+    {
+      brightness[index] = MIN_BRIGHTNESS;
+    }
+  }
+
+  if (brightness[E_Button_Center] > MIN_BRIGHTNESS)
+  {
+    for (T_Led index = E_Led_Button_0; index <= E_Led_Button_1; index++)
+    {
+      Leds_SetSingleBrightness(index, brightness[E_Button_Center]);
+    }
+  }
+  else
+  {
+    if (brightness[E_Button_Backward] != MIN_BRIGHTNESS)
+    {
+      Leds_SetSingleBrightness(E_Led_Button_2, brightness[E_Button_Backward]);
+    }
+
+    if (brightness[E_Button_Left] != MIN_BRIGHTNESS)
+    {
+      Leds_SetSingleBrightness(E_Led_Button_3, brightness[E_Button_Left]);
+    }
+
+    if (brightness[E_Button_Forward] != MIN_BRIGHTNESS)
+    {
+      Leds_SetSingleBrightness(E_Led_Button_0, brightness[E_Button_Forward]);
+    }
+
+    if (brightness[E_Button_Right] != MIN_BRIGHTNESS)
+    {
+      Leds_SetSingleBrightness(E_Led_Button_1, brightness[E_Button_Right]);
+    }
+  }
+
+  if ((brightness[E_Button_Backward] == MIN_BRIGHTNESS) &&
+      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
+  {
+    Leds_SetSingleBrightness(E_Led_Button_2, MIN_BRIGHTNESS);
+  }
+
+  if ((brightness[E_Button_Left] == MIN_BRIGHTNESS) &&
+      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
+  {
+    Leds_SetSingleBrightness(E_Led_Button_3, MIN_BRIGHTNESS);
+  }
+
+  if ((brightness[E_Button_Forward] == MIN_BRIGHTNESS) &&
+      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
+  {
+    Leds_SetSingleBrightness(E_Led_Button_0, MIN_BRIGHTNESS);
+  }
+
+  if ((brightness[E_Button_Right] == MIN_BRIGHTNESS) &&
+      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
+  {
+    Leds_SetSingleBrightness(E_Led_Button_1, MIN_BRIGHTNESS);
+  }
+}
+
+//_____________________________________________________________________________
+
+void SetIRSensorsLeds(void)
 {
   //static int16_t max[IR_SENSOR_NUM] = {4000, 4000, 4000, 4000, 4000, 4000, 4000, 900, 900};
   static int16_t max[IR_SENSOR_NUM] = {50, 50, 50, 50, 50, 50, 900, 900, 900};
@@ -159,111 +307,250 @@ void Behavior_SetIRSensorsLeds(void)
 
 //_____________________________________________________________________________
 
-void Behavior_Run(void)
+int16_t aseba_atan2(int16_t y, int16_t x); // We use a function which should be private to aseba native ...
+
+static void SetAccelerometerLeds(void)
 {
-  if (ENABLED(B_LEDS_BUTTON))
+  static int previous_led;
+
+  int intensity;
+  int led = -1;
+
+  // FIXME: Use vmVariables ?!
+  if (vmVariables.acc_bis[2] < 16800)  // 21
   {
-    Behavior_SetButtonsLeds();
+    int ha = (aseba_atan2(vmVariables.acc_bis[0], vmVariables.acc_bis[1]) / 2);
+
+    //printf("z = %d\n", vmVariables.acc_bis[2]);
+    //printf("ha = %d\n", ha);
+
+    if ((ha >= -2000) && (ha < 2000))
+    {
+	  led = E_Led_Circle_4;
+    }
+	else if ((ha < -2000) && (ha >= -6000))
+	{
+	  led = E_Led_Circle_3;
+	}
+	else if (ha < -6000 && ha >= -10000)
+	{
+	  led = E_Led_Circle_2;
+	}
+	else if ((ha < -10000) && (ha >= -14000))
+	{
+	  led = E_Led_Circle_1;
+	}
+	else if ((ha  < -14000) || (ha >= 14000))
+	{
+	  led = E_Led_Circle_0;
+	}
+	else if ((ha < 6000) && (ha >= 2000))
+	{
+	  led = E_Led_Circle_5;
+	}
+	else if ((ha < 10000) && (ha >= 6000))
+	{
+	  led = E_Led_Circle_6;
+	}
+	else if ((ha < 14000) && (ha >= 10000))
+	{
+	  led = E_Led_Circle_7;
+	}
+	else
+	{
+	  // Do nothing
+	}
+
+	//intensity = (40 - (abs(vmVariables.acc_bis[2]) * 2));  // TODO
+    intensity = 32;
+
+	if (intensity < 0)
+	{
+	  intensity = 0;
+	}
+
+	if (led >= 0)
+	{
+	  if (previous_led >= 0)
+	  {
+	    Leds_SetSingleBrightness(previous_led, 0);
+	  }
+
+	  Leds_SetSingleBrightness(led, intensity);
+	}
+
+	previous_led = led;
+
+  }
+  else
+  {
+    if (previous_led >= 0)
+    {
+      Leds_SetSingleBrightness(previous_led, 0);
+    }
+
+	previous_led = -1;
   }
 }
 
 //_____________________________________________________________________________
 
-void Behavior_Start(uint16_t b)
+static void RunExplorer(void)
 {
-  //ENABLE(b);
+  static unsigned char led_state;
+  static int16_t speed = 150;
 
-  behavior |= b;
-}
+  unsigned char l[8] = {0,0,0,0,0,0,0,0};
+  unsigned char fixed;
 
-//_____________________________________________________________________________
-
-void Behavior_Stop(uint16_t b)
-{
-  //DISABLE(b);
-
-  behavior &= ~b;
-}
-
-//_____________________________________________________________________________
-
-static void Behavior_SetButtonsLeds(void)
-{
-  static uint8_t brightness[BUTTON_NUM] = {MIN_BRIGHTNESS, MIN_BRIGHTNESS, MIN_BRIGHTNESS,
-                                           MIN_BRIGHTNESS, MIN_BRIGHTNESS
-                                          };
   uint8_t* buttonState;
 
   buttonState = STM32_GetButtonStatus();
 
-  for (T_Button index = E_Button_Backward; index <= E_Button_Right; index++)
-  {
-    if (buttonState[index] != 0u)
-    {
-      brightness[index] += 3u;
+  int p = body_color_pulse_get(); // FIXME
+  //printf("p = %d\n", p);
+  //Leds_SetTopBrightness(p, p, 0);
+  //Leds_SetTopBrightness(32, 32, 0);
 
-      if (brightness[index] > MAX_BRIGHTNESS)
-      {
-        brightness[index] = MAX_BRIGHTNESS;
-      }
-    }
-    else
+  // circle led management
+  led_state += 2;
+  fixed = led_state / 32;
+  l[fixed] = 32;
+  l[(fixed - 1) & 0x7] = 32 - (led_state & 0x1F);
+  l[(fixed + 1) & 0x7] = led_state & 0x1F;
+  Leds_SetCircleBrightness(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7]);
+
+  // Button management
+  when (buttonState[E_Button_Forward])
+  {
+    speed = (speed + 50);
+
+    if (speed > 500)
     {
-      brightness[index] = MIN_BRIGHTNESS;
+      speed = 500;
+	}
+  }
+
+  when (buttonState[E_Button_Backward])
+  {
+    speed = (speed - 50);
+
+    if (speed < -300)
+    {
+      speed = -300;
     }
   }
 
-  if (brightness[E_Button_Center] > MIN_BRIGHTNESS)
+  if (speed >= 0)
   {
-    for (T_Led index = E_Led_Button_0; index <= E_Led_Button_1; index++)
+    int32_t temp1 = 0;
+	int32_t temp2 = 0;
+
+	temp1 += vmVariables.prox[0];
+	temp1 += vmVariables.prox[1] * 2;
+	temp1 += vmVariables.prox[2] * 3;
+	temp1 += vmVariables.prox[3] * 2;
+	temp1 += vmVariables.prox[4];
+
+	temp2 += vmVariables.prox[0] * -4;
+	temp2 += vmVariables.prox[1] * -3;
+	temp2 += vmVariables.prox[3] * 3;
+	temp2 += vmVariables.prox[4] * 4;
+
+	//printf("speed = %d, temp1 = %d, temp2 = %d\n", speed, temp1, temp2);
+
+	vmVariables.target[0] = speed - (((temp1 + temp2) * speed) / 500); //2000);
+	vmVariables.target[1] = speed - (((temp1 - temp2) * speed) / 500); //2000);
+
+	//printf("target = %d\n", vmVariables.target[0]);
+
+    if (vmVariables.target[0] < -600)
     {
-      Leds_SetSingleBrightness(index, brightness[E_Button_Center]);
+	  vmVariables.target[0] = -600;
+    }
+
+    if (vmVariables.target[1] < -600)
+    {
+	  vmVariables.target[1]= -600;
+    }
+
+    if (vmVariables.target[0] > 600)
+    {
+	  vmVariables.target[0] = 600;
+    }
+
+    if (vmVariables.target[1] > 600)
+    {
+	  vmVariables.target[1] = 600;
     }
   }
   else
   {
-    if (brightness[E_Button_Backward] != MIN_BRIGHTNESS)
+    int32_t temp = ((int32_t)vmVariables.prox[6] * (int32_t)speed);
+	vmVariables.target[0] = speed + (temp / -300);
+
+	temp = ((int32_t)vmVariables.prox[5] * (int32_t)speed);
+	vmVariables.target[1] = speed  + (temp / -300);
+
+    if (vmVariables.target[0] < -600)
     {
-      Leds_SetSingleBrightness(E_Led_Button_2, brightness[E_Button_Backward]);
+	  vmVariables.target[0] = -600;
     }
 
-    if (brightness[E_Button_Left] != MIN_BRIGHTNESS)
+    if (vmVariables.target[1] < -600)
     {
-      Leds_SetSingleBrightness(E_Led_Button_3, brightness[E_Button_Left]);
+	  vmVariables.target[1]= -600;
     }
 
-    if (brightness[E_Button_Forward] != MIN_BRIGHTNESS)
+    if (vmVariables.target[0] > 600)
     {
-      Leds_SetSingleBrightness(E_Led_Button_0, brightness[E_Button_Forward]);
+	  vmVariables.target[0] = 600;
     }
 
-    if (brightness[E_Button_Right] != MIN_BRIGHTNESS)
+    if (vmVariables.target[1] > 600)
     {
-      Leds_SetSingleBrightness(E_Led_Button_1, brightness[E_Button_Right]);
+	  vmVariables.target[1] = 600;
     }
   }
 
-  if ((brightness[E_Button_Backward] == MIN_BRIGHTNESS) &&
-      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
+  if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
   {
-    Leds_SetSingleBrightness(E_Led_Button_2, MIN_BRIGHTNESS);
+	vmVariables.target[0] = 0;
+	vmVariables.target[1] = 0;
+	Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 32);
+	Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 32);
+  }
+  else
+  {
+	Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0);
+	Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0);
+  }
+}
+
+//_____________________________________________________________________________
+
+static int body_color_pulse_get(void)
+{
+  static int16_t led_pulse;
+  int16_t ret;
+
+  led_pulse++;
+
+  if (led_pulse > 0)
+  {
+    ret = led_pulse;
+
+    if (led_pulse >= 32)
+    {
+	  led_pulse = -128;
+    }
+  }
+  else
+  {
+	ret = -led_pulse/4;
   }
 
-  if ((brightness[E_Button_Left] == MIN_BRIGHTNESS) &&
-      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
-  {
-    Leds_SetSingleBrightness(E_Led_Button_3, MIN_BRIGHTNESS);
-  }
+  //printf("p = %d, ret = %d\n", led_pulse, ret);
 
-  if ((brightness[E_Button_Forward] == MIN_BRIGHTNESS) &&
-      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
-  {
-    Leds_SetSingleBrightness(E_Led_Button_0, MIN_BRIGHTNESS);
-  }
-
-  if ((brightness[E_Button_Right] == MIN_BRIGHTNESS) &&
-      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
-  {
-    Leds_SetSingleBrightness(E_Led_Button_1, MIN_BRIGHTNESS);
-  }
+  return ret;
 }

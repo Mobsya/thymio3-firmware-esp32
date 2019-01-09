@@ -137,12 +137,30 @@ void BehaviorTask(void* pvParameter)
 	}
 
     Behavior_Run();
-	Behavior_SetIRSensorsLeds();
+	//Behavior_SetIRSensorsLeds();
+
 	//ProxIR_ReadPulseDuration();
-    vTaskDelay(80 / portTICK_PERIOD_MS);
+    vTaskDelay(45 / portTICK_PERIOD_MS);
   }
 }
 //#endif
+
+//_____________________________________________________________________________
+
+void SoundTask(void* pvParameter)
+{
+  ESP_LOGI(Tag, "Start Sound Task");
+
+  Sound_Init();
+
+  //while (1)
+  {
+    Sound_Task();
+
+    FeedWatchdog();
+    //vTaskDelay(50 / portTICK_PERIOD_MS);
+  }
+}
 
 //_____________________________________________________________________________
 
@@ -226,6 +244,7 @@ void CommTask(void* pvParameter)
 
   while (1)
   {
+//#if 0
     STM32_ReadStatus();
 	STM32_GetMotorCurrent(current);
 	STM32_GetBatteryVoltage(vbat);
@@ -235,12 +254,13 @@ void CommTask(void* pvParameter)
 	STM32_GetButtonRawData(button_raw);
 
     ColorSensor_GetColor();
-#if 0
+//#endif
+//#if 0
     Accelerometer_GetTapSource();
     Accelerometer_GetAcceleration();
     Compass_GetMagneticField();
     Gyroscope_GetAngularPosition();
-#endif
+//#endif
 
     //STM32_CheckId();
     //STM32_GetButtonRawData(button_raw);
@@ -259,8 +279,8 @@ void CommTask(void* pvParameter)
     }
 #endif
 
-    Behavior_Run();
-	Behavior_SetIRSensorsLeds();
+    //Behavior_Run();
+	//Behavior_SetIRSensorsLeds();
 	//ProxIR_ReadPulseDuration();
 
     vTaskDelay(50 / portTICK_PERIOD_MS);
@@ -284,23 +304,6 @@ void AsebaTask(void* pvParameter)
   }
 }
 
-//_____________________________________________________________________________
-#if 0
-void SoundTask(void* pvParameter)
-{
-  ESP_LOGI(Tag, "Start Sound Task");
-
-  Sound_Init();
-
-  while (1)
-  {
-    //Sound_Task();
-
-    FeedWatchdog();
-    vTaskDelay(5 / portTICK_PERIOD_MS);
-  }
-}
-#endif
 //_____________________________________________________________________________
 #if 0
 void WifiTask(void* pvParameter)
@@ -342,19 +345,21 @@ int app_main(void)
   Gpio_Init();
   Power_Init();
   I2C_Init();
+  //I2S_Init();
 
   //Leds_Init();
   Sensors_Init();
   Mode_Init();
+  Mode_InitVM();
 
   ColorSensor_Init();
-#if 0
+//#if 0
   Accelerometer_Init();
   Compass_Init();
   Gyroscope_Init();
-#endif
+//#endif
 
-//#if 0
+#if 0
   //WIFI_InitNVS();
   //WIFI_Init();
   WIFIUpdate_InitNVS();
@@ -363,19 +368,27 @@ int app_main(void)
 
   //while (!WIFIUpdate_IsConnected())
   {}
-//#endif
+#endif
 
-  Timer_Init(0, 1, 0.000125);  // TODO Move to Sensors_Init();
+  Timer_Init(0, 1, 0.000125);
 
-
-
-#if 0
+//#if 0
   xTaskCreatePinnedToCore(
     BehaviorTask, // Function to implement the task
     "behavior",   // Name of the task
     2048,         // Stack size in words
     NULL,         // Task input parameter
     2,            // Priority of the task
+    NULL,         // Task handle
+    appCore1);    // Core where the task should run
+//#endif
+#if 0
+  xTaskCreatePinnedToCore(
+    SoundTask,    // Function to implement the task
+    "sound",      // Name of the task
+    2048,         // Stack size in words
+    NULL,         // Task input parameter
+    3,            // Priority of the task
     NULL,         // Task handle
     appCore1);    // Core where the task should run
 #endif
@@ -419,16 +432,6 @@ int app_main(void)
     NULL,        // Task handle
     appCore1);   // Core where the task should run
 //#endif
-#if 0
-  xTaskCreatePinnedToCore(
-    SoundTask,    // Function to implement the task
-    "sound",      // Name of the task
-    2048,         // Stack size in words
-    NULL,         // Task input parameter
-    5,            // Priority of the task
-    NULL,         // Task handle
-    appCore1);    // Core where the task should run
-#endif
 
   return 0;
 }
@@ -650,7 +653,39 @@ static void Settings_Init()
   Settings.LeftMotor  = 256;
   Settings.RightMotor = 256;
 
-  OldSettings.LeftMotor  = 256;
-  OldSettings.RightMotor = 256;
+  OldSettings.LeftMotor  = 0;
+  OldSettings.RightMotor = 0;
 }
 
+//_____________________________________________________________________________
+
+void AsebaVMResetCB(AsebaVMState *vm)
+{
+#if 0 // FIXME
+	leds_set_circle(0,0,0,0,0,0,0,0);
+	leds_set_body_rgb(0,0,0);
+	leds_set(LED_SOUND,0);
+	leds_set(LED_RC,0);
+#endif
+	Behavior_Start(B_LEDS_ACC);
+#if 0 // FIXME
+	behavior_start(B_LEDS_NTC);
+	behavior_start(B_LEDS_MIC);
+#endif
+	Behavior_Start(B_LEDS_PROX);
+#if 0 // FIXME
+	behavior_start(B_SOUND_BUTTON);
+	behavior_start(B_LEDS_MIC);
+	behavior_start(B_LEDS_RC5);
+	prox_disable_network();
+	events_flags[0] = 0;
+	events_flags[1] = 0;
+	memset(vm->variables, 0, vm->variablesSize*sizeof(int16_t));
+	vmVariables.id = vmState.nodeId;
+	vmVariables.productid = PRODUCT_ID;
+	vmVariables.fwversion[0] = FW_VERSION;
+	vmVariables.fwversion[1] = FW_VARIANT;
+	vmVariables.sd_present = !sd_user_open("_TESTSD");
+	sd_user_open(NULL);
+#endif
+}

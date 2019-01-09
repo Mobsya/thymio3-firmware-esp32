@@ -29,6 +29,13 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
+typedef enum
+{
+  E_Mode_Menu,
+  E_Mode_Explorer,
+  E_Mode_Max
+} T_Mode;
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -47,10 +54,8 @@
 //! \return    None
 extern void Mode_Init(void);
 
-//! \brief     Run the xxx task
-//! \pre       First initialize the xxx
-//! \param     None
-//! \return    None
-extern void xxx_Task(void);
+extern void Mode_InitVM(void);
+
+//extern void Mode_Run(void);
 
 #endif // MODE_H_

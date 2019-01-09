@@ -81,6 +81,16 @@ void Mode_Init(void)
 
 //_____________________________________________________________________________
 
+void Mode_InitVM(void)
+{
+  Behavior_Start(B_LEDS_ACC);
+  Behavior_Start(B_LEDS_PROX);
+
+  ESP_LOGI(Tag, "VM Mode is initialized");
+}
+
+//_____________________________________________________________________________
+
 void xxx_Task(void)
 {
 

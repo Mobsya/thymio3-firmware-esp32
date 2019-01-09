@@ -28,6 +28,8 @@
 //-----------------------------------------------------------------------------
 
 #define B_LEDS_BUTTON   (1 << 1)
+#define B_LEDS_PROX		(1 << 2)
+#define B_LEDS_ACC		(1 << 8)
 #define B_MODE          (1 << 10)
 
 #define B_ALWAYS    B_LEDS_BUTTON  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_LEDS_SD | B_SOUND_BUTTON | B_LEDS_BUTTON)
@@ -47,12 +49,6 @@
 //-----------------------------------------------------------------------------
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
-
-//! \brief     Set the LEDs
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void Behavior_SetIRSensorsLeds(void);
 
 //! \brief     Run the behaviors
 //! \pre       None

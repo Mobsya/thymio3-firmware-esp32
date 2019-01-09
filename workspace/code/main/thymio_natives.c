@@ -248,9 +248,8 @@ void set_led_circle(AsebaVMState* vm)
   int l7 = vm->variables[AsebaNativePopArg(vm)];
   int l8 = vm->variables[AsebaNativePopArg(vm)];
 
-#if 0  // FIXME
-  behavior_stop(B_LEDS_ACC);
-#endif
+  Behavior_Stop(B_LEDS_ACC);
+
   Leds_SetCircleBrightness(l1, l2, l3, l4, l5, l6, l7, l8);
 }
 
@@ -363,7 +362,6 @@ AsebaNativeFunctionDescription AsebaNativeDescription_set_hprox_leds =
 
 void set_hprox_leds(AsebaVMState* vm)
 {
-
   int l1 = vm->variables[AsebaNativePopArg(vm)];
   int l2 = vm->variables[AsebaNativePopArg(vm)];
   int l3 = vm->variables[AsebaNativePopArg(vm)];
@@ -372,9 +370,9 @@ void set_hprox_leds(AsebaVMState* vm)
   int l6 = vm->variables[AsebaNativePopArg(vm)];
   int l7 = vm->variables[AsebaNativePopArg(vm)];
   int l8 = vm->variables[AsebaNativePopArg(vm)];
-#if 0  // FIXME
-  behavior_stop(B_LEDS_PROX);
-#endif
+
+  Behavior_Stop(B_LEDS_PROX);
+
   leds_SetProxIRBrightness(l1, l2, l3, l4, l5, l6, l7, l8);
 
 }
@@ -394,9 +392,9 @@ void set_vprox_leds(AsebaVMState* vm)
 {
   int l1 = vm->variables[AsebaNativePopArg(vm)];
   int l2 = vm->variables[AsebaNativePopArg(vm)];
-#if 0  // FIXME
-  behavior_stop(B_LEDS_PROX);
-#endif
+//#if 0  // FIXME
+  Behavior_Stop(B_LEDS_PROX);
+//#endif
   Leds_SetSingleBrightness(E_Led_Ground_IR_0, l1);
   Leds_SetSingleBrightness(E_Led_Ground_IR_1, l2);
 }
