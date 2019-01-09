@@ -205,3 +205,12 @@ void Leds_SetBottomRightBrightness(uint8_t red, uint8_t green, uint8_t blue)
   Leds_SetSingleBrightness(E_Led_G_Bottom_Right, green);
   Leds_SetSingleBrightness(E_Led_B_Bottom_Right, blue);
 }
+
+//_____________________________________________________________________________
+
+void Leds_SetBodyBrightness(uint8_t red, uint8_t green, uint8_t blue)
+{
+  Leds_SetTopBrightness(red, green, blue);
+  Leds_SetBottomLeftBrightness(red, green, blue);
+  Leds_SetBottomRightBrightness(red, green, blue);
+}

@@ -151,4 +151,10 @@ void Leds_SetBottomLeftBrightness(uint8_t red, uint8_t green, uint8_t blue);
 //! \return    None
 void Leds_SetBottomRightBrightness(uint8_t red, uint8_t green, uint8_t blue);
 
+//! \brief     Set the brightness of the body RGB LED
+//! \pre       First initialize the LEDs
+//! \param     None
+//! \return    None
+void Leds_SetBodyBrightness(uint8_t red, uint8_t green, uint8_t blue);
+
 #endif // LEDS_H_
