@@ -40,9 +40,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define PROX_IR_PULSE_PIN_NUM    2u
-
-#define SENSORS_NUM              7u
+#define PROX_IR_PIN_NUM          3u
 
 #define CALIB_HYSTERESIS         20
 
@@ -88,29 +86,31 @@ typedef struct
 
 static const char* Tag = "prox_ir";
 
-static const T_GpioPinConfig PinConfig[PROX_IR_PULSE_PIN_NUM] =
+static const T_GpioPinConfig PinConfig[PROX_IR_PIN_NUM] =
 {
-  // PinNumber                Mode               Resistor             Level            Interrupt
-  {IR_PULSE_BACK_PIN,  E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
-  {IR_PULSE_FRONT_PIN, E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable}
+  // PinNumber              Mode               Resistor             Level            Interrupt
+  {IR_PULSE_BACK_PIN,       E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
+  {IR_PULSE_FRONT_PIN,      E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
+  {IR_SENSE_BACK_RIGHT_PIN, E_GpioMode_Input,  E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_AnyEdge}
 };
+// Other pins are configured by the input capture module
 
-static uint8_t ProxCalibMaxCounter[SENSORS_NUM];
-static uint16_t LoopbackDelay[SENSORS_NUM];
+static uint8_t ProxCalibMaxCounter[PROX_IR_SENSORS_NUM];
+static uint16_t LoopbackDelay[PROX_IR_SENSORS_NUM];
 
 static T_NetworkStatus NetworkStatus = E_NetworkStatus_Disabled;
 
 static uint16_t last_tx;
 
-static uint8_t edge[SENSORS_NUM];
+static uint8_t edge[PROX_IR_SENSORS_NUM];
 
 static bool FrontPulseIsInProgress = false;
 static bool BackPulseIsInProgress = false;
 
-static uint32_t PulseCounter[6]    = {0u, 0u, 0u, 0u, 0u, 0u};
-static uint32_t OldPulseCounter[6] = {0u, 0u, 0u, 0u, 0u, 0u};
+static uint32_t PulseCounter[7]    = {0u, 0u, 0u, 0u, 0u, 0u, 0u};
+static uint32_t OldPulseCounter[7] = {0u, 0u, 0u, 0u, 0u, 0u, 0u};
 
-static uint32_t PulseDuration[6];
+static uint32_t PulseDuration[7];
 
 xQueueHandle cap_queue;
 
@@ -148,7 +148,7 @@ static void IRAM_ATTR isr_handlerUnit1();
 
 void ProxIR_Init(void)
 {
-  for (uint16_t index = 0u; index < PROX_IR_PULSE_PIN_NUM; index++)
+  for (uint16_t index = 0u; index < PROX_IR_PIN_NUM; index++)
   {
     Gpio_ConfigurePin(&PinConfig[index]);
   }
@@ -156,7 +156,7 @@ void ProxIR_Init(void)
   // brand-new robots will have a settings to 0
   // Thus put the maximum minimum value in order to start the calibration
   // from a valid point.
-  for (uint8_t sensor = 0; sensor < SENSORS_NUM; sensor++)
+  for (uint8_t sensor = 0; sensor < PROX_IR_SENSORS_NUM; sensor++)
   {
     if (settings.prox_min[sensor] == 0)
     {
@@ -164,17 +164,13 @@ void ProxIR_Init(void)
     }
   }
 
-  cap_queue = xQueueCreate(1, sizeof(T_Capture));
-
-  // TODO configuration of Capture, Timers, ...
   mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_0, IR_SENSE_FRONT_1_PIN);
   mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_1, IR_SENSE_FRONT_2_PIN);
   mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_2, IR_SENSE_FRONT_3_PIN);
   mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_0, IR_SENSE_FRONT_4_PIN);
   mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_1, IR_SENSE_FRONT_5_PIN);
   mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_2, IR_SENSE_BACK_LEFT_PIN);
-
-  // IR_SENSE_BACK_RIGHT_PIN is handled by the internal ADC
+  // IR_SENSE_BACK_RIGHT_PIN is handled by the GPIO ISR
 
 #if 0
   gpio_pulldown_en(IR_SENSE_FRONT_1_PIN);    // Enable pull down on CAP0 signal
@@ -197,17 +193,16 @@ void ProxIR_Init(void)
   // Enable interrupt on CAP0, CAP1 and CAP2 signal,
   // so each this a rising or falling edge occurs interrupt is triggered
   MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;
-  MCPWM[MCPWM_UNIT_1]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;    // Enable interrupt on  CAP0, CAP1 and CAP2 signal
+  MCPWM[MCPWM_UNIT_1]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;
   mcpwm_isr_register(MCPWM_UNIT_0, isr_handlerUnit0, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
   mcpwm_isr_register(MCPWM_UNIT_1, isr_handlerUnit1, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
-//#endif
 
   ESP_LOGI(Tag, "Proximity IR sensors are initialized");
 }
 
 //_____________________________________________________________________________
 
-int16_t ProxIR_EmitPulses(uint16_t tick, int16_t backRight)
+int16_t ProxIR_EmitPulses(uint16_t tick)
 {
   switch (tick)
   {
@@ -226,21 +221,13 @@ int16_t ProxIR_EmitPulses(uint16_t tick, int16_t backRight)
       break;
 
     case 6:
-      //vmVariables.prox[6] = backRight;
-
       TimerHw_StartBackTimer60us();
 
       Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_High);
       BackPulseIsInProgress = true;
       break;
-#if 0
-    case 7:
-      vmVariables.prox[6] = backRight;
-      break;
-#endif
+
     case 11:
-      //Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
-      //ProxIR_ReadPulseDuration();
       ReadUnit0PulseDuration();
       break;
 
@@ -348,9 +335,6 @@ static void ReadUnit0PulseDuration(void)
     {
       PulseDuration[1] = ((EventUnit0.FallingEdge - EventUnit0.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
   	  vmVariables.prox[1] = PulseDuration[1];
-
-  	  //printf("COUCOU counter = %d\n", PulseCounter);
-      //printf("%d\n", PulseDuration[1]);
     }
   }
   else
@@ -366,9 +350,6 @@ static void ReadUnit0PulseDuration(void)
     {
       PulseDuration[2] = ((EventUnit0.FallingEdge - EventUnit0.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
   	  vmVariables.prox[2] = PulseDuration[2];
-
-  	  //printf("COUCOU counter = %d\n", PulseCounter);
-      //printf("%d\n", PulseDuration[2]);
     }
   }
   else
@@ -389,9 +370,6 @@ static void ReadUnit1PulseDuration(void)
 	{
 	  PulseDuration[3] = ((EventUnit1.FallingEdge - EventUnit1.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
 	  vmVariables.prox[3] = PulseDuration[3];
-
-	  //printf("COUCOU counter = %d\n", PulseCounter);
-	  //printf("%d\n", PulseDuration[3]);
 	}
   }
   else
@@ -408,9 +386,6 @@ static void ReadUnit1PulseDuration(void)
 	  PulseDuration[4] = ((EventUnit1.FallingEdge - EventUnit1.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
 
 	  vmVariables.prox[4] = PulseDuration[4];
-
-	  //printf("counter = %d\n", PulseCounter[4]);
-	  //printf("%d\n", PulseDuration[4]);
 	}
   }
   else
@@ -426,9 +401,6 @@ static void ReadUnit1PulseDuration(void)
 	{
 	  PulseDuration[5] = ((EventUnit1.FallingEdge - EventUnit1.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
 	  vmVariables.prox[5] = PulseDuration[5];
-
-	  //printf("COUCOU counter = %d\n", PulseCounter);
-	  //printf("%d\n", PulseDuration[5]);
 	}
   }
   else
@@ -437,84 +409,20 @@ static void ReadUnit1PulseDuration(void)
   }
 
   OldPulseCounter[5] = PulseCounter[5];
-}
 
-//_____________________________________________________________________________
+  PulseCounter[6] = Gpio_GetPulseCounter();
 
-void ProxIR_ReadPulseDuration(void)
-{
-  static uint8_t index = 0;
-
-  //uint32_t* current_cap_value = (uint32_t*)malloc(sizeof(CAP_SIG_NUM));
-  //uint32_t* previous_cap_value = (uint32_t*)malloc(sizeof(CAP_SIG_NUM));
-  //uint32_t duration = 0;
-
-  T_Capture evt;
-
-  xQueueReceive(cap_queue, &evt, portMAX_DELAY);
-
-  if (evt.sel_cap_signal == MCPWM_SELECT_CAP0)
+  if (OldPulseCounter[6] != PulseCounter[6])
   {
-
-    //printf("R %d\n", evt.RisingEdge);
-    //printf("F %d\n", evt.FallingEdge);
-
-    //pulse[0] = (evt.FallingEdge - evt.RisingEdge);
-    //pulse[0] = ((evt.FallingEdge - evt.RisingEdge) * (1000000 / rtc_clk_apb_freq_get()));
-    //pulse[0] = rtc_clk_apb_freq_get();
-
-    //pulse[0] = ((evt.FallingEdge - evt.RisingEdge) / 10000) * (10000000000 / rtc_clk_apb_freq_get());
-    //pulse[0] = ((evt.FallingEdge - evt.RisingEdge) / 10) (100000000 / rtc_clk_apb_freq_get());
-	PulseDuration[0] = ((evt.FallingEdge - evt.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
-    //pulse[0] = evt.RisingEdge;
-    //pulse[1] = evt.FallingEdge;
-    //pulse[0] = ((evt.RisingEdge - evt.FallingEdge) / rtc_clk_apb_freq_get());
-
-    vmVariables.prox[0] = PulseDuration[0];
-
-    printf("counter = %d\n", PulseCounter[0]);
-    PulseCounter[0]++;
-
-    printf("%d\n", PulseDuration[0]);
-    //printf("r = %d, f = %d, d = %d\n", pulse[0], pulse[1], (pulse[1] - pulse[0]));
-  }
-
-  if (evt.sel_cap_signal == MCPWM_SELECT_CAP1)
-  {
-    PulseDuration[1] = ((evt.FallingEdge - evt.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
-
-    printf("%d\n", PulseDuration[1]);
-  }
-
-  if (evt.sel_cap_signal == MCPWM_SELECT_CAP2)
-  {
-    PulseDuration[2] = ((evt.FallingEdge - evt.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
-
-    printf("%d\n", PulseDuration[2]);
-  }
-
-  //current_cap_value[0] = evt.capture_signal - previous_cap_value[0];
-  //previous_cap_value[0] = evt.capture_signal;
-  //current_cap_value[0] = (current_cap_value[0] / 10000) * (10000000000 / rtc_clk_apb_freq_get());
-  //printf("CAP0 : previous %d us\n", previous_cap_value[0]);
-  //printf("CAP0 : %d us\n", current_cap_value[0]);
-  //printf("%d\n", current_cap_value[0]);
-}
-
-//_____________________________________________________________________________
-
-void ProxIR_GetPulseDuration(void)
-{
-  if (PulseCounter != OldPulseCounter)
-  {
-    vmVariables.prox[0] = PulseDuration[0];
+	PulseDuration[6] = (Gpio_GetFallingEdgeTime() - Gpio_GetRisingEdgeTime());
+	vmVariables.prox[6] = PulseDuration[6];
   }
   else
   {
-    vmVariables.prox[0] = 1;
+    vmVariables.prox[6] = 0;
   }
 
-  //OldPulseCounter = PulseCounter;
+  OldPulseCounter[6] = PulseCounter[6];
 }
 
 //_____________________________________________________________________________
@@ -606,7 +514,7 @@ static int16_t Calibrate(int16_t value, T_Sensor sensor)
 
 static void ResetRx(void)
 {
-  for (uint8_t sensor = 0u; sensor < SENSORS_NUM; sensor++)
+  for (uint8_t sensor = 0u; sensor < PROX_IR_SENSORS_NUM; sensor++)
   {
 #if 0
     while (ic_bufne(sensor))
@@ -681,15 +589,10 @@ static void ir_tx(int value)
 
 void TimerHw_CallbackFront60us(void* arg)
 {
-  //if (FrontPulseIsInProgress)
+  if (FrontPulseIsInProgress)
   {
     Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_Low);
     FrontPulseIsInProgress = false;
-
-    //TimerHw_StartTimer60us();
-
-    //Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_High);
-    //BackPulseIsInProgress = true;
   }
 }
 
@@ -697,7 +600,7 @@ void TimerHw_CallbackFront60us(void* arg)
 
 void TimerHw_CallbackBack60us(void* arg)
 {
-  //if (BackPulseIsInProgress)
+  if (BackPulseIsInProgress)
   {
     Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
     BackPulseIsInProgress = false;
@@ -709,7 +612,7 @@ void TimerHw_CallbackBack60us(void* arg)
 static void IRAM_ATTR isr_handlerUnit0()
 {
   uint32_t mcpwm_intr_status;
-  T_Capture evt;
+
   static uint32_t tmp[CAP_SIG_NUM] = {0, 0, 0};
   static bool risingEdgeFront1Done = false;
   static bool risingEdgeFront2Done = false;
@@ -733,7 +636,6 @@ static void IRAM_ATTR isr_handlerUnit0()
     	EventUnit0.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);  // Get capture signal counter value
     	EventUnit0.sel_cap_signal = MCPWM_SELECT_CAP0;
         PulseCounter[0]++;
-        //xQueueSendFromISR(cap_queue, &evt, NULL);
       }
     }
   }
@@ -754,7 +656,6 @@ static void IRAM_ATTR isr_handlerUnit0()
     	EventUnit0.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP1);  // Get capture signal counter value
     	EventUnit0.sel_cap_signal = MCPWM_SELECT_CAP1;
         PulseCounter[1]++;
-        //xQueueSendFromISR(cap_queue, &evt, NULL);
       }
     }
   }
@@ -774,7 +675,6 @@ static void IRAM_ATTR isr_handlerUnit0()
     	EventUnit0.RisingEdge = tmp[2];
     	EventUnit0.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP2);  // Get capture signal counter value
     	EventUnit0.sel_cap_signal = MCPWM_SELECT_CAP2;
-        //xQueueSendFromISR(cap_queue, &evt, NULL);
         PulseCounter[2]++;
       }
     }
@@ -788,7 +688,7 @@ static void IRAM_ATTR isr_handlerUnit0()
 static void IRAM_ATTR isr_handlerUnit1()
 {
   uint32_t mcpwm_intr_status;
-  T_Capture evt;
+
   static uint32_t tmp[CAP_SIG_NUM] = {0, 0, 0};
   static bool risingEdgeFront4Done = false;
   static bool risingEdgeFront5Done = false;
@@ -812,7 +712,6 @@ static void IRAM_ATTR isr_handlerUnit1()
     	EventUnit1.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP0);  // Get capture signal counter value
     	EventUnit1.sel_cap_signal = MCPWM_SELECT_CAP0;
         PulseCounter[3]++;
-        //xQueueSendFromISR(cap_queue, &evt, NULL);
       }
     }
   }
@@ -833,7 +732,6 @@ static void IRAM_ATTR isr_handlerUnit1()
     	EventUnit1.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP1);  // Get capture signal counter value
     	EventUnit1.sel_cap_signal = MCPWM_SELECT_CAP1;
         PulseCounter[4]++;
-        //xQueueSendFromISR(cap_queue, &evt, NULL);
       }
     }
   }
@@ -854,7 +752,6 @@ static void IRAM_ATTR isr_handlerUnit1()
     	EventUnit1.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP2);  // Get capture signal counter value
     	EventUnit1.sel_cap_signal = MCPWM_SELECT_CAP2;
     	PulseCounter[5]++;
-        //xQueueSendFromISR(cap_queue, &evt, NULL);
       }
     }
   }

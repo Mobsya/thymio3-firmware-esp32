@@ -95,13 +95,6 @@ typedef struct
 //! \return    None
 extern void Gpio_Init(void);
 
-//! \brief     Run the GPIO task.
-//! \pre       First initialize the xxx
-//! \param     None
-//! \return    None
-//extern void Gpio_Task(void* arg);
-extern void Gpio_Task(void);
-
 //! \brief     Configure a GPIO.
 //! \pre       None
 //! \param     None
@@ -124,6 +117,12 @@ extern void Gpio_TogglePinLevel(uint16_t pinNumber);
 //! \pre       First configure the GPIO.
 //! \param     None
 //! \return    None
-extern int Gpio_GetPinLevel(uint16_t pinNumber);
+extern T_GpioLevel Gpio_GetPinLevel(uint16_t pinNumber);
+
+extern uint16_t Gpio_GetPulseCounter(void);
+
+extern uint16_t Gpio_GetRisingEdgeTime(void);
+
+extern uint16_t Gpio_GetFallingEdgeTime(void);
 
 #endif // GPIO_H_

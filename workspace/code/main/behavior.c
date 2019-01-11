@@ -24,7 +24,9 @@
 #include "behavior.h"
 
 #include "aseba_esp32.h"
+#include "ground_ir.h"
 #include "leds.h"
+#include "mode.h"
 #include "prox_ir.h"
 #include "stm32.h"
 
@@ -32,16 +34,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define PROX_IR_SENSOR_NUM      7u  //!< Number of proximity IR sensors
-#define GROUND_IR_SENSOR_NUM    2u  //!< Number of ground IR sensors
-
-#define IR_SENSOR_NUM           (PROX_IR_SENSOR_NUM + GROUND_IR_SENSOR_NUM)
-
-#define when(cond) if(({static unsigned char prev; \
-						unsigned char c = !!(cond); \
-						unsigned char result = c && !prev; \
-						prev = c; \
-						result;}))
+#define IR_SENSOR_NUM           (PROX_IR_SENSORS_NUM + GROUND_IR_SENSORS_NUM)
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -83,10 +76,6 @@ static void SetIRSensorsLeds(void);
 //! \return    None
 static void SetAccelerometerLeds(void);
 
-static void RunExplorer(void);  // TODO Move to mode.c
-
-static int body_color_pulse_get(void);  // TODO Move to mode.c
-
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -101,21 +90,21 @@ void Behavior_Run(void)
   {
     SetButtonsLeds();
   }
-//#if 0  // FIXME
+
   if (ENABLED(B_LEDS_PROX))
   {
     SetIRSensorsLeds();
   }
-
+#if 0  // FIXME
   if (ENABLED(B_LEDS_ACC))
   {
     SetAccelerometerLeds();
   }
-//#endif
-
-#if 0  // FIXME
-  RunExplorer();
 #endif
+  if (ENABLED(B_MODE))
+  {
+    Mode_Run();
+  }
 }
 
 //_____________________________________________________________________________
@@ -237,9 +226,7 @@ void SetIRSensorsLeds(void)
   int16_t delta = 0;
   int16_t brightness = 0;
 
-  //ProxIR_GetPulseDuration();
-
-  for (uint8_t index = 0u; index < PROX_IR_SENSOR_NUM; index++)
+  for (uint8_t index = 0u; index < PROX_IR_SENSORS_NUM; index++)
   {
     if (max[index] < vmVariables.prox[index])
     {
@@ -257,17 +244,17 @@ void SetIRSensorsLeds(void)
 #endif
   }
 
-  for (uint8_t index = 0u; index < GROUND_IR_SENSOR_NUM; index++)
+  for (uint8_t index = 0u; index < GROUND_IR_SENSORS_NUM; index++)
   {
-    if (max[index + PROX_IR_SENSOR_NUM] < vmVariables.ground_delta[index])
+    if (max[index + PROX_IR_SENSORS_NUM] < vmVariables.ground_delta[index])
     {
-      max[index + PROX_IR_SENSOR_NUM] = vmVariables.ground_delta[index];
+      max[index + PROX_IR_SENSORS_NUM] = vmVariables.ground_delta[index];
       // min is fixed to 0 ... this is _physical_
     }
   }
 
   // Do a linear transformation from min-max to led 0-31!
-  for (uint8_t index = 0u; index < PROX_IR_SENSOR_NUM; index++)
+  for (uint8_t index = 0u; index < PROX_IR_SENSORS_NUM; index++)
   {
 #if 0
     // Because of the min&max calculation above, we cannot have a
@@ -296,12 +283,12 @@ void SetIRSensorsLeds(void)
     }
   }
 
-  for (uint8_t index = 0u; index < GROUND_IR_SENSOR_NUM; index++)
+  for (uint8_t index = 0u; index < GROUND_IR_SENSORS_NUM; index++)
   {
     s = (vmVariables.ground_delta[index] > 0) ? vmVariables.ground_delta[index] : 0;
-    brightness = ((int32_t)s * MAX_BRIGHTNESS) / max[index + PROX_IR_SENSOR_NUM];
+    brightness = ((int32_t)s * MAX_BRIGHTNESS) / max[index + PROX_IR_SENSORS_NUM];
 
-    Leds_SetSingleBrightness(led[index + PROX_IR_SENSOR_NUM], brightness);
+    Leds_SetSingleBrightness(led[index + PROX_IR_SENSORS_NUM], brightness);
   }
 }
 
@@ -391,166 +378,4 @@ static void SetAccelerometerLeds(void)
 
 	previous_led = -1;
   }
-}
-
-//_____________________________________________________________________________
-
-static void RunExplorer(void)
-{
-  static unsigned char led_state;
-  static int16_t speed = 150;
-
-  unsigned char l[8] = {0,0,0,0,0,0,0,0};
-  unsigned char fixed;
-
-  uint8_t* buttonState;
-
-  buttonState = STM32_GetButtonStatus();
-
-  int p = body_color_pulse_get(); // FIXME
-  //printf("p = %d\n", p);
-  //Leds_SetTopBrightness(p, p, 0);
-  //Leds_SetTopBrightness(32, 32, 0);
-
-  // circle led management
-  led_state += 2;
-  fixed = led_state / 32;
-  l[fixed] = 32;
-  l[(fixed - 1) & 0x7] = 32 - (led_state & 0x1F);
-  l[(fixed + 1) & 0x7] = led_state & 0x1F;
-  Leds_SetCircleBrightness(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7]);
-
-  // Button management
-  when (buttonState[E_Button_Forward])
-  {
-    speed = (speed + 50);
-
-    if (speed > 500)
-    {
-      speed = 500;
-	}
-  }
-
-  when (buttonState[E_Button_Backward])
-  {
-    speed = (speed - 50);
-
-    if (speed < -300)
-    {
-      speed = -300;
-    }
-  }
-
-  if (speed >= 0)
-  {
-    int32_t temp1 = 0;
-	int32_t temp2 = 0;
-
-	temp1 += vmVariables.prox[0];
-	temp1 += vmVariables.prox[1] * 2;
-	temp1 += vmVariables.prox[2] * 3;
-	temp1 += vmVariables.prox[3] * 2;
-	temp1 += vmVariables.prox[4];
-
-	temp2 += vmVariables.prox[0] * -4;
-	temp2 += vmVariables.prox[1] * -3;
-	temp2 += vmVariables.prox[3] * 3;
-	temp2 += vmVariables.prox[4] * 4;
-
-	//printf("speed = %d, temp1 = %d, temp2 = %d\n", speed, temp1, temp2);
-
-	vmVariables.target[0] = speed - (((temp1 + temp2) * speed) / 500); //2000);
-	vmVariables.target[1] = speed - (((temp1 - temp2) * speed) / 500); //2000);
-
-	//printf("target = %d\n", vmVariables.target[0]);
-
-    if (vmVariables.target[0] < -600)
-    {
-	  vmVariables.target[0] = -600;
-    }
-
-    if (vmVariables.target[1] < -600)
-    {
-	  vmVariables.target[1]= -600;
-    }
-
-    if (vmVariables.target[0] > 600)
-    {
-	  vmVariables.target[0] = 600;
-    }
-
-    if (vmVariables.target[1] > 600)
-    {
-	  vmVariables.target[1] = 600;
-    }
-  }
-  else
-  {
-    int32_t temp = ((int32_t)vmVariables.prox[6] * (int32_t)speed);
-	vmVariables.target[0] = speed + (temp / -300);
-
-	temp = ((int32_t)vmVariables.prox[5] * (int32_t)speed);
-	vmVariables.target[1] = speed  + (temp / -300);
-
-    if (vmVariables.target[0] < -600)
-    {
-	  vmVariables.target[0] = -600;
-    }
-
-    if (vmVariables.target[1] < -600)
-    {
-	  vmVariables.target[1]= -600;
-    }
-
-    if (vmVariables.target[0] > 600)
-    {
-	  vmVariables.target[0] = 600;
-    }
-
-    if (vmVariables.target[1] > 600)
-    {
-	  vmVariables.target[1] = 600;
-    }
-  }
-
-  if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
-  {
-	vmVariables.target[0] = 0;
-	vmVariables.target[1] = 0;
-	Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 32);
-	Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 32);
-  }
-  else
-  {
-	Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0);
-	Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0);
-  }
-}
-
-//_____________________________________________________________________________
-
-static int body_color_pulse_get(void)
-{
-  static int16_t led_pulse;
-  int16_t ret;
-
-  led_pulse++;
-
-  if (led_pulse > 0)
-  {
-    ret = led_pulse;
-
-    if (led_pulse >= 32)
-    {
-	  led_pulse = -128;
-    }
-  }
-  else
-  {
-	ret = -led_pulse/4;
-  }
-
-  //printf("p = %d, ret = %d\n", led_pulse, ret);
-
-  return ret;
 }

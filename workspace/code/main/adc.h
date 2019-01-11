@@ -55,23 +55,4 @@ extern void ADC_Init(void);
 //! \return    None
 extern void ADC_AcquireValues(int16_t* value);
 
-#if 0
-//! \brief     Get the microphone value
-//! \pre       First initialize the internal ADC
-//! \param     None
-//! \return    None
-extern uint16_t ADC_GetMicrophoneValue(void);
-
-//! \brief     Get the left ground IR value
-//! \pre       First initialize the internal ADC
-//! \param     None
-//! \return    None
-extern uint16_t ADC_GetLeftGroundIRValue(void);
-
-//! \brief     Get the right ground IR value
-//! \pre       First initialize the internal ADC
-//! \param     None
-//! \return    None
-extern uint16_t ADC_GetRightGroundIRValue(void);
-#endif
 #endif // ADC_H_

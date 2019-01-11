@@ -21,6 +21,12 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#define when(cond) if(({static unsigned char prev; \
+						unsigned char c = !!(cond); \
+						unsigned char result = c && !prev; \
+						prev = c; \
+						result;}))
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -33,7 +39,9 @@ typedef enum
 {
   E_Mode_Menu,
   E_Mode_Explorer,
-  E_Mode_Max
+  E_Mode_Investigator,
+  E_Mode_Obedient,
+  E_Mode_Max = E_Mode_Obedient
 } T_Mode;
 
 //-----------------------------------------------------------------------------
@@ -56,6 +64,6 @@ extern void Mode_Init(void);
 
 extern void Mode_InitVM(void);
 
-//extern void Mode_Run(void);
+extern void Mode_Run(void);
 
 #endif // MODE_H_

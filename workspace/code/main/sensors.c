@@ -80,7 +80,7 @@ void Sensors_RunTask(void)
 {
   static uint16_t tick = 0u;
 
-  int16_t sensors[4];
+  int16_t sensors[3];
 //#if 0
   //if ((tick == 7) || (tick == 50) || (tick == 53) || (tick == 56))
   if ((tick == 50) || (tick == 53) || (tick == 56))
@@ -90,7 +90,7 @@ void Sensors_RunTask(void)
 //#endif
   //Leds_RunTask();
 
-  PeriodAccumulator += ProxIR_EmitPulses(tick, sensors[3]);
+  PeriodAccumulator += ProxIR_EmitPulses(tick);
   //PeriodAccumulator = 0;
 
   if (PeriodAccumulator > 100)

@@ -40,6 +40,7 @@
 #include "i2c.h"
 #include "leds.h"
 #include "mode.h"
+#include "mp3.h"
 #include "power.h"
 #include "prox_ir.h"
 #include "sensors.h"
@@ -109,7 +110,7 @@ static T_Settings OldSettings;
 
 static void FeedWatchdog(void);
 
-static void Timer_Init(int timer_idx, bool auto_reload, double timer_interval_sec);
+static void Timer_Init(int16_t timerNum, int timerIndex, bool auto_reload, double timer_interval_sec);
 
 static void Settings_Init(void);
 
@@ -139,7 +140,6 @@ void BehaviorTask(void* pvParameter)
     Behavior_Run();
 	//Behavior_SetIRSensorsLeds();
 
-	//ProxIR_ReadPulseDuration();
     vTaskDelay(45 / portTICK_PERIOD_MS);
   }
 }
@@ -171,13 +171,14 @@ void SensorTask(void* pvParameter)
 
   ESP_LOGI(Tag, "Start Sensor Task");
 
+  Leds_Init();
+
   // Attempt to create a semaphore
   //Timer125usSemaphore = xSemaphoreCreateBinary();
   TaskToNotify = xTaskGetCurrentTaskHandle();
 
   timer_start(TIMER_GROUP_0, 0);
-
-  Leds_Init();
+  timer_start(TIMER_GROUP_0, 1);
 
   while (1)
   {
@@ -216,12 +217,9 @@ void SensorTask(void* pvParameter)
 
     //taskYIELD();
 
-    //FeedWatchdog();
+    FeedWatchdog();
   }
 }
-
-
-
 
 //_____________________________________________________________________________
 
@@ -281,7 +279,6 @@ void CommTask(void* pvParameter)
 
     //Behavior_Run();
 	//Behavior_SetIRSensorsLeds();
-	//ProxIR_ReadPulseDuration();
 
     vTaskDelay(50 / portTICK_PERIOD_MS);
   }
@@ -344,6 +341,7 @@ int app_main(void)
 
   Gpio_Init();
   Power_Init();
+
   I2C_Init();
   //I2S_Init();
 
@@ -353,11 +351,9 @@ int app_main(void)
   Mode_InitVM();
 
   ColorSensor_Init();
-//#if 0
   Accelerometer_Init();
   Compass_Init();
   Gyroscope_Init();
-//#endif
 
 #if 0
   //WIFI_InitNVS();
@@ -370,7 +366,12 @@ int app_main(void)
   {}
 #endif
 
-  Timer_Init(0, 1, 0.000125);
+  //MP3_Init();
+
+  Timer_Init(TIMER_GROUP_0, 0, 1, 0.000125);
+  Timer_Init(TIMER_GROUP_0, 1, 1, 1);
+
+//#if 0  // MP3 debug
 
 //#if 0
   xTaskCreatePinnedToCore(
@@ -412,7 +413,7 @@ int app_main(void)
     NULL,         // Task handle
     appCore1);    // Core where the task should run
 #endif
-//#if 0
+#if 0
   xTaskCreatePinnedToCore(
     AsebaTask,   // Function to implement the task
     "aseba",     // Name of the task
@@ -421,7 +422,7 @@ int app_main(void)
     4,           // Priority of the task
     NULL,        // Task handle
     appCore1);   // Core where the task should run
-//#endif
+#endif
 //#if 0
   xTaskCreatePinnedToCore(
     SensorTask,  // Function to implement the task
@@ -432,6 +433,9 @@ int app_main(void)
     NULL,        // Task handle
     appCore1);   // Core where the task should run
 //#endif
+
+
+//#endif  // MP3 debug
 
   return 0;
 }
@@ -582,7 +586,7 @@ void IRAM_ATTR timer_group0_isr(void* para)
   TIMERG0.hw_timer[timer_idx].config.alarm_en = TIMER_ALARM_EN;
 
   // Clear the interrupt and update the alarm time for the timer with without reload
-  if ((intr_status & BIT(timer_idx)) && timer_idx == TIMER_0)
+  if ((intr_status & BIT(timer_idx)) && (timer_idx == TIMER_0))
   {
     TIMERG0.int_clr_timers.t0 = 1;
 
@@ -593,7 +597,7 @@ void IRAM_ATTR timer_group0_isr(void* para)
       portYIELD_FROM_ISR();
     }
   }
-  else if ((intr_status & BIT(timer_idx)) && timer_idx == TIMER_1)
+  else if ((intr_status & BIT(timer_idx)) && (timer_idx == TIMER_1))
   {
     TIMERG0.int_clr_timers.t1 = 1;
 
@@ -617,7 +621,36 @@ void IRAM_ATTR timer_group0_isr(void* para)
 
 //_____________________________________________________________________________
 
-static void Timer_Init(int timer_idx, bool auto_reload, double timer_interval_sec)
+void IRAM_ATTR timer_group1_isr(void* para)
+{
+  int timer_idx = (int) para;
+
+  // Retrieve the interrupt status and the counter value
+  // from the timer that reported the interrupt
+  uint32_t intr_status = TIMERG1.int_st_timers.val;
+  TIMERG1.hw_timer[timer_idx].update = 1;
+
+  // After the alarm has been triggered, we need enable it again, so it is triggered the next time
+  TIMERG1.hw_timer[timer_idx].config.alarm_en = TIMER_ALARM_EN;
+
+  // Clear the interrupt and update the alarm time for the timer with without reload
+  if ((intr_status & BIT(timer_idx)) && (timer_idx == TIMER_0))
+  {
+    TIMERG1.int_clr_timers.t0 = 1;
+  }
+  else if ((intr_status & BIT(timer_idx)) && (timer_idx == TIMER_1))
+  {
+    TIMERG0.int_clr_timers.t1 = 1;
+  }
+  else
+  {
+    // Do nothing
+  }
+}
+
+//_____________________________________________________________________________
+
+static void Timer_Init(int16_t timerNum, int timerIndex, bool auto_reload, double timer_interval_sec)
 {
   // Select and initialize basic parameters of the timer
   timer_config_t config;
@@ -629,21 +662,30 @@ static void Timer_Init(int timer_idx, bool auto_reload, double timer_interval_se
   config.intr_type   = TIMER_INTR_LEVEL;
   config.auto_reload = auto_reload;
 
-  timer_init(TIMER_GROUP_0, timer_idx, &config);
+  timer_init(timerNum, timerIndex, &config);
 
   // Timer's counter will initially start from value below
   // Also, if auto_reload is set, this value will be automatically reload on alarm
-  timer_set_counter_value(TIMER_GROUP_0, timer_idx, 0x00000000ULL);
+  timer_set_counter_value(timerNum, timerIndex, 0x00000000ULL);
 
   // Configure the alarm value and the interrupt on alarm
-  timer_set_alarm_value(TIMER_GROUP_0, timer_idx, timer_interval_sec * TIMER_SCALE);
-  timer_enable_intr(TIMER_GROUP_0, timer_idx);
-  timer_isr_register(TIMER_GROUP_0, timer_idx, timer_group0_isr,
-                     (void*) timer_idx, ESP_INTR_FLAG_IRAM, NULL);
+  timer_set_alarm_value(timerNum, timerIndex, timer_interval_sec * TIMER_SCALE);
+  timer_enable_intr(timerNum, timerIndex);
+
+  if (timerNum == TIMER_GROUP_0)
+  {
+    timer_isr_register(timerNum, timerIndex, timer_group0_isr,
+                       (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL);
+  }
+  else
+  {
+    timer_isr_register(timerNum, timerIndex, timer_group1_isr,
+                       (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL);
+  }
 
   //timer_start(TIMER_GROUP_0, timer_idx);
 
-  ESP_LOGI(Tag, "Timer %d is initialized", timer_idx);
+  ESP_LOGI(Tag, "Group %d Timer %d is initialized", timerNum, timerIndex);
 }
 
 //_____________________________________________________________________________

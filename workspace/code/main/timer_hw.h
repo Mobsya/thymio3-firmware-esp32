@@ -138,8 +138,4 @@ extern void TimerHw_CallbackFront60us(void* arg);
 
 extern void TimerHw_CallbackBack60us(void* arg);
 
-extern void TimerHw_CallbackRight375us(void* arg);
-
-extern void TimerHw_CallbackLeft375us(void* arg);
-
 #endif // TIMER_HW_H_

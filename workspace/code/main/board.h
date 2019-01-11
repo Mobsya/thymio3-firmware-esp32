@@ -72,8 +72,7 @@
 #define TXD_ESP32_PIN                   1u
 #define RXD_ESP32_PIN                   3u
 
-#define IR_PULSE_GROUND_PIN_SEL        (((uint64_t)1u << (uint64_t)IR_PULSE_GROUND_LEFT_PIN) | \
-                                        ((uint64_t)1u << (uint64_t)IR_PULSE_GROUND_RIGHT_PIN))
+#define IR_SENSE_PIN_SEL               ((uint64_t)1u << (uint64_t)IR_SENSE_BACK_RIGHT_PIN)
 
 //-----------------------------------------------------------------------------
 // Types Definitions

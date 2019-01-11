@@ -124,26 +124,6 @@ void TimerHw_Init(void)
   ESP_ERROR_CHECK(esp_timer_create(&backTimer60us_args, &BackTimer60us));
   // The timer has been created but is not running yet
 
-  // Configuration of RightTimer375us
-  const esp_timer_create_args_t rightTimer375us_args =
-  {
-    .callback = &TimerHw_CallbackRight375us,
-    .name = "rightTimer375us"
-  };
-
-  ESP_ERROR_CHECK(esp_timer_create(&rightTimer375us_args, &RightTimer375us));
-  // The timer has been created but is not running yet
-
-  // Configuration of LeftTimer375us
-  const esp_timer_create_args_t leftTimer375us_args =
-  {
-    .callback = &TimerHw_CallbackLeft375us,
-    .name = "leftTimer375us"
-  };
-
-  ESP_ERROR_CHECK(esp_timer_create(&leftTimer375us_args, &LeftTimer375us));
-  // The timer has been created but is not running yet
-
   //ESP_ERROR_CHECK(esp_timer_start_periodic(Timer125us, 125));
 #if 0
   // Configuration of Timer500us

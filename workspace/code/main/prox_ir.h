@@ -27,6 +27,8 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
+#define PROX_IR_SENSORS_NUM      7u  //!< Number of proximity IR sensors
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -53,12 +55,7 @@ extern void ProxIR_Init(void);
 //! \pre       First initialize the proximity IR sensors
 //! \param     None
 //! \return    None
-//extern void GroundIR_Task(void);
-extern int16_t ProxIR_EmitPulses(uint16_t tick, int16_t backRight);
-
-extern void ProxIR_ReadPulseDuration(void);
-
-extern void ProxIR_GetPulseDuration(void);
+extern int16_t ProxIR_EmitPulses(uint16_t tick);
 
 //! \brief     Enable the network
 //! \pre       First initialize the proximity IR sensors
