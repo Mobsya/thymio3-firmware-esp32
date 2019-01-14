@@ -304,11 +304,11 @@ static void SetAccelerometerLeds(void)
   int led = -1;
 
   // FIXME: Use vmVariables ?!
-  if (vmVariables.acc_bis[2] < 16800)  // 21
+  if (vmVariables.acc[2] < 16800)  // 21
   {
-    int ha = (aseba_atan2(vmVariables.acc_bis[0], vmVariables.acc_bis[1]) / 2);
+    int ha = (aseba_atan2(vmVariables.acc[0], vmVariables.acc[1]) / 2);
 
-    //printf("z = %d\n", vmVariables.acc_bis[2]);
+    //printf("z = %d\n", vmVariables.acc[2]);
     //printf("ha = %d\n", ha);
 
     if ((ha >= -2000) && (ha < 2000))

@@ -87,9 +87,7 @@ struct _vmVariables
     ---> PUT YOUR VARIABLES HERE <---
   ******/
   int16_t color[4];
-  int16_t acc_bis[3];
   int16_t gyro[3];
-  int16_t compass[3];
   int16_t ip[4];
   int16_t settings[2];
   int16_t freeSpace[VM_VARIABLES_FREE_SPACE];
@@ -107,8 +105,6 @@ enum Event
   EVENT_DATA,
   EVENT_TAP,
   EVENT_ACC,
-  EVENT_ACC_BIS,
-  EVENT_COMPASS,
   EVENT_GYRO,
   EVENT_MIC,
   EVENT_SOUND_FINISHED,

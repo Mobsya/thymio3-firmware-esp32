@@ -52,7 +52,6 @@
 // I2C modules
 #include "accelerometer.h"
 #include "color_sensor.h"
-#include "compass.h"
 #include "gyroscope.h"
 #include "stm32.h"
 
@@ -256,7 +255,6 @@ void CommTask(void* pvParameter)
 //#if 0
     Accelerometer_GetTapSource();
     Accelerometer_GetAcceleration();
-    Compass_GetMagneticField();
     Gyroscope_GetAngularPosition();
 //#endif
 
@@ -352,7 +350,6 @@ int app_main(void)
 
   ColorSensor_Init();
   Accelerometer_Init();
-  Compass_Init();
   Gyroscope_Init();
 
 #if 0

@@ -287,9 +287,7 @@ const AsebaVMDescription vmDescription =
     ******/
 
     {4, "color"},
-    {3, "acc_bis"},
     {3, "gyro"},
-    {3, "compass"},
     {4, "ip"},
 	{2, "settings"},
     {0, NULL} // Null terminated
@@ -313,8 +311,6 @@ static const AsebaLocalEventDescription localEvents[] =
   { "prox.comm", "Data received on the proximity communication"},
   { "tap", "A tap is detected"},
   { "acc", "Accelerometer values updated"},
-  { "acc_bis", "Accelerometer bis values updated"},
-  { "compass", "Compass values updated"},
   { "gyro", "Gyroscope values updated"},
   { "mic", "Fired when microphone intensity is above threshold"},
   { "sound.finished", "Fired when the playback of a user initiated sound is finished"},

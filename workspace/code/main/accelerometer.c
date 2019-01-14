@@ -23,7 +23,6 @@
 #include "accelerometer.h"
 
 #include "aseba_esp32.h"
-#include "lsm303c.h"
 #include "lsm6ds3us.h"
 
 //-----------------------------------------------------------------------------
@@ -44,8 +43,7 @@
 
 static const char* Tag = "accelerometer";
 
-static T_Acc_Axis Acceleration_3;
-static T_Axis     Acceleration_6;
+static T_Axis  Acceleration;
 
 static uint8_t TapSource;
 
@@ -63,31 +61,22 @@ static uint8_t TapSource;
 
 void Accelerometer_Init(void)
 {
-  LSM303C_InitAccelerometer();
   LSM6DS3US_InitAccelerometer();
 
-  ESP_LOGI(Tag, "Accelerometers are initialized");
+  ESP_LOGI(Tag, "Accelerometer is initialized");
 }
 
 //_____________________________________________________________________________
 
 void Accelerometer_GetAcceleration(void)
 {
-  LSM303C_GetAcceleration(&Acceleration_3);
+  LSM6DS3US_GetAcceleration(&Acceleration);
 
-  vmVariables.acc[0] = Acceleration_3.X;
-  vmVariables.acc[1] = Acceleration_3.Y;
-  vmVariables.acc[2] = Acceleration_3.Z;
+  vmVariables.acc[0] = Acceleration.X;
+  vmVariables.acc[1] = Acceleration.Y;
+  vmVariables.acc[2] = Acceleration.Z;
 
   SET_EVENT(EVENT_ACC);
-
-  LSM6DS3US_GetAcceleration(&Acceleration_6);
-
-  vmVariables.acc_bis[0] = Acceleration_6.X;
-  vmVariables.acc_bis[1] = Acceleration_6.Y;
-  vmVariables.acc_bis[2] = Acceleration_6.Z;
-
-  SET_EVENT(EVENT_ACC_BIS);
 }
 
 //_____________________________________________________________________________
