@@ -392,9 +392,9 @@ void set_vprox_leds(AsebaVMState* vm)
 {
   int l1 = vm->variables[AsebaNativePopArg(vm)];
   int l2 = vm->variables[AsebaNativePopArg(vm)];
-//#if 0  // FIXME
+
   Behavior_Stop(B_LEDS_PROX);
-//#endif
+
   Leds_SetSingleBrightness(E_Led_Ground_IR_0, l1);
   Leds_SetSingleBrightness(E_Led_Ground_IR_1, l2);
 }

@@ -26,8 +26,6 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 
-#include "driver/timer.h"
-
 #include "soc/timer_group_struct.h"
 #include "soc/timer_group_reg.h"
 
@@ -35,6 +33,7 @@
 
 #include "esp_log.h"
 
+#include "aseba_esp32.h"
 #include "behavior.h"
 #include "gpio.h"
 #include "i2c.h"
@@ -45,6 +44,7 @@
 #include "prox_ir.h"
 #include "sensors.h"
 #include "sound.h"
+#include "timer.h"
 #include "uart.h"
 #include "wifi.h"
 #include "wifi_update.h"
@@ -55,19 +55,11 @@
 #include "gyroscope.h"
 #include "stm32.h"
 
-#include "aseba_esp32.h"
-
-#include "timer_hw.h"
-#include "timer.h"
-
 #include "board.h"  // FIXME only for debug
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
-
-#define TIMER_DIVIDER 16 //  Hardware timer clock divider
-#define TIMER_SCALE (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
 
 #define DEFAULT_WIFI_SSID           CONFIG_WIFI_SSID
 #define DEFAULT_WIFI_PASSWORD       CONFIG_WIFI_PASSWORD
@@ -75,17 +67,6 @@
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
-
-//SemaphoreHandle_t Timer125usSemaphore = NULL;
-
-static TaskHandle_t TaskToNotify = NULL;
-
-#if 0
-SemaphoreHandle_t Timer10msSemaphore = NULL;
-SemaphoreHandle_t Timer200msSemaphore = NULL;
-#endif
-
-//TaskHandle_t LedsHandle = NULL;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -109,8 +90,6 @@ static T_Settings OldSettings;
 
 static void FeedWatchdog(void);
 
-static void Timer_Init(int16_t timerNum, int timerIndex, bool auto_reload, double timer_interval_sec);
-
 static void Settings_Init(void);
 
 //-----------------------------------------------------------------------------
@@ -121,28 +100,17 @@ static void Settings_Init(void);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-//#if 0
 void BehaviorTask(void* pvParameter)
 {
-  static bool first = true;
-
   ESP_LOGI(Tag, "Start Behavior Task");
 
   while (1)
   {
-    if (first)
-    {
-	  ESP_LOGI(Tag, "First run Behavior Task");
-	  first = false;
-	}
-
     Behavior_Run();
-	//Behavior_SetIRSensorsLeds();
 
-    vTaskDelay(45 / portTICK_PERIOD_MS);
+    vTaskDelay(20 / portTICK_PERIOD_MS);
   }
 }
-//#endif
 
 //_____________________________________________________________________________
 
@@ -150,8 +118,9 @@ void SoundTask(void* pvParameter)
 {
   ESP_LOGI(Tag, "Start Sound Task");
 
-  Sound_Init();
-
+  //Sound_Init();
+  //MP3_Init();
+//#if 0
   //while (1)
   {
     Sound_Task();
@@ -159,6 +128,7 @@ void SoundTask(void* pvParameter)
     FeedWatchdog();
     //vTaskDelay(50 / portTICK_PERIOD_MS);
   }
+//#endif
 }
 
 //_____________________________________________________________________________
@@ -166,46 +136,19 @@ void SoundTask(void* pvParameter)
 void SensorTask(void* pvParameter)
 {
   uint32_t result = 0;
-  static bool first = true;
 
   ESP_LOGI(Tag, "Start Sensor Task");
 
-  Leds_Init();
+  //Leds_Init();
 
-  // Attempt to create a semaphore
-  //Timer125usSemaphore = xSemaphoreCreateBinary();
+  // Attempt to create a notification
   TaskToNotify = xTaskGetCurrentTaskHandle();
 
-  timer_start(TIMER_GROUP_0, 0);
-  timer_start(TIMER_GROUP_0, 1);
+  Timer_Start(0, 0);
+  Timer_Start(0, 1);
 
   while (1)
   {
-#if 0
-	if (Timer125usSemaphore != NULL)
-	{
-	  if (xSemaphoreTake(Timer125usSemaphore, 0) == pdTRUE) //portMAX_DELAY );
-      {
-	    if (first)
-	    {
-	      ESP_LOGI(Tag, "First run Sensor Task");
-	      first = false;
-	    }
-
-	    Leds_RunTask();
-	    Sensors_RunTask();
-
-	    //Behavior_SetIRSensorsLeds();
-	    //ESP_LOGI(Tag, "Run Leds Task");
-      }
-	  else
-	  {
-	    // There was insufficient FreeRTOS heap available for the semaphore to
-	    // be created successfully
-	  }
-	}
-#endif
-
     result = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     if (result == 1)
@@ -233,7 +176,6 @@ void CommTask(void* pvParameter)
   Gyroscope_Init();
 #endif
 
-  int16_t vbat[2] = {0, 0};
   int16_t vind[2] = {0, 0};
   int16_t current[2] = {0, 0};
   int16_t pwm[2] = {0, 0};
@@ -241,42 +183,34 @@ void CommTask(void* pvParameter)
 
   while (1)
   {
-//#if 0
     STM32_ReadStatus();
 	STM32_GetMotorCurrent(current);
-	STM32_GetBatteryVoltage(vbat);
+	STM32_ReadBatteryVoltage();
     STM32_GetInducedVoltage(vind);
     STM32_GetPwmDutyCycle(pwm);
 	STM32_ReadButtonStatus();
 	STM32_GetButtonRawData(button_raw);
 
     ColorSensor_GetColor();
-//#endif
-//#if 0
     Accelerometer_GetTapSource();
     Accelerometer_GetAcceleration();
     Gyroscope_GetAngularPosition();
-//#endif
 
-    //STM32_CheckId();
-    //STM32_GetButtonRawData(button_raw);
-
-    //STM32_UpdateLeftMotorTarget(target);
-    //STM32_UpdateRightMotorTarget(target);
-
-    //STM32_GetLeftMotorTarget(target_read);
-    //STM32_GetRightMotorTarget(target_read);
 #if 0
-    if (STM32_IsReadyToSwitchOff())
+    if (Power_IsSwitchOffEnabled())
     {
+      ESP_LOGI(Tag, "COUCOU");
       //Power_SwitchOff();
+      Leds_SetTopBrightness(32, 0, 0);
+    }
+    else if (STM32_IsReadyToSwitchOff())
+    {
+      Power_EnableSwitchOff();
       Leds_SetSingleBrightness(E_Led_Battery_1, 32);
       STM32_AllowToSwitchOff();
+      //Power_SwitchOff();
     }
 #endif
-
-    //Behavior_Run();
-	//Behavior_SetIRSensorsLeds();
 
     vTaskDelay(50 / portTICK_PERIOD_MS);
   }
@@ -288,7 +222,7 @@ void AsebaTask(void* pvParameter)
 {
   ESP_LOGI(Tag, "Start Aseba Task");
 
-  UART_Init();
+  //UART_Init();
   AsebaESP32_Init();
 
   while (1)
@@ -340,6 +274,7 @@ int app_main(void)
   Gpio_Init();
   Power_Init();
 
+  UART_Init();
   I2C_Init();
   //I2S_Init();
 
@@ -365,8 +300,8 @@ int app_main(void)
 
   //MP3_Init();
 
-  Timer_Init(TIMER_GROUP_0, 0, 1, 0.000125);
-  Timer_Init(TIMER_GROUP_0, 1, 1, 1);
+  Timer_Init(0, 0, 1, 0.000125);  // Timer used to run the SensorTask
+  Timer_Init(0, 1, 1, 1);         // Timer used to handle the IR_SENSE_BACK_RIGHT_PIN
 
 //#if 0  // MP3 debug
 
@@ -374,7 +309,7 @@ int app_main(void)
   xTaskCreatePinnedToCore(
     BehaviorTask, // Function to implement the task
     "behavior",   // Name of the task
-    2048,         // Stack size in words
+    4096,         // Stack size in words
     NULL,         // Task input parameter
     2,            // Priority of the task
     NULL,         // Task handle
@@ -393,7 +328,7 @@ int app_main(void)
 //#if 0
   xTaskCreatePinnedToCore(
     CommTask,    // Function to implement the task
-    "sensors",   // Name of the task
+    "comm",   // Name of the task
     2048,        // Stack size in words
     NULL,        // Task input parameter
     3,           // Priority of the task
@@ -410,7 +345,7 @@ int app_main(void)
     NULL,         // Task handle
     appCore1);    // Core where the task should run
 #endif
-#if 0
+//#if 0
   xTaskCreatePinnedToCore(
     AsebaTask,   // Function to implement the task
     "aseba",     // Name of the task
@@ -419,7 +354,7 @@ int app_main(void)
     4,           // Priority of the task
     NULL,        // Task handle
     appCore1);   // Core where the task should run
-#endif
+//#endif
 //#if 0
   xTaskCreatePinnedToCore(
     SensorTask,  // Function to implement the task
@@ -568,125 +503,6 @@ static void FeedWatchdog(void)
 
 //_____________________________________________________________________________
 
-void IRAM_ATTR timer_group0_isr(void* para)
-{
-  static BaseType_t higherPriorityTaskWoken = pdFALSE;
-
-  int timer_idx = (int) para;
-
-  // Retrieve the interrupt status and the counter value
-  // from the timer that reported the interrupt
-  uint32_t intr_status = TIMERG0.int_st_timers.val;
-  TIMERG0.hw_timer[timer_idx].update = 1;
-
-  // After the alarm has been triggered, we need enable it again, so it is triggered the next time
-  TIMERG0.hw_timer[timer_idx].config.alarm_en = TIMER_ALARM_EN;
-
-  // Clear the interrupt and update the alarm time for the timer with without reload
-  if ((intr_status & BIT(timer_idx)) && (timer_idx == TIMER_0))
-  {
-    TIMERG0.int_clr_timers.t0 = 1;
-
-    vTaskNotifyGiveFromISR(TaskToNotify, &higherPriorityTaskWoken);
-
-    if (higherPriorityTaskWoken != pdFALSE)
-    {
-      portYIELD_FROM_ISR();
-    }
-  }
-  else if ((intr_status & BIT(timer_idx)) && (timer_idx == TIMER_1))
-  {
-    TIMERG0.int_clr_timers.t1 = 1;
-
-    //Sensors_RunTask();
-
-#if 0
-    xSemaphoreGiveFromISR(Timer125usSemaphore, &higherPriorityTaskWoken);
-//#if 0
-    if (higherPriorityTaskWoken != pdFALSE)
-    {
-      portYIELD_FROM_ISR();
-    }
-//#endif
-#endif
-  }
-  else
-  {
-    // Do nothing
-  }
-}
-
-//_____________________________________________________________________________
-
-void IRAM_ATTR timer_group1_isr(void* para)
-{
-  int timer_idx = (int) para;
-
-  // Retrieve the interrupt status and the counter value
-  // from the timer that reported the interrupt
-  uint32_t intr_status = TIMERG1.int_st_timers.val;
-  TIMERG1.hw_timer[timer_idx].update = 1;
-
-  // After the alarm has been triggered, we need enable it again, so it is triggered the next time
-  TIMERG1.hw_timer[timer_idx].config.alarm_en = TIMER_ALARM_EN;
-
-  // Clear the interrupt and update the alarm time for the timer with without reload
-  if ((intr_status & BIT(timer_idx)) && (timer_idx == TIMER_0))
-  {
-    TIMERG1.int_clr_timers.t0 = 1;
-  }
-  else if ((intr_status & BIT(timer_idx)) && (timer_idx == TIMER_1))
-  {
-    TIMERG0.int_clr_timers.t1 = 1;
-  }
-  else
-  {
-    // Do nothing
-  }
-}
-
-//_____________________________________________________________________________
-
-static void Timer_Init(int16_t timerNum, int timerIndex, bool auto_reload, double timer_interval_sec)
-{
-  // Select and initialize basic parameters of the timer
-  timer_config_t config;
-
-  config.divider     = TIMER_DIVIDER;
-  config.counter_dir = TIMER_COUNT_UP;
-  config.counter_en  = TIMER_PAUSE;
-  config.alarm_en    = TIMER_ALARM_EN;
-  config.intr_type   = TIMER_INTR_LEVEL;
-  config.auto_reload = auto_reload;
-
-  timer_init(timerNum, timerIndex, &config);
-
-  // Timer's counter will initially start from value below
-  // Also, if auto_reload is set, this value will be automatically reload on alarm
-  timer_set_counter_value(timerNum, timerIndex, 0x00000000ULL);
-
-  // Configure the alarm value and the interrupt on alarm
-  timer_set_alarm_value(timerNum, timerIndex, timer_interval_sec * TIMER_SCALE);
-  timer_enable_intr(timerNum, timerIndex);
-
-  if (timerNum == TIMER_GROUP_0)
-  {
-    timer_isr_register(timerNum, timerIndex, timer_group0_isr,
-                       (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL);
-  }
-  else
-  {
-    timer_isr_register(timerNum, timerIndex, timer_group1_isr,
-                       (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL);
-  }
-
-  //timer_start(TIMER_GROUP_0, timer_idx);
-
-  ESP_LOGI(Tag, "Group %d Timer %d is initialized", timerNum, timerIndex);
-}
-
-//_____________________________________________________________________________
-
 static void Settings_Init()
 {
   Settings.LeftMotor  = 256;
@@ -700,9 +516,10 @@ static void Settings_Init()
 
 void AsebaVMResetCB(AsebaVMState *vm)
 {
+	Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+	Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+	Leds_SetBodyBrightness(0u, 0u, 0u);
 #if 0 // FIXME
-	leds_set_circle(0,0,0,0,0,0,0,0);
-	leds_set_body_rgb(0,0,0);
 	leds_set(LED_SOUND,0);
 	leds_set(LED_RC,0);
 #endif

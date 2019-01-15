@@ -135,8 +135,8 @@ static void ir_tx(int value);
 
 static mcpwm_dev_t* MCPWM[2] = {&MCPWM0, &MCPWM1};
 
-static void IRAM_ATTR isr_handlerUnit0();
-static void IRAM_ATTR isr_handlerUnit1();
+static void IRAM_ATTR ISR_InputCaptureUnit0(void);
+static void IRAM_ATTR ISR_InputCaptureUnit1(void);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -194,8 +194,8 @@ void ProxIR_Init(void)
   // so each this a rising or falling edge occurs interrupt is triggered
   MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;
   MCPWM[MCPWM_UNIT_1]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;
-  mcpwm_isr_register(MCPWM_UNIT_0, isr_handlerUnit0, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
-  mcpwm_isr_register(MCPWM_UNIT_1, isr_handlerUnit1, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
+  mcpwm_isr_register(MCPWM_UNIT_0, ISR_InputCaptureUnit0, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
+  mcpwm_isr_register(MCPWM_UNIT_1, ISR_InputCaptureUnit1, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
 
   ESP_LOGI(Tag, "Proximity IR sensors are initialized");
 }
@@ -609,7 +609,7 @@ void TimerHw_CallbackBack60us(void* arg)
 
 //_____________________________________________________________________________
 
-static void IRAM_ATTR isr_handlerUnit0()
+static void IRAM_ATTR ISR_InputCaptureUnit0(void)
 {
   uint32_t mcpwm_intr_status;
 
@@ -685,7 +685,7 @@ static void IRAM_ATTR isr_handlerUnit0()
 
 //_____________________________________________________________________________
 
-static void IRAM_ATTR isr_handlerUnit1()
+static void IRAM_ATTR ISR_InputCaptureUnit1(void)
 {
   uint32_t mcpwm_intr_status;
 

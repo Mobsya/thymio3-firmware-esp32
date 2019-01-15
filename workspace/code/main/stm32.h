@@ -128,12 +128,18 @@ extern void STM32_GetRightMotorTarget(int16_t* target);
 //! \return    None
 extern void STM32_GetPwmDutyCycle(int16_t* dutyCycle);
 
-//! \brief     Get the battery voltage
+//! \brief     Read the battery voltage
 //! \pre       None
-//! \param     voltage The battery voltage read by the ADC
+//! \param     None
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\GetBattery.svg
-extern void STM32_GetBatteryVoltage(int16_t* voltage);
+extern void STM32_ReadBatteryVoltage(void);
+
+//! \brief     Get the battery voltage
+//! \pre       None
+//! \param     None
+//! \return    None
+extern int16_t STM32_GetBatteryVoltage(void);
 
 //! \brief     Get the induced voltage
 //! \pre       None

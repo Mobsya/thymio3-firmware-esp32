@@ -73,6 +73,8 @@ static uint8_t Status = 0u;
 
 static uint8_t ButtonStatus[BUTTON_NUM] = {0u, 0u, 0u, 0u, 0u};
 
+static int16_t Vbat[2] = {0, 0};
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -223,17 +225,24 @@ void STM32_GetPwmDutyCycle(int16_t* dutyCycle)
 
 //_____________________________________________________________________________
 
-void STM32_GetBatteryVoltage(int16_t* voltage)
+void STM32_ReadBatteryVoltage(void)
 {
   uint8_t data[4];
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, BATTERY_VOLTAGE_REG_ADDRESS, data, 4u);
 
-  voltage[0] = ((data[1] << 8) | data[0]);
-  voltage[1] = ((data[3] << 8) | data[2]);
+  Vbat[0] = ((data[1] << 8) | data[0]);
+  Vbat[1] = ((data[3] << 8) | data[2]);
 
-  vmVariables.vbat[0] = voltage[0];
-  vmVariables.vbat[1] = voltage[1];
+  vmVariables.vbat[0] = Vbat[0];
+  vmVariables.vbat[1] = Vbat[1];
+}
+
+//_____________________________________________________________________________
+
+int16_t STM32_GetBatteryVoltage(void)
+{
+  return (Vbat[0] + Vbat[1]);
 }
 
 //_____________________________________________________________________________

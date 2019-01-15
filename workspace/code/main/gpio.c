@@ -70,7 +70,7 @@ static T_PullUpDown SetResistor(T_GpioResistor resistor);
 
 static gpio_int_type_t SetInterrupt(T_GpioInterrupt interrupt);
 
-static void IRAM_ATTR gpio_isr_handler(void* arg);
+static void IRAM_ATTR ISR_GPIOHandler(void* arg);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -108,7 +108,7 @@ void Gpio_ConfigurePin(const T_GpioPinConfig* config)
       if (config->interrupt > E_GpioInterrupt_Disable)
       {
         //ESP_ERROR_CHECK(gpio_isr_handler_add(config->pinNumber, gpio_isr_handler, (void*) config->pinNumber));
-        gpio_isr_handler_add(config->pinNumber, gpio_isr_handler, (void*)config->pinNumber);
+        gpio_isr_handler_add(config->pinNumber, ISR_GPIOHandler, (void*)config->pinNumber);
       }
 
       if (config->mode == E_GpioMode_Output)
@@ -289,7 +289,7 @@ static gpio_int_type_t SetInterrupt(T_GpioInterrupt interrupt)
 
 //_____________________________________________________________________________
 
-static void IRAM_ATTR gpio_isr_handler(void* arg)
+static void IRAM_ATTR ISR_GPIOHandler(void* arg)
 {
   uint32_t gpio_num = (uint32_t) arg; 
 

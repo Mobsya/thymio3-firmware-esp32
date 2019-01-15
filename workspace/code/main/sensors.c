@@ -65,7 +65,7 @@ static int16_t PeriodAccumulator = 0;
 void Sensors_Init(void)
 {
   ADC_Init();
-  //Leds_Init();
+  Leds_Init();
 
   GroundIR_Init();
   ProxIR_Init();

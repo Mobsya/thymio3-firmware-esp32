@@ -74,8 +74,9 @@ void Spi_Init(void)
     .quadhd_io_num = -1  // Not used
   };
 
-  ESP_LOGI(Tag, "SPI is initialized");
   ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &bus_config, 1));
+
+  ESP_LOGI(Tag, "SPI is initialized");
 }
 
 //_____________________________________________________________________________

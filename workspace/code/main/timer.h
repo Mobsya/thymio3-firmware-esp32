@@ -20,12 +20,6 @@
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
-#if 0
-#include "freertos/FreeRTOS.h"
-#include "freertos/portmacro.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
-#include "freertos/semphr.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -39,6 +33,8 @@
 // Exported Global Data
 //-----------------------------------------------------------------------------
 
+extern TaskHandle_t TaskToNotify;
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -47,23 +43,16 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the xxx
+//! \brief     Initialize the timer
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void Timer_Init(int timer_idx, bool auto_reload, double timer_interval_sec);
+extern void Timer_Init(int16_t timerNum, int timerIndex, bool autoReload, double interval_sec);
 
-//! \brief     Run the xxx task
-//! \pre       First initialize the xxx
+//! \brief     Start the timer
+//! \pre       First initialize the timer
 //! \param     None
 //! \return    None
-extern void Timer_Task(void);
+extern void Timer_Start(int16_t timerNum, int16_t timerIndex);
 
-extern void Timer_CreateSemaphore(void);
-
-//extern TaskHandle_t Timer_GetSemaphore(void);
-extern SemaphoreHandle_t Timer_GetSemaphore(void);
-
-extern void Timer_CheckSemaphore(void);
-#endif
 #endif // TIMER_H_
