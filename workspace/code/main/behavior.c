@@ -36,6 +36,10 @@
 
 #define IR_SENSOR_NUM           (PROX_IR_SENSORS_NUM + GROUND_IR_SENSORS_NUM)
 
+#define BAT_HIGH        390
+#define BAT_MIDDLE      360
+#define BAT_LOW         340
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -76,6 +80,12 @@ static void SetIRSensorsLeds(void);
 //! \return    None
 static void SetAccelerometerLeds(void);
 
+//! \brief     Handle the battery
+//! \pre       None
+//! \param     None
+//! \return    None
+static void HandleBattery(void);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -95,16 +105,18 @@ void Behavior_Run(void)
   {
     SetIRSensorsLeds();
   }
-#if 0  // FIXME
+//#if 0  // FIXME
   if (ENABLED(B_LEDS_ACC))
   {
     SetAccelerometerLeds();
   }
-#endif
+//#endif
   if (ENABLED(B_MODE))
   {
     Mode_Run();
   }
+
+  //HandleBattery();
 }
 
 //_____________________________________________________________________________
@@ -215,7 +227,7 @@ void SetIRSensorsLeds(void)
   //static int16_t max[IR_SENSOR_NUM] = {4000, 4000, 4000, 4000, 4000, 4000, 4000, 900, 900};
   static int16_t max[IR_SENSOR_NUM] = {50, 50, 50, 50, 50, 50, 900, 900, 900};
   //static int16_t min[IR_SENSOR_NUM] = {1200, 1200, 1200, 1200, 1200, 1200, 1200, 0, 0};
-  static int16_t min[IR_SENSOR_NUM] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+  static int16_t min[IR_SENSOR_NUM] = {5, 5, 5, 5, 5, 5, 5, 0, 0};
 
   static T_Led led[IR_SENSOR_NUM] = {E_Led_Front_IR_0, E_Led_Front_IR_1, E_Led_Front_IR_2A,
                                      E_Led_Front_IR_3, E_Led_Front_IR_4, E_Led_IR_Back_Left,
@@ -232,16 +244,11 @@ void SetIRSensorsLeds(void)
     {
       max[index] = vmVariables.prox[index];
     }
-#if 0
-    else if ((vmVariables.prox[index] != 0) && (min[index] > vmVariables.prox[index]))
+
+    if ((vmVariables.prox[index] != 0) && (min[index] > vmVariables.prox[index]))
     {
       min[index] = vmVariables.prox[index];
     }
-    else
-    {
-      // Do nothing
-    }
-#endif
   }
 
   for (uint8_t index = 0u; index < GROUND_IR_SENSORS_NUM; index++)
@@ -256,7 +263,6 @@ void SetIRSensorsLeds(void)
   // Do a linear transformation from min-max to led 0-31!
   for (uint8_t index = 0u; index < PROX_IR_SENSORS_NUM; index++)
   {
-#if 0
     // Because of the min&max calculation above, we cannot have a
     // Division by 0 here.
     s = vmVariables.prox[index] - min[index];
@@ -268,10 +274,10 @@ void SetIRSensorsLeds(void)
     }
 
     brightness = ((int32_t)s * MAX_BRIGHTNESS) / delta;
-#endif
+#if 0
     s = (vmVariables.prox[index] > 0) ? vmVariables.prox[index] : 0;
     brightness = ((int32_t)s * MAX_BRIGHTNESS) / max[index];
-
+#endif
     //printf("s = %d, b = %d\n", s, brightness);
 
     Leds_SetSingleBrightness(led[index], brightness);
@@ -378,4 +384,56 @@ static void SetAccelerometerLeds(void)
 
 	previous_led = -1;
   }
+}
+
+//_____________________________________________________________________________
+
+static void HandleBattery(void)
+{
+  int16_t vbat = STM32_GetBatteryVoltage();
+  int32_t temp = vbat * 1000;
+  vbat = (temp / 3978);
+
+  printf("Vbat = %d\n", vbat);
+
+  when (vbat >= BAT_HIGH)
+  {
+	Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+	Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+	Leds_SetSingleBrightness(E_Led_Battery_2, 32);
+  }
+
+  when ((vbat > BAT_MIDDLE) && (vbat < (BAT_HIGH - 5)))
+  {
+	Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+	Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+	Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+  }
+
+  when ((vbat > BAT_LOW) && (vbat <= (BAT_MIDDLE - 5)))
+  {
+	Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+	Leds_SetSingleBrightness(E_Led_Battery_1, 0);
+	Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+  }
+
+  when (vbat <= BAT_LOW)
+  {
+	Leds_SetSingleBrightness(E_Led_Battery_1, 0);
+	Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+  }
+
+#if 0
+  if(vbat <= BAT_LOW)
+  {
+	counter++;
+		if(counter == 3)
+			leds_set(LED_BATTERY_0, 32);
+
+		if(counter > 5) {
+			leds_set(LED_BATTERY_0, 0);
+			counter = 0;
+		}
+	}
+#endif
 }
