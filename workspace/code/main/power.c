@@ -47,6 +47,8 @@ static const T_GpioPinConfig PinConfig = {VA_ENABLE_PIN,
                                           E_GpioInterrupt_Disable
                                          };
 
+static bool EnableSwitchOff = false;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -86,4 +88,18 @@ void Power_DisableVA(void)
 void Power_SwitchOff(void)
 {
   Power_DisableVA();
+}
+
+//_____________________________________________________________________________
+
+void Power_EnableSwitchOff(void)
+{
+  EnableSwitchOff = true;
+}
+
+//_____________________________________________________________________________
+
+bool Power_IsSwitchOffEnabled(void)
+{
+  return EnableSwitchOff;
 }

@@ -1,27 +1,25 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    power.h
-//! \brief   This module provides the useful functions to manage the power
+//! \file    mp3.h
+//! \brief   This module provides the useful functions to use the MP3
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: power.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \version $Id: mp3.h 18076 2017-04-20 12:28:12Z v.gonet $
 //_____________________________________________________________________________
 
-#ifndef POWER_H_
-#define POWER_H_
+#ifndef MP3_H_
+#define MP3_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
-
-#include <stdbool.h>
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -43,32 +41,16 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the power
+//! \brief     Initialize the xxx
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void Power_Init(void);
+extern void MP3_Init(void);
 
-//! \brief     Enable the power VA
-//! \pre       First initialize the power
+//! \brief     Run the xxx task
+//! \pre       First initialize the xxx
 //! \param     None
 //! \return    None
-extern void Power_EnableVA(void);
+extern void MP3_Task(void);
 
-//! \brief     Disable the power VA
-//! \pre       First initialize the power
-//! \param     None
-//! \return    None
-extern void Power_DisableVA(void);
-
-//! \brief     Switch off the ESP32 and its peripherals
-//! \pre       First initialize the power
-//! \param     None
-//! \return    None
-extern void Power_SwitchOff(void);
-
-extern void Power_EnableSwitchOff(void);
-
-extern bool Power_IsSwitchOffEnabled(void);
-
-#endif // POWER_H_
+#endif // MP3_H_
