@@ -134,7 +134,7 @@ void WIFI_Init(void)
       //.sort_method = DEFAULT_SORT_METHOD,
       //.threshold.rssi = DEFAULT_RSSI,
       //.threshold.authmode = DEFAULT_AUTHMODE,
-	  //.bssid_set = false
+      //.bssid_set = false
     },
   };
 

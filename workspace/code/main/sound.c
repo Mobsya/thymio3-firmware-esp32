@@ -118,7 +118,7 @@ int invert = 2; // invert MSB to get sine waveform
 
 static void EraseFlash(void);
 
-static void Scale12BitsTo8Bits(uint8_t * d_buff, uint8_t* s_buff, uint32_t len);
+static void Scale12BitsTo8Bits(uint8_t* d_buff, uint8_t* s_buff, uint32_t len);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -137,11 +137,11 @@ void Sound_Init(void)
     .mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN | I2S_MODE_ADC_BUILT_IN,
     .sample_rate = I2S_SAMPLE_RATE,
     .bits_per_sample = I2S_SAMPLE_BITS,
-	.communication_format = I2S_COMM_FORMAT_I2S_MSB,
-	.channel_format = I2S_FORMAT,
-	.intr_alloc_flags = 0,
-	.dma_buf_count = 2,
-	.dma_buf_len = 1024
+    .communication_format = I2S_COMM_FORMAT_I2S_MSB,
+    .channel_format = I2S_FORMAT,
+    .intr_alloc_flags = 0,
+    .dma_buf_count = 2,
+    .dma_buf_len = 1024
   };
 
   // Install and start I2S driver
@@ -173,13 +173,14 @@ void Sound_Init(void)
 
 void Sound_Task(void)
 {
-  const esp_partition_t *data_partition = NULL;
+  const esp_partition_t* data_partition = NULL;
 
   data_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA,
-                                            ESP_PARTITION_SUBTYPE_DATA_FAT, PARTITION_NAME);
+                   ESP_PARTITION_SUBTYPE_DATA_FAT, PARTITION_NAME);
   if (data_partition != NULL)
   {
-    ESP_LOGI(Tag, "partiton addr: 0x%08x; size: %d; label: %s\n", data_partition->address, data_partition->size, data_partition->label);
+    ESP_LOGI(Tag, "partiton addr: 0x%08x; size: %d; label: %s\n", data_partition->address, data_partition->size,
+             data_partition->label);
   }
   else
   {
@@ -298,14 +299,15 @@ static void EraseFlash(void)
 #if RECORD_IN_FLASH_EN
   ESP_LOGI(Tag, "Erasing flash");
 
-  const esp_partition_t *data_partition = NULL;
+  const esp_partition_t* data_partition = NULL;
 
   data_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA,
-                                            ESP_PARTITION_SUBTYPE_DATA_FAT, PARTITION_NAME);
+                   ESP_PARTITION_SUBTYPE_DATA_FAT, PARTITION_NAME);
 
   if (data_partition != NULL)
   {
-	  ESP_LOGI(Tag, "Partiton addr: 0x%08x; size: %d; label: %s\n", data_partition->address, data_partition->size, data_partition->label);
+    ESP_LOGI(Tag, "Partiton addr: 0x%08x; size: %d; label: %s\n", data_partition->address, data_partition->size,
+             data_partition->label);
   }
 
   ESP_LOGI(Tag, "Erase size: %d Bytes\n", FLASH_ERASE_SIZE);
@@ -317,7 +319,7 @@ static void EraseFlash(void)
 
 //_____________________________________________________________________________
 
-static void Scale12BitsTo8Bits(uint8_t * d_buff, uint8_t* s_buff, uint32_t len)
+static void Scale12BitsTo8Bits(uint8_t* d_buff, uint8_t* s_buff, uint32_t len)
 {
   uint32_t j = 0;
   uint32_t dac_value = 0;
@@ -325,7 +327,7 @@ static void Scale12BitsTo8Bits(uint8_t * d_buff, uint8_t* s_buff, uint32_t len)
 #if (I2S_SAMPLE_BITS == 16)
   for (int i = 0; i < len; i += 2)
   {
-    dac_value = ((((uint16_t) (s_buff[i + 1] & 0xf) << 8) | ((s_buff[i + 0]))));
+    dac_value = ((((uint16_t)(s_buff[i + 1] & 0xf) << 8) | ((s_buff[i + 0]))));
     d_buff[j++] = 0;
     d_buff[j++] = dac_value * 256 / 4096;
   }

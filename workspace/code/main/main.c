@@ -153,8 +153,8 @@ void SensorTask(void* pvParameter)
 
     if (result == 1)
     {
-	  Leds_RunTask();
-	  Sensors_RunTask();
+      Leds_RunTask();
+      Sensors_RunTask();
     }
 
     //taskYIELD();
@@ -184,12 +184,12 @@ void CommTask(void* pvParameter)
   while (1)
   {
     STM32_ReadStatus();
-	STM32_GetMotorCurrent(current);
-	STM32_ReadBatteryVoltage();
+    STM32_GetMotorCurrent(current);
+    STM32_ReadBatteryVoltage();
     STM32_GetInducedVoltage(vind);
     STM32_GetPwmDutyCycle(pwm);
-	STM32_ReadButtonStatus();
-	STM32_GetButtonRawData(button_raw);
+    STM32_ReadButtonStatus();
+    STM32_GetButtonRawData(button_raw);
 
     ColorSensor_GetColor();
     Accelerometer_GetTapSource();
@@ -514,34 +514,34 @@ static void Settings_Init()
 
 //_____________________________________________________________________________
 
-void AsebaVMResetCB(AsebaVMState *vm)
+void AsebaVMResetCB(AsebaVMState* vm)
 {
-	Leds_SetSingleBrightness(E_Led_Battery_1, 32);
-	Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-	Leds_SetBodyBrightness(0u, 0u, 0u);
+  Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+  Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  Leds_SetBodyBrightness(0u, 0u, 0u);
 #if 0 // FIXME
-	leds_set(LED_SOUND,0);
-	leds_set(LED_RC,0);
+  leds_set(LED_SOUND, 0);
+  leds_set(LED_RC, 0);
 #endif
-	Behavior_Start(B_LEDS_ACC);
+  Behavior_Start(B_LEDS_ACC);
 #if 0 // FIXME
-	behavior_start(B_LEDS_NTC);
-	behavior_start(B_LEDS_MIC);
+  behavior_start(B_LEDS_NTC);
+  behavior_start(B_LEDS_MIC);
 #endif
-	Behavior_Start(B_LEDS_PROX);
+  Behavior_Start(B_LEDS_PROX);
 #if 0 // FIXME
-	behavior_start(B_SOUND_BUTTON);
-	behavior_start(B_LEDS_MIC);
-	behavior_start(B_LEDS_RC5);
-	prox_disable_network();
-	events_flags[0] = 0;
-	events_flags[1] = 0;
-	memset(vm->variables, 0, vm->variablesSize*sizeof(int16_t));
-	vmVariables.id = vmState.nodeId;
-	vmVariables.productid = PRODUCT_ID;
-	vmVariables.fwversion[0] = FW_VERSION;
-	vmVariables.fwversion[1] = FW_VARIANT;
-	vmVariables.sd_present = !sd_user_open("_TESTSD");
-	sd_user_open(NULL);
+  behavior_start(B_SOUND_BUTTON);
+  behavior_start(B_LEDS_MIC);
+  behavior_start(B_LEDS_RC5);
+  prox_disable_network();
+  events_flags[0] = 0;
+  events_flags[1] = 0;
+  memset(vm->variables, 0, vm->variablesSize * sizeof(int16_t));
+  vmVariables.id = vmState.nodeId;
+  vmVariables.productid = PRODUCT_ID;
+  vmVariables.fwversion[0] = FW_VERSION;
+  vmVariables.fwversion[1] = FW_VARIANT;
+  vmVariables.sd_present = !sd_user_open("_TESTSD");
+  sd_user_open(NULL);
 #endif
 }

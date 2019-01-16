@@ -316,9 +316,9 @@ static void ReadUnit0PulseDuration(void)
     if (EventUnit0.sel_cap_signal == MCPWM_SELECT_CAP0)
     {
       PulseDuration[0] = ((EventUnit0.FallingEdge - EventUnit0.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
-  	  vmVariables.prox[0] = PulseDuration[0];
+      vmVariables.prox[0] = PulseDuration[0];
 
-  	  //printf("COUCOU counter = %d\n", PulseCounter);
+      //printf("COUCOU counter = %d\n", PulseCounter);
       //printf("%d\n", PulseDuration[0]);
     }
   }
@@ -334,7 +334,7 @@ static void ReadUnit0PulseDuration(void)
     if (EventUnit0.sel_cap_signal == MCPWM_SELECT_CAP1)
     {
       PulseDuration[1] = ((EventUnit0.FallingEdge - EventUnit0.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
-  	  vmVariables.prox[1] = PulseDuration[1];
+      vmVariables.prox[1] = PulseDuration[1];
     }
   }
   else
@@ -349,7 +349,7 @@ static void ReadUnit0PulseDuration(void)
     if (EventUnit0.sel_cap_signal == MCPWM_SELECT_CAP2)
     {
       PulseDuration[2] = ((EventUnit0.FallingEdge - EventUnit0.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
-  	  vmVariables.prox[2] = PulseDuration[2];
+      vmVariables.prox[2] = PulseDuration[2];
     }
   }
   else
@@ -367,14 +367,14 @@ static void ReadUnit1PulseDuration(void)
   if (OldPulseCounter[3] != PulseCounter[3])
   {
     if (EventUnit1.sel_cap_signal == MCPWM_SELECT_CAP0)
-	{
-	  PulseDuration[3] = ((EventUnit1.FallingEdge - EventUnit1.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
-	  vmVariables.prox[3] = PulseDuration[3];
-	}
+    {
+      PulseDuration[3] = ((EventUnit1.FallingEdge - EventUnit1.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
+      vmVariables.prox[3] = PulseDuration[3];
+    }
   }
   else
   {
-	vmVariables.prox[3] = 0;
+    vmVariables.prox[3] = 0;
   }
 
   OldPulseCounter[3] = PulseCounter[3];
@@ -383,10 +383,10 @@ static void ReadUnit1PulseDuration(void)
   {
     if (EventUnit1.sel_cap_signal == MCPWM_SELECT_CAP1)
     {
-	  PulseDuration[4] = ((EventUnit1.FallingEdge - EventUnit1.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
+      PulseDuration[4] = ((EventUnit1.FallingEdge - EventUnit1.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
 
-	  vmVariables.prox[4] = PulseDuration[4];
-	}
+      vmVariables.prox[4] = PulseDuration[4];
+    }
   }
   else
   {
@@ -397,11 +397,11 @@ static void ReadUnit1PulseDuration(void)
 
   if (OldPulseCounter[5] != PulseCounter[5])
   {
-	if (EventUnit1.sel_cap_signal == MCPWM_SELECT_CAP2)
-	{
-	  PulseDuration[5] = ((EventUnit1.FallingEdge - EventUnit1.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
-	  vmVariables.prox[5] = PulseDuration[5];
-	}
+    if (EventUnit1.sel_cap_signal == MCPWM_SELECT_CAP2)
+    {
+      PulseDuration[5] = ((EventUnit1.FallingEdge - EventUnit1.RisingEdge) / 1000) * (1000000000 / rtc_clk_apb_freq_get());
+      vmVariables.prox[5] = PulseDuration[5];
+    }
   }
   else
   {
@@ -414,8 +414,8 @@ static void ReadUnit1PulseDuration(void)
 
   if (OldPulseCounter[6] != PulseCounter[6])
   {
-	PulseDuration[6] = (Gpio_GetFallingEdgeTime() - Gpio_GetRisingEdgeTime());
-	vmVariables.prox[6] = PulseDuration[6];
+    PulseDuration[6] = (Gpio_GetFallingEdgeTime() - Gpio_GetRisingEdgeTime());
+    vmVariables.prox[6] = PulseDuration[6];
   }
   else
   {
@@ -622,7 +622,7 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void)
 
   if (mcpwm_intr_status & CAP0_INT_EN)  // Check for interrupt on rising edge or falling edge on CAP0 signal
   {
-	if (mcpwm_capture_signal_get_edge(MCPWM_UNIT_0, MCPWM_SELECT_CAP0) == 1)  // Rising edge
+    if (mcpwm_capture_signal_get_edge(MCPWM_UNIT_0, MCPWM_SELECT_CAP0) == 1)  // Rising edge
     {
       tmp[0] = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);  // Get capture signal counter value
       risingEdgeFront1Done = true;
@@ -631,10 +631,11 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void)
     {
       if (risingEdgeFront1Done)
       {
-    	risingEdgeFront1Done = false;
-    	EventUnit0.RisingEdge = tmp[0];
-    	EventUnit0.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);  // Get capture signal counter value
-    	EventUnit0.sel_cap_signal = MCPWM_SELECT_CAP0;
+        risingEdgeFront1Done = false;
+        EventUnit0.RisingEdge = tmp[0];
+        EventUnit0.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_0,
+                                 MCPWM_SELECT_CAP0);  // Get capture signal counter value
+        EventUnit0.sel_cap_signal = MCPWM_SELECT_CAP0;
         PulseCounter[0]++;
       }
     }
@@ -642,7 +643,7 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void)
 
   if (mcpwm_intr_status & CAP1_INT_EN)  // Check for interrupt on rising edge or falling edge on CAP0 signal
   {
-  	if (mcpwm_capture_signal_get_edge(MCPWM_UNIT_0, MCPWM_SELECT_CAP1) == 1)  // Rising edge
+    if (mcpwm_capture_signal_get_edge(MCPWM_UNIT_0, MCPWM_SELECT_CAP1) == 1)  // Rising edge
     {
       tmp[1] = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP1);  // Get capture signal counter value
       risingEdgeFront2Done = true;
@@ -651,10 +652,11 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void)
     {
       if (risingEdgeFront2Done)
       {
-    	risingEdgeFront2Done = false;
-    	EventUnit0.RisingEdge = tmp[1];
-    	EventUnit0.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP1);  // Get capture signal counter value
-    	EventUnit0.sel_cap_signal = MCPWM_SELECT_CAP1;
+        risingEdgeFront2Done = false;
+        EventUnit0.RisingEdge = tmp[1];
+        EventUnit0.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_0,
+                                 MCPWM_SELECT_CAP1);  // Get capture signal counter value
+        EventUnit0.sel_cap_signal = MCPWM_SELECT_CAP1;
         PulseCounter[1]++;
       }
     }
@@ -662,7 +664,7 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void)
 
   if (mcpwm_intr_status & CAP2_INT_EN)  // Check for interrupt on rising edge or falling edge on CAP0 signal
   {
-  	if (mcpwm_capture_signal_get_edge(MCPWM_UNIT_0, MCPWM_SELECT_CAP2) == 1)  // Rising edge
+    if (mcpwm_capture_signal_get_edge(MCPWM_UNIT_0, MCPWM_SELECT_CAP2) == 1)  // Rising edge
     {
       tmp[2] = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP2);  // Get capture signal counter value
       risingEdgeFront3Done = true;
@@ -671,10 +673,11 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void)
     {
       if (risingEdgeFront3Done)
       {
-    	risingEdgeFront3Done = false;
-    	EventUnit0.RisingEdge = tmp[2];
-    	EventUnit0.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP2);  // Get capture signal counter value
-    	EventUnit0.sel_cap_signal = MCPWM_SELECT_CAP2;
+        risingEdgeFront3Done = false;
+        EventUnit0.RisingEdge = tmp[2];
+        EventUnit0.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_0,
+                                 MCPWM_SELECT_CAP2);  // Get capture signal counter value
+        EventUnit0.sel_cap_signal = MCPWM_SELECT_CAP2;
         PulseCounter[2]++;
       }
     }
@@ -698,7 +701,7 @@ static void IRAM_ATTR ISR_InputCaptureUnit1(void)
 
   if (mcpwm_intr_status & CAP0_INT_EN)  // Check for interrupt on rising edge or falling edge on CAP0 signal
   {
-	if (mcpwm_capture_signal_get_edge(MCPWM_UNIT_1, MCPWM_SELECT_CAP0) == 1)  // Rising edge
+    if (mcpwm_capture_signal_get_edge(MCPWM_UNIT_1, MCPWM_SELECT_CAP0) == 1)  // Rising edge
     {
       tmp[0] = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP0);  // Get capture signal counter value
       risingEdgeFront4Done = true;
@@ -707,10 +710,11 @@ static void IRAM_ATTR ISR_InputCaptureUnit1(void)
     {
       if (risingEdgeFront4Done)
       {
-    	risingEdgeFront4Done = false;
-    	EventUnit1.RisingEdge = tmp[0];
-    	EventUnit1.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP0);  // Get capture signal counter value
-    	EventUnit1.sel_cap_signal = MCPWM_SELECT_CAP0;
+        risingEdgeFront4Done = false;
+        EventUnit1.RisingEdge = tmp[0];
+        EventUnit1.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_1,
+                                 MCPWM_SELECT_CAP0);  // Get capture signal counter value
+        EventUnit1.sel_cap_signal = MCPWM_SELECT_CAP0;
         PulseCounter[3]++;
       }
     }
@@ -718,7 +722,7 @@ static void IRAM_ATTR ISR_InputCaptureUnit1(void)
 
   if (mcpwm_intr_status & CAP1_INT_EN)  // Check for interrupt on rising edge or falling edge on CAP0 signal
   {
-  	if (mcpwm_capture_signal_get_edge(MCPWM_UNIT_1, MCPWM_SELECT_CAP1) == 1)  // Rising edge
+    if (mcpwm_capture_signal_get_edge(MCPWM_UNIT_1, MCPWM_SELECT_CAP1) == 1)  // Rising edge
     {
       tmp[1] = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP1);  // Get capture signal counter value
       risingEdgeFront5Done = true;
@@ -727,10 +731,11 @@ static void IRAM_ATTR ISR_InputCaptureUnit1(void)
     {
       if (risingEdgeFront5Done)
       {
-    	risingEdgeFront5Done = false;
-    	EventUnit1.RisingEdge = tmp[1];
-    	EventUnit1.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP1);  // Get capture signal counter value
-    	EventUnit1.sel_cap_signal = MCPWM_SELECT_CAP1;
+        risingEdgeFront5Done = false;
+        EventUnit1.RisingEdge = tmp[1];
+        EventUnit1.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_1,
+                                 MCPWM_SELECT_CAP1);  // Get capture signal counter value
+        EventUnit1.sel_cap_signal = MCPWM_SELECT_CAP1;
         PulseCounter[4]++;
       }
     }
@@ -738,7 +743,7 @@ static void IRAM_ATTR ISR_InputCaptureUnit1(void)
 
   if (mcpwm_intr_status & CAP2_INT_EN)  // Check for interrupt on rising edge or falling edge on CAP0 signal
   {
-  	if (mcpwm_capture_signal_get_edge(MCPWM_UNIT_1, MCPWM_SELECT_CAP2) == 1)  // Rising edge
+    if (mcpwm_capture_signal_get_edge(MCPWM_UNIT_1, MCPWM_SELECT_CAP2) == 1)  // Rising edge
     {
       tmp[2] = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP2);  // Get capture signal counter value
       risingEdgeFront6Done = true;
@@ -747,11 +752,12 @@ static void IRAM_ATTR ISR_InputCaptureUnit1(void)
     {
       if (risingEdgeFront6Done)
       {
-    	risingEdgeFront6Done = false;
-    	EventUnit1.RisingEdge = tmp[2];
-    	EventUnit1.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP2);  // Get capture signal counter value
-    	EventUnit1.sel_cap_signal = MCPWM_SELECT_CAP2;
-    	PulseCounter[5]++;
+        risingEdgeFront6Done = false;
+        EventUnit1.RisingEdge = tmp[2];
+        EventUnit1.FallingEdge = mcpwm_capture_signal_get_value(MCPWM_UNIT_1,
+                                 MCPWM_SELECT_CAP2);  // Get capture signal counter value
+        EventUnit1.sel_cap_signal = MCPWM_SELECT_CAP2;
+        PulseCounter[5]++;
       }
     }
   }

@@ -125,15 +125,15 @@ void WIFIUpdate_Init(void)
   wifi_config_t wifi_config =
   {
     .sta =
-	{
-	  .ssid = CONFIG_WIFI_SSID,
-	  .password = CONFIG_WIFI_PASSWORD,
-	  //.scan_method = DEFAULT_SCAN_METHOD,
-	  //.sort_method = DEFAULT_SORT_METHOD,
-	  //.threshold.rssi = DEFAULT_RSSI,
-	  //.threshold.authmode = DEFAULT_AUTHMODE,
+    {
+      .ssid = CONFIG_WIFI_SSID,
+      .password = CONFIG_WIFI_PASSWORD,
+      //.scan_method = DEFAULT_SCAN_METHOD,
+      //.sort_method = DEFAULT_SORT_METHOD,
+      //.threshold.rssi = DEFAULT_RSSI,
+      //.threshold.authmode = DEFAULT_AUTHMODE,
       //.bssid_set = false
-	},
+    },
   };
 
   // WIFI as Station Mode (connect to another wifi)

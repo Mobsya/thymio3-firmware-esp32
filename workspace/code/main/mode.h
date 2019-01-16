@@ -22,10 +22,10 @@
 //-----------------------------------------------------------------------------
 
 #define when(cond) if(({static unsigned char prev; \
-						unsigned char c = !!(cond); \
-						unsigned char result = c && !prev; \
-						prev = c; \
-						result;}))
+                        unsigned char c = !!(cond); \
+                        unsigned char result = c && !prev; \
+                        prev = c; \
+                        result;}))
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions

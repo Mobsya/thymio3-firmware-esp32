@@ -274,7 +274,7 @@ static void uartSendUInt16(uint16_t value)
   uint8_t data[2] =
   {
     (uint8_t)(value & 0x00FF),
-	(uint8_t)((value >> 8) & 0x00FF)
+    (uint8_t)((value >> 8) & 0x00FF)
   };
 
   UART_Write(data, 2);

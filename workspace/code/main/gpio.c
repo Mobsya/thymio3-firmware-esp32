@@ -291,7 +291,7 @@ static gpio_int_type_t SetInterrupt(T_GpioInterrupt interrupt)
 
 static void IRAM_ATTR ISR_GPIOHandler(void* arg)
 {
-  uint32_t gpio_num = (uint32_t) arg; 
+  uint32_t gpio_num = (uint32_t) arg;
 
   static uint64_t start = 0;
   static uint64_t stop = 0;

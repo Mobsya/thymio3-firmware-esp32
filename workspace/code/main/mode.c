@@ -140,56 +140,56 @@ void Mode_Run(void)
   // As the user mode disable the "mode menu thing"...
   if (ignore > 100)
   {
-	ignore = 101;
+    ignore = 101;
 
-	when (buttonState[E_Button_Center])
-	{
-	  ExitMode(CurrentMode);
+    when(buttonState[E_Button_Center])
+    {
+      ExitMode(CurrentMode);
 #if 0  // FIXME
-	  if (SelectMode == E_Mode_Menu)
-	  {
-	    // Special case, if we select the mode menu stuff
-		Behavior_Stop(B_MODE); // | B_SETTING);  FIXME
-		Mode_InitVM();
-		return;
-	  }
+      if (SelectMode == E_Mode_Menu)
+      {
+        // Special case, if we select the mode menu stuff
+        Behavior_Stop(B_MODE); // | B_SETTING);  FIXME
+        Mode_InitVM();
+        return;
+      }
 #endif
 
-	  if (SelectMode == CurrentMode)
-	  {
-	    StartMode(E_Mode_Menu);
-	    CurrentMode = E_Mode_Menu;
-	  }
-	  else
-	  {
-		StartMode(SelectMode);
-	    CurrentMode = SelectMode;
-	  }
+      if (SelectMode == CurrentMode)
+      {
+        StartMode(E_Mode_Menu);
+        CurrentMode = E_Mode_Menu;
+      }
+      else
+      {
+        StartMode(SelectMode);
+        CurrentMode = SelectMode;
+      }
     }
   }
 
   switch (CurrentMode)
   {
     case E_Mode_Menu:
-      when (buttonState[E_Button_Backward])
-	  {
+      when(buttonState[E_Button_Backward])
+      {
         SelectMode = SelectNextMode(SelectMode, -1);
-	  }
+      }
 
-      when (buttonState[E_Button_Left])
-	  {
+      when(buttonState[E_Button_Left])
+      {
         SelectMode = SelectNextMode(SelectMode, -1);
-	  }
+      }
 
-      when (buttonState[E_Button_Forward])
-	  {
+      when(buttonState[E_Button_Forward])
+      {
         SelectMode = SelectNextMode(SelectMode, 1);
-	  }
+      }
 
-      when (buttonState[E_Button_Right])
-	  {
+      when(buttonState[E_Button_Right])
+      {
         SelectMode = SelectNextMode(SelectMode, 1);
-	  }
+      }
 
       SetModeColor(SelectMode);
       break;
@@ -298,16 +298,17 @@ static T_Mode SelectNextMode(T_Mode mode, int16_t index)
   {
     temp += index;
 
-	while (temp > E_Mode_Max)
-	{
-	  temp -= (E_Mode_Max + 1);
-	}
+    while (temp > E_Mode_Max)
+    {
+      temp -= (E_Mode_Max + 1);
+    }
 
-	while (temp < 0)
-	{
-	  temp += (E_Mode_Max + 1);
-	}
-  } while (!IsModeEnabled(temp));
+    while (temp < 0)
+    {
+      temp += (E_Mode_Max + 1);
+    }
+  }
+  while (!IsModeEnabled(temp));
 
   return (T_Mode)temp;
 }
@@ -331,7 +332,7 @@ static bool IsModeEnabled(T_Mode mode)
 
   if (mode == E_Mode_Menu)
   {
-	result = false;
+    result = false;
   }
 
   return result;
@@ -380,12 +381,12 @@ static int16_t GetBodyColorPulse(void)
 
     if (led_pulse >= 32)
     {
-	  led_pulse = -128;
+      led_pulse = -128;
     }
   }
   else
   {
-	ret = -led_pulse/4;
+    ret = -led_pulse / 4;
   }
 
   //printf("p = %d, ret = %d\n", led_pulse, ret);
@@ -418,7 +419,7 @@ static void GetRainbow(uint8_t* rgb)
 
   if (rgb[2] > 96)
   {
-	rgb[2] -= 96;
+    rgb[2] -= 96;
   }
 
   rgb[0] = GetRainbowBrightness(rgb[0]);
@@ -456,24 +457,24 @@ static void SetSpeedUsingButtons(int16_t* speed)
 
   buttonState = STM32_GetButtonStatus();
 
-  when (buttonState[E_Button_Forward])
+  when(buttonState[E_Button_Forward])
   {
-	*speed = (*speed + 50);
+    *speed = (*speed + 50);
 
-	if (*speed > 500)
-	{
-	  *speed = 500;
-	}
+    if (*speed > 500)
+    {
+      *speed = 500;
+    }
   }
 
-  when (buttonState[E_Button_Backward])
+  when(buttonState[E_Button_Backward])
   {
     *speed = (*speed - 50);
 
-	if (*speed < -300)
-	{
-	  *speed = -300;
-	}
+    if (*speed < -300)
+    {
+      *speed = -300;
+    }
   }
 }
 
@@ -505,86 +506,86 @@ static void RunExplorer(void)
   if (speed >= 0)
   {
     int32_t temp1 = 0;
-	int32_t temp2 = 0;
+    int32_t temp2 = 0;
 
-	temp1 += vmVariables.prox[0];
-	temp1 += vmVariables.prox[1] * 2;
-	temp1 += vmVariables.prox[2] * 3;
-	temp1 += vmVariables.prox[3] * 2;
-	temp1 += vmVariables.prox[4];
+    temp1 += vmVariables.prox[0];
+    temp1 += vmVariables.prox[1] * 2;
+    temp1 += vmVariables.prox[2] * 3;
+    temp1 += vmVariables.prox[3] * 2;
+    temp1 += vmVariables.prox[4];
 
-	temp2 += vmVariables.prox[0] * -4;
-	temp2 += vmVariables.prox[1] * -3;
-	temp2 += vmVariables.prox[3] * 3;
-	temp2 += vmVariables.prox[4] * 4;
+    temp2 += vmVariables.prox[0] * -4;
+    temp2 += vmVariables.prox[1] * -3;
+    temp2 += vmVariables.prox[3] * 3;
+    temp2 += vmVariables.prox[4] * 4;
 
-	//printf("speed = %d, temp1 = %d, temp2 = %d\n", speed, temp1, temp2);
+    //printf("speed = %d, temp1 = %d, temp2 = %d\n", speed, temp1, temp2);
 
-	vmVariables.target[0] = speed - (((temp1 + temp2) * speed) / 500); //2000);
-	vmVariables.target[1] = speed - (((temp1 - temp2) * speed) / 500); //2000);
+    vmVariables.target[0] = speed - (((temp1 + temp2) * speed) / 500); //2000);
+    vmVariables.target[1] = speed - (((temp1 - temp2) * speed) / 500); //2000);
 
-	//printf("target = %d\n", vmVariables.target[0]);
+    //printf("target = %d\n", vmVariables.target[0]);
 
     if (vmVariables.target[0] < -600)
     {
-	  vmVariables.target[0] = -600;
+      vmVariables.target[0] = -600;
     }
 
     if (vmVariables.target[1] < -600)
     {
-	  vmVariables.target[1]= -600;
+      vmVariables.target[1] = -600;
     }
 
     if (vmVariables.target[0] > 600)
     {
-	  vmVariables.target[0] = 600;
+      vmVariables.target[0] = 600;
     }
 
     if (vmVariables.target[1] > 600)
     {
-	  vmVariables.target[1] = 600;
+      vmVariables.target[1] = 600;
     }
   }
   else
   {
     int32_t temp = (int32_t)vmVariables.prox[6] * (int32_t)speed;
-	vmVariables.target[0] = speed + (temp / -300);
+    vmVariables.target[0] = speed + (temp / -300);
 
-	temp = ((int32_t)vmVariables.prox[5] * (int32_t)speed);
-	vmVariables.target[1] = speed  + (temp / -300);
+    temp = ((int32_t)vmVariables.prox[5] * (int32_t)speed);
+    vmVariables.target[1] = speed  + (temp / -300);
 
     if (vmVariables.target[0] < -600)
     {
-	  vmVariables.target[0] = -600;
+      vmVariables.target[0] = -600;
     }
 
     if (vmVariables.target[1] < -600)
     {
-	  vmVariables.target[1]= -600;
+      vmVariables.target[1] = -600;
     }
 
     if (vmVariables.target[0] > 600)
     {
-	  vmVariables.target[0] = 600;
+      vmVariables.target[0] = 600;
     }
 
     if (vmVariables.target[1] > 600)
     {
-	  vmVariables.target[1] = 600;
+      vmVariables.target[1] = 600;
     }
   }
 
   if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
   {
-	vmVariables.target[0] = 0;
-	vmVariables.target[1] = 0;
-	Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 32);
-	Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 32);
+    vmVariables.target[0] = 0;
+    vmVariables.target[1] = 0;
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 32);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 32);
   }
   else
   {
-	Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0);
-	Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0);
   }
 }
 
@@ -598,7 +599,7 @@ static void RunFollower(void)
   static char led_delta = 1;
   static int16_t speed = 300;
 
-  #define DETECT 500
+#define DETECT 500
 
   int i;
   int speed_diff;
@@ -614,7 +615,7 @@ static void RunFollower(void)
     {
       max = vmVariables.prox[i];
       mi = i;
-	}
+    }
   }
 
   t = (2 - mi);
@@ -633,7 +634,7 @@ static void RunFollower(void)
   if (max < 3000)
   {
     t = 300 - ((max - 1000) / 7);
-	speed_l = t;
+    speed_l = t;
   }
 
   if (max < 2000)
@@ -648,39 +649,39 @@ static void RunFollower(void)
 
   if (speed_l < -speed)
   {
-	speed_l = -speed;
+    speed_l = -speed;
   }
 
   if (max < DETECT)
   {
-	//if (does_see_friend)
-	{
-	  vmVariables.target[0] = speed;
-	  vmVariables.target[1] = speed;
-	}
+    //if (does_see_friend)
+    {
+      vmVariables.target[0] = speed;
+      vmVariables.target[1] = speed;
+    }
 #if 0  // FIXME
-	else
-	{
-	  vmVariables.target[0] = 0;
-	  vmVariables.target[1] = 0;
+    else
+    {
+      vmVariables.target[0] = 0;
+      vmVariables.target[1] = 0;
     }
 #endif
   }
   else
   {
-	vmVariables.target[1] = (speed_diff + speed_l);
-	vmVariables.target[0] = (speed_l - speed_diff);
+    vmVariables.target[1] = (speed_diff + speed_l);
+    vmVariables.target[0] = (speed_l - speed_diff);
   }
 
   if ((does_see_friend > 0) && sound_done)
   {
-	unsigned char rgb[3];
+    unsigned char rgb[3];
 
-	GetRainbow(rgb);
+    GetRainbow(rgb);
 
-	Leds_SetTopBrightness(rgb[0], rgb[1], rgb[2]);
-	Leds_SetBottomLeftBrightness(rgb[2], rgb[0], rgb[1]);
-	Leds_SetBottomRightBrightness(rgb[1], rgb[2], rgb[0]);
+    Leds_SetTopBrightness(rgb[0], rgb[1], rgb[2]);
+    Leds_SetBottomLeftBrightness(rgb[2], rgb[0], rgb[1]);
+    Leds_SetBottomRightBrightness(rgb[1], rgb[2], rgb[0]);
   }
   else
   {
@@ -693,18 +694,19 @@ static void RunFollower(void)
 
     if (led_state >= 31)
     {
-	  led_delta = -1;
+      led_delta = -1;
     }
-	else if (led_state == 0)
-	{
-	  led_delta = 1;
-	}
-	else
-	{
-	  // Do nothing
-	}
+    else if (led_state == 0)
+    {
+      led_delta = 1;
+    }
+    else
+    {
+      // Do nothing
+    }
 
-    Leds_SetCircleBrightness(0, (led_state >> 4), (led_state >> 3), led_state, 32, led_state, (led_state >> 3), (led_state >> 4));
+    Leds_SetCircleBrightness(0, (led_state >> 4), (led_state >> 3), led_state, 32, led_state, (led_state >> 3),
+                             (led_state >> 4));
   }
   else
   {
@@ -714,76 +716,76 @@ static void RunFollower(void)
   // Buttons management
   SetSpeedUsingButtons(&speed);
 
-  when (max > DETECT)
+  when(max > DETECT)
   {
-	// play_sound(SOUND_F_DETECT);  // FIXME
+    // play_sound(SOUND_F_DETECT);  // FIXME
   }
 
   if (speed_diff == 0 && speed_l == 0 && sound_done == 0 && max > DETECT)
   {
-	sound_done = 1;
-	//play_sound(SOUND_F_OK);  // FIXME
+    sound_done = 1;
+    //play_sound(SOUND_F_OK);  // FIXME
   }
 
   if ((speed_diff != 0) || (max < DETECT))
   {
-	sound_done = 0;
+    sound_done = 0;
   }
 
   if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
   {
-	vmVariables.target[0] = 0;
-	vmVariables.target[1] = 0;
-	Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 32);
-	Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 32);
+    vmVariables.target[0] = 0;
+    vmVariables.target[1] = 0;
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 32);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 32);
   }
   else
   {
-	Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0);
-	Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0);
   }
 
   if (does_see_friend)
   {
-	does_see_friend--;
+    does_see_friend--;
   }
 #if 0  // FIXME
   if (IS_EVENT(EVENT_DATA))
   {
-	CLEAR_EVENT(EVENT_DATA);
-	does_see_friend = 0;
-	mi = 0;
-	max = vmVariables.intensity[0];
-	vmVariables.intensity[0] = 0;
+    CLEAR_EVENT(EVENT_DATA);
+    does_see_friend = 0;
+    mi = 0;
+    max = vmVariables.intensity[0];
+    vmVariables.intensity[0] = 0;
 
-	for (i = 1; i < 7; i++)
-	{
-	  if(vmVariables.intensity[i] > max)
-	  {
+    for (i = 1; i < 7; i++)
+    {
+      if (vmVariables.intensity[i] > max)
+      {
         mi = i;
-		max = vmVariables.intensity[i];
-	  }
+        max = vmVariables.intensity[i];
+      }
 
-	  vmVariables.intensity[i] = 0;
+      vmVariables.intensity[i] = 0;
     }
 
-	if (max > 3000)
-	{
-	  vmVariables.ir_tx_data = mi;
+    if (max > 3000)
+    {
+      vmVariables.ir_tx_data = mi;
 
-	  if ((vmVariables.rx_data > 0) && (vmVariables.rx_data < 4))
-	  {
-	    when (mi == 2)
-	    {
-		  play_sound(SOUND_F_OK);
-		}
+      if ((vmVariables.rx_data > 0) && (vmVariables.rx_data < 4))
+      {
+        when(mi == 2)
+        {
+          play_sound(SOUND_F_OK);
+        }
 
-	    if (mi == 2)
-	    {
-		  does_see_friend = 6;
-		}
-	  }
-	}
+        if (mi == 2)
+        {
+          does_see_friend = 6;
+        }
+      }
+    }
   }
 #endif
 }

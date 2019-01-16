@@ -326,60 +326,60 @@ static void SetAccelerometerLeds(void)
 
     if ((ha >= -2000) && (ha < 2000))
     {
-	  led = E_Led_Circle_4;
+      led = E_Led_Circle_4;
     }
-	else if ((ha < -2000) && (ha >= -6000))
-	{
-	  led = E_Led_Circle_3;
-	}
-	else if (ha < -6000 && ha >= -10000)
-	{
-	  led = E_Led_Circle_2;
-	}
-	else if ((ha < -10000) && (ha >= -14000))
-	{
-	  led = E_Led_Circle_1;
-	}
-	else if ((ha  < -14000) || (ha >= 14000))
-	{
-	  led = E_Led_Circle_0;
-	}
-	else if ((ha < 6000) && (ha >= 2000))
-	{
-	  led = E_Led_Circle_5;
-	}
-	else if ((ha < 10000) && (ha >= 6000))
-	{
-	  led = E_Led_Circle_6;
-	}
-	else if ((ha < 14000) && (ha >= 10000))
-	{
-	  led = E_Led_Circle_7;
-	}
-	else
-	{
-	  // Do nothing
-	}
+    else if ((ha < -2000) && (ha >= -6000))
+    {
+      led = E_Led_Circle_3;
+    }
+    else if (ha < -6000 && ha >= -10000)
+    {
+      led = E_Led_Circle_2;
+    }
+    else if ((ha < -10000) && (ha >= -14000))
+    {
+      led = E_Led_Circle_1;
+    }
+    else if ((ha  < -14000) || (ha >= 14000))
+    {
+      led = E_Led_Circle_0;
+    }
+    else if ((ha < 6000) && (ha >= 2000))
+    {
+      led = E_Led_Circle_5;
+    }
+    else if ((ha < 10000) && (ha >= 6000))
+    {
+      led = E_Led_Circle_6;
+    }
+    else if ((ha < 14000) && (ha >= 10000))
+    {
+      led = E_Led_Circle_7;
+    }
+    else
+    {
+      // Do nothing
+    }
 
-	//intensity = (40 - (abs(vmVariables.acc_bis[2]) * 2));  // TODO
+    //intensity = (40 - (abs(vmVariables.acc_bis[2]) * 2));  // TODO
     intensity = 32;
 
-	if (intensity < 0)
-	{
-	  intensity = 0;
-	}
+    if (intensity < 0)
+    {
+      intensity = 0;
+    }
 
-	if (led >= 0)
-	{
-	  if (previous_led >= 0)
-	  {
-	    Leds_SetSingleBrightness(previous_led, 0);
-	  }
+    if (led >= 0)
+    {
+      if (previous_led >= 0)
+      {
+        Leds_SetSingleBrightness(previous_led, 0);
+      }
 
-	  Leds_SetSingleBrightness(led, intensity);
-	}
+      Leds_SetSingleBrightness(led, intensity);
+    }
 
-	previous_led = led;
+    previous_led = led;
 
   }
   else
@@ -389,7 +389,7 @@ static void SetAccelerometerLeds(void)
       Leds_SetSingleBrightness(previous_led, 0);
     }
 
-	previous_led = -1;
+    previous_led = -1;
   }
 }
 
@@ -406,19 +406,19 @@ static void SetBatteryLeds(void)
   {
     static uint8_t state;
 
-	if (!wasCharging)
-	{
-	  // switch off everything.
-	  Leds_SetSingleBrightness(E_Led_Battery_0, 0);
-	  Leds_SetSingleBrightness(E_Led_Battery_1, 0);
-	  Leds_SetSingleBrightness(E_Led_Battery_2, 0);
-	  wasCharging = true;
-	}
+    if (!wasCharging)
+    {
+      // switch off everything.
+      Leds_SetSingleBrightness(E_Led_Battery_0, 0);
+      Leds_SetSingleBrightness(E_Led_Battery_1, 0);
+      Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+      wasCharging = true;
+    }
 
     // On 5V
     //int i = counter ? counter : 1;
     //counter += i > 10 ? 7 : i/2 + 1;
-	int16_t i;
+    int16_t i;
 
     if (counter >= 1)
     {
@@ -438,28 +438,28 @@ static void SetBatteryLeds(void)
       counter += ((i / 2) + 1);
     }
 
-	if (counter > 100)
-	{
-	  state++;
-	  counter = 1;
+    if (counter > 100)
+    {
+      state++;
+      counter = 1;
 
-	  if (state == 3)
-	  {
-		state = 0;
-	  }
+      if (state == 3)
+      {
+        state = 0;
+      }
 
-	  switch(state)
-	  {
-	    case 0:
-	      Leds_SetSingleBrightness(E_Led_Battery_2, 0);
-	      Leds_SetSingleBrightness(E_Led_Battery_1, 0);
-		  break;
-	  }
-	}
+      switch (state)
+      {
+        case 0:
+          Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+          Leds_SetSingleBrightness(E_Led_Battery_1, 0);
+          break;
+      }
+    }
 
-	//ESP_LOGE(Tag, "i: %d, counter: %d, state: %d", i, counter, state);
+    //ESP_LOGE(Tag, "i: %d, counter: %d, state: %d", i, counter, state);
 
-	Leds_SetSingleBrightness(E_Led_Battery_0 + state, counter);
+    Leds_SetSingleBrightness(E_Led_Battery_0 + state, counter);
   }
   else
   {
@@ -467,76 +467,76 @@ static void SetBatteryLeds(void)
     int32_t temp = vbat * 1000;
     vbat = (temp / 3978);
 
-	if (wasCharging)
-	{
-	  wasCharging = false;
-
-	  if (vbat >= BAT_HIGH)
-	  {
-	    Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-	    Leds_SetSingleBrightness(E_Led_Battery_1, 32);
-	    Leds_SetSingleBrightness(E_Led_Battery_2, 32);
-	  }
-	  else if (vbat > BAT_MIDDLE)
-	  {
-	    Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-		Leds_SetSingleBrightness(E_Led_Battery_1, 32);
-		Leds_SetSingleBrightness(E_Led_Battery_2, 0);
-	  }
-	  else if (vbat > BAT_LOW)
-	  {
-	    Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-		Leds_SetSingleBrightness(E_Led_Battery_1, 0);
-		Leds_SetSingleBrightness(E_Led_Battery_2, 0);
-	  }
-	  else
-	  {
-	    // Do nothing
-	  }
-	}
-
-    when (vbat >= BAT_HIGH)
+    if (wasCharging)
     {
-	  Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-	  Leds_SetSingleBrightness(E_Led_Battery_1, 32);
-	  Leds_SetSingleBrightness(E_Led_Battery_2, 32);
+      wasCharging = false;
+
+      if (vbat >= BAT_HIGH)
+      {
+        Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+        Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+        Leds_SetSingleBrightness(E_Led_Battery_2, 32);
+      }
+      else if (vbat > BAT_MIDDLE)
+      {
+        Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+        Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+        Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+      }
+      else if (vbat > BAT_LOW)
+      {
+        Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+        Leds_SetSingleBrightness(E_Led_Battery_1, 0);
+        Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+      }
+      else
+      {
+        // Do nothing
+      }
     }
 
-    when ((vbat > BAT_MIDDLE) && (vbat < (BAT_HIGH - 5)))
+    when(vbat >= BAT_HIGH)
     {
-	  Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-	  Leds_SetSingleBrightness(E_Led_Battery_1, 32);
-	  Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+      Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+      Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+      Leds_SetSingleBrightness(E_Led_Battery_2, 32);
     }
 
-    when ((vbat > BAT_LOW) && (vbat <= (BAT_MIDDLE - 5)))
+    when((vbat > BAT_MIDDLE) && (vbat < (BAT_HIGH - 5)))
     {
-	  Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-	  Leds_SetSingleBrightness(E_Led_Battery_1, 0);
-	  Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+      Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+      Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+      Leds_SetSingleBrightness(E_Led_Battery_2, 0);
     }
 
-    when (vbat <= BAT_LOW)
+    when((vbat > BAT_LOW) && (vbat <= (BAT_MIDDLE - 5)))
     {
-	  Leds_SetSingleBrightness(E_Led_Battery_1, 0);
-	  Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+      Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+      Leds_SetSingleBrightness(E_Led_Battery_1, 0);
+      Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+    }
+
+    when(vbat <= BAT_LOW)
+    {
+      Leds_SetSingleBrightness(E_Led_Battery_1, 0);
+      Leds_SetSingleBrightness(E_Led_Battery_2, 0);
     }
 
 
     if (vbat <= BAT_LOW)
     {
-	  counter++;
+      counter++;
 
-	  if (counter == 3)
-	  {
-		Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-	  }
+      if (counter == 3)
+      {
+        Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+      }
 
-	  if (counter > 5)
-	  {
-		Leds_SetSingleBrightness(E_Led_Battery_0, 0);
-		counter = 0;
-	  }
-	}
+      if (counter > 5)
+      {
+        Leds_SetSingleBrightness(E_Led_Battery_0, 0);
+        counter = 0;
+      }
+    }
   }
 }
