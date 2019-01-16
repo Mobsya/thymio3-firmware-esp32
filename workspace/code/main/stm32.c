@@ -47,13 +47,15 @@
 #define STM32_ID                        0xBCu  //!< ID of the STM32
 
 // Status register bit mask
-#define USB_PORT_IS_OPEN_BIT_MASK       0x01u
-#define READY_TO_SWITCH_OFF_BIT_MASK    0x02u
+#define USB_CABLE_IS_PRESENT_BIT_MASK   0x01u
+#define USB_PORT_IS_OPEN_BIT_MASK       0x02u
+#define READY_TO_SWITCH_OFF_BIT_MASK    0x04u
 
 // Status register bit position
-#define USB_PORT_IS_OPEN_BIT_POS           0u  // This bit is set by the STM32
-#define READY_TO_SWITCH_OFF_BIT_POS        1u  // This bit is set by the STM32
-#define OK_TO_SWITCH_OFF_BIT_POS           2u  // This bit is set by the ESP32
+#define USB_CABLE_IS_PRESENT_BIT_POS       0u  // This bit is set by the STM32
+#define USB_PORT_IS_OPEN_BIT_POS           1u  // This bit is set by the STM32
+#define READY_TO_SWITCH_OFF_BIT_POS        2u  // This bit is set by the STM32
+#define OK_TO_SWITCH_OFF_BIT_POS           3u  // This bit is set by the ESP32
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -115,6 +117,13 @@ void STM32_ReadStatus(void)
   I2C_ReadFromAddress(SLAVE_ADDRESS, STATUS_REG_ADDRESS, &data, 1u);
 
   Status = data;
+}
+
+//_____________________________________________________________________________
+
+bool STM32_IsUSBCablePresent(void)
+{
+  return ((Status & (1 << USB_CABLE_IS_PRESENT_BIT_POS)) == USB_CABLE_IS_PRESENT_BIT_MASK);
 }
 
 //_____________________________________________________________________________

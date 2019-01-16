@@ -72,6 +72,12 @@ extern void STM32_UpdateSettings(T_Settings settings);
 //! \return    None
 extern void STM32_ReadStatus(void);
 
+//! \brief     Check that the USB cable is present
+//! \pre       None
+//! \param     None
+//! \return    True if the USB cable is present, false otherwise
+extern bool STM32_IsUSBCablePresent(void);
+
 //! \brief     Check that the USB port is open
 //! \pre       None
 //! \param     None
