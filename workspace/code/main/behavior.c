@@ -21,6 +21,8 @@
 #include <stdint.h>
 #include <stdio.h>  // Only for debug
 
+#include "esp_log.h"
+
 #include "behavior.h"
 
 #include "aseba_esp32.h"
@@ -52,6 +54,8 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
+static const char* Tag = "behavior";
+
 static uint16_t behavior = 0u;
 
 #define ENABLED(b)              (behavior & b)   //({behavior & b;})
@@ -80,11 +84,11 @@ static void SetIRSensorsLeds(void);
 //! \return    None
 static void SetAccelerometerLeds(void);
 
-//! \brief     Handle the battery
+//! \brief     Set the battery LEDs
 //! \pre       None
 //! \param     None
 //! \return    None
-static void HandleBattery(void);
+static void SetBatteryLeds(void);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -96,6 +100,11 @@ static void HandleBattery(void);
 
 void Behavior_Run(void)
 {
+  if (ENABLED(B_LEDS_BATTERY))
+  {
+    SetBatteryLeds();
+  }
+
   if (ENABLED(B_LEDS_BUTTON))
   {
     SetButtonsLeds();
@@ -105,18 +114,16 @@ void Behavior_Run(void)
   {
     SetIRSensorsLeds();
   }
-//#if 0  // FIXME
+#if 0  // FIXME
   if (ENABLED(B_LEDS_ACC))
   {
     SetAccelerometerLeds();
   }
-//#endif
+#endif
   if (ENABLED(B_MODE))
   {
     Mode_Run();
   }
-
-  //HandleBattery();
 }
 
 //_____________________________________________________________________________
@@ -388,52 +395,148 @@ static void SetAccelerometerLeds(void)
 
 //_____________________________________________________________________________
 
-static void HandleBattery(void)
+static void SetBatteryLeds(void)
 {
+  static uint8_t counter = 0;
+  static bool wasCharging = false;
+
   int16_t vbat = STM32_GetBatteryVoltage();
-  int32_t temp = vbat * 1000;
-  vbat = (temp / 3978);
 
-  printf("Vbat = %d\n", vbat);
-
-  when (vbat >= BAT_HIGH)
+  if (STM32_IsUSBCablePresent())
   {
-	Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-	Leds_SetSingleBrightness(E_Led_Battery_1, 32);
-	Leds_SetSingleBrightness(E_Led_Battery_2, 32);
-  }
+    static uint8_t state;
 
-  when ((vbat > BAT_MIDDLE) && (vbat < (BAT_HIGH - 5)))
-  {
-	Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-	Leds_SetSingleBrightness(E_Led_Battery_1, 32);
-	Leds_SetSingleBrightness(E_Led_Battery_2, 0);
-  }
-
-  when ((vbat > BAT_LOW) && (vbat <= (BAT_MIDDLE - 5)))
-  {
-	Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-	Leds_SetSingleBrightness(E_Led_Battery_1, 0);
-	Leds_SetSingleBrightness(E_Led_Battery_2, 0);
-  }
-
-  when (vbat <= BAT_LOW)
-  {
-	Leds_SetSingleBrightness(E_Led_Battery_1, 0);
-	Leds_SetSingleBrightness(E_Led_Battery_2, 0);
-  }
-
-#if 0
-  if(vbat <= BAT_LOW)
-  {
-	counter++;
-		if(counter == 3)
-			leds_set(LED_BATTERY_0, 32);
-
-		if(counter > 5) {
-			leds_set(LED_BATTERY_0, 0);
-			counter = 0;
-		}
+	if (!wasCharging)
+	{
+	  // switch off everything.
+	  Leds_SetSingleBrightness(E_Led_Battery_0, 0);
+	  Leds_SetSingleBrightness(E_Led_Battery_1, 0);
+	  Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+	  wasCharging = true;
 	}
-#endif
+
+    // On 5V
+    //int i = counter ? counter : 1;
+    //counter += i > 10 ? 7 : i/2 + 1;
+	int16_t i;
+
+    if (counter >= 1)
+    {
+      i = counter;
+    }
+    else
+    {
+      i = 1;
+    }
+
+    if (i > 10)
+    {
+      counter += 7;
+    }
+    else
+    {
+      counter += ((i / 2) + 1);
+    }
+
+	if (counter > 100)
+	{
+	  state++;
+	  counter = 1;
+
+	  if (state == 3)
+	  {
+		state = 0;
+	  }
+
+	  switch(state)
+	  {
+	    case 0:
+	      Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+	      Leds_SetSingleBrightness(E_Led_Battery_1, 0);
+		  break;
+	  }
+	}
+
+	//ESP_LOGE(Tag, "i: %d, counter: %d, state: %d", i, counter, state);
+
+	Leds_SetSingleBrightness(E_Led_Battery_0 + state, counter);
+  }
+  else
+  {
+    vbat = STM32_GetBatteryVoltage();
+    int32_t temp = vbat * 1000;
+    vbat = (temp / 3978);
+
+	if (wasCharging)
+	{
+	  wasCharging = false;
+
+	  if (vbat >= BAT_HIGH)
+	  {
+	    Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+	    Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+	    Leds_SetSingleBrightness(E_Led_Battery_2, 32);
+	  }
+	  else if (vbat > BAT_MIDDLE)
+	  {
+	    Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+		Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+		Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+	  }
+	  else if (vbat > BAT_LOW)
+	  {
+	    Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+		Leds_SetSingleBrightness(E_Led_Battery_1, 0);
+		Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+	  }
+	  else
+	  {
+	    // Do nothing
+	  }
+	}
+
+    when (vbat >= BAT_HIGH)
+    {
+	  Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+	  Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+	  Leds_SetSingleBrightness(E_Led_Battery_2, 32);
+    }
+
+    when ((vbat > BAT_MIDDLE) && (vbat < (BAT_HIGH - 5)))
+    {
+	  Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+	  Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+	  Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+    }
+
+    when ((vbat > BAT_LOW) && (vbat <= (BAT_MIDDLE - 5)))
+    {
+	  Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+	  Leds_SetSingleBrightness(E_Led_Battery_1, 0);
+	  Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+    }
+
+    when (vbat <= BAT_LOW)
+    {
+	  Leds_SetSingleBrightness(E_Led_Battery_1, 0);
+	  Leds_SetSingleBrightness(E_Led_Battery_2, 0);
+    }
+
+
+    if (vbat <= BAT_LOW)
+    {
+	  counter++;
+
+	  if (counter == 3)
+	  {
+		Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+	  }
+
+	  if (counter > 5)
+	  {
+		Leds_SetSingleBrightness(E_Led_Battery_0, 0);
+		counter = 0;
+	  }
+	}
+  }
 }
