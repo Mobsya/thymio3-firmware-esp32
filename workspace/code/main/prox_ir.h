@@ -55,7 +55,7 @@ extern void ProxIR_Init(void);
 //! \pre       First initialize the proximity IR sensors
 //! \param     None
 //! \return    None
-extern int16_t ProxIR_EmitPulses(uint16_t tick);
+extern void ProxIR_Run(uint16_t tick);
 
 //! \brief     Enable the network
 //! \pre       First initialize the proximity IR sensors

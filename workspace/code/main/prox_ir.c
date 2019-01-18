@@ -121,7 +121,13 @@ T_Capture EventUnit1;
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
+static void ConfigureInputCapture(void);
+
 static void ReadUnit0PulseDuration(void);
+
+static void EnableInputCapture(void);
+
+static void DisableInputCapture(void);
 
 static void ReadUnit1PulseDuration(void);
 
@@ -164,57 +170,21 @@ void ProxIR_Init(void)
     }
   }
 
-  mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_0, IR_SENSE_FRONT_1_PIN);
-  mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_1, IR_SENSE_FRONT_2_PIN);
-  mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_2, IR_SENSE_FRONT_3_PIN);
-  mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_0, IR_SENSE_FRONT_4_PIN);
-  mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_1, IR_SENSE_FRONT_5_PIN);
-  mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_2, IR_SENSE_BACK_LEFT_PIN);
-  // IR_SENSE_BACK_RIGHT_PIN is handled by the GPIO ISR
-
-#if 0
-  gpio_pulldown_en(IR_SENSE_FRONT_1_PIN);    // Enable pull down on CAP0 signal
-  gpio_pulldown_en(IR_SENSE_FRONT_2_PIN);    // Enable pull down on CAP1 signal
-  gpio_pulldown_en(IR_SENSE_FRONT_3_PIN);    // Enable pull down on CAP2 signal
-  gpio_pulldown_en(IR_SENSE_FRONT_4_PIN);    // Enable pull down on CAP0 signal
-  gpio_pulldown_en(IR_SENSE_FRONT_5_PIN);    // Enable pull down on CAP1 signal
-  gpio_pulldown_en(IR_SENSE_BACK_LEFT_PIN);  // Enable pull down on CAP2 signal
-#endif
-
-#if 0  // TODO Uncomment when the MCPWM library is up-to-date
-  mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
-  mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
-  mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
-  mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
-  mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
-  mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
-#endif
-
-  // Enable interrupt on CAP0, CAP1 and CAP2 signal,
-  // so each this a rising or falling edge occurs interrupt is triggered
-  MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;
-  MCPWM[MCPWM_UNIT_1]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;
-  mcpwm_isr_register(MCPWM_UNIT_0, ISR_InputCaptureUnit0, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
-  mcpwm_isr_register(MCPWM_UNIT_1, ISR_InputCaptureUnit1, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
+  ConfigureInputCapture();
 
   ESP_LOGI(Tag, "Proximity IR sensors are initialized");
 }
 
 //_____________________________________________________________________________
 
-int16_t ProxIR_EmitPulses(uint16_t tick)
+void ProxIR_Run(uint16_t tick)
 {
   switch (tick)
   {
     case 5:
       TimerHw_StartFrontTimer60us();
 
-      mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
-      mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
-      mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
-      mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
-      mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
-      mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
+      EnableInputCapture();
 
       Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_High);
       FrontPulseIsInProgress = true;
@@ -234,20 +204,13 @@ int16_t ProxIR_EmitPulses(uint16_t tick)
     case 12:
       ReadUnit1PulseDuration();
 
-      mcpwm_capture_disable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);
-      mcpwm_capture_disable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1);
-      mcpwm_capture_disable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2);
-      mcpwm_capture_disable(MCPWM_UNIT_1, MCPWM_SELECT_CAP0);
-      mcpwm_capture_disable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1);
-      mcpwm_capture_disable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2);
+      DisableInputCapture();
       break;
 
     default:
       // Do nothing
       break;
   }
-
-  return 0;
 }
 
 #if 0
@@ -306,6 +269,68 @@ int16_t ProxIR_Run(uint16_t tick)
   return ret;
 }
 #endif
+
+//_____________________________________________________________________________
+
+static void ConfigureInputCapture(void)
+{
+  mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_0, IR_SENSE_FRONT_1_PIN);
+  mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_1, IR_SENSE_FRONT_2_PIN);
+  mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_2, IR_SENSE_FRONT_3_PIN);
+  mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_0, IR_SENSE_FRONT_4_PIN);
+  mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_1, IR_SENSE_FRONT_5_PIN);
+  mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_2, IR_SENSE_BACK_LEFT_PIN);
+  // IR_SENSE_BACK_RIGHT_PIN is handled by the GPIO ISR
+
+#if 0
+  gpio_pulldown_en(IR_SENSE_FRONT_1_PIN);    // Enable pull down on CAP0 signal
+  gpio_pulldown_en(IR_SENSE_FRONT_2_PIN);    // Enable pull down on CAP1 signal
+  gpio_pulldown_en(IR_SENSE_FRONT_3_PIN);    // Enable pull down on CAP2 signal
+  gpio_pulldown_en(IR_SENSE_FRONT_4_PIN);    // Enable pull down on CAP0 signal
+  gpio_pulldown_en(IR_SENSE_FRONT_5_PIN);    // Enable pull down on CAP1 signal
+  gpio_pulldown_en(IR_SENSE_BACK_LEFT_PIN);  // Enable pull down on CAP2 signal
+#endif
+
+#if 0  // TODO Uncomment when the MCPWM library is up-to-date
+  mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
+#endif
+
+  // Enable interrupt on CAP0, CAP1 and CAP2 signal,
+  // so each this a rising or falling edge occurs interrupt is triggered
+  MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;
+  MCPWM[MCPWM_UNIT_1]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;
+  mcpwm_isr_register(MCPWM_UNIT_0, ISR_InputCaptureUnit0, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
+  mcpwm_isr_register(MCPWM_UNIT_1, ISR_InputCaptureUnit1, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
+}
+
+//_____________________________________________________________________________
+
+static void EnableInputCapture(void)
+{
+  mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP0, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1, MCPWM_BOTH_EDGE, 0);
+  mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2, MCPWM_BOTH_EDGE, 0);
+}
+
+//_____________________________________________________________________________
+
+static void DisableInputCapture(void)
+{
+  mcpwm_capture_disable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);
+  mcpwm_capture_disable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1);
+  mcpwm_capture_disable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2);
+  mcpwm_capture_disable(MCPWM_UNIT_1, MCPWM_SELECT_CAP0);
+  mcpwm_capture_disable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1);
+  mcpwm_capture_disable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2);
+}
 
 //_____________________________________________________________________________
 

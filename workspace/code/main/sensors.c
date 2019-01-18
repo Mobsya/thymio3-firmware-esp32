@@ -82,7 +82,6 @@ void Sensors_RunTask(void)
 
   int16_t sensors[3];
 //#if 0
-  //if ((tick == 7) || (tick == 50) || (tick == 53) || (tick == 56))
   if ((tick == 50) || (tick == 53) || (tick == 56))
   {
     ADC_AcquireValues(sensors);
@@ -90,7 +89,8 @@ void Sensors_RunTask(void)
 //#endif
   //Leds_RunTask();
 
-  PeriodAccumulator += ProxIR_EmitPulses(tick);
+  ProxIR_Run(tick);
+  //PeriodAccumulator += ProxIR_Run(tick);
   //PeriodAccumulator = 0;
 
   if (PeriodAccumulator > 100)
