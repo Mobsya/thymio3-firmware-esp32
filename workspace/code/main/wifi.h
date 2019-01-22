@@ -59,4 +59,6 @@ extern bool WIFI_IsConnected(void);
 
 extern void WIFI_GetIPAddress(void);
 
+extern void WIFI_WaitForIP(void);
+
 #endif // WIFI_H_

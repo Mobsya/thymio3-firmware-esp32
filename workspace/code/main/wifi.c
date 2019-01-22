@@ -96,6 +96,9 @@ static EventGroupHandle_t EventGroup;
 
 const int WIFI_CONNECTED_BIT = BIT0;
 
+const int IPV4_GOTIP_BIT = BIT0;
+const int IPV6_GOTIP_BIT = BIT1;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -146,7 +149,7 @@ void WIFI_Init(void)
 
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
   ESP_ERROR_CHECK(esp_wifi_start());
-  ESP_ERROR_CHECK(esp_wifi_connect());
+  //ESP_ERROR_CHECK(esp_wifi_connect());
 }
 
 //_____________________________________________________________________________
@@ -197,6 +200,17 @@ void WIFI_GetIPAddress(void)
 
 //_____________________________________________________________________________
 
+void WIFI_WaitForIP(void)
+{
+  uint32_t bits = (IPV4_GOTIP_BIT | IPV6_GOTIP_BIT);
+
+  ESP_LOGI(Tag, "Waiting for AP connection...");
+  xEventGroupWaitBits(EventGroup, bits, false, true, portMAX_DELAY);
+  ESP_LOGI(Tag, "Connected to AP");
+}
+
+//_____________________________________________________________________________
+
 static esp_err_t EventHandler(void* ctx, system_event_t* event)
 {
   uint16_t apCount = 0;
@@ -206,6 +220,11 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
     case SYSTEM_EVENT_STA_START:
       ESP_LOGI(Tag, "SYSTEM_EVENT_STA_START");
       ESP_ERROR_CHECK(esp_wifi_connect());
+      break;
+
+    case SYSTEM_EVENT_STA_CONNECTED:
+      /* enable ipv6 */
+      tcpip_adapter_create_ip6_linklocal(TCPIP_ADAPTER_IF_STA);
       break;
 
     case SYSTEM_EVENT_SCAN_DONE:
@@ -282,7 +301,7 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
       vmVariables.ip[2] = ((ip_uint & 0x00FF0000) >> 16);
       vmVariables.ip[3] = ((ip_uint & 0xFF000000) >> 24);
 #endif
-      xEventGroupSetBits(EventGroup, WIFI_CONNECTED_BIT);
+      xEventGroupSetBits(EventGroup, IPV4_GOTIP_BIT);
       WifiIsConnected = true;
       break;
 
@@ -301,7 +320,16 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
     case SYSTEM_EVENT_STA_DISCONNECTED:
       ESP_LOGI(Tag, "SYSTEM_EVENT_STA_DISCONNECTED");
       ESP_ERROR_CHECK(esp_wifi_connect());
-      xEventGroupClearBits(EventGroup, WIFI_CONNECTED_BIT);
+      xEventGroupClearBits(EventGroup, IPV4_GOTIP_BIT);
+      xEventGroupClearBits(EventGroup, IPV6_GOTIP_BIT);
+      break;
+
+    case SYSTEM_EVENT_AP_STA_GOT_IP6:
+      xEventGroupSetBits(EventGroup, IPV6_GOTIP_BIT);
+      ESP_LOGI(Tag, "SYSTEM_EVENT_STA_GOT_IP6");
+
+      char *ip6 = ip6addr_ntoa(&event->event_info.got_ip6.ip6_info.ip);
+      ESP_LOGI(Tag, "IPv6: %s", ip6);
       break;
 
     default:
