@@ -58,7 +58,7 @@ typedef struct
 extern void BH1745NUC_Init(void);
 
 //! \brief     Check the manufacturer ID
-//! \pre       None
+//! \pre       First initialize the color sensor
 //! \param     None
 //! \return    None
 extern void BH1745NUC_CheckManufacturerId(void);
@@ -66,8 +66,8 @@ extern void BH1745NUC_CheckManufacturerId(void);
 extern void BH1745NUC_ReadRegisters(void);
 
 //! \brief     Get the RGBC illuminance in [lux]
-//! \pre       None
-//! \param     None
+//! \pre       First initialize the color sensor
+//! \param     illuminance - Illuminance RGBC in [lux]
 //! \return    None
 extern void BH1745NUC_GetIlluminance_lux(T_Illuminance* illuminance);
 

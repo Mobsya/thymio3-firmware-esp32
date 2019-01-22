@@ -51,7 +51,7 @@ extern void ADC_Init(void);
 
 //! \brief     Acquire the ADC values
 //! \pre       First initialize the internal ADC
-//! \param     None
+//! \param     value - Value read on the ADC channels
 //! \return    None
 extern void ADC_AcquireValues(int16_t* value);
 

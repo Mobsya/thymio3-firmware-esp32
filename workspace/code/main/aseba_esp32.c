@@ -957,7 +957,6 @@ void AsebaESP32_Run(void)
         // If a local event is pending, then execute it
         if (event != -1)
         {
-          //Leds_SetSingleBrightness(E_Led_Battery_1, 2);  FIXME only for debug
           CLEAR_EVENT(event);
 
           vmVariables.source = vmState.nodeId;
