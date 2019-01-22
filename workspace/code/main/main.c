@@ -35,6 +35,7 @@
 
 #include "aseba_esp32.h"
 #include "behavior.h"
+#include "file_system.h"
 #include "gpio.h"
 #include "i2c.h"
 #include "leds.h"
@@ -44,6 +45,7 @@
 #include "prox_ir.h"
 #include "sensors.h"
 #include "sound.h"
+#include "tcp_server.h"
 #include "timer.h"
 #include "uart.h"
 #include "wifi.h"
@@ -125,10 +127,108 @@ void SoundTask(void* pvParameter)
   {
     Sound_Task();
 
-    FeedWatchdog();
-    //vTaskDelay(50 / portTICK_PERIOD_MS);
+    //FeedWatchdog();
+    //vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
 //#endif
+
+  //MP3_Task();
+}
+
+//_____________________________________________________________________________
+
+void CommTask(void* pvParameter)
+{
+  ESP_LOGI(Tag, "Start Comm Task");
+
+#if 0
+  ColorSensor_Init();
+  Accelerometer_Init();
+  Compass_Init();
+  Gyroscope_Init();
+#endif
+
+  while (1)
+  {
+    STM32_ReadStatus();
+    STM32_ReadMotorCurrent();
+    STM32_ReadBatteryVoltage();
+    STM32_ReadInducedVoltage();
+    STM32_ReadPwmDutyCycle();
+    STM32_ReadButtonStatus();
+    STM32_ReadButtonRawData();
+
+    ColorSensor_GetColor();
+    Accelerometer_GetTapSource();
+    Accelerometer_GetAcceleration();
+    Gyroscope_GetAngularPosition();
+
+#if 0
+    if (Power_IsSwitchOffEnabled())
+    {
+      ESP_LOGI(Tag, "COUCOU");
+      //Power_SwitchOff();
+      Leds_SetTopBrightness(32, 0, 0);
+    }
+    else if (STM32_IsReadyToSwitchOff())
+    {
+      Power_EnableSwitchOff();
+      Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+      STM32_AllowToSwitchOff();
+      //Power_SwitchOff();
+    }
+#endif
+
+    vTaskDelay(50 / portTICK_PERIOD_MS);
+  }
+}
+
+//_____________________________________________________________________________
+
+void WifiTask(void* pvParameter)
+{
+  ESP_LOGI(Tag, "Start Wifi Task");
+
+  TCPServer_RunTask();
+}
+
+//_____________________________________________________________________________
+#if 0
+void WifiTask(void* pvParameter)
+{
+  ESP_LOGI(Tag, "Start Wifi Task");
+  //NVS_Init();
+  //WifiUpdate_Init();
+  //WifiUpdate_Connect(DEFAULT_WIFI_SSID, DEFAULT_WIFI_PASSWORD);
+
+  WIFI_InitNVS();
+  WIFI_Init();
+//#if 0
+  while (1)
+  {
+    //vTaskDelete(NULL);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+//#endif
+}
+#endif
+
+//_____________________________________________________________________________
+
+void AsebaTask(void* pvParameter)
+{
+  ESP_LOGI(Tag, "Start Aseba Task");
+
+  //UART_Init();
+  AsebaESP32_Init();
+
+  while (1)
+  {
+    AsebaESP32_Run();
+    //TCPServer_RunTask();
+
+    vTaskDelay(3 / portTICK_PERIOD_MS);
+  }
 }
 
 //_____________________________________________________________________________
@@ -165,96 +265,6 @@ void SensorTask(void* pvParameter)
 
 //_____________________________________________________________________________
 
-void CommTask(void* pvParameter)
-{
-  ESP_LOGI(Tag, "Start Comm Task");
-
-#if 0
-  ColorSensor_Init();
-  Accelerometer_Init();
-  Compass_Init();
-  Gyroscope_Init();
-#endif
-
-  int16_t vind[2] = {0, 0};
-  int16_t current[2] = {0, 0};
-  int16_t pwm[2] = {0, 0};
-  int16_t button_raw[5] = {0, 0, 0, 0, 0};
-
-  while (1)
-  {
-    STM32_ReadStatus();
-    STM32_GetMotorCurrent(current);
-    STM32_ReadBatteryVoltage();
-    STM32_GetInducedVoltage(vind);
-    STM32_GetPwmDutyCycle(pwm);
-    STM32_ReadButtonStatus();
-    STM32_GetButtonRawData(button_raw);
-
-    ColorSensor_GetColor();
-    Accelerometer_GetTapSource();
-    Accelerometer_GetAcceleration();
-    Gyroscope_GetAngularPosition();
-
-#if 0
-    if (Power_IsSwitchOffEnabled())
-    {
-      ESP_LOGI(Tag, "COUCOU");
-      //Power_SwitchOff();
-      Leds_SetTopBrightness(32, 0, 0);
-    }
-    else if (STM32_IsReadyToSwitchOff())
-    {
-      Power_EnableSwitchOff();
-      Leds_SetSingleBrightness(E_Led_Battery_1, 32);
-      STM32_AllowToSwitchOff();
-      //Power_SwitchOff();
-    }
-#endif
-
-    vTaskDelay(50 / portTICK_PERIOD_MS);
-  }
-}
-
-//_____________________________________________________________________________
-
-void AsebaTask(void* pvParameter)
-{
-  ESP_LOGI(Tag, "Start Aseba Task");
-
-  //UART_Init();
-  AsebaESP32_Init();
-
-  while (1)
-  {
-    AsebaESP32_Run();
-
-    vTaskDelay(3 / portTICK_PERIOD_MS);
-  }
-}
-
-//_____________________________________________________________________________
-#if 0
-void WifiTask(void* pvParameter)
-{
-  ESP_LOGI(Tag, "Start Wifi Task");
-  //NVS_Init();
-  //WifiUpdate_Init();
-  //WifiUpdate_Connect(DEFAULT_WIFI_SSID, DEFAULT_WIFI_PASSWORD);
-
-  WIFI_InitNVS();
-  WIFI_Init();
-//#if 0
-  while (1)
-  {
-    //vTaskDelete(NULL);
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-  }
-//#endif
-}
-#endif
-//_____________________________________________________________________________
-
 int app_main(void)
 {
   static int appCore1 = 0;
@@ -270,13 +280,27 @@ int app_main(void)
 #endif
 
   Settings_Init();
+#if 0
+  FileSystem_Init();
+  FileSystem_CreateSettingsFile();
+  //FileSystem_ReadFile();
+  FileSystem_ReadSettingsFile();
+  FileSystem_WriteSettingsFile();
+  FileSystem_ReadSettingsFile();
+  FileSystem_UpdateSettings(29, 56);
+  FileSystem_WriteSettingsFile();
+  FileSystem_ReadSettingsFile();
+#endif
 
   Gpio_Init();
   Power_Init();
 
   UART_Init();
   I2C_Init();
+  //Sound_Init();
   //I2S_Init();
+
+  //MP3_Init();
 
   //Leds_Init();
   Sensors_Init();
@@ -298,10 +322,12 @@ int app_main(void)
   {}
 #endif
 
-  //MP3_Init();
+  TCPServer_Init();
 
   Timer_Init(0, 0, 1, 0.000125);  // Timer used to run the SensorTask
   Timer_Init(0, 1, 1, 1);         // Timer used to handle the IR_SENSE_BACK_RIGHT_PIN
+
+  //CheckConnectionMode();
 
 //#if 0  // MP3 debug
 
@@ -309,7 +335,7 @@ int app_main(void)
   xTaskCreatePinnedToCore(
     BehaviorTask, // Function to implement the task
     "behavior",   // Name of the task
-    4096,         // Stack size in words
+    2048,         // Stack size in words
     NULL,         // Task input parameter
     2,            // Priority of the task
     NULL,         // Task handle
@@ -328,23 +354,23 @@ int app_main(void)
 //#if 0
   xTaskCreatePinnedToCore(
     CommTask,    // Function to implement the task
-    "comm",   // Name of the task
+    "comm",      // Name of the task
     2048,        // Stack size in words
     NULL,        // Task input parameter
     3,           // Priority of the task
     NULL,        // Task handle
     appCore1);   // Core where the task should run
 //#endif
-#if 0
+//#if 0
   xTaskCreatePinnedToCore(
     WifiTask,     // Function to implement the task
     "wifi",       // Name of the task
-    2048,         // Stack size in words
+    4096,         // Stack size in words
     NULL,         // Task input parameter
     3,            // Priority of the task
     NULL,         // Task handle
-    appCore1);    // Core where the task should run
-#endif
+    appCore2);    // Core where the task should run
+//#endif
 //#if 0
   xTaskCreatePinnedToCore(
     AsebaTask,   // Function to implement the task

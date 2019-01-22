@@ -49,30 +49,28 @@
 //! \return    None
 extern void FileSystem_Init(void);
 
-//! \brief     Create a file
+//! \brief     Create the settings file
 //! \pre       First initialize the file system
 //! \param     None
 //! \return    None
-extern void FileSystem_CreateFile(void);
-
 extern void FileSystem_CreateSettingsFile(void);
 
+//! \brief     Write to the settings file
+//! \pre       First initialize the file system
+//! \param     None
+//! \return    None
 extern void FileSystem_WriteSettingsFile(void);
 
-//! \brief     Rename a file
+//! \brief     Read from the settings file
 //! \pre       First initialize the file system
 //! \param     None
 //! \return    None
-extern void FileSystem_RenameFile(void);
-
-//! \brief     Read a file
-//! \pre       First initialize the file system
-//! \param     None
-//! \return    None
-extern void FileSystem_ReadFile(void);
-
 extern void FileSystem_ReadSettingsFile(void);
 
+//! \brief     Update the settings (not in the file)
+//! \pre       None
+//! \param     None
+//! \return    None
 extern void FileSystem_UpdateSettings(int16_t leftMotor, int16_t rightMotor);
 
 #endif // FILE_SYSTEM_H_

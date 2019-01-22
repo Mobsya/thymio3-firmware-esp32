@@ -32,12 +32,13 @@
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
-
+//#if 0
 typedef struct
 {
   int16_t LeftMotor;   //!< Correction factor of the left motor
   int16_t RightMotor;  //!< Correction factor of the right motor
 } T_Settings;
+//#endif
 
 typedef enum
 {
@@ -128,11 +129,11 @@ extern void STM32_GetLeftMotorTarget(int16_t* target);
 //! \return    None
 extern void STM32_GetRightMotorTarget(int16_t* target);
 
-//! \brief     Get the left PWM duty cycle
+//! \brief     Read the PWM duty cycle
 //! \pre       None
-//! \param     dutyCycle The dutyCycle of the left motor
+//! \param     None
 //! \return    None
-extern void STM32_GetPwmDutyCycle(int16_t* dutyCycle);
+extern void STM32_ReadPwmDutyCycle(void);
 
 //! \brief     Read the battery voltage
 //! \pre       None
@@ -147,17 +148,17 @@ extern void STM32_ReadBatteryVoltage(void);
 //! \return    None
 extern int16_t STM32_GetBatteryVoltage(void);
 
-//! \brief     Get the induced voltage
+//! \brief     Read the induced voltage
 //! \pre       None
 //! \param     voltage The induced voltage read by the ADC
 //! \return    None
-extern void STM32_GetInducedVoltage(int16_t* voltage);
+extern void STM32_ReadInducedVoltage(void);
 
-//! \brief     Get the motor current
+//! \brief     Read the motor current
 //! \pre       None
 //! \param     current The motor current calculated by the motor controller
 //! \return    None
-extern void STM32_GetMotorCurrent(int16_t* current);
+extern void STM32_ReadMotorCurrent(void);
 
 //! \brief     Read the button status
 //! \pre       None
@@ -171,10 +172,10 @@ extern void STM32_ReadButtonStatus(void);
 //! \return    None
 extern uint8_t* STM32_GetButtonStatus(void);
 
-//! \brief     Get the button raw data
+//! \brief     Read the button raw data
 //! \pre       None
 //! \param     rawData The raw data of the buttons
 //! \return    None
-extern void STM32_GetButtonRawData(int16_t* rawData);
+extern void STM32_ReadButtonRawData(void);
 
 #endif // STM32_H_

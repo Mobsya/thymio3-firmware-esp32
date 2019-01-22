@@ -73,9 +73,13 @@ static const char* Tag = "stm32";
 
 static uint8_t Status = 0u;
 
+static int16_t ButtonRaw[BUTTON_NUM] = {0, 0, 0, 0, 0};
 static uint8_t ButtonStatus[BUTTON_NUM] = {0u, 0u, 0u, 0u, 0u};
 
 static int16_t Vbat[2] = {0, 0};
+static int16_t Vind[2] = {0, 0};
+static int16_t DutyCycle[2] = {0, 0};
+static int16_t Current[2] = {0, 0};
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -219,17 +223,17 @@ void STM32_GetRightMotorTarget(int16_t* target)
 
 //_____________________________________________________________________________
 
-void STM32_GetPwmDutyCycle(int16_t* dutyCycle)
+void STM32_ReadPwmDutyCycle(void)
 {
   uint8_t data[4];
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, PWM_DUTY_CYCLE_REG_ADDRESS, data, 4u);
 
-  dutyCycle[0] = ((data[1] << 8) | data[0]);
-  dutyCycle[1] = ((data[3] << 8) | data[2]);
+  DutyCycle[0] = ((data[1] << 8) | data[0]);
+  DutyCycle[1] = ((data[3] << 8) | data[2]);
 
-  vmVariables.pwm[0] = dutyCycle[0];
-  vmVariables.pwm[1] = dutyCycle[1];
+  vmVariables.pwm[0] = DutyCycle[0];
+  vmVariables.pwm[1] = DutyCycle[1];
 }
 
 //_____________________________________________________________________________
@@ -256,32 +260,32 @@ int16_t STM32_GetBatteryVoltage(void)
 
 //_____________________________________________________________________________
 
-void STM32_GetInducedVoltage(int16_t* voltage)
+void STM32_ReadInducedVoltage(void)
 {
   uint8_t data[4];
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, INDUCED_VOLTAGE_REG_ADDRESS, data, 4u);
 
-  voltage[0] = ((data[1] << 8) | data[0]);
-  voltage[1] = ((data[3] << 8) | data[2]);
+  Vind[0] = ((data[1] << 8) | data[0]);
+  Vind[1] = ((data[3] << 8) | data[2]);
 
-  vmVariables.uind[0] = voltage[0];
-  vmVariables.uind[1] = voltage[1];
+  vmVariables.uind[0] = Vind[0];
+  vmVariables.uind[1] = Vind[1];
 }
 
 //_____________________________________________________________________________
 
-void STM32_GetMotorCurrent(int16_t* current)
+void STM32_ReadMotorCurrent(void)
 {
   uint8_t data[4];
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, MOTOR_CURRENT_REG_ADDRESS, data, 4u);
 
-  current[0] = ((data[1] << 8) | data[0]);
-  current[1] = ((data[3] << 8) | data[2]);
+  Current[0] = ((data[1] << 8) | data[0]);
+  Current[1] = ((data[3] << 8) | data[2]);
 
-  vmVariables.imot[0] = current[0];
-  vmVariables.imot[1] = current[1];
+  vmVariables.imot[0] = Current[0];
+  vmVariables.imot[1] = Current[1];
 }
 
 //_____________________________________________________________________________
@@ -314,23 +318,23 @@ uint8_t* STM32_GetButtonStatus(void)
 
 //_____________________________________________________________________________
 
-void STM32_GetButtonRawData(int16_t* rawData)
+void STM32_ReadButtonRawData(void)
 {
   uint8_t data[10];
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, BUTTON_RAW_DATA_REG_ADDRESS, data, 10u);
 
-  rawData[0] = ((data[1] << 8) | data[0]);
-  rawData[1] = ((data[3] << 8) | data[2]);
-  rawData[2] = ((data[5] << 8) | data[4]);
-  rawData[3] = ((data[7] << 8) | data[6]);
-  rawData[4] = ((data[9] << 8) | data[8]);
+  ButtonRaw[0] = ((data[1] << 8) | data[0]);
+  ButtonRaw[1] = ((data[3] << 8) | data[2]);
+  ButtonRaw[2] = ((data[5] << 8) | data[4]);
+  ButtonRaw[3] = ((data[7] << 8) | data[6]);
+  ButtonRaw[4] = ((data[9] << 8) | data[8]);
 
-  vmVariables.buttons[0] = rawData[0];
-  vmVariables.buttons[1] = rawData[1];
-  vmVariables.buttons[2] = rawData[2];
-  vmVariables.buttons[3] = rawData[3];
-  vmVariables.buttons[4] = rawData[4];
+  vmVariables.buttons[0] = ButtonRaw[0];
+  vmVariables.buttons[1] = ButtonRaw[1];
+  vmVariables.buttons[2] = ButtonRaw[2];
+  vmVariables.buttons[3] = ButtonRaw[3];
+  vmVariables.buttons[4] = ButtonRaw[4];
 }
 
 //_____________________________________________________________________________
