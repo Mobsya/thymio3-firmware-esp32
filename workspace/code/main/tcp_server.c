@@ -58,6 +58,10 @@
 
 static const char* Tag = "tcp_server";
 
+static bool SocketIsAccepted = false;
+
+char rx_buffer[512];
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -74,14 +78,14 @@ void TCPServer_Init(void)
 {
   WIFI_InitNVS();
   WIFI_Init();
-  WIFI_WaitForIP(); // TODO
+  WIFI_WaitForIP();
 }
 
 //_____________________________________________________________________________
 
 void TCPServer_RunTask(void)
 {
-  char rx_buffer[128];
+  //char rx_buffer[512];
   char addr_str[128];
   int addr_family;
   int ip_protocol;
@@ -149,8 +153,10 @@ void TCPServer_RunTask(void)
       break;
     }
 
+    SocketIsAccepted = true;
     ESP_LOGI(Tag, "Socket accepted");
 
+    // Loop reading data
     while (1)
     {
       int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
@@ -179,6 +185,7 @@ void TCPServer_RunTask(void)
         }
 
         rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
+//#if 0  // FIXME
         ESP_LOGI(Tag, "Received %d bytes from %s:", len, addr_str);
         ESP_LOGI(Tag, "%s", rx_buffer);
 
@@ -189,6 +196,7 @@ void TCPServer_RunTask(void)
           ESP_LOGE(Tag, "Error occured during sending: errno %d", errno);
           break;
         }
+//#endif
       }
     }
 
@@ -200,4 +208,42 @@ void TCPServer_RunTask(void)
     }
   }
   vTaskDelete(NULL);
+}
+
+//_____________________________________________________________________________
+
+bool TCPServer_IsSocketAccepted(void)
+{
+  return SocketIsAccepted;
+}
+
+//_____________________________________________________________________________
+
+void TCPServer_Send(const uint8_t* data, uint16_t length)
+{
+  int addr_family = AF_INET;
+  int ip_protocol = IPPROTO_IP;
+
+  int listen_sock = socket(addr_family, SOCK_STREAM, ip_protocol);
+
+  struct sockaddr_in6 sourceAddr; // Large enough for both IPv4 or IPv6
+
+  uint addrLen = sizeof(sourceAddr);
+  int sock = accept(listen_sock, (struct sockaddr *)&sourceAddr, &addrLen);
+
+  ESP_LOGI(Tag, "%s", rx_buffer);
+  int err = send(sock, data, length, 0);
+
+  if (err < 0)
+  {
+    ESP_LOGE(Tag, "Error occured during sending: errno %d", errno);
+  }
+}
+
+//_____________________________________________________________________________
+
+uint8_t* TCPServer_GetRxBuffer(void)
+{
+  //ESP_LOGI(Tag, "%s", rx_buffer);
+  return (uint8_t*)rx_buffer;
 }

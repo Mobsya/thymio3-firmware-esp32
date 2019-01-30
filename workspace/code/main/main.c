@@ -34,27 +34,29 @@
 #include "esp_log.h"
 
 #include "aseba_esp32.h"
+#include "audio.h"
 #include "behavior.h"
+#include "comm.h"
 #include "file_system.h"
 #include "gpio.h"
-#include "i2c.h"
 #include "leds.h"
 #include "mode.h"
 #include "mp3.h"
 #include "power.h"
-#include "prox_ir.h"
 #include "sensors.h"
 #include "sound.h"
+#include "sound_data.h"
 #include "tcp_server.h"
 #include "timer.h"
+#include "timer_hw.h"
 #include "uart.h"
 #include "wifi.h"
 #include "wifi_update.h"
 
 // I2C modules
-#include "accelerometer.h"
-#include "color_sensor.h"
-#include "gyroscope.h"
+//#include "accelerometer.h"
+//#include "color_sensor.h"
+//#include "gyroscope.h"
 #include "stm32.h"
 
 #include "board.h"  // FIXME only for debug
@@ -86,6 +88,8 @@ static int16_t OldTarget[2] = {0, 0};
 static T_Settings Settings;
 static T_Settings OldSettings;
 
+T_Wav Wav;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -102,85 +106,41 @@ static void Settings_Init(void);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void BehaviorTask(void* pvParameter)
-{
-  ESP_LOGI(Tag, "Start Behavior Task");
-
-  while (1)
-  {
-    Behavior_Run();
-
-    vTaskDelay(20 / portTICK_PERIOD_MS);
-  }
-}
-
-//_____________________________________________________________________________
-
 void SoundTask(void* pvParameter)
 {
   ESP_LOGI(Tag, "Start Sound Task");
 
-  //Sound_Init();
+  Sound_Init();
+
   //MP3_Init();
 //#if 0
-  //while (1)
-  {
-    Sound_Task();
-
-    //FeedWatchdog();
-    //vTaskDelay(1000 / portTICK_PERIOD_MS);
-  }
-//#endif
-
-  //MP3_Task();
-}
-
-//_____________________________________________________________________________
-
-void CommTask(void* pvParameter)
-{
-  ESP_LOGI(Tag, "Start Comm Task");
-
-#if 0
-  ColorSensor_Init();
-  Accelerometer_Init();
-  Compass_Init();
-  Gyroscope_Init();
-#endif
-
   while (1)
   {
-    STM32_ReadStatus();
-    STM32_ReadMotorCurrent();
-    STM32_ReadBatteryVoltage();
-    STM32_ReadInducedVoltage();
-    STM32_ReadPwmDutyCycle();
-    STM32_ReadButtonStatus();
-    STM32_ReadButtonRawData();
-
-    ColorSensor_GetColor();
-    Accelerometer_GetTapSource();
-    Accelerometer_GetAcceleration();
-    Gyroscope_GetAngularPosition();
-
-#if 0
-    if (Power_IsSwitchOffEnabled())
-    {
-      ESP_LOGI(Tag, "COUCOU");
-      //Power_SwitchOff();
-      Leds_SetTopBrightness(32, 0, 0);
-    }
-    else if (STM32_IsReadyToSwitchOff())
-    {
-      Power_EnableSwitchOff();
-      Leds_SetSingleBrightness(E_Led_Battery_1, 32);
-      STM32_AllowToSwitchOff();
-      //Power_SwitchOff();
-    }
-#endif
-
-    vTaskDelay(50 / portTICK_PERIOD_MS);
+	//Sound_Record();
+    //Sound_Task();
+	//Sound_PlayFile();
+    //FeedWatchdog();
+    //vTaskDelay(100 / portTICK_PERIOD_MS);
+    //vTaskDelete(NULL);
   }
+//#endif
+#if 0
+  while (1)
+  {
+    Audio_FillBuffer();
+    if (Wav.Completed)
+    {
+      Audio_PlayWav(&Wav);
+    }
+
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+  }
+#endif
+  vTaskDelete(NULL);
+
+  //xTaskNotifyGive(TaskToNotify);
+
+  //MP3_Task();
 }
 
 //_____________________________________________________________________________
@@ -233,38 +193,6 @@ void AsebaTask(void* pvParameter)
 
 //_____________________________________________________________________________
 
-void SensorTask(void* pvParameter)
-{
-  uint32_t result = 0;
-
-  ESP_LOGI(Tag, "Start Sensor Task");
-
-  //Leds_Init();
-
-  // Attempt to create a notification
-  TaskToNotify = xTaskGetCurrentTaskHandle();
-
-  Timer_Start(0, 0);
-  Timer_Start(0, 1);
-
-  while (1)
-  {
-    result = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-    if (result == 1)
-    {
-      Leds_RunTask();
-      Sensors_RunTask();
-    }
-
-    //taskYIELD();
-
-    FeedWatchdog();
-  }
-}
-
-//_____________________________________________________________________________
-
 int app_main(void)
 {
   static int appCore1 = 0;
@@ -296,20 +224,24 @@ int app_main(void)
   Power_Init();
 
   UART_Init();
-  I2C_Init();
-  //Sound_Init();
-  //I2S_Init();
 
+  Comm_Init();
+
+  TimerHw_Init();
+
+  //Audio_Init(&Wav, Force);
+  //Sound_Init();
+  //Sound_Record();
+  //Audio_PlaySound(1000, 2000);
+  //Audio_PlaySuperMarioTheme();
+  //I2S_Init();
   //MP3_Init();
 
-  //Leds_Init();
   Sensors_Init();
   Mode_Init();
   Mode_InitVM();
 
-  ColorSensor_Init();
-  Accelerometer_Init();
-  Gyroscope_Init();
+
 
 #if 0
   //WIFI_InitNVS();
@@ -322,7 +254,8 @@ int app_main(void)
   {}
 #endif
 
-  TCPServer_Init();
+  //TCPServer_Init();
+  //WIFI_Configure();
 
   Timer_Init(0, 0, 1, 0.000125);  // Timer used to run the SensorTask
   Timer_Init(0, 1, 1, 1);         // Timer used to handle the IR_SENSE_BACK_RIGHT_PIN
@@ -333,7 +266,7 @@ int app_main(void)
 
 //#if 0
   xTaskCreatePinnedToCore(
-    BehaviorTask, // Function to implement the task
+	Behavior_RunTask, // Function to implement the task
     "behavior",   // Name of the task
     2048,         // Stack size in words
     NULL,         // Task input parameter
@@ -343,17 +276,18 @@ int app_main(void)
 //#endif
 #if 0
   xTaskCreatePinnedToCore(
-    SoundTask,    // Function to implement the task
+    //SoundTask,    // Function to implement the task
+	Sound_PlayFile,  // Function to implement the task
     "sound",      // Name of the task
     2048,         // Stack size in words
     NULL,         // Task input parameter
-    3,            // Priority of the task
+    2,            // Priority of the task
     NULL,         // Task handle
     appCore1);    // Core where the task should run
 #endif
 //#if 0
   xTaskCreatePinnedToCore(
-    CommTask,    // Function to implement the task
+    Comm_RunTask,    // Function to implement the task
     "comm",      // Name of the task
     2048,        // Stack size in words
     NULL,        // Task input parameter
@@ -361,7 +295,7 @@ int app_main(void)
     NULL,        // Task handle
     appCore1);   // Core where the task should run
 //#endif
-//#if 0
+#if 0
   xTaskCreatePinnedToCore(
     WifiTask,     // Function to implement the task
     "wifi",       // Name of the task
@@ -370,7 +304,7 @@ int app_main(void)
     3,            // Priority of the task
     NULL,         // Task handle
     appCore2);    // Core where the task should run
-//#endif
+#endif
 //#if 0
   xTaskCreatePinnedToCore(
     AsebaTask,   // Function to implement the task
@@ -383,7 +317,7 @@ int app_main(void)
 //#endif
 //#if 0
   xTaskCreatePinnedToCore(
-    SensorTask,  // Function to implement the task
+    Sensor_RunTask,  // Function to implement the task
     "sensor",    // Name of the task
     2048,        // Stack size in words
     NULL,        // Task input parameter
@@ -542,7 +476,7 @@ static void Settings_Init()
 
 void AsebaVMResetCB(AsebaVMState* vm)
 {
-  Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+  Leds_SetSingleBrightness(E_Led_Battery_1, MAX_BRIGHTNESS);
   Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
   Leds_SetBodyBrightness(0u, 0u, 0u);
 #if 0 // FIXME

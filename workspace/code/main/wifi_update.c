@@ -95,21 +95,22 @@ static void NetworkTask(void* pvParameters);
 
 void WIFIUpdate_InitNVS(void)
 {
-  esp_err_t result = nvs_flash_init();
+  esp_err_t error = nvs_flash_init();
 
-  if ((result == ESP_ERR_NVS_NO_FREE_PAGES) || (result == ESP_ERR_NVS_NEW_VERSION_FOUND))
+  if ((error == ESP_ERR_NVS_NO_FREE_PAGES) || (error == ESP_ERR_NVS_NEW_VERSION_FOUND))
   {
     ESP_ERROR_CHECK(nvs_flash_erase());
-    result = nvs_flash_init();
+    error = nvs_flash_init();
   }
 
-  ESP_ERROR_CHECK(result);
+  ESP_ERROR_CHECK(error);
 }
 
 //_____________________________________________________________________________
 
 void WIFIUpdate_Init(void)
 {
+#if 0
   EventGroup = xEventGroupCreate();
 
   // Initialize the TCP Stack
@@ -149,7 +150,7 @@ void WIFIUpdate_Init(void)
   //ESP_LOGI(Tag, "WIFI configuration SSID %s...", wifi_config.sta.ssid);
 
   xTaskCreate(&NetworkTask, "NetworkTask", 32768, NULL, 5, NULL);
-
+#endif
   OtaUpdate_Init();
 }
 

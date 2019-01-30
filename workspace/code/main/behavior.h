@@ -32,6 +32,7 @@
 #define B_LEDS_BATTERY  (1 << 5)
 #define B_LEDS_ACC      (1 << 8)
 #define B_MODE          (1 << 10)
+#define B_SETTING       (1 << 12)
 
 #define B_ALWAYS    (B_LEDS_BATTERY | B_LEDS_BUTTON)  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_LEDS_SD | B_SOUND_BUTTON | B_LEDS_BUTTON)
 
@@ -51,11 +52,11 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Run the behaviors
+//! \brief     Run the behavior task
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void Behavior_Run(void);
+extern void Behavior_RunTask(void* pvParameter);
 
 //! \brief     Enable the behavior
 //! \pre       None

@@ -1,21 +1,21 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    sound.h
-//! \brief   This module provides the useful functions to generate the sound
+//! \file    audio.h
+//! \brief   This module provides the useful functions to play sounds
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: sound.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \version $Id: audio.h 18076 2017-04-20 12:28:12Z v.gonet $
 //_____________________________________________________________________________
 
-#ifndef SOUND_H_
-#define SOUND_H_
+#ifndef AUDIO_H_
+#define AUDIO_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
@@ -31,17 +31,22 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
-typedef enum
+typedef struct
 {
-  E_Volume_ppp = 16,
-  E_Volume_pp  = 32,
-  E_Volume_p   = 48,
-  E_Volume_mp  = 64,
-  E_Volume_mf  = 80,
-  E_Volume_f   = 96,
-  E_Volume_ff  = 112,
-  E_Volume_fff = 127
-} T_Volume;
+  uint16_t SampleRate;
+  volatile uint32_t DataSize;                         // The last integer part of count
+  volatile uint32_t DataIdx;
+  volatile unsigned char *Data;
+  volatile float IncreaseBy;                          // The amount to increase the counter by per call to "onTimer"
+  volatile float Count;                               // The counter counting up, we check this to see if we need to send
+  volatile int32_t LastIntCount;                     // The last integer part of count
+  volatile bool Completed;
+  volatile bool Mix;								// Should sound be mixed with others or stop all and play on its own
+  //volatile T_PlayListItem *ParentPlayListItem;
+  volatile uint8_t LastValue;							// Last value returned from NextByte function
+  //T_Wav(unsigned char *WavData);
+  //uint8_t NextByte();
+} T_Wav;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -59,27 +64,16 @@ typedef enum
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void Sound_Init(void);
+//extern void Audio_Init(void);
+extern void Audio_Init(T_Wav* wav, uint8_t* wavData);
+
+extern void Audio_FillBuffer(void);
 
 //! \brief     Run the xxx task
 //! \pre       First initialize the xxx
 //! \param     None
 //! \return    None
-extern void Sound_Task(void);
-//extern void Sound_Task(int16_t note);
+//extern void Audio_PlayWav(T_Wav* wav, bool mix);
+extern void Audio_PlayWav(T_Wav* wav);
 
-extern void Sound_Record(void);
-
-extern void Sound_PlayFile(void* pvParameter);
-
-extern void Sound_SetFrequency(int16_t clk_8m_div, int16_t frequency_step);
-
-extern void Sound_ScaleOutput(int16_t scale);
-
-extern void Sound_OffsetOutput(int16_t offset);
-
-extern void Sound_InvertOutput(int16_t invert);
-
-extern void Sound_StartRecord(void);
-
-#endif // SOUND_H_
+#endif // AUDIO_H_

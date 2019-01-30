@@ -47,10 +47,10 @@
 //! \return    None
 extern void Sensors_Init(void);
 
-//! \brief     Run the sensors task
+//! \brief     Run the sensor task
 //! \pre       First initialize the sensors
 //! \param     None
 //! \return    None
-extern void Sensors_RunTask(void);
+extern void Sensor_RunTask(void* pvParameter);
 
 #endif // SENSORS_H_

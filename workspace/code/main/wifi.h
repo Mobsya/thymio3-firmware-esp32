@@ -43,6 +43,8 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
+extern void WIFI_Configure(void);
+
 //! \brief     Initialize the WIFI
 //! \pre       None
 //! \param     None

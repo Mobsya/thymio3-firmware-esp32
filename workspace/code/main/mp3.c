@@ -55,6 +55,10 @@ extern const uint8_t adf_music_mp3_end[] asm("_binary_adf_music_mp3_end");
 
 static const char* Tag = "mp3";
 
+audio_pipeline_handle_t pipeline;
+audio_element_handle_t i2s_stream_writer;
+audio_element_handle_t mp3_decoder;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -71,10 +75,6 @@ int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t 
 
 void MP3_Init(void)
 {
-  audio_pipeline_handle_t pipeline;
-  audio_element_handle_t i2s_stream_writer;
-  audio_element_handle_t mp3_decoder;
-
   esp_log_level_set("*", ESP_LOG_WARN);
   esp_log_level_set(Tag, ESP_LOG_INFO);
 
@@ -89,7 +89,7 @@ void MP3_Init(void)
   audio_element_set_read_cb(mp3_decoder, mp3_music_read_cb, NULL);
 
   ESP_LOGI(Tag, "[1.2] Create i2s stream to write data to ESP32 internal DAC");
-  i2s_stream_cfg_t i2s_cfg = I2S_STREAM_INTERNAL_DAC_CFG_DEFAULT();
+  i2s_stream_cfg_t i2s_cfg = I2S_STREAM_INTERNAL_DAC_CFG_CUSTOM();
   i2s_cfg.type = AUDIO_STREAM_WRITER;
   i2s_stream_writer = i2s_stream_init(&i2s_cfg);
 
@@ -98,10 +98,13 @@ void MP3_Init(void)
   audio_pipeline_register(pipeline, i2s_stream_writer, "i2s");
 
   ESP_LOGI(Tag, "[1.4] Link it together [mp3_music_read_cb]-->mp3_decoder-->i2s_stream-->[ESP32 DAC]");
-  audio_pipeline_link(pipeline, (const char* [])
-  {"mp3", "i2s"
-  }, 2);
+  audio_pipeline_link(pipeline, (const char* []) {"mp3", "i2s"}, 2);
+}
 
+//_____________________________________________________________________________
+
+void MP3_Task(void)
+{
   ESP_LOGI(Tag, "[ 2 ] Setup event listener");
   audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
   audio_event_iface_handle_t evt = audio_event_iface_init(&evt_cfg);
@@ -161,13 +164,6 @@ void MP3_Init(void)
   audio_pipeline_deinit(pipeline);
   audio_element_deinit(i2s_stream_writer);
   audio_element_deinit(mp3_decoder);
-}
-
-//_____________________________________________________________________________
-
-void MP3_Task(void)
-{
-
 }
 
 //_____________________________________________________________________________

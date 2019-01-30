@@ -91,7 +91,7 @@ void Leds_Init(void)
 
 //_____________________________________________________________________________
 
-void Leds_RunTask(void)
+void Leds_Run(void)
 {
   static uint8_t row = 0u;
 

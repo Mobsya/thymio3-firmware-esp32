@@ -22,6 +22,7 @@
 
 #include "aseba_esp32.h"
 #include "bh1745nuc.h"
+#include "leds.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -56,6 +57,7 @@ static T_Illuminance Color;
 void ColorSensor_Init(void)
 {
   BH1745NUC_Init();
+  //Leds_SetSingleBrightness(E_Led_White_Sensor, MAX_BRIGHTNESS);  // TODO
 }
 
 //_____________________________________________________________________________

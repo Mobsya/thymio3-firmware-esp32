@@ -66,9 +66,13 @@ extern void TimerHw_StartFrontTimer60us(void);
 
 extern void TimerHw_StartBackTimer60us(void);
 
+extern void TimerHw_StartAudioTimer20us(void);
+
+#if 0 // TODO Remove if not used
 extern void TimerHw_StartRightTimer375us(void);
 
 extern void TimerHw_StartLeftTimer375us(void);
+#endif
 
 extern void TimerHw_Task(void);
 //extern void TimerHw_Task(void* pvParameter);
@@ -137,5 +141,7 @@ extern void TimerHw_ResetSchedulerFlag(void);
 extern void TimerHw_CallbackFront60us(void* arg);
 
 extern void TimerHw_CallbackBack60us(void* arg);
+
+extern void TimerHw_CallbackAudio20us(void* arg);
 
 #endif // TIMER_HW_H_

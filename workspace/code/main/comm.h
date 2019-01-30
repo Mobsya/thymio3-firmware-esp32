@@ -1,28 +1,25 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    adc.c
-//! \brief   This module provides the useful functions to use the internal ADC
+//! \file    comm.h
+//! \brief   This module provides the useful functions to communicate
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: adc.c 18076 2017-04-20 12:28:12Z v.gonet $
+//! \version $Id: comm.h 18076 2017-04-20 12:28:12Z v.gonet $
 //_____________________________________________________________________________
+
+#ifndef COMM_H_
+#define COMM_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
-
-#include "esp_log.h"
-
-#include "driver/adc.h"
-
-#include "adc.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -37,38 +34,23 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Private Data
-//-----------------------------------------------------------------------------
-
-static const char* Tag = "adc";
-
-//-----------------------------------------------------------------------------
-// Private Functions Prototypes
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Functions Implementation
+// Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-void ADC_Init(void)
-{
-  adc1_config_width(ADC_WIDTH_BIT_12);
-  //adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);  // MICROPHONE_PIN
-  adc1_config_channel_atten(ADC1_CHANNEL_3, ADC_ATTEN_DB_0);   // IR_SENSE_GROUND_RIGHT_PIN
-  adc1_config_channel_atten(ADC1_CHANNEL_6, ADC_ATTEN_DB_0);   // IR_SENSE_GROUND_LEFT_PIN
+//! \brief     Initialize the communication
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void Comm_Init(void);
 
-  ESP_LOGI(Tag, "ADC channels are initialized");
-}
+//! \brief     Run the communication task
+//! \pre       First initialize the communication
+//! \param     None
+//! \return    None
+extern void Comm_RunTask(void* pvParameter);
 
-//_____________________________________________________________________________
-
-void ADC_AcquireValues(int16_t* value)
-{
-  //value[0] = adc1_get_raw(ADC1_CHANNEL_0);  // MICROPHONE_PIN
-  value[1] = adc1_get_raw(ADC1_CHANNEL_6);  // IR_SENSE_GROUND_LEFT_PIN
-  value[2] = adc1_get_raw(ADC1_CHANNEL_3);  // IR_SENSE_GROUND_RIGHT_PIN
-}
+#endif // COMM_H_

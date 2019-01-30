@@ -30,6 +30,8 @@
 
 #include "wifi.h"
 
+#include "wifi_update.h"
+
 #include "aseba_esp32.h"
 
 //-----------------------------------------------------------------------------
@@ -113,6 +115,16 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
+void WIFI_Configure(void)
+{
+  WIFI_InitNVS();
+  WIFI_Init();
+  WIFIUpdate_Init();
+  WIFI_WaitForIP();
+}
+
+//_____________________________________________________________________________
+
 void WIFI_Init(void)
 {
   EventGroup = xEventGroupCreate();
@@ -149,22 +161,22 @@ void WIFI_Init(void)
 
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
   ESP_ERROR_CHECK(esp_wifi_start());
-  //ESP_ERROR_CHECK(esp_wifi_connect());
+  ESP_ERROR_CHECK(esp_wifi_connect());
 }
 
 //_____________________________________________________________________________
 
 void WIFI_InitNVS(void)
 {
-  esp_err_t ret = nvs_flash_init();
+  esp_err_t error = nvs_flash_init();
 
-  if ((ret == ESP_ERR_NVS_NO_FREE_PAGES) || (ret == ESP_ERR_NVS_NEW_VERSION_FOUND))
+  if ((error == ESP_ERR_NVS_NO_FREE_PAGES) || (error == ESP_ERR_NVS_NEW_VERSION_FOUND))
   {
     ESP_ERROR_CHECK(nvs_flash_erase());
-    ret = nvs_flash_init();
+    error = nvs_flash_init();
   }
 
-  ESP_ERROR_CHECK(ret);
+  ESP_ERROR_CHECK(error);
 }
 
 //_____________________________________________________________________________
@@ -206,7 +218,9 @@ void WIFI_WaitForIP(void)
 
   ESP_LOGI(Tag, "Waiting for AP connection...");
   xEventGroupWaitBits(EventGroup, bits, false, true, portMAX_DELAY);
+
   ESP_LOGI(Tag, "Connected to AP");
+  WifiIsConnected = true;
 }
 
 //_____________________________________________________________________________
@@ -217,16 +231,6 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
 
   switch (event->event_id)
   {
-    case SYSTEM_EVENT_STA_START:
-      ESP_LOGI(Tag, "SYSTEM_EVENT_STA_START");
-      ESP_ERROR_CHECK(esp_wifi_connect());
-      break;
-
-    case SYSTEM_EVENT_STA_CONNECTED:
-      /* enable ipv6 */
-      tcpip_adapter_create_ip6_linklocal(TCPIP_ADAPTER_IF_STA);
-      break;
-
     case SYSTEM_EVENT_SCAN_DONE:
       esp_wifi_scan_get_ap_num(&apCount);
 
@@ -279,30 +283,33 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
       }
       break;
 
+    case SYSTEM_EVENT_STA_START:
+      ESP_ERROR_CHECK(esp_wifi_connect());
+      ESP_LOGI(Tag, "SYSTEM_EVENT_STA_START");
+      break;
+
+    case SYSTEM_EVENT_STA_CONNECTED:
+      /* enable ipv6 */
+      tcpip_adapter_create_ip6_linklocal(TCPIP_ADAPTER_IF_STA);
+      break;
+
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+      ESP_ERROR_CHECK(esp_wifi_connect());
+      xEventGroupClearBits(EventGroup, IPV4_GOTIP_BIT);
+      xEventGroupClearBits(EventGroup, IPV6_GOTIP_BIT);
+      ESP_LOGI(Tag, "SYSTEM_EVENT_STA_DISCONNECTED");
+      break;
+
     case SYSTEM_EVENT_STA_GOT_IP:
-      ESP_LOGI(Tag, "SYSTEM_EVENT_STA_GOT_IP");
-      const char* ip = ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip);
+      //const char* ip = ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip);
+      //IpForAseba = ipaddr_addr(ip);
 
-      //uint32_t ip_uint = ipaddr_addr(ip);
-      IpForAseba = ipaddr_addr(ip);
-
-      ESP_LOGI(Tag, "got ip:%s", ip);
+      //ESP_LOGI(Tag, "got ip:%s", ip);
       //ESP_LOGI(Tag, "%d", ip_uint);
-
       //ESP_LOGI(Tag, "got ip:%s", ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
-#if 0
-      ESP_LOGI(Tag, "%d", (ip_uint & 0x000000FF));
-      ESP_LOGI(Tag, "%d", (ip_uint & 0x0000FF00) >> 8);
-      ESP_LOGI(Tag, "%d", (ip_uint & 0x00FF0000) >> 16);
-      ESP_LOGI(Tag, "%d", (ip_uint & 0xFF000000) >> 24);
 
-      vmVariables.ip[0] = (ip_uint & 0x000000FF);
-      vmVariables.ip[1] = ((ip_uint & 0x0000FF00) >> 8);
-      vmVariables.ip[2] = ((ip_uint & 0x00FF0000) >> 16);
-      vmVariables.ip[3] = ((ip_uint & 0xFF000000) >> 24);
-#endif
       xEventGroupSetBits(EventGroup, IPV4_GOTIP_BIT);
-      WifiIsConnected = true;
+      ESP_LOGI(Tag, "SYSTEM_EVENT_STA_GOT_IP");
       break;
 
     case SYSTEM_EVENT_AP_STACONNECTED:
@@ -317,11 +324,10 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
                event->event_info.sta_disconnected.aid);
       break;
 
-    case SYSTEM_EVENT_STA_DISCONNECTED:
-      ESP_LOGI(Tag, "SYSTEM_EVENT_STA_DISCONNECTED");
-      ESP_ERROR_CHECK(esp_wifi_connect());
-      xEventGroupClearBits(EventGroup, IPV4_GOTIP_BIT);
-      xEventGroupClearBits(EventGroup, IPV6_GOTIP_BIT);
+    case SYSTEM_EVENT_AP_PROBEREQRECVED:
+      ESP_LOGI(Tag, "SYSTEM_EVENT_AP_STADISCONNECTED: " MACSTR " rssi=%d",
+               MAC2STR(event->event_info.ap_probereqrecved.mac),
+			   event->event_info.ap_probereqrecved.rssi);
       break;
 
     case SYSTEM_EVENT_AP_STA_GOT_IP6:

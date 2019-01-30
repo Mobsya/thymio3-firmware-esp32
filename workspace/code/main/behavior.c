@@ -21,6 +21,10 @@
 #include <stdint.h>
 #include <stdio.h>  // Only for debug
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/portmacro.h"
+
 #include "esp_log.h"
 
 #include "behavior.h"
@@ -46,6 +50,12 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
+typedef enum
+{
+  E_Setting_Volume,
+  E_Setting_Motor
+} T_Setting;
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -65,6 +75,12 @@ static uint16_t behavior = 0u;
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
+
+//! \brief     Run the behaviors
+//! \pre       None
+//! \param     None
+//! \return    None
+static void RunBehaviors(void);
 
 //! \brief     Set the buttons LEDs
 //! \pre       None
@@ -90,6 +106,8 @@ static void SetAccelerometerLeds(void);
 //! \return    None
 static void SetBatteryLeds(void);
 
+static void UpdateSettings(void);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -98,7 +116,38 @@ static void SetBatteryLeds(void);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void Behavior_Run(void)
+void Behavior_RunTask(void* pvParameter)
+{
+  ESP_LOGI(Tag, "Start Behavior Task");
+
+  while (1)
+  {
+	RunBehaviors();
+    vTaskDelay(20 / portTICK_PERIOD_MS);
+  }
+}
+
+//_____________________________________________________________________________
+
+void Behavior_Start(uint16_t b)
+{
+  //ENABLE(b);
+
+  behavior |= b;
+}
+
+//_____________________________________________________________________________
+
+void Behavior_Stop(uint16_t b)
+{
+  DISABLE(b);
+
+  //behavior &= ~b;
+}
+
+//_____________________________________________________________________________
+
+static void RunBehaviors(void)
 {
   if (ENABLED(B_LEDS_BATTERY))
   {
@@ -124,24 +173,12 @@ void Behavior_Run(void)
   {
     Mode_Run();
   }
-}
-
-//_____________________________________________________________________________
-
-void Behavior_Start(uint16_t b)
-{
-  //ENABLE(b);
-
-  behavior |= b;
-}
-
-//_____________________________________________________________________________
-
-void Behavior_Stop(uint16_t b)
-{
-  DISABLE(b);
-
-  //behavior &= ~b;
+//#if 0
+  if (ENABLED(B_SETTING))
+  {
+    UpdateSettings();
+  }
+//#endif
 }
 
 //_____________________________________________________________________________
@@ -406,6 +443,14 @@ static void SetBatteryLeds(void)
   {
     static uint8_t state;
 
+#if 0
+    int16_t v = STM32_GetBatteryVoltage();
+    int32_t temp = v * 1000;
+    v = (temp / 3978);
+
+    ESP_LOGE(Tag, "v: %d", v);
+#endif
+
     if (!wasCharging)
     {
       // switch off everything.
@@ -473,19 +518,19 @@ static void SetBatteryLeds(void)
 
       if (vbat >= BAT_HIGH)
       {
-        Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-        Leds_SetSingleBrightness(E_Led_Battery_1, 32);
-        Leds_SetSingleBrightness(E_Led_Battery_2, 32);
+        Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
+        Leds_SetSingleBrightness(E_Led_Battery_1, MAX_BRIGHTNESS);
+        Leds_SetSingleBrightness(E_Led_Battery_2, MAX_BRIGHTNESS);
       }
       else if (vbat > BAT_MIDDLE)
       {
-        Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-        Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+        Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
+        Leds_SetSingleBrightness(E_Led_Battery_1, MAX_BRIGHTNESS);
         Leds_SetSingleBrightness(E_Led_Battery_2, 0);
       }
       else if (vbat > BAT_LOW)
       {
-        Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+        Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
         Leds_SetSingleBrightness(E_Led_Battery_1, 0);
         Leds_SetSingleBrightness(E_Led_Battery_2, 0);
       }
@@ -497,21 +542,21 @@ static void SetBatteryLeds(void)
 
     when(vbat >= BAT_HIGH)
     {
-      Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-      Leds_SetSingleBrightness(E_Led_Battery_1, 32);
-      Leds_SetSingleBrightness(E_Led_Battery_2, 32);
+      Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
+      Leds_SetSingleBrightness(E_Led_Battery_1, MAX_BRIGHTNESS);
+      Leds_SetSingleBrightness(E_Led_Battery_2, MAX_BRIGHTNESS);
     }
 
     when((vbat > BAT_MIDDLE) && (vbat < (BAT_HIGH - 5)))
     {
-      Leds_SetSingleBrightness(E_Led_Battery_0, 32);
-      Leds_SetSingleBrightness(E_Led_Battery_1, 32);
+      Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
+      Leds_SetSingleBrightness(E_Led_Battery_1, MAX_BRIGHTNESS);
       Leds_SetSingleBrightness(E_Led_Battery_2, 0);
     }
 
     when((vbat > BAT_LOW) && (vbat <= (BAT_MIDDLE - 5)))
     {
-      Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+      Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
       Leds_SetSingleBrightness(E_Led_Battery_1, 0);
       Leds_SetSingleBrightness(E_Led_Battery_2, 0);
     }
@@ -529,7 +574,7 @@ static void SetBatteryLeds(void)
 
       if (counter == 3)
       {
-        Leds_SetSingleBrightness(E_Led_Battery_0, 32);
+        Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
       }
 
       if (counter > 5)
@@ -538,5 +583,22 @@ static void SetBatteryLeds(void)
         counter = 0;
       }
     }
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateSettings(void)
+{
+  T_Setting setting = E_Setting_Motor;
+
+  switch (setting)
+  {
+    case E_Setting_Volume:
+      break;
+    case E_Setting_Motor:
+      //Leds_SetBodyBrightness(15u, MAX_BRIGHTNESS, 0u);
+      //Leds_SetBodyBrightness(0u, 0u, MAX_BRIGHTNESS);
+      break;
   }
 }

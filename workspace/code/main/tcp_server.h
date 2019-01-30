@@ -55,4 +55,14 @@ extern void TCPServer_Init(void);
 //! \return    None
 extern void TCPServer_RunTask(void);
 
+//! \brief     Check that the socket is accepted
+//! \pre       First initialize the TCP server
+//! \param     None
+//! \return    True if the socket is accepted, false otherwise
+extern bool TCPServer_IsSocketAccepted(void);
+
+extern void TCPServer_Send(const uint8_t* data, uint16_t length);
+
+extern uint8_t* TCPServer_GetRxBuffer(void);
+
 #endif // TCP_SERVER_H_

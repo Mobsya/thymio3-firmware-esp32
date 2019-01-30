@@ -304,8 +304,8 @@ static void ConfigureInputCapture(void)
   // so each this a rising or falling edge occurs interrupt is triggered
   MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;
   MCPWM[MCPWM_UNIT_1]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;
-  mcpwm_isr_register(MCPWM_UNIT_0, ISR_InputCaptureUnit0, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
-  mcpwm_isr_register(MCPWM_UNIT_1, ISR_InputCaptureUnit1, NULL, ESP_INTR_FLAG_IRAM, NULL); // Set ISR Handler
+  mcpwm_isr_register(MCPWM_UNIT_0, ISR_InputCaptureUnit0, NULL, ESP_INTR_FLAG_IRAM, NULL);  // Set ISR Handler
+  mcpwm_isr_register(MCPWM_UNIT_1, ISR_InputCaptureUnit1, NULL, ESP_INTR_FLAG_IRAM, NULL);  // Set ISR Handler
 }
 
 //_____________________________________________________________________________

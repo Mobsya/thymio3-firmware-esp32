@@ -30,6 +30,7 @@
 #include "stm32.h"
 
 #include "mp3.h"
+#include "sound.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -145,15 +146,15 @@ void Mode_Run(void)
     when(buttonState[E_Button_Center])
     {
       ExitMode(CurrentMode);
-#if 0  // FIXME
+//#if 0  // FIXME
       if (SelectMode == E_Mode_Menu)
       {
         // Special case, if we select the mode menu stuff
-        Behavior_Stop(B_MODE); // | B_SETTING);  FIXME
+        Behavior_Stop(B_MODE | B_SETTING);
         Mode_InitVM();
         return;
       }
-#endif
+//#endif
 
       if (SelectMode == CurrentMode)
       {
@@ -166,6 +167,14 @@ void Mode_Run(void)
         CurrentMode = SelectMode;
       }
     }
+  }
+
+  if (STM32_IsUSBPortOpen())
+  {
+    ExitMode(CurrentMode);
+    Behavior_Stop(B_MODE);
+    Mode_InitVM();
+    return;
   }
 
   switch (CurrentMode)
@@ -216,11 +225,13 @@ void Mode_Run(void)
 
 static void StartMode(T_Mode mode)
 {
-  //SetModeColor(mode);
+  SetModeColor(mode);
 
   switch (mode)
   {
     case E_Mode_Menu:
+      ESP_LOGE(Tag, "Mode MENU");
+      Behavior_Start(B_SETTING);
       break;
 
     case E_Mode_Explorer:
@@ -229,7 +240,10 @@ static void StartMode(T_Mode mode)
 
     case E_Mode_Investigator:
       //Behavior_Start(B_LEDS_PROX);
+      //Sound_Record();
+      //Sound_PlayFile();
       //MP3_Init();
+      //MP3_Task();
       break;
 
     case E_Mode_Obedient:
@@ -262,6 +276,7 @@ static void ExitMode(T_Mode mode)
   switch (mode)
   {
     case E_Mode_Menu:
+      Behavior_Stop(B_SETTING);
       break;
 
     case E_Mode_Explorer:
@@ -310,6 +325,8 @@ static T_Mode SelectNextMode(T_Mode mode, int16_t index)
   }
   while (!IsModeEnabled(temp));
 
+  //ESP_LOGE(Tag, "next = %d", temp);
+
   return (T_Mode)temp;
 }
 
@@ -349,15 +366,15 @@ static void SetModeColor(T_Mode mode)
       break;
 
     case E_Mode_Explorer:
-      Leds_SetTopBrightness(32u, 32u, 0u);
+      Leds_SetTopBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
       break;
 
     case E_Mode_Investigator:
-      Leds_SetTopBrightness(0u, 32u, 32u);
+      Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
       break;
 
     case E_Mode_Obedient:
-      Leds_SetTopBrightness(32u, 0u, 32u);
+      Leds_SetTopBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
       break;
 
     default:
@@ -579,8 +596,8 @@ static void RunExplorer(void)
   {
     vmVariables.target[0] = 0;
     vmVariables.target[1] = 0;
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 32);
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 32);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, MAX_BRIGHTNESS);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, MAX_BRIGHTNESS);
   }
   else
   {
@@ -710,7 +727,7 @@ static void RunFollower(void)
   }
   else
   {
-    Leds_SetCircleBrightness(0, 0, 0, 32, 32, 32, 0, 0);
+    Leds_SetCircleBrightness(0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0, 0);
   }
 
   // Buttons management
@@ -736,8 +753,8 @@ static void RunFollower(void)
   {
     vmVariables.target[0] = 0;
     vmVariables.target[1] = 0;
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 32);
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 32);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, MAX_BRIGHTNESS);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, MAX_BRIGHTNESS);
   }
   else
   {

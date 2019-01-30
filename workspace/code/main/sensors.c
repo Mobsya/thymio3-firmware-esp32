@@ -18,6 +18,10 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/portmacro.h"
+
 #include "esp_log.h"
 
 #include "sensors.h"
@@ -26,6 +30,7 @@
 #include "ground_ir.h"
 #include "leds.h"
 #include "prox_ir.h"
+#include "timer.h"
 #include "timer_hw.h"
 
 //-----------------------------------------------------------------------------
@@ -54,6 +59,12 @@ static int16_t PeriodAccumulator = 0;
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
+//! \brief     Run the sensors
+//! \pre       First initialize the sensors
+//! \param     None
+//! \return    None
+static void RunSensors(void);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -66,17 +77,47 @@ void Sensors_Init(void)
 {
   ADC_Init();
   Leds_Init();
-
   GroundIR_Init();
   ProxIR_Init();
-  TimerHw_Init();
+  //TimerHw_Init();
 
   ESP_LOGI(Tag, "Sensors are initialized");
 }
 
 //_____________________________________________________________________________
 
-void Sensors_RunTask(void)
+void Sensor_RunTask(void* pvParameter)
+{
+  uint32_t result = 0;
+
+  ESP_LOGI(Tag, "Start Sensor Task");
+
+  //Leds_Init();
+
+  // Attempt to create a notification
+  TaskToNotify = xTaskGetCurrentTaskHandle();
+
+  Timer_Start(0, 0);
+  Timer_Start(0, 1);
+
+  while (1)
+  {
+    result = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    if (result == 1)
+    {
+      Leds_Run();
+      RunSensors();
+    }
+
+    //taskYIELD();
+    //FeedWatchdog();
+  }
+}
+
+//_____________________________________________________________________________
+
+static void RunSensors(void)
 {
   static uint16_t tick = 0u;
 

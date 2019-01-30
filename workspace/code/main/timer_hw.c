@@ -91,8 +91,12 @@ static struct PrivateTimer TableTimers[MAX_TIMERS_ALLOWED];  //!< Table containi
 esp_timer_handle_t FrontTimer60us;
 esp_timer_handle_t BackTimer60us;
 
+#if 0 // TODO Remove if not used
 esp_timer_handle_t RightTimer375us;
 esp_timer_handle_t LeftTimer375us;
+#endif
+
+esp_timer_handle_t AudioTimer20us;
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -122,6 +126,16 @@ void TimerHw_Init(void)
   };
 
   ESP_ERROR_CHECK(esp_timer_create(&backTimer60us_args, &BackTimer60us));
+  // The timer has been created but is not running yet
+
+  // Configuration of AudioTimer20us
+  const esp_timer_create_args_t audioTimer20us_args =
+  {
+    .callback = &TimerHw_CallbackAudio20us,
+    .name = "audioTimer20us"
+  };
+
+  ESP_ERROR_CHECK(esp_timer_create(&audioTimer20us_args, &AudioTimer20us));
   // The timer has been created but is not running yet
 
   //ESP_ERROR_CHECK(esp_timer_start_periodic(Timer125us, 125));
@@ -203,7 +217,7 @@ void TimerHw_StartBackTimer60us(void)
 }
 
 //_____________________________________________________________________________
-
+#if 0 // TODO Remove if not used
 void TimerHw_StartRightTimer375us(void)
 {
   ESP_ERROR_CHECK(esp_timer_start_once(RightTimer375us, 375));
@@ -214,6 +228,14 @@ void TimerHw_StartRightTimer375us(void)
 void TimerHw_StartLeftTimer375us(void)
 {
   ESP_ERROR_CHECK(esp_timer_start_once(LeftTimer375us, 375));
+}
+#endif
+
+//_____________________________________________________________________________
+
+void TimerHw_StartAudioTimer20us(void)
+{
+  ESP_ERROR_CHECK(esp_timer_start_periodic(AudioTimer20us, 20));
 }
 
 //_____________________________________________________________________________
