@@ -340,11 +340,13 @@ void Sound_PlayFile(void* pvParameter)
       //example_disp_buf((uint8_t*) i2s_write_buff, 32);
     }
 
-    //vTaskDelay(100 / portTICK_PERIOD_MS);
-    vTaskDelete(NULL);
-
     // Reset I2S clock and mode
     i2s_set_clk(I2S_NUM, I2S_SAMPLE_RATE, I2S_SAMPLE_BITS, I2S_CHANNEL_NUM);
+
+    free(i2s_write_buff);
+
+    //vTaskDelay(100 / portTICK_PERIOD_MS);
+    vTaskDelete(NULL);
   }
 
   free(i2s_write_buff);

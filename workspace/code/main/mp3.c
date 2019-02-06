@@ -38,6 +38,25 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
+#define I2S_STREAM_INTERNAL_DAC_CFG_CUSTOM() {                                      \
+    .type = AUDIO_STREAM_WRITER,                                                    \
+    .task_prio = I2S_STREAM_TASK_PRIO,                                              \
+    .task_core = I2S_STREAM_TASK_CORE,                                              \
+    .task_stack = I2S_STREAM_TASK_STACK,                                            \
+    .out_rb_size = I2S_STREAM_RINGBUFFER_SIZE,                                      \
+    .i2s_config = {                                                                 \
+        .mode = I2S_MODE_MASTER | I2S_MODE_DAC_BUILT_IN | I2S_MODE_TX,              \
+        .sample_rate = 44100,                                                       \
+        .bits_per_sample = 16,                                                      \
+        .channel_format = I2S_CHANNEL_FMT_ALL_RIGHT,                                \
+        .communication_format = I2S_COMM_FORMAT_I2S_MSB,                            \
+        .dma_buf_count = 3,                                                         \
+        .dma_buf_len = 300,                                                         \
+        .intr_alloc_flags = 0,                                                      \
+    },                                                                              \
+    .i2s_port = 0,                                                                  \
+}
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -164,6 +183,7 @@ void MP3_Task(void)
   audio_pipeline_deinit(pipeline);
   audio_element_deinit(i2s_stream_writer);
   audio_element_deinit(mp3_decoder);
+  vTaskDelete(NULL);
 }
 
 //_____________________________________________________________________________
