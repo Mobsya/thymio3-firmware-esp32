@@ -31,6 +31,9 @@
 //#include "usb_uart.h"
 #include "uart.h"
 
+#include "stm32.h"
+#include "tcp_server.h"
+
 #include "leds.h" //only for debug
 
 struct fifo
@@ -295,16 +298,23 @@ static void uartSendUInt16(uint16_t value)
 
 void AsebaSendBuffer(AsebaVMState* vm, const uint8_t* data, uint16_t length)
 {
-  uartSendUInt16(length - 2u);
-  uartSendUInt16(vmState.nodeId);
-
-  //UART_Write(data, length);
-//#if 0
-  for (uint16_t i = 0u; i < length; i++)
+  if (STM32_IsUSBCablePresent())
   {
-    uartSendUInt8(*data++);
-  }
+    uartSendUInt16(length - 2u);
+    uartSendUInt16(vmState.nodeId);
+
+    //UART_Write(data, length);
+//#if 0
+    for (uint16_t i = 0u; i < length; i++)
+    {
+      uartSendUInt8(*data++);
+    }
 //#endif
+  }
+  else
+  {
+    TCPServer_Send(data, length);
+  }
 
 #if 0
   int flags;
@@ -413,38 +423,45 @@ uint16_t AsebaGetBuffer(AsebaVMState* vm, uint8_t* data, uint16_t maxLength, uin
   uint16_t ret = 0;
   uint16_t len = 0;
 
-  if (!UART_IsReceptionBufferEmpty())
+  if (STM32_IsUSBCablePresent())
   {
-    len = uartGetUInt16() + 2;
-
-    if (commError)
+    if (!UART_IsReceptionBufferEmpty())
     {
-      return 0;
-    }
-
-    if (len > maxLength)  // Wrong data received.
-    {
-      return 0;
-    }
-
-    *source = uartGetUInt16();
-
-    if (commError)
-    {
-      return 0;
-    }
-
-    for (uint16_t i = 0; i < len; i++)
-    {
-      *data++ = uartGetUInt8();
+      len = uartGetUInt16() + 2;
 
       if (commError)
       {
         return 0;
       }
-    }
 
-    ret = len;
+      if (len > maxLength)  // Wrong data received.
+      {
+        return 0;
+      }
+
+      *source = uartGetUInt16();
+
+      if (commError)
+      {
+        return 0;
+      }
+
+      for (uint16_t i = 0; i < len; i++)
+      {
+        *data++ = uartGetUInt8();
+
+        if (commError)
+        {
+          return 0;
+        }
+      }
+
+      ret = len;
+    }
+  }
+  else
+  {
+    TCPServer_GetRxBuffer();
   }
 
   return ret;

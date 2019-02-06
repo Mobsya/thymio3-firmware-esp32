@@ -189,7 +189,7 @@ void TCPServer_RunTask(void)
         ESP_LOGI(Tag, "Received %d bytes from %s:", len, addr_str);
         ESP_LOGI(Tag, "%s", rx_buffer);
 
-        int err = send(sock, rx_buffer, len, 0);
+        //int err = send(sock, rx_buffer, len, 0);  // FIXME Don't send data to Aseba Studio
 
         if (err < 0)
         {
