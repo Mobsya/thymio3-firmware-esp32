@@ -18,6 +18,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include "esp_log.h"
+
 #include "color_sensor.h"
 
 #include "aseba_esp32.h"
@@ -40,6 +42,8 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
+static const char* Tag = "color_sensor";
+
 static T_Illuminance Color;
 
 //-----------------------------------------------------------------------------
@@ -57,7 +61,9 @@ static T_Illuminance Color;
 void ColorSensor_Init(void)
 {
   BH1745NUC_Init();
-  //Leds_SetSingleBrightness(E_Led_White_Sensor, MAX_BRIGHTNESS);  // TODO
+  Leds_SetSingleBrightness(E_Led_White_Sensor, MAX_BRIGHTNESS);  // TODO
+
+  ESP_LOGI(Tag, "Color sensor is initialized");
 }
 
 //_____________________________________________________________________________

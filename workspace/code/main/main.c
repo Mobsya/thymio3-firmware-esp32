@@ -23,11 +23,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/portmacro.h"
-#include "freertos/queue.h"
-#include "freertos/semphr.h"
-
-#include "soc/timer_group_struct.h"
-#include "soc/timer_group_reg.h"
 
 #include "sdkconfig.h"
 
@@ -46,20 +41,13 @@
 #include "sensors.h"
 #include "sound.h"
 #include "sound_data.h"
+#include "stm32.h"
 #include "tcp_server.h"
 #include "timer.h"
 #include "timer_hw.h"
 #include "uart.h"
 #include "wifi.h"
 #include "wifi_update.h"
-
-// I2C modules
-//#include "accelerometer.h"
-//#include "color_sensor.h"
-//#include "gyroscope.h"
-#include "stm32.h"
-
-#include "board.h"  // FIXME only for debug
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -93,8 +81,6 @@ T_Wav Wav;
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
-
-static void FeedWatchdog(void);
 
 static void Settings_Init(void);
 
@@ -225,9 +211,14 @@ int app_main(void)
 
   UART_Init();
 
+  TimerHw_Init();
+
+  Sensors_Init();
+
   Comm_Init();
 
-  TimerHw_Init();
+  Mode_Init();
+  Mode_InitVM();
 
   //Audio_Init(&Wav, Force);
   //Sound_Init();
@@ -236,12 +227,6 @@ int app_main(void)
   //Audio_PlaySuperMarioTheme();
   //I2S_Init();
   //MP3_Init();
-
-  Sensors_Init();
-  Mode_Init();
-  Mode_InitVM();
-
-
 
 #if 0
   //WIFI_InitNVS();
@@ -262,72 +247,66 @@ int app_main(void)
 
   //CheckConnectionMode();
 
-//#if 0  // MP3 debug
-
 //#if 0
   xTaskCreatePinnedToCore(
 	Behavior_RunTask, // Function to implement the task
-    "behavior",   // Name of the task
-    2048,         // Stack size in words
-    NULL,         // Task input parameter
-    2,            // Priority of the task
-    NULL,         // Task handle
-    appCore1);    // Core where the task should run
+    "behavior",       // Name of the task
+    2048,             // Stack size in words
+    NULL,             // Task input parameter
+    2,                // Priority of the task
+    NULL,             // Task handle
+    appCore1);        // Core where the task should run
 //#endif
 #if 0
   xTaskCreatePinnedToCore(
-    //SoundTask,    // Function to implement the task
 	Sound_PlayFile,  // Function to implement the task
-    "sound",      // Name of the task
-    2048,         // Stack size in words
-    NULL,         // Task input parameter
-    2,            // Priority of the task
-    NULL,         // Task handle
-    appCore1);    // Core where the task should run
+    "sound",         // Name of the task
+    2048,            // Stack size in words
+    NULL,            // Task input parameter
+    2,               // Priority of the task
+    NULL,            // Task handle
+    appCore1);       // Core where the task should run
 #endif
 //#if 0
   xTaskCreatePinnedToCore(
-    Comm_RunTask,    // Function to implement the task
-    "comm",      // Name of the task
-    2048,        // Stack size in words
-    NULL,        // Task input parameter
-    3,           // Priority of the task
-    NULL,        // Task handle
-    appCore1);   // Core where the task should run
+    Comm_RunTask,  // Function to implement the task
+    "comm",        // Name of the task
+    2048,          // Stack size in words
+    NULL,          // Task input parameter
+    3,             // Priority of the task
+    NULL,          // Task handle
+    appCore1);     // Core where the task should run
 //#endif
 #if 0
   xTaskCreatePinnedToCore(
-    WifiTask,     // Function to implement the task
-    "wifi",       // Name of the task
-    4096,         // Stack size in words
-    NULL,         // Task input parameter
-    3,            // Priority of the task
-    NULL,         // Task handle
-    appCore2);    // Core where the task should run
+    WifiTask,   // Function to implement the task
+    "wifi",     // Name of the task
+    4096,       // Stack size in words
+    NULL,       // Task input parameter
+    3,          // Priority of the task
+    NULL,       // Task handle
+    appCore2);  // Core where the task should run
 #endif
 //#if 0
   xTaskCreatePinnedToCore(
-    AsebaTask,   // Function to implement the task
-    "aseba",     // Name of the task
-    2048,        // Stack size in words
-    NULL,        // Task input parameter
-    4,           // Priority of the task
-    NULL,        // Task handle
-    appCore1);   // Core where the task should run
+    AsebaTask,  // Function to implement the task
+    "aseba",    // Name of the task
+    2048,       // Stack size in words
+    NULL,       // Task input parameter
+    4,          // Priority of the task
+    NULL,       // Task handle
+    appCore1);  // Core where the task should run
 //#endif
 //#if 0
   xTaskCreatePinnedToCore(
     Sensor_RunTask,  // Function to implement the task
-    "sensor",    // Name of the task
-    2048,        // Stack size in words
-    NULL,        // Task input parameter
-    9,           // Priority of the task
-    NULL,        // Task handle
-    appCore1);   // Core where the task should run
+    "sensor",        // Name of the task
+    2048,            // Stack size in words
+    NULL,            // Task input parameter
+    9,               // Priority of the task
+    NULL,            // Task handle
+    appCore1);       // Core where the task should run
 //#endif
-
-
-//#endif  // MP3 debug
 
   return 0;
 }
@@ -450,15 +429,6 @@ void switch_off(void)
 {
   //STM32_UpdateLeftMotorTarget(0);
   //STM32_UpdateRightMotorTarget(0);
-}
-
-//_____________________________________________________________________________
-
-static void FeedWatchdog(void)
-{
-  TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
-  TIMERG0.wdt_feed     = 1u;
-  TIMERG0.wdt_wprotect = 0u;
 }
 
 //_____________________________________________________________________________

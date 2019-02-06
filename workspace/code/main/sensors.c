@@ -92,8 +92,6 @@ void Sensor_RunTask(void* pvParameter)
 
   ESP_LOGI(Tag, "Start Sensor Task");
 
-  //Leds_Init();
-
   // Attempt to create a notification
   TaskToNotify = xTaskGetCurrentTaskHandle();
 
