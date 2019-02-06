@@ -269,7 +269,7 @@ static void SetButtonsLeds(void)
 void SetIRSensorsLeds(void)
 {
   //static int16_t max[IR_SENSOR_NUM] = {4000, 4000, 4000, 4000, 4000, 4000, 4000, 900, 900};
-  static int16_t max[IR_SENSOR_NUM] = {50, 50, 50, 50, 50, 50, 900, 900, 900};
+  static int16_t max[IR_SENSOR_NUM] = {20, 20, 20, 20, 20, 20, 900, 900, 900};
   //static int16_t min[IR_SENSOR_NUM] = {1200, 1200, 1200, 1200, 1200, 1200, 1200, 0, 0};
   static int16_t min[IR_SENSOR_NUM] = {5, 5, 5, 5, 5, 5, 5, 0, 0};
 
