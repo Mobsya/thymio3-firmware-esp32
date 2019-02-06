@@ -239,7 +239,7 @@ int app_main(void)
   {}
 #endif
 
-  //TCPServer_Init();
+  TCPServer_Init();
   //WIFI_Configure();
 
   Timer_Init(0, 0, 1, 0.000125);  // Timer used to run the SensorTask
@@ -277,7 +277,7 @@ int app_main(void)
     NULL,          // Task handle
     appCore1);     // Core where the task should run
 //#endif
-#if 0
+//#if 0
   xTaskCreatePinnedToCore(
     WifiTask,   // Function to implement the task
     "wifi",     // Name of the task
@@ -286,7 +286,7 @@ int app_main(void)
     3,          // Priority of the task
     NULL,       // Task handle
     appCore2);  // Core where the task should run
-#endif
+//#endif
 //#if 0
   xTaskCreatePinnedToCore(
     AsebaTask,  // Function to implement the task

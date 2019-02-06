@@ -231,7 +231,7 @@ void TCPServer_Send(const uint8_t* data, uint16_t length)
   uint addrLen = sizeof(sourceAddr);
   int sock = accept(listen_sock, (struct sockaddr *)&sourceAddr, &addrLen);
 
-  ESP_LOGI(Tag, "%s", rx_buffer);
+  //ESP_LOGI(Tag, "Transmit: %s", data);
   int err = send(sock, data, length, 0);
 
   if (err < 0)
@@ -244,6 +244,6 @@ void TCPServer_Send(const uint8_t* data, uint16_t length)
 
 uint8_t* TCPServer_GetRxBuffer(void)
 {
-  //ESP_LOGI(Tag, "%s", rx_buffer);
+  //ESP_LOGI(Tag, "Receive: %s", rx_buffer);
   return (uint8_t*)rx_buffer;
 }

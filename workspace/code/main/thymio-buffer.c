@@ -298,7 +298,7 @@ static void uartSendUInt16(uint16_t value)
 
 void AsebaSendBuffer(AsebaVMState* vm, const uint8_t* data, uint16_t length)
 {
-  if (STM32_IsUSBCablePresent())
+  if (STM32_IsUSBPortOpen())
   {
     uartSendUInt16(length - 2u);
     uartSendUInt16(vmState.nodeId);
@@ -423,7 +423,7 @@ uint16_t AsebaGetBuffer(AsebaVMState* vm, uint8_t* data, uint16_t maxLength, uin
   uint16_t ret = 0;
   uint16_t len = 0;
 
-  if (STM32_IsUSBCablePresent())
+  if (STM32_IsUSBPortOpen())
   {
     if (!UART_IsReceptionBufferEmpty())
     {
