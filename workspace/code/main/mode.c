@@ -29,6 +29,8 @@
 #include "leds.h"
 #include "stm32.h"
 
+#include "color_sensor.h"
+
 #include "mp3.h"
 #include "sound.h"
 
@@ -74,6 +76,8 @@ static void GetRainbow(uint8_t* rgb);
 static uint8_t GetRainbowBrightness(uint8_t index);
 
 static void SetSpeedUsingButtons(int16_t* speed);
+
+static void DetectColor(void);
 
 static void RunExplorer(void);
 
@@ -497,6 +501,43 @@ static void SetSpeedUsingButtons(int16_t* speed)
 
 //_____________________________________________________________________________
 
+static void DetectColor(void)
+{
+#if 0
+  if ((vmVariables.color[0] > 2800) &&
+	  (vmVariables.color[1] > 8000)  &&
+	  (vmVariables.color[2] > 4800))
+#endif
+  if (abs(vmVariables.color[0] - vmVariables.color[2]) < 3000)  // abs(red - blue)
+  {
+	if (abs(vmVariables.color[0] - vmVariables.color[1]) < 4000)  // abs(red - green)
+	{
+      Leds_SetTopBrightness(32, 0, 0);  // Red
+	}
+	else
+	{
+      Leds_SetTopBrightness(32, 32, 0);  // Yellow
+	}
+  }
+  else if (abs(vmVariables.color[0] - vmVariables.color[1]) > 5000)  // abs(red - green)
+  {
+    if (abs(vmVariables.color[1] - vmVariables.color[2]) < 500)  // abs(green - blue)
+	{
+	  Leds_SetTopBrightness(0, 0, 32);  // Blue
+	}
+    else
+    {
+  	  Leds_SetTopBrightness(0, 32, 0);  // Green
+    }
+  }
+  else
+  {
+    Leds_SetTopBrightness(32, 32, 32);
+  }
+}
+
+//_____________________________________________________________________________
+
 static void RunExplorer(void)
 {
   static uint8_t led_state;
@@ -811,9 +852,13 @@ static void RunFollower(void)
 
 static void RunObedient(void)
 {
+#if 0  // FIXME
   int16_t p = GetBodyColorPulse();
 
   Leds_SetTopBrightness(p, 0u, p);
+#endif
+
+  DetectColor();
 }
 
 //_____________________________________________________________________________
