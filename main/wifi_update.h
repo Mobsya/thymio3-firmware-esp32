@@ -43,13 +43,15 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-extern void NVS_Init(void);
+extern void WIFIUpdate_InitNVS(void);
 
 //! \brief     Initialize the WIFI for the update
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void WifiUpdate_Init(void);
+extern void WIFIUpdate_Init(void);
+
+extern void WIFIUpdate_RunTask(void* pvParameter);
 
 //! \brief     Connect asynchronously to the defined access point.
 //! \pre       None
@@ -63,6 +65,8 @@ extern void WifiUpdate_Disconnect(void);
 //! \pre       None
 //! \param     None
 //! \return    None
-extern bool WifiUpdate_IsConnected(void);
+extern bool WIFIUpdate_IsConnected(void);
+
+extern void WIFIUpdate_GetIPAddress(void);
 
 #endif // WIFI_UPDATE_H_

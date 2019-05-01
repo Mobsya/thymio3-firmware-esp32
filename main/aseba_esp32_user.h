@@ -53,9 +53,9 @@ struct _vmVariables
 {
   int16_t id;  // NodeID
   int16_t source; // source
-  int16_t args[VM_VARIABLES_ARG_SIZE]; 	// args
-  int16_t fwversion[2]; 	// fwversion
-  int16_t productid; 	// Product ID
+  int16_t args[VM_VARIABLES_ARG_SIZE];  // args
+  int16_t fwversion[2];   // fwversion
+  int16_t productid;  // Product ID
   int16_t buttons[5];
   int16_t buttons_state[5];
   int16_t buttons_mean[5];
@@ -74,7 +74,7 @@ struct _vmVariables
   int16_t uind[2];
   int16_t pwm[2];
   int16_t acc[3];
-  int16_t ntc;
+  int16_t temperature;
   int16_t rc5_address;
   int16_t rc5_command;
   int16_t sound_level;
@@ -86,7 +86,10 @@ struct _vmVariables
   /*****
     ---> PUT YOUR VARIABLES HERE <---
   ******/
-  int16_t illuminance[4];
+  int16_t color[4];
+  int16_t gyro[3];
+  int16_t ip[4];
+  int16_t settings[2];
   int16_t freeSpace[VM_VARIABLES_FREE_SPACE];
 };
 
@@ -102,11 +105,13 @@ enum Event
   EVENT_DATA,
   EVENT_TAP,
   EVENT_ACC,
+  EVENT_GYRO,
   EVENT_MIC,
   EVENT_SOUND_FINISHED,
   EVENT_TEMPERATURE,
   EVENT_RC5,
   EVENT_MOTOR,
+  EVENT_COLOR,
   // Must be consecutive
   EVENT_TIMER0,
   EVENT_TIMER1,

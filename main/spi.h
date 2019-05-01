@@ -44,17 +44,24 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the SPI protocol.
+//! \brief     Initialize the SPI protocol
 //! \pre       None
 //! \param     None
 //! \return    None
 extern void Spi_Init(void);
 
+//! \brief     Add a device on the SPI bus
+//! \pre       First initialize the SPI
+//! \param     device - Device to add on the SPI bus
+//! \param     csPin, Chip select pin number
+//! \return    None
 extern void Spi_AddDevice(spi_device_handle_t* device, int csPin);
 
 //! \brief     Write a data
-//! \pre       First initialize the xxx
-//! \param     None
+//! \pre       First initialize the SPI
+//! \param     device - Device
+//! \param     data - Data to write
+//! \param     size - Size of the data
 //! \return    None
 extern void Spi_Write(spi_device_handle_t device, uint8_t* data, uint16_t size);
 //extern void Spi_Write(uint8_t* data, uint16_t size);

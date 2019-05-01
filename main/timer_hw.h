@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -21,38 +21,18 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <stdbool.h>
 #include <stdint.h>
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-//#define TIMER_INTERVAL0_SEC   (3.4179) // sample test interval for the first timer
-#define TIMER_INTERVAL0_SEC   (0.001) // sample test interval for the first timer
-//#define TIMER_INTERVAL1_SEC   (5.78)   // sample test interval for the second timer
-#define TIMER_INTERVAL1_SEC   (0.001)   // sample test interval for the second timer
-#define TEST_WITHOUT_RELOAD   0        // testing will be done without auto reload
-#define TEST_WITH_RELOAD      1        // testing will be done with auto reload
-
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
 
 struct PrivateTimer;
-typedef struct PrivateTimer T_TimerHw;  //!< Definition of T_Timer type
-
-/*
- * A sample structure to pass events
- * from the timer interrupt handler to the main program.
- */
-typedef struct
-{
-  int type;  // the type of timer's event
-  int timer_group;
-  int timer_idx;
-  uint64_t timer_counter_value;
-} timer_event_t;
+typedef struct PrivateTimer T_TimerHw;  //!< Definition of T_TimerHw type
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -66,74 +46,37 @@ typedef struct
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initializes the Timer module.
+//! \brief     Initializes the Timer module
 //! \pre       None
 //! \param     None
 //! \return    None
 extern void TimerHw_Init(void);
 
-//extern void TimerHw_Task(void);
-//extern void TimerHw_Task(void* pvParameter);
+//! \brief     Create the timer
+//! \pre       First initialize the timer
+//! \param     duration_us - Duration in [us]
+//! \param     callback - Callback function called when duration is reached
+//! \return    Timer created
+extern T_TimerHw* TimerHw_Create(uint32_t duration_us, void (*callback)(void*));
 
-//! \brief     Get the system timestamp (number of 100us since boot)
-//! \pre       First initialize the timer.
-//! \param     None
-//! \return    The system timestamp in [100us].
-extern uint32_t TimerHw_GetSystemTimestamp(void);
-
-//! \brief     Create the timer.
-//! \pre       First initialize the timer.
-//! \param     interval_ms is the timer expiration interval in [ms].
-//! \return    The timer created.
-extern T_TimerHw* TimerHw_Create(uint32_t interval_ms);
-
-//! \brief     Start the timer.
-//! \pre       First initialize the timer.
-//! \param     timer is the timer to start.
+//! \brief     Start the timer once
+//! \pre       First initialize the timer
+//! \param     timer - Timer to start once
+//! \param     duration_us - Duration in [us]
 //! \return    None
-extern void TimerHw_Start(T_TimerHw* timer);
+extern void TimerHw_StartTimerOnce(T_TimerHw* timer, uint32_t duration_us);
 
-//! \brief     Stop the timer.
-//! \pre       First initialize the timer.
-//! \param     timer is the timer to stop.
+//! \brief     Start the timer periodically
+//! \pre       First initialize the timer
+//! \param     timer - Timer to start periodically
+//! \param     duration_us - Duration in [us]
 //! \return    None
-extern void TimerHw_Stop(T_TimerHw* timer);
+extern void TimerHw_StartTimerPeriodically(T_TimerHw* timer, uint32_t duration_us);
 
-//! \brief     Restart the timer.
-//! \pre       First initialize the timer.
-//! \param     timer is the timer to restart.
+//! \brief     Stop the timer
+//! \pre       First initialize the timer
+//! \param     timer - Timer to stop
 //! \return    None
-extern void TimerHw_Restart(T_TimerHw* timer);
-
-//! \brief     Set the timer interval. If the timer is started, this will restart the timer.
-//! \pre       First initialize the timer.
-//! \param     timer is the timer to restart.
-//! \param     interval_ms is the timer expiration interval in [ms].
-//! \return    None
-extern void TimerHw_SetInterval(T_TimerHw* timer, uint32_t interval_ms);
-
-//! \brief     Is the timer started ?
-//! \pre       First initialize the timer.
-//! \param     timer is the timer to check.
-//! \return    True if timer started, false otherwise.
-extern bool TimerHw_IsStarted(const T_TimerHw* timer);
-
-//! \brief     Check if the timer has expired.
-//! \pre       First initialize the timer.
-//! \param     timer is the timer to check.
-//! \return    True if the timer has expired, false otherwise.
-extern bool TimerHw_HasExpired(const T_TimerHw* timer);
-
-//! \brief     Is scheduler timer flag set?
-//! \pre       First initialize the timer.
-//! \param     None
-//! \return    True if set, false otherwise
-extern bool TimerHw_IsSchedulerFlagSet(void);
-
-//! \brief     Reset the scheduler timer flag
-//! \pre       First initialize the timer.
-//! \param     None
-//! \return    None
-extern void TimerHw_ResetSchedulerFlag(void);
+extern void TimerHw_StopTimer(T_TimerHw* timer);
 
 #endif // TIMER_HW_H_

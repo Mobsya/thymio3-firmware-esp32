@@ -23,6 +23,8 @@
 
 #include <stdint.h>
 
+#include "error.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -58,17 +60,22 @@ typedef struct
 extern void BH1745NUC_Init(void);
 
 //! \brief     Check the manufacturer ID
-//! \pre       None
+//! \pre       First initialize the color sensor
+//! \param     None
+//! \return    E_Error_None if no error, otherwise E_Error_Color_InvalidID
+extern T_Error BH1745NUC_CheckManufacturerId(void);
+
+//! \brief     Read the registers
+//! \pre       First initialize the color sensor
 //! \param     None
 //! \return    None
-extern void BH1745NUC_CheckManufacturerId(void);
-
 extern void BH1745NUC_ReadRegisters(void);
 
-//! \brief     Get the RGBC illuminance in [lux]
-//! \pre       None
-//! \param     None
+//! \brief     Read the RGBC illuminance
+//! \pre       First initialize the color sensor
+//! \param     illuminance - Illuminance RGBC in [lux]
 //! \return    None
-extern T_Illuminance* BH1745NUC_GetIlluminance_lux(void);
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\ReadIlluminance.svg
+extern void BH1745NUC_ReadIlluminance(T_Illuminance* illuminance);
 
 #endif // BH1745NUC_H_

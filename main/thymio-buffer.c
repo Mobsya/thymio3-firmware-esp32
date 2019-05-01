@@ -1,217 +1,252 @@
-/*
-        Thymio-II Firmware
+//_____________________________________________________________________________
+//
+// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+//_____________________________________________________________________________
+//
+// PROJECT   Thymio-III
+//_____________________________________________________________________________
+//
+//! \file    thymio-buffer.c
+//! \brief   This module provides the useful functions to manage the thymio buffer
+//!
+//! \author  Vincent Gonet
+//!
+//! \version $Id: thymio-buffer.c 18076 2017-04-20 12:28:12Z v.gonet $
+//_____________________________________________________________________________
 
-        Copyright (C) 2013 Philippe Retornaz <philippe dot retornaz at epfl dot ch>,
-        Mobots group (http://mobots.epfl.ch), Robotics system laboratory (http://lsro.epfl.ch)
-        EPFL Ecole polytechnique federale de Lausanne (http://www.epfl.ch)
+//-----------------------------------------------------------------------------
+// Include Section
+//-----------------------------------------------------------------------------
 
-        See authors.txt for more details about other contributors.
-
-        This program is free software: you can redistribute it and/or modify
-        it under the terms of the GNU Lesser General Public License as published
-        by the Free Software Foundation, version 3 of the License.
-
-        This program is distributed in the hope that it will be useful,
-        but WITHOUT ANY WARRANTY; without even the implied warranty of
-        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-        GNU Lesser General Public License for more details.
-
-        You should have received a copy of the GNU Lesser General Public License
-        along with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
-
+#include "esp_log.h"
 
 #include "aseba_esp32.h"
 #include "rf.h"
-//#include <types/types.h>
-//#include <usb/usb.h>
-//#include <usb/usb_device.h>
-//#include "usb_function_cdc.h"
 #include "thymio-buffer.h"
-//#include "usb_uart.h"
 #include "uart.h"
 
-#include "leds.h" //only for debug
+#include "stm32.h"
+#include "fifo.h"
+#include "tcp_server.h"
+#include "wifi.h"
 
-struct fifo {
-	unsigned char * buffer;
-	size_t size;
-	size_t insert;
-	size_t consume;
-};
+#include "leds.h"
 
-static struct {
-	struct fifo rx;
-	struct fifo tx;
-} AsebaFifo;
+//-----------------------------------------------------------------------------
+// Constants/Macros Definitions
+//-----------------------------------------------------------------------------
 
 // No communication bus presents
-#define MODE_DISCONNECTED	0x2
+#define MODE_DISCONNECTED 0x2
 // USB is connected _AND_ running (DTE bit set)
-#define MODE_USB		0x1
+#define MODE_USB    0x1
 // RF link is present
-#define MODE_RF			0x0
-static unsigned char connection_mode;
+#define MODE_RF     0x0
+
+//-----------------------------------------------------------------------------
+// Types Definitions
+//-----------------------------------------------------------------------------
+
+struct fifo
+{
+  unsigned char* buffer;
+  size_t size;
+  size_t insert;
+  size_t consume;
+};
+
+static struct
+{
+  struct fifo rx;
+  struct fifo tx;
+} AsebaFifo;
+
+//-----------------------------------------------------------------------------
+// Exported Global Data
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Private Data
+//-----------------------------------------------------------------------------
+
+static uint8_t connection_mode;
 
 static uint8_t commError;
 
-/* Basic assumption in order to protect concurrent access to the fifos:
-	- If the code in "main()" access the fifo it need to disable the interrupts 
-*/
+//-----------------------------------------------------------------------------
+// Private Functions Prototypes
+//-----------------------------------------------------------------------------
 
-static inline size_t get_used(struct fifo * f) {
-	size_t ipos, cpos;
-	ipos = f->insert;
-	cpos = f->consume;
-	if (ipos >= cpos)
-		return ipos - cpos;
-	else
-		return f->size - cpos + ipos;
+//-----------------------------------------------------------------------------
+// Inline Code Definition
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Functions Implementation
+//-----------------------------------------------------------------------------
+
+static inline size_t get_free(struct fifo* f)
+{
+  return f->size - 1 - Fifo8bits_GetNumberOfElements(f);
 }
 
-static inline size_t get_free(struct fifo * f) {
-	return f->size - 1 - get_used(f);
+//_____________________________________________________________________________
+
+void AsebaFifoPushToRx(unsigned char c)
+{
+  Fifo8bits_Write(&AsebaFifo.rx, &c, 1);
 }
 
-/* you MUST ensure that you pass correct size to thoses two function, 
- * no check are done .... 
- */
-static inline void memcpy_out_fifo(unsigned char * dest, struct fifo * f, size_t size) {
-	while(size--) {
-		*dest++ = f->buffer[f->consume++];
-		if(f->consume == f->size)
-			f->consume = 0;
-	}
+//_____________________________________________________________________________
+
+int AsebaFifoRxFull(void)
+{
+  return !get_free(&AsebaFifo.rx);
 }
 
-static inline void memcpy_to_fifo(struct fifo * f, const unsigned char * src, size_t size) {
-	while(size--) {
-		f->buffer[f->insert++] = *src++;
-		if(f->insert == f->size)
-			f->insert = 0;
-	}
-}
+//_____________________________________________________________________________
 
-static inline void fifo_peek(unsigned char * d, struct fifo * f,size_t size) {
-	int ct = f->consume;
-	while(size--) {
-		*d++ = f->buffer[ct++];
-		if(ct == f->size)
-			ct = 0;
-	}
-}	
+void AsebaFifoCheckConnectionMode(void)
+{
+  if (STM32_IsUSBPortOpen())
+  {
+    if (connection_mode != MODE_USB)
+    {
+      // Switch off the WIFI
+      ESP_LOGI("thymio-buffer", "COUCOU Switch off WIFI");
+      //WIFI_Disconnect();
+      TCPServer_ShutDownSocket();
+    }
 
-static inline void fifo_reset(struct fifo * f) {
-	f->insert = f->consume = 0;
-}
+    Fifo8bits_Reset(TCPFifoRx);
+    connection_mode = MODE_USB;
+  }
+  else if (WIFI_IsConnected())
+  {
+    if (TCPServer_IsSocketAccepted())
+    {
+      connection_mode = MODE_RF;
+    }
+    else
+    {
+      Fifo8bits_Reset(TCPFifoRx);
+    }
+  }
+  else
+  {
+    // No USB-UART, no WIFI
+    Fifo8bits_Reset(TCPFifoRx);
 
-void AsebaFifoPushToRx(unsigned char c) {
-	memcpy_to_fifo(&AsebaFifo.rx, &c, 1);
-}	
+    connection_mode = MODE_DISCONNECTED;
+  }
 
-int AsebaFifoRxFull(void) {
-	return !get_free(&AsebaFifo.rx);
-}
-
-unsigned char AsebaFifoTxPop(void) {
-	unsigned char c;
-	memcpy_out_fifo(&c,&AsebaFifo.tx,1);
-	return c;
-}
-unsigned char AsebaFifoTxPeek(void) {
-	unsigned char c;
-	fifo_peek(&c, &AsebaFifo.tx, 1);
-	return c;
-}	
-
-int AsebaFifoTxEmpty(void) {
-	return !get_used(&AsebaFifo.tx);
-}	
-
-void AsebaFifoCheckConnectionMode(void) {
 #if 0
-	if(usb_uart_serial_port_open()) {
-		if(connection_mode == MODE_USB)
-			return; // Nothing to do ...
+  if (usb_uart_serial_port_open())
+  {
+    if (connection_mode == MODE_USB)
+    {
+      return;  // Nothing to do ...
+    }
 
-		// Put the RF link down if it was up
-		if(rf_get_status() & RF_LINK_UP) 
-			rf_set_link(RF_DOWN);
+    // Put the RF link down if it was up
+    if (rf_get_status() & RF_LINK_UP)
+    {
+      rf_set_link(RF_DOWN);
+    }
 
-		// We are switching to usb, reset the fifo and make the switch
-		fifo_reset(&AsebaFifo.tx);
-		fifo_reset(&AsebaFifo.rx);
-		connection_mode = MODE_USB;
-		return;
-	}
+    // We are switching to usb, reset the fifo and make the switch
+    Fifo_Reset(&AsebaFifo.tx);
+    Fifo_Reset(&AsebaFifo.rx);
+    connection_mode = MODE_USB;
+    return;
+  }
 
-	// No usb, so try RF.
-	if(rf_get_status() & RF_PRESENT) {
-		if(connection_mode == MODE_RF)
-			return; // Nothing to do
-		
-		fifo_reset(&AsebaFifo.tx);
-		fifo_reset(&AsebaFifo.rx);
+  // No usb, so try RF.
+  if (rf_get_status() & RF_PRESENT)
+  {
+    if (connection_mode == MODE_RF)
+    {
+      return;  // Nothing to do
+    }
 
-		// We are switching *from* usb, start the RF link
-		if(!(rf_get_status() & RF_LINK_UP))
-			rf_set_link(RF_UP);
-		
-		connection_mode = MODE_RF;
+    Fifo_Reset(&AsebaFifo.tx);
+    Fifo_Reset(&AsebaFifo.rx);
 
-		return;
-	}
+    // We are switching *from* usb, start the RF link
+    if (!(rf_get_status() & RF_LINK_UP))
+    {
+      rf_set_link(RF_UP);
+    }
 
-	// No RF, No usb ... 
-	fifo_reset(&AsebaFifo.tx);
-	fifo_reset(&AsebaFifo.rx);
-	
-	connection_mode = MODE_DISCONNECTED;
+    connection_mode = MODE_RF;
+
+    return;
+  }
+
+  // No RF, No usb ...
+  Fifo_Reset(&AsebaFifo.tx);
+  Fifo_Reset(&AsebaFifo.rx);
+
+  connection_mode = MODE_DISCONNECTED;
 #endif
 }
+
+//_____________________________________________________________________________
 
 /* USB interrupt part */
 // They can be called from the main, but with usb interrupt disabled, so it's OK
 static int tx_busy;
 static int debug;
 
-unsigned char AsebaTxReady(unsigned char *data) {
-	size_t size = get_used(&AsebaFifo.tx);
-	
-	// Do not send anything on usb if we are not in usb mode
-	if(size == 0 || connection_mode != MODE_USB) {
-		tx_busy = 0;
-		debug = 0;
-		return 0;
-	}
-	
-	if(size > ASEBA_USB_MTU)
-		size = ASEBA_USB_MTU;
-	
-	memcpy_out_fifo(data, &AsebaFifo.tx, size);
-	debug ++;
-	return size;
+unsigned char AsebaTxReady(unsigned char* data)
+{
+  size_t size = Fifo8bits_GetNumberOfElements(&AsebaFifo.tx);
+
+  // Do not send anything on usb if we are not in usb mode
+  if (size == 0 || connection_mode != MODE_USB)
+  {
+    tx_busy = 0;
+    debug = 0;
+    return 0;
+  }
+
+  if (size > ASEBA_USB_MTU)
+  {
+    size = ASEBA_USB_MTU;
+  }
+
+  Fifo8bits_Read(&AsebaFifo.tx, data, size);
+  debug ++;
+  return size;
 }
 
-int AsebaUsbBulkRecv(unsigned char *data, unsigned char size) {
-	// Ignore all data if we are not in usb mode
-	AsebaFifoCheckConnectionMode();
-	
-	if(connection_mode != MODE_USB)
-		return 0;
+//_____________________________________________________________________________
 
-	size_t free = get_free(&AsebaFifo.rx);
-	
-	if(size > free)
-		return 1;
-	
-	memcpy_to_fifo(&AsebaFifo.rx, data, size);
-	
-	return 0;
+int AsebaUsbBulkRecv(unsigned char* data, unsigned char size)
+{
+  // Ignore all data if we are not in usb mode
+  AsebaFifoCheckConnectionMode();
+
+  if (connection_mode != MODE_USB)
+  {
+    return 0;
+  }
+
+  size_t free = get_free(&AsebaFifo.rx);
+
+  if (size > free)
+  {
+    return 1;
+  }
+
+  Fifo8bits_Write(&AsebaFifo.rx, data, size);
+
+  return 0;
 }
 
 /* RF Part */
 
+//_____________________________________________________________________________
 
 /* main() part */
 
@@ -222,215 +257,358 @@ static void uartSendUInt8(uint8_t value)
   //while (e_uart1_sending());
 }
 
+//_____________________________________________________________________________
+
+static void tcpSendUInt8(uint8_t value)
+{
+  TCPServer_Send(&value, 1);
+}
+
+//_____________________________________________________________________________
+
 static void uartSendUInt16(uint16_t value)
 {
-  UART_Write((uint8_t*)&value, 2);
+//#if 0
+  uint8_t data[2] =
+  {
+    (uint8_t)(value & 0x00FF),
+    (uint8_t)((value >> 8) & 0x00FF)
+  };
+
+  UART_Write(data, 2);
+//#endif
+
+#if 0
+  uint8_t val1 = (uint8_t)(value & 0x00FF);
+  uint8_t val2 = (uint8_t)((value >> 8) & 0x00FF);
+
+  UART_Write(&val1, 1);
+  UART_Write(&val2, 1);
+#endif
+
+  //UART_Write((uint8_t*)&value, 2);
   UART_WaitUntilTxFifoIsEmpty();
   //while (e_uart1_sending());
 }
 
-void AsebaSendBuffer(AsebaVMState *vm, const uint8_t *data, uint16_t length)
-{
-  uartSendUInt16(length - 2);
-  uartSendUInt16(vmState.nodeId);
+//_____________________________________________________________________________
 
-  //UART_Write(data, length);
-//#if 0
-  for (uint16_t i = 0; i < length; i++)
+static void tcpSendUInt16(uint16_t value)
+{
+  uint8_t data[2] =
   {
-    uartSendUInt8(*data++);
+    (uint8_t)(value & 0x00FF),
+    (uint8_t)((value >> 8) & 0x00FF)
+  };
+
+  TCPServer_Send(data, 2);
+}
+
+//_____________________________________________________________________________
+
+void AsebaSendBuffer(AsebaVMState* vm, const uint8_t* data, uint16_t length)
+{
+  //AsebaFifoCheckConnectionMode();
+
+  if (connection_mode == MODE_USB)
+  {
+    if (length >= 2)
+    {
+      uartSendUInt16(length - 2u);
+      uartSendUInt16(vm->nodeId);
+      //uartSendUInt16(vmState.nodeId);
+
+      for (uint16_t i = 0u; i < length; i++)
+      {
+        uartSendUInt8(*data++);
+      }
+    }
   }
-//#endif
+  else if (connection_mode == MODE_RF)
+  {
+    if (length >= 2)
+    {
+      tcpSendUInt16(length - 2u);
+      tcpSendUInt16(vm->nodeId);
+      //tcpSendUInt16(vmState.nodeId);
+
+      //ESP_LOGI("thymio-buffer", "HELLO Send");
+
+      for (uint16_t i = 0u; i < length; i++)
+      {
+        tcpSendUInt8(*data++);
+      }
+    }
+  }
+  else  // MODE_DISCONNECTED
+  {
+    // Do nothing
+  }
 
 #if 0
-	int flags;
-	unsigned char mode = connection_mode;
+  int flags;
+  unsigned char mode = connection_mode;
 
 
-	barrier(); // Force the compiler to capture mode 
+  barrier(); // Force the compiler to capture mode
 
 
-	// Here we must loop until we can send the data.
-	// BUT if we are disconnected we simply drop the data.
-	if(mode == MODE_DISCONNECTED)
-		return;
-	
-	// Sanity check, should never be true
-	if (length < 2)
-		return;
-	// Cannot send big user packet for Thymio.
-	const uint16_t MAX_BUFF_SIZE = ((32+2)*2);
-	if ((data[1]<0x80)&&(length > MAX_BUFF_SIZE)){
-		AsebaVMEmitNodeSpecificError(vm, "Argument array size is too large (>32)");
-		return;
-	}
-	do {
-		RAISE_IPL(flags, PRIO_COMMUNICATION);
-		AsebaFifoCheckConnectionMode();
-		if(mode != connection_mode) {
-			// the connection medium changed under our feet, let's drop this packet
-			// No need to reset the fifo it has already been done.
-			IRQ_ENABLE(flags);
-			break;
-		}
+  // Here we must loop until we can send the data.
+  // BUT if we are disconnected we simply drop the data.
+  if (mode == MODE_DISCONNECTED)
+  {
+    return;
+  }
 
-		if(get_free(&AsebaFifo.tx) >= length + 4) {
-			length -= 2;
-			memcpy_to_fifo(&AsebaFifo.tx, (unsigned char *) &length, 2);
-			memcpy_to_fifo(&AsebaFifo.tx, (unsigned char *) &vm->nodeId, 2);
-			memcpy_to_fifo(&AsebaFifo.tx, (unsigned char *) data, length + 2);
-			
-			// Will callback AsebaUsbTxReady
-			if(mode == MODE_USB) {
-				if (!tx_busy) {
-					tx_busy = 1;
-					USBCDCKickTx();
-				}
-			}
-			
-			length = 0;
-		}
-		
-		IRQ_ENABLE(flags);
-	} while(length);
+  // Sanity check, should never be true
+  if (length < 2)
+  {
+    return;
+  }
+  // Cannot send big user packet for Thymio.
+  const uint16_t MAX_BUFF_SIZE = ((32 + 2) * 2);
+  if ((data[1] < 0x80) && (length > MAX_BUFF_SIZE))
+  {
+    AsebaVMEmitNodeSpecificError(vm, "Argument array size is too large (>32)");
+    return;
+  }
+  do
+  {
+    RAISE_IPL(flags, PRIO_COMMUNICATION);
+    AsebaFifoCheckConnectionMode();
+    if (mode != connection_mode)
+    {
+      // the connection medium changed under our feet, let's drop this packet
+      // No need to reset the fifo it has already been done.
+      IRQ_ENABLE(flags);
+      break;
+    }
+
+    if (get_free(&AsebaFifo.tx) >= length + 4)
+    {
+      length -= 2;
+      Fifo8bits_Write(&AsebaFifo.tx, (unsigned char*) &length, 2);
+      Fifo8bits_Write(&AsebaFifo.tx, (unsigned char*) &vm->nodeId, 2);
+      Fifo8bits_Write(&AsebaFifo.tx, (unsigned char*) data, length + 2);
+
+      // Will callback AsebaUsbTxReady
+      if (mode == MODE_USB)
+      {
+        if (!tx_busy)
+        {
+          tx_busy = 1;
+          USBCDCKickTx();
+        }
+      }
+
+      length = 0;
+    }
+
+    IRQ_ENABLE(flags);
+  }
+  while (length);
 #endif
 }
+
+//_____________________________________________________________________________
 
 static uint8_t uartGetUInt8(void)
 {
-	uint8_t c;
-	commError = 0;
-#if 0 // FIXME
-	getDiffTimeMsAndReset();
-	while (!e_ischar_uart1()) {
-		if(getDiffTimeMs() > 500) { // Timeout of 500 ms.
-			commError = 1;
-			return 0;
-		}
-	}
-	e_getchar_uart1(&c);
-#endif
-    UART_ReadByte(&c);
-	return c;
+  uint8_t c;
+  UART_ReadByte(&c);
+  return c;
 }
+
+//_____________________________________________________________________________
 
 static uint16_t uartGetUInt16(void)
 {
-	uint16_t value;
-	// little endian
-	value = uartGetUInt8();
-	if(commError) {
-		return 0;
-	}
-	value |= (uartGetUInt8() << 8);
-	if(commError) {
-		return 0;
-	}
-	return value;
+  uint16_t value = uartGetUInt8();  // Little endian
+
+  value |= (uartGetUInt8() << 8);
+
+  return value;
 }
 
-uint16_t AsebaGetBuffer(AsebaVMState *vm, uint8_t * data, uint16_t maxLength, uint16_t* source)
+//_____________________________________________________________________________
+
+uint16_t AsebaGetBuffer(AsebaVMState* vm, uint8_t* data, uint16_t maxLength, uint16_t* source)
 {
   uint16_t ret = 0;
   uint16_t len = 0;
 
-  if (!UART_IsReceptionBufferEmpty())
+  static uint16_t counter = 0;
+
+  AsebaFifoCheckConnectionMode();
+
+  uint16_t used = Fifo8bits_GetNumberOfElements(TCPFifoRx);
+
+#if 0
+  if (used > 0)
   {
-    len = uartGetUInt16() + 2;
+    ESP_LOGI("thymio-buffer", "used = %d", used);
+  }
+  else
+  {
+    counter++;
 
-    if (commError)
+    if (counter >= 100)
     {
-      return 0;
+      counter = 0;
+      ESP_LOGI("thymio-buffer", "used = %d", used);
     }
+  }
+#endif
 
-    if (len > maxLength)  // Wrong data received.
+  if (connection_mode == MODE_USB)
+  {
+    if (!UART_IsReceptionBufferEmpty())
     {
-      return 0;
-    }
+      len = uartGetUInt16() + 2;
 
-    *source = uartGetUInt16();
-
-	if (commError)
-    {
-      return 0;
-    }
-
-    for (uint16_t i = 0; i < len; i++)
-    {
-      *data++ = uartGetUInt8();
-
-      if (commError)
+      if (len > maxLength)  // Wrong data received.
       {
         return 0;
       }
-    }
 
-    ret = len;
+      *source = uartGetUInt16();
+
+      for (uint16_t i = 0; i < len; i++)
+      {
+        *data++ = uartGetUInt8();
+
+        if (commError)
+        {
+          return 0;
+        }
+      }
+
+      ret = len;
+    }
+  }
+  else if (connection_mode == MODE_RF)
+  {
+    if (used >= 6)
+    {
+      //ESP_LOGI("thymio-buffer", "HELLO THYMIO");
+      Fifo8bits_Peek(TCPFifoRx, (uint8_t*)&len, 2);
+
+      if (used >= (len + 6))
+      {
+        Fifo8bits_Read(TCPFifoRx, (uint8_t*)&len, 2);
+        Fifo8bits_Read(TCPFifoRx, (uint8_t*)source, 2);
+
+        // msg_type is not in the len but is always present
+        len += 2;
+
+        if (len > maxLength)  // Wrong data received.
+        {
+          len = maxLength;
+          //ESP_LOGI("thymio-buffer", "HELLO WRONG");
+        }
+
+        Fifo8bits_Read(TCPFifoRx, data, len);
+        ret = len;
+#if 0
+        if (ret > 0)
+        {
+          //ESP_LOGI("thymio-buffer", "Ret = %d", ret);
+        }
+#endif
+      }
+    }
+    else
+    {
+      //ESP_LOGI("thymio-buffer", "HELLO STRANGE");
+    }
+  }
+  else  // MODE_CONNECTED
+  {
+    // Do nothing
+    //ESP_LOGI("thymio-buffer", "HELLO DISCONNECTED");
   }
 
   return ret;
 
 #if 0
-	int flags;
-	uint16_t ret = 0;
-	size_t u;
-	// Touching the FIFO, mask the interrupt ...
-	RAISE_IPL(flags, PRIO_COMMUNICATION);
-	
-	AsebaFifoCheckConnectionMode();
+  int flags;
+  uint16_t ret = 0;
+  size_t u;
+  // Touching the FIFO, mask the interrupt ...
+  RAISE_IPL(flags, PRIO_COMMUNICATION);
 
-	u = get_used(&AsebaFifo.rx);
+  AsebaFifoCheckConnectionMode();
 
-	/* Minium packet size == len + src + msg_type == 6 bytes */
-	if(u >= 6) {
-		int len;
-		fifo_peek((unsigned char *) &len, &AsebaFifo.rx, 2);
-		
-		if (u >= len + 6) {
-			memcpy_out_fifo((unsigned char *) &len, &AsebaFifo.rx, 2);
-			memcpy_out_fifo((unsigned char *) source, &AsebaFifo.rx, 2);
-	
-			// msg_type is not in the len but is always present
-			len = len + 2;
-			/* Yay ! We have a complete packet ! */
-			if(len > maxLength)
-				len = maxLength;
+  u = Fifo_GetNumberOfElements(&AsebaFifo.rx);
 
-			memcpy_out_fifo(data, &AsebaFifo.rx, len);
-			ret = len;
-		}
-	}	
-	if(connection_mode == MODE_USB)
-		USBCDCKickRx();
+  /* Minium packet size == len + src + msg_type == 6 bytes */
+  if (u >= 6)
+  {
+    int len;
+    Fifo_Peek(&AsebaFifo.rx, (unsigned char*)&len, 2);
 
-	IRQ_ENABLE(flags);
-	return ret;
+    if (u >= len + 6)
+    {
+      Fifo_Read(&AsebaFifo.rx, (unsigned char*)&len, 2);
+      Fifo_Read(&AsebaFifo.rx, (unsigned char*)source, 2);
+
+      // msg_type is not in the len but is always present
+      len = len + 2;
+      /* Yay ! We have a complete packet ! */
+      if (len > maxLength)
+      {
+        len = maxLength;
+      }
+
+      Fifo_Read(&AsebaFifo.rx, data, len);
+      ret = len;
+    }
+  }
+  if (connection_mode == MODE_USB)
+  {
+    USBCDCKickRx();
+  }
+
+  IRQ_ENABLE(flags);
+  return ret;
 #endif
 }
 
-void AsebaFifoInit(unsigned char * sendQueue, size_t sendQueueSize, unsigned char * recvQueue, size_t recvQueueSize) {
-	AsebaFifo.tx.buffer = sendQueue;
-	AsebaFifo.tx.size = sendQueueSize;
-	
-	AsebaFifo.rx.buffer = recvQueue;
-	AsebaFifo.rx.size = recvQueueSize;
+//_____________________________________________________________________________
+
+void AsebaFifoInit(unsigned char* sendQueue, size_t sendQueueSize, unsigned char* recvQueue, size_t recvQueueSize)
+{
+  AsebaFifo.tx.buffer = sendQueue;
+  AsebaFifo.tx.size = sendQueueSize;
+
+  AsebaFifo.rx.buffer = recvQueue;
+  AsebaFifo.rx.size = recvQueueSize;
 }
 
-int AsebaFifoRecvBufferEmpty(void) {
-	// We are called with interrupt disabled ! Check if rx contain something meaningfull
-	
-	int u;
-	
-	u = get_used(&AsebaFifo.rx);
-	if(u > 6) {
-		int len;
-		fifo_peek((unsigned char *) &len, &AsebaFifo.rx, 2);
-		if (u >= len + 6) 
-			return 0;
-	}
-	return 1;
+//_____________________________________________________________________________
+
+int AsebaFifoRecvBufferEmpty(void)
+{
+  // We are called with interrupt disabled ! Check if rx contain something meaningfull
+
+  int u;
+
+  u = Fifo8bits_GetNumberOfElements(&AsebaFifo.rx);
+  if (u > 6)
+  {
+    int len;
+    Fifo8bits_Peek(&AsebaFifo.rx, (unsigned char*)&len, 2);
+    if (u >= len + 6)
+    {
+      return 0;
+    }
+  }
+  return 1;
 }
 
-int AsebaFifoTxBusy(void) {
-	return tx_busy;
+//_____________________________________________________________________________
+
+int AsebaFifoTxBusy(void)
+{
+  return tx_busy;
 }

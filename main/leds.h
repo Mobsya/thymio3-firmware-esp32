@@ -27,6 +27,9 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
+#define MIN_BRIGHTNESS             0u
+#define MAX_BRIGHTNESS            32u
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -75,10 +78,10 @@ enum
   E_Led_Circle_7,        // U16.QH -->
 
   // LEDs connected to U14
-  E_Led_Button_0,        // U14.QA -->
-  E_Led_Button_2,        // U14.QB -->
-  E_Led_Button_3,        // U14.QC -->
-  E_Led_Button_1,        // U14.QD -->
+  E_Led_Button_0,        // U14.QA --> D1
+  E_Led_Button_2,        // U14.QB --> D3
+  E_Led_Button_3,        // U14.QC --> D4
+  E_Led_Button_1,        // U14.QD --> D5
   E_Led_Circle_5,        // U14.QE -->
   E_Led_Circle_6,        // U14.QF -->
   E_Led_Temp_Red,        // U14.QG -->
@@ -104,46 +107,63 @@ typedef uint8_t T_Led;
 //! \return    None
 extern void Leds_Init(void);
 
-//! \brief     Run the LEDs task
+//! \brief     Run the LEDs
 //! \pre       First initialize the LEDs
 //! \param     None
 //! \return    None
-extern void Leds_Task(void);
+extern void Leds_Run(void);
 
 //! \brief     Set the brightness of a single LED
 //! \pre       First initialize the LEDs
-//! \param     None
+//! \param     led - LED to handle
+//! \param     brightness - Brightness
 //! \return    None
 extern void Leds_SetSingleBrightness(T_Led led, uint8_t brightness);
 
 //! \brief     Set the brightness of each circle LED
 //! \pre       First initialize the LEDs
-//! \param     None
+//! \param     l0 to l7 - LEDs associated with the circle
 //! \return    None
-extern void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7);
+extern void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
+                                     uint8_t l7);
 
 //! \brief     Set the brightness of each proximity IR LED
 //! \pre       First initialize the LEDs
-//! \param     None
+//! \param     l0 to l7 - LEDs associated with the proximity IR sensors
 //! \return    None
-extern void leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7);
+extern void leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
+                                     uint8_t l7);
 
 //! \brief     Set the brightness of the top RGB LED
 //! \pre       First initialize the LEDs
-//! \param     None
+//! \param     red - Red component of the RGB LED
+//! \param     green - Green component of the RGB LED
+//! \param     blue - Blue component of the RGB LED
 //! \return    None
 extern void Leds_SetTopBrightness(uint8_t red, uint8_t green, uint8_t blue);
 
 //! \brief     Set the brightness of the bottom left RGB LED
 //! \pre       First initialize the LEDs
-//! \param     None
+//! \param     red - Red component of the RGB LED
+//! \param     green - Green component of the RGB LED
+//! \param     blue - Blue component of the RGB LED
 //! \return    None
 void Leds_SetBottomLeftBrightness(uint8_t red, uint8_t green, uint8_t blue);
 
 //! \brief     Set the brightness of the bottom right RGB LED
 //! \pre       First initialize the LEDs
-//! \param     None
+//! \param     red - Red component of the RGB LED
+//! \param     green - Green component of the RGB LED
+//! \param     blue - Blue component of the RGB LED
 //! \return    None
 void Leds_SetBottomRightBrightness(uint8_t red, uint8_t green, uint8_t blue);
+
+//! \brief     Set the brightness of the body RGB LED
+//! \pre       First initialize the LEDs
+//! \param     red - Red component of the RGB LED
+//! \param     green - Green component of the RGB LED
+//! \param     blue - Blue component of the RGB LED
+//! \return    None
+void Leds_SetBodyBrightness(uint8_t red, uint8_t green, uint8_t blue);
 
 #endif // LEDS_H_

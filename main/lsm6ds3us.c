@@ -19,7 +19,7 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <esp_log.h>
+#include "esp_log.h"
 
 #include "lsm6ds3us.h"
 
@@ -31,8 +31,8 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define SA0_PIN_STATE                    1u  //!< ADDR pin state used to set the slave address
-#define LSM6DS3US_ADDRESS             0x6Au  //!< Device address
+#define SA0_PIN_STATE                           1u  //!< ADDR pin state used to set the slave address
+#define LSM6DS3US_ADDRESS                    0x6Au  //!< Device address
 
 #define SLAVE_ADDRESS                 (LSM6DS3US_ADDRESS | SA0_PIN_STATE)  //!< Slave address
 
@@ -78,11 +78,40 @@
 #define OUTZ_L_XL_REG_ADDRESS                0x2Cu  //!< Low byte of linear acceleration sensor Z-axis output register address  (Read only)
 #define OUTZ_H_XL_REG_ADDRESS                0x2Du  //!< High byte of linear acceleration sensor Z-axis output register address (Read only)
 // TODO last registers
+#define TAP_CFG_REG_ADDRESS                  0x58u  //!< Tap recognition configuration register address                         (Read/Write)
+#define TAP_THS_6D_REG_ADDRESS               0x59u  //!< Portrait/landscape position and tap threshold register address         (Read/Write)
 
-#define MANUFACTURER_ID   0x69u  //!< Manufacturer ID
+// Manufacturer ID
+#define MANUFACTURER_ID                      0x69u  //!< Manufacturer ID
 
+// Register bits mask
+// CTRL1_XL bits mask
+#define ACC_ODR_XL_BIT_MASK                  0x0Fu  //!< Mask of bit ODR_XL
+
+// CTRL2_G bits mask
+#define GYR_ODR_G_BIT_MASK                   0x0Fu  //!< Mask of bit ODR_G
+
+// CTRL10_C bits mask
+#define GYR_EN_G_BIT_MASK                    0x07u  //!< Mask of bit EN_G (+ 2bits MSB)
+
+// TAP_CFG bits mask
+#define ACC_TAP_EN_BIT_MASK                  0xF1u  //!< Mask of bit TAP_x_EN
+
+// TAP_THS_6D bits mask
+#define TAP_THS_BIT_MASK                     0xE0u  //!< Mask of bit TAP_THS
+
+// Register bits position
 // CTRL1_XL bits position
-#define ODR_BIT_POS          4u  //!< Position of LSB bit ODR
+#define ACC_ODR_XL_BIT_POS                      4u  //!< Position of LSB bit ODR_XL
+
+// CTRL2_G bits position
+#define GYR_ODR_G_BIT_POS                       4u  //!< Position of LSB bit ODR_G
+
+// CTRL10_C bits position
+#define GYR_EN_G_BIT_POS                        3u  //!< Position of LSB bit of EN_G
+
+// TAP_CFG bits position
+#define ACC_TAP_EN_BIT_POS                      1u  //!< Position of LSB bit TAP_x_EN
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -104,6 +133,55 @@ enum
 };
 typedef uint8_t T_Acc_OutputDataRate;  //!< Accelerometer output data rate
 
+enum
+{
+  E_Acc_Tap_DisableAll = 0x00,
+  E_Acc_Tap_EnableZ    = 0x01,
+  E_Acc_Tap_EnableY    = 0x02,
+  E_Acc_Tap_EnableYZ   = 0x03,
+  E_Acc_Tap_EnableX    = 0x04,
+  E_Acc_Tap_EnableXZ   = 0x05,
+  E_Acc_Tap_EnableXY   = 0x06,
+  E_Acc_Tap_EnableAll  = 0x07
+};
+typedef uint8_t T_Acc_Tap;  //!< Accelerometer tap recognition
+
+enum
+{
+  E_Acc_TapThreshold_Low     = 0x01,
+  E_Acc_TapThreshold_MidLow  = 0x08,
+  E_Acc_TapThreshold_Mid     = 0x10,
+  E_Acc_TapThreshold_MidHigh = 0x18,
+  E_Acc_TapThreshold_High    = 0x1F
+};
+typedef uint8_t T_Acc_TapThreshold;  //!< Accelerometer tap threshold
+
+enum
+{
+  E_Gyro_OutputDataRate_PowerDown,
+  E_Gyro_OutputDataRate_12_5Hz,
+  E_Gyro_OutputDataRate_26Hz,
+  E_Gyro_OutputDataRate_52Hz,
+  E_Gyro_OutputDataRate_104Hz,
+  E_Gyro_OutputDataRate_208Hz,
+  E_Gyro_OutputDataRate_416Hz,
+  E_Gyro_OutputDataRate_833Hz,
+  E_Gyro_OutputDataRate_1660Hz
+};
+typedef uint8_t T_Gyro_OutputDataRate;  //!< Gyroscope output data rate
+
+enum
+{
+  E_Gyro_Disable_All,
+  E_Gyro_Enable_X,
+  E_Gyro_Enable_Y,
+  E_Gyro_Enable_XY,
+  E_Gyro_Enable_Z,
+  E_Gyro_Enable_ZX,
+  E_Gyro_Enable_ZY,
+  E_Gyro_Enable_All
+};
+typedef uint8_t T_Gyro_EnableAxis;  //!< Gyroscope enable/disable axis
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -117,9 +195,6 @@ static const char* Tag = "lsm6ds3us";
 
 static const T_GpioPinConfig PinConfig = {ACC_INT_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable};
 
-static T_Axis Acceleration;
-static T_Axis AngularPosition;
-
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -128,21 +203,51 @@ static T_Axis AngularPosition;
 //! \pre       None
 //! \param     None
 //! \return    None
-static void UpdateOutputDataRate(T_Acc_OutputDataRate rate);
+static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate);
+
+//! \brief     Configure the accelerometer tap recognition
+//! \pre       None
+//! \param     None
+//! \return    None
+static void ConfigureTap(T_Acc_Tap config);
+
+//! \brief     Update the accelerometer tap threshold
+//! \pre       None
+//! \param     None
+//! \return    None
+static void UpdateTapThreshold(T_Acc_TapThreshold threshold);
 
 //! \brief     Read the acceleration
 //! \pre       None
 //! \param     None
 //! \return    None
 //! \image     html ReadAcceleration.svg
-static void ReadAcceleration(void);
+static void ReadAcceleration(T_Axis* acceleration);
+
+//! \brief     Read the acceleration tap source
+//! \pre       None
+//! \param     None
+//! \return    None
+static void ReadTapSource(uint8_t* source);
 
 //! \brief     Read the angular position
 //! \pre       None
 //! \param     None
 //! \return    None
 //! \image     html ReadAngle.svg
-static void ReadAngularPosition(void);
+static void ReadAngularPosition(T_Axis* angularPosition);
+
+//! \brief     Update the gyroscope output data rate
+//! \pre       None
+//! \param     None
+//! \return    None
+static void UpdateGyroOutputDataRate(T_Gyro_OutputDataRate rate);
+
+//! \brief     Enable/disable the gyroscope axis
+//! \pre       None
+//! \param     None
+//! \return    None
+static void EnableGyroAxis(T_Gyro_EnableAxis config);
 
 //! \brief     Read the manufacturer ID
 //! \pre       None
@@ -159,49 +264,41 @@ static void ReadManufacturerId(uint8_t* data);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void LSM6DS3US_Init(void)
+//-----------------------------------------------------------------------------
+// Accelerometer
+//-----------------------------------------------------------------------------
+
+void LSM6DS3US_InitAccelerometer(void)
 {
   Gpio_ConfigurePin(&PinConfig);
-  UpdateOutputDataRate(E_Acc_OutputDataRate_104Hz);
+
+  UpdateAccOutputDataRate(E_Acc_OutputDataRate_104Hz);
+
+  ConfigureTap(E_Acc_Tap_EnableAll);
+  UpdateTapThreshold(E_Acc_TapThreshold_MidLow);
+
+  ESP_LOGI(Tag, "LSM6DS3US accelerometer is initialized");
 }
 
 //_____________________________________________________________________________
 
-void LSM6DS3US_CheckManufacturerId(void)
+void LSM6DS3US_GetAcceleration(T_Axis* acceleration)
 {
-  uint8_t id = 0x00;
+  ReadAcceleration(acceleration);
 
-  ReadManufacturerId(&id);
-
-  if (id != MANUFACTURER_ID)
-  {
-    ESP_LOGE(Tag, "Invalid manufacturer ID: %d", id);
-  }
+  // TODO ConvertAcceleration(int16_t input);
 }
 
 //_____________________________________________________________________________
 
-T_Axis* LSM6DS3US_GetAcceleration(void)
+void LSM6DS3US_GetTapSource(uint8_t* source)
 {
-  ReadAcceleration();
-
-  //ConvertAcceleration(int16_t input);
-
-  return &Acceleration;
+  ReadTapSource(source);
 }
 
 //_____________________________________________________________________________
 
-T_Axis* LSM6DS3US_GetAngularPosition(void)
-{
-  ReadAngularPosition();
-
-  return &AngularPosition;
-}
-
-//_____________________________________________________________________________
-
-static void UpdateOutputDataRate(T_Acc_OutputDataRate rate)
+static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate)
 {
   uint8_t data = 0x00u;
 
@@ -209,44 +306,75 @@ static void UpdateOutputDataRate(T_Acc_OutputDataRate rate)
   {
     I2C_ReadFromAddress(SLAVE_ADDRESS, CTRL1_XL_REG_ADDRESS, &data, 1u);
 
-	data |= (rate << ODR_BIT_POS);
+    data &= ACC_ODR_XL_BIT_MASK;
+    data |= (rate << ACC_ODR_XL_BIT_POS);
 
-	I2C_WriteToAddress(SLAVE_ADDRESS, CTRL1_XL_REG_ADDRESS, &data, 1u);
+    I2C_WriteToAddress(SLAVE_ADDRESS, CTRL1_XL_REG_ADDRESS, &data, 1u);
   }
   else
   {
-    ESP_LOGE(Tag, "Invalid output data rate: %d", rate);
+    ESP_LOGE(Tag, "Invalid accelerometer output data rate: %d", rate);
   }
 }
 
 //_____________________________________________________________________________
 
-static void ReadAcceleration(void)
+static void ConfigureTap(T_Acc_Tap config)
 {
-  uint8_t acceleration[6u];
+  uint8_t data = 0x00u;
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, OUTX_L_XL_REG_ADDRESS, acceleration, 6u);
+  if (config <= E_Acc_Tap_EnableAll)
+  {
+    I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_CFG_REG_ADDRESS, &data, 1u);
 
-  Acceleration.X = (int16_t)((uint16_t)acceleration[1u] << 8u) | acceleration[0u];
-  Acceleration.Y = (int16_t)((uint16_t)acceleration[3u] << 8u) | acceleration[2u];
-  Acceleration.Z = (int16_t)((uint16_t)acceleration[5u] << 8u) | acceleration[4u];
+    data &= ACC_TAP_EN_BIT_MASK;
+    data |= (config << ACC_TAP_EN_BIT_POS);
 
-  //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", Acceleration.X,  Acceleration.Y,  Acceleration.Z);
+    I2C_WriteToAddress(SLAVE_ADDRESS, TAP_CFG_REG_ADDRESS, &data, 1u);
+  }
 }
 
 //_____________________________________________________________________________
 
-static void ReadAngularPosition(void)
+static void UpdateTapThreshold(T_Acc_TapThreshold threshold)
 {
-  uint8_t position[6u];
+  uint8_t data = 0x00u;
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, OUTX_L_G_REG_ADDRESS, position, 6u);
+  if (threshold <= E_Acc_TapThreshold_High)
+  {
+    I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_THS_6D_REG_ADDRESS, &data, 1u);
 
-  AngularPosition.X = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
-  AngularPosition.Y = (int16_t)((uint16_t)position[3u] << 8u) | position[2u];
-  AngularPosition.Z = (int16_t)((uint16_t)position[5u] << 8u) | position[4u];
+    data &= TAP_THS_BIT_MASK;
+    data |= threshold;
 
-  //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", AngularPosition.X, AngularPosition.Y,  AngularPosition.Z);
+    I2C_WriteToAddress(SLAVE_ADDRESS, TAP_THS_6D_REG_ADDRESS, &data, 1u);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void ReadAcceleration(T_Axis* acceleration)
+{
+  uint8_t acc[6u];
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, OUTX_L_XL_REG_ADDRESS, acc, 6u);
+
+  acceleration->X = (int16_t)((uint16_t)acc[1u] << 8u) | acc[0u];
+  acceleration->Y = (int16_t)((uint16_t)acc[3u] << 8u) | acc[2u];
+  acceleration->Z = (int16_t)((uint16_t)acc[5u] << 8u) | acc[4u];
+
+  //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", acceleration->X, acceleration->Y, acceleration->Z);
+}
+
+//_____________________________________________________________________________
+
+static void ReadTapSource(uint8_t* source)
+{
+  uint8_t src;
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_SRC_REG_ADDRESS, &src, 1u);
+
+  *source = src;
 }
 
 //_____________________________________________________________________________
@@ -264,6 +392,104 @@ static void ConvertAcceleration(int16_t input)
   }
 }
 #endif
+
+//-----------------------------------------------------------------------------
+// Gyroscope
+//-----------------------------------------------------------------------------
+
+void LSM6DS3US_InitGyroscope(void)
+{
+  EnableGyroAxis(E_Gyro_Enable_All);
+  UpdateGyroOutputDataRate(E_Gyro_OutputDataRate_104Hz);
+
+  ESP_LOGI(Tag, "LSM6DS3US gyroscope is initialized");
+}
+
+//_____________________________________________________________________________
+
+void LSM6DS3US_GetAngularPosition(T_Axis* angularPosition)
+{
+  ReadAngularPosition(angularPosition);
+
+  // TODO Calculate angular position
+}
+
+//_____________________________________________________________________________
+
+static void UpdateGyroOutputDataRate(T_Gyro_OutputDataRate rate)
+{
+  uint8_t data = 0x00u;
+
+  if (rate <= E_Gyro_OutputDataRate_1660Hz)
+  {
+    I2C_ReadFromAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
+
+    data &= GYR_ODR_G_BIT_MASK;
+    data |= (rate << GYR_ODR_G_BIT_POS);
+
+    I2C_WriteToAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
+  }
+  else
+  {
+    ESP_LOGE(Tag, "Invalid gyroscope output data rate: %d", rate);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void EnableGyroAxis(T_Gyro_EnableAxis config)
+{
+  uint8_t data = 0x00u;
+
+  if (config <= E_Gyro_Enable_All)
+  {
+    I2C_ReadFromAddress(SLAVE_ADDRESS, CTRL10_C_REG_ADDRESS, &data, 1u);
+
+    data &= GYR_EN_G_BIT_MASK;
+    data |= (config << GYR_EN_G_BIT_POS);
+
+    I2C_WriteToAddress(SLAVE_ADDRESS, CTRL10_C_REG_ADDRESS, &data, 1u);
+  }
+  else
+  {
+    ESP_LOGE(Tag, "Invalid gyroscope axis configuration: %d", config);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void ReadAngularPosition(T_Axis* angularPosition)
+{
+  uint8_t position[6u];
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, OUTX_L_G_REG_ADDRESS, position, 6u);
+
+  angularPosition->X = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
+  angularPosition->Y = (int16_t)((uint16_t)position[3u] << 8u) | position[2u];
+  angularPosition->Z = (int16_t)((uint16_t)position[5u] << 8u) | position[4u];
+
+  //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", angularPosition->X, angularPosition->Y, angularPosition->Z);
+}
+
+//-----------------------------------------------------------------------------
+// Common
+//-----------------------------------------------------------------------------
+
+T_Error LSM6DS3US_CheckManufacturerId(void)
+{
+  uint8_t id = 0x00;
+  T_Error err = E_Error_None;
+
+  ReadManufacturerId(&id);
+
+  if (id != MANUFACTURER_ID)
+  {
+    err = E_Error_Acc_InvalidID;
+    ESP_LOGE(Tag, "Invalid manufacturer ID: %d", id);
+  }
+
+  return err;
+}
 
 //_____________________________________________________________________________
 

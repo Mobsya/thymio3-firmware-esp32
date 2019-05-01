@@ -21,13 +21,35 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include <stdbool.h>
+
+#include "error.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
+#define BUTTONS_NUM   5u  //!< Number of buttons
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
+//#if 0
+typedef struct
+{
+  int16_t LeftMotor;   //!< Correction factor of the left motor
+  int16_t RightMotor;  //!< Correction factor of the right motor
+} T_Settings;
+//#endif
+
+typedef enum
+{
+  E_Button_Backward,  // Button 1
+  E_Button_Left,      // Button 2
+  E_Button_Center,    // Button 3
+  E_Button_Forward,   // Button 4
+  E_Button_Right      // Button 5
+} T_Button;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -41,30 +63,145 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the xxx
+//! \brief     Update the settings
+//! \pre       None
+//! \param     settings - Settings applied to the motors
+//! \return    None
+extern void STM32_UpdateSettings(T_Settings settings);
+
+//! \brief     Read the status
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void STM32_Init(void);
+extern void STM32_ReadStatus(void);
+
+//! \brief     Check that the USB cable is present
+//! \pre       None
+//! \param     None
+//! \return    True if the USB cable is present, false otherwise
+extern bool STM32_IsUSBCablePresent(void);
+
+//! \brief     Check that the USB port is open
+//! \pre       None
+//! \param     None
+//! \return    True if the USB port is open, false otherwise
+extern bool STM32_IsUSBPortOpen(void);
+
+//! \brief     Check that a mode update has been requested
+//! \pre       None
+//! \param     None
+//! \return    True if a mode update has been requested, false otherwise
+extern bool STM32_IsModeUpdateRequested(void);
+
+//! \brief     Check that the STM32 is ready to switch off
+//! \pre       None
+//! \param     None
+//! \return    True if the STM32 is ready to switch off, false otherwise
+extern bool STM32_IsReadyToSwitchOff(void);
+
+//! \brief     Allow the STM32 to switch off (sleep mode)
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void STM32_AllowToSwitchOff(void);
+
+//! \brief     Check that the STM32 is allowed to switch off
+//! \pre       None
+//! \param     None
+//! \return    True if the STM32 is allowed to switch off, false otherwise
+extern bool STM32_IsAllowedToSwitchOff(void);
 
 //! \brief     Check the ID of the STM32
 //! \pre       None
 //! \param     None
-//! \return    None
-extern void STM32_CheckId(void);
+//! \return    E_Error_None if no error, otherwise E_Error_STM32_InvalidID
+extern T_Error STM32_CheckId(void);
 
-//! \brief     Update the motor left target
+//! \brief     Update the left motor target
 //! \pre       None
-//! \param     target The target applied to the motor left
+//! \param     target - Target applied to the left motor
 //! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateMotorLeftTarget.svg
-extern void STM32_UpdateMotorLeftTarget(int16_t* target);
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateLeftMotorTarget.svg
+extern void STM32_UpdateLeftMotorTarget(int16_t* target);
 
-//! \brief     Update the motor right target
+//! \brief     Update the right motor target
 //! \pre       None
-//! \param     target The target applied to the motor right
+//! \param     target - Target applied to the right motor
 //! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateMotorRightTarget.svg
-extern void STM32_UpdateMotorRightTarget(int16_t* target);
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateRightMotorTarget.svg
+extern void STM32_UpdateRightMotorTarget(int16_t* target);
+
+//! \brief     Get the left motor target
+//! \pre       None
+//! \param     target - Target of the motors
+//! \return    None
+extern void STM32_GetLeftMotorTarget(int16_t* target);
+
+//! \brief     Get the right motor target
+//! \pre       None
+//! \param     target - Target of the motors
+//! \return    None
+extern void STM32_GetRightMotorTarget(int16_t* target);
+
+//! \brief     Read the PWM duty cycle
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void STM32_ReadPwmDutyCycle(void);
+
+//! \brief     Read the battery voltage
+//! \pre       None
+//! \param     None
+//! \return    None
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\GetBattery.svg
+extern void STM32_ReadBatteryVoltage(void);
+
+//! \brief     Get the battery voltage
+//! \pre       None
+//! \param     None
+//! \return    Battery voltage
+extern int16_t STM32_GetBatteryVoltage(void);
+
+//! \brief     Read the induced voltage
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void STM32_ReadInducedVoltage(void);
+
+//! \brief     Read the motor current
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void STM32_ReadMotorCurrent(void);
+
+//! \brief     Read the button status
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void STM32_ReadButtonStatus(void);
+
+//! \brief     Get the button status
+//! \pre       None
+//! \param     None
+//! \return    None
+extern uint8_t* STM32_GetButtonStatus(void);
+
+//! \brief     Read the button raw data
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void STM32_ReadButtonRawData(void);
+
+//! \brief     Read the button mean
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void STM32_ReadButtonMean(void);
+
+//! \brief     Read the button noise
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void STM32_ReadButtonNoise(void);
 
 #endif // STM32_H_

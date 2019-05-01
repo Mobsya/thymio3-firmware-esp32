@@ -89,41 +89,53 @@ typedef struct
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the GPIO.
+//! \brief     Initialize the GPIO
 //! \pre       None
 //! \param     None
 //! \return    None
 extern void Gpio_Init(void);
 
-//! \brief     Run the GPIO task.
-//! \pre       First initialize the xxx
-//! \param     None
-//! \return    None
-//extern void Gpio_Task(void* arg);
-extern void Gpio_Task(void);
-
 //! \brief     Configure a GPIO.
-//! \pre       None
-//! \param     None
+//! \pre       First initialize the GPIO
+//! \param     config - Configuration of the pin
 //! \return    None
 extern void Gpio_ConfigurePin(const T_GpioPinConfig* config);
 
-//! \brief     Set the pin level of a GPIO.
-//! \pre       First configure the GPIO.
-//! \param     None
+//! \brief     Set the pin level of a GPIO
+//! \pre       First configure the GPIO
+//! \param     pinNumber - Pin number
+//! \param     level - Logical level (low or high) applied to the pin
 //! \return    None
 extern void Gpio_SetPinLevel(uint16_t pinNumber, T_GpioLevel level);
 
-//! \brief     Toggle the pin level of a GPIO.
-//! \pre       First configure the GPIO.
-//! \param     None
+//! \brief     Toggle the pin level of a GPIO
+//! \pre       First configure the GPIO
+//! \param     pinNumber - Pin number
 //! \return    None
 extern void Gpio_TogglePinLevel(uint16_t pinNumber);
 
-//! \brief     Get the pin level of a GPIO.
-//! \pre       First configure the GPIO.
+//! \brief     Get the pin level of a GPIO
+//! \pre       First configure the GPIO
+//! \param     pinNumber - Pin number
+//! \return    Logical level of a GPIO
+extern T_GpioLevel Gpio_GetPinLevel(uint16_t pinNumber);
+
+//! \brief     Get the number of pulses detected
+//! \pre       First configure the GPIO
 //! \param     None
-//! \return    None
-extern int Gpio_GetPinLevel(uint16_t pinNumber);
+//! \return    Number of pulses
+extern uint16_t Gpio_GetPulseCounter(void);
+
+//! \brief     Get the time captured at the rising edge of a pulse
+//! \pre       First configure the GPIO
+//! \param     None
+//! \return    Time captured at the rising edge of a pulse
+extern uint16_t Gpio_GetRisingEdgeTime(void);
+
+//! \brief     Get the time captured at the falling edge of a pulse
+//! \pre       First configure the GPIO
+//! \param     None
+//! \return    Time captured at the falling edge of a pulse
+extern uint16_t Gpio_GetFallingEdgeTime(void);
 
 #endif // GPIO_H_

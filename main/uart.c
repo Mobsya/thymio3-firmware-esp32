@@ -21,11 +21,12 @@
 #include <string.h>
 
 #include "driver/uart.h"
-#include <esp_log.h>
+#include "esp_log.h"
 
 #include "uart.h"
 
 #include "board.h"
+#include "stm32.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -79,80 +80,23 @@ void UART_Init(void)
 
   uart_param_config(UART_NUM, &config);
   uart_set_pin(UART_NUM, TXD_ESP32_PIN, RXD_ESP32_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-  uart_driver_install(UART_NUM, RX_BUFFER_SIZE * 2, 0, 0, NULL, 0);
+  //uart_driver_install(UART_NUM, RX_BUFFER_SIZE * 2, 0, 0, NULL, 0);
+  uart_driver_install(UART_NUM, RX_BUFFER_SIZE, TX_BUFFER_SIZE, 0, NULL, 0);
   //uart_driver_install(UART_NUM, RX_BUFFER_SIZE * 2, TX_BUFFER_SIZE * 2, 20, &UartQueue, 0);
+
+  uart_flush(UART_NUM);
 
   ESP_LOGI(Tag, "UART is initialized");
 }
 
 //_____________________________________________________________________________
-#if 0
-void UART_Task(void)
-{
-  uart_event_t event;
-  uint8_t* data = (uint8_t*)malloc(RX_BUFFER_SIZE);
-  int len = 0;
-
-  while (1)
-  {
-    // Waiting for UART event
-	if (xQueueReceive(UartQueue, (void*)&event, (portTickType)portMAX_DELAY))
-	{
-      bzero(data, RX_BUFFER_SIZE);
-
-      switch(event.type)
-      {
-        // Event of UART receving data
-        case UART_DATA:
-          len = UART_Read(data);
-          UART_Write(data, len);
-          break;
-
-        // Event of HW FIFO overflow detected
-        case UART_FIFO_OVF:
-          uart_flush_input(UART_NUM);
-          xQueueReset(UartQueue);
-          break;
-
-        // Event of UART ring buffer full
-        case UART_BUFFER_FULL:
-          uart_flush_input(UART_NUM);
-          xQueueReset(UartQueue);
-          break;
-
-        // Event of UART RX break detected
-        case UART_BREAK:
-          ESP_LOGE(Tag, "uart rx break");
-          break;
-
-        // Event of UART parity check error
-        case UART_PARITY_ERR:
-          ESP_LOGI(Tag, "uart parity error");
-          break;
-
-        // Event of UART frame error
-        case UART_FRAME_ERR:
-          ESP_LOGI(Tag, "uart frame error");
-          break;
-
-        // Event of UART pattern detected
-        case UART_PATTERN_DET:
-          break;
-
-        default:
-          break;
-      }
-	}
-
-	vTaskDelay(10 / portTICK_PERIOD_MS);
-  }
-}
-#endif
-//_____________________________________________________________________________
 
 void UART_Write(const uint8_t* data, uint16_t size)
 {
-  uart_write_bytes(UART_NUM, (const char*)data, size);
+  if (STM32_IsUSBPortOpen())
+  {
+    uart_write_bytes(UART_NUM, (const char*)data, size);
+  }
 }
 
 //_____________________________________________________________________________

@@ -51,20 +51,34 @@ extern void I2C_Init(void);
 
 //! \brief     Write a byte
 //! \pre       First initialize the I2C protocol
-//! \param     None
+//! \param     slaveAddress - Slave address of the device
+//! \param     data - Byte to write
 //! \return    None
 extern void I2C_WriteByte(uint8_t slaveAddress, uint8_t data);
 
 //! \brief     Read a byte
 //! \pre       First initialize the I2C protocol
-//! \param     None
-//! \return    None
+//! \param     slaveAddress - Slave address of the device
+//! \param     registerAddress - Register address to read
+//! \return    Read byte
 extern uint8_t I2C_ReadByte(uint8_t slaveAddress, uint8_t registerAddress);
 
-extern void I2C_WriteToAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data, uint16_t size);
+//! \brief     Write data to a specific register
+//! \pre       First initialize the I2C protocol
+//! \param     slaveAddress - Slave address of the device
+//! \param     registerAddress - Register address to write
+//! \param     data - Data to write
+//! \param     size - Size of the data
+//! \return    None
+extern void I2C_WriteToAddress(uint8_t slaveAddress, uint8_t registerAddress, uint8_t* data, uint16_t size);
 
-extern void I2C_ReadFromAddressWithStop(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data, uint16_t size);
-
-extern void I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t regAddress, uint8_t* data, uint16_t size);
+//! \brief     Read data from a specific register
+//! \pre       First initialize the I2C protocol
+//! \param     slaveAddress - Slave address of the device
+//! \param     registerAddress - Register address to read
+//! \param     data - Data to read
+//! \param     size - Size of the data
+//! \return    None
+extern void I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t registerAddress, uint8_t* data, uint16_t size);
 
 #endif // I2C_H_

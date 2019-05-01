@@ -47,15 +47,16 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the shift registers
+//! \brief     Initialize the shift registers.
 //! \pre       None
 //! \param     None
 //! \return    None
 extern void ShiftRegisters_Init(void);
 
-//! \brief     Fill the shift registers
-//! \pre       None
-//! \param     None
+//! \brief     Fill the shift registers.
+//! \pre       First initialize the shift registers
+//! \param     data - Data to be transmitted to the shift register
+//! \param     size - Size of the data
 //! \return    None
 extern void ShiftRegisters_Fill(uint8_t* data, uint16_t size);
 

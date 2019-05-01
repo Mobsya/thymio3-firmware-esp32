@@ -49,10 +49,6 @@
 //! \return    None
 extern void UART_Init(void);
 
-#if 0
-extern void UART_Task(void);
-#endif
-
 //! \brief     Write data to the UART line
 //! \pre       First initialize the UART protocol
 //! \param     None

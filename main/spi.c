@@ -33,7 +33,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define SPI_CLK_FREQENCY_Hz    8000000
+#define SPI_CLK_FREQENCY_Hz    10000000//8000000
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -74,8 +74,9 @@ void Spi_Init(void)
     .quadhd_io_num = -1  // Not used
   };
 
-  ESP_LOGI(Tag, "SPI is initialized");
   ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &bus_config, 1));
+
+  ESP_LOGI(Tag, "SPI is initialized");
 }
 
 //_____________________________________________________________________________
@@ -84,20 +85,19 @@ void Spi_AddDevice(spi_device_handle_t* device, int csPin)
 {
   spi_device_interface_config_t dev_config =
   {
-    .address_bits = 0,
-    .command_bits = 0,
-    .dummy_bits = 0,
-    .mode = 0,
-    .duty_cycle_pos = 0,
+    .address_bits     = 0,
+    .command_bits     = 0,
+    .dummy_bits       = 0,
+    .mode             = 0,
+    .duty_cycle_pos   = 0,
     .cs_ena_posttrans = 0,
-    .cs_ena_pretrans = 0,
-    .clock_speed_hz = SPI_CLK_FREQENCY_Hz,
-    .spics_io_num = csPin,
-    .flags = 0,
-    //.flags=SPI_DEVICE_HALFDUPLEX,
-    .queue_size = 1,
-    .pre_cb = NULL,
-    .post_cb = NULL
+    .cs_ena_pretrans  = 0,
+    .clock_speed_hz   = SPI_CLK_FREQENCY_Hz,
+    .spics_io_num     = csPin,
+    .flags            = 0,
+    .queue_size       = 1,
+    .pre_cb           = NULL,
+    .post_cb          = NULL
   };
 
   ESP_LOGI(Tag, "... Adding device bus.");
@@ -124,10 +124,14 @@ void Spi_Write(spi_device_handle_t device, uint8_t* data, uint16_t size)
   //ESP_LOGI(Tag, "... Transmitting.");
   //ESP_ERROR_CHECK(spi_device_transmit(device, &trans_desc));
   ESP_ERROR_CHECK(spi_device_queue_trans(device, &trans_desc, portMAX_DELAY));
+  //spi_device_polling_transmit(device, &trans_desc);
+  //spi_device_transmit(device, &trans_desc);
+  //spi_device_queue_trans(device, &trans_desc, portMAX_DELAY);
 
   //ESP_LOGI(Tag, "... Removing device.");
   //ESP_ERROR_CHECK(spi_bus_remove_device(device));
 
   //ESP_LOGI(Tag, "... Freeing bus.");
   //ESP_ERROR_CHECK(spi_bus_free(HSPI_HOST));
+  //vTaskDelete(NULL);
 }

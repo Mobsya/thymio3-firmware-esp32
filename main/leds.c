@@ -18,7 +18,7 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <esp_log.h>
+#include "esp_log.h"
 
 #include "leds.h"
 
@@ -35,9 +35,6 @@
 #define LED_OFF_BANK_2          0x0Fu  // LSB --> U15.QA
 #define LED_OFF_BANK_3          0x0Fu  // LSB --> U16.QA
 #define LED_OFF_BANK_4          0x0Fu  // LSB --> U14.QA
-
-#define MIN_BRIGHTNESS             0u
-#define MAX_BRIGHTNESS            32u
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -60,7 +57,8 @@ static const uint8_t LedsOff[REGISTERS_NUM] = {LED_OFF_BANK_0,
                                                LED_OFF_BANK_1,
                                                LED_OFF_BANK_2,
                                                LED_OFF_BANK_3,
-                                               LED_OFF_BANK_4};
+                                               LED_OFF_BANK_4
+                                              };
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -93,11 +91,11 @@ void Leds_Init(void)
 
 //_____________________________________________________________________________
 
-void Leds_Task(void)
+void Leds_Run(void)
 {
-  static uint8_t row = 0;
+  static uint8_t row = 0u;
 
-  ShiftRegisters_Fill(&LedsTable[row][0], REGISTERS_NUM);
+  ShiftRegisters_Fill(&LedsTable[row][0u], REGISTERS_NUM);
 
   row++;
 
@@ -123,8 +121,6 @@ void Leds_SetSingleBrightness(T_Led led, uint8_t brightness)
     position = (1u << pin);
     polarity = (LedsOff[bank] & position);
 
-    //ESP_LOGI(Tag, "bank = %d, pin = %d, position = %d, polarity = %d", bank, pin, position, polarity);
-  
     for (uint8_t row = MIN_BRIGHTNESS; row < MAX_BRIGHTNESS; row++)
     {
       if (row < brightness)
@@ -155,7 +151,8 @@ void Leds_SetSingleBrightness(T_Led led, uint8_t brightness)
 
 //_____________________________________________________________________________
 
-void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
+void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
+                              uint8_t l7)
 {
   Leds_SetSingleBrightness(E_Led_Circle_0, l0);
   Leds_SetSingleBrightness(E_Led_Circle_1, l1);
@@ -169,7 +166,8 @@ void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, ui
 
 //_____________________________________________________________________________
 
-void leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
+void leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
+                              uint8_t l7)
 {
   Leds_SetSingleBrightness(E_Led_Front_IR_0,    l0);
   Leds_SetSingleBrightness(E_Led_Front_IR_1,    l1);
@@ -206,4 +204,13 @@ void Leds_SetBottomRightBrightness(uint8_t red, uint8_t green, uint8_t blue)
   Leds_SetSingleBrightness(E_Led_R_Bottom_Right, red);
   Leds_SetSingleBrightness(E_Led_G_Bottom_Right, green);
   Leds_SetSingleBrightness(E_Led_B_Bottom_Right, blue);
+}
+
+//_____________________________________________________________________________
+
+void Leds_SetBodyBrightness(uint8_t red, uint8_t green, uint8_t blue)
+{
+  Leds_SetTopBrightness(red, green, blue);
+  Leds_SetBottomLeftBrightness(red, green, blue);
+  Leds_SetBottomRightBrightness(red, green, blue);
 }

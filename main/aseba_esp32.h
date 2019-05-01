@@ -74,10 +74,12 @@ extern AsebaVMState vmState;
 //! \return    None
 extern void AsebaESP32_Init(void);
 
+extern void AsebaESP32_Start(void);
+
 extern void AsebaESP32_Run(void);
 
 /*** In your code, put "SET_EVENT(EVENT_NUMBER)" when you want to trigger an
-	 event. This macro is interrupt-safe, you can call it anywhere you want.
+   event. This macro is interrupt-safe, you can call it anywhere you want.
 ***/
 #if 0
 #define _SET_EVENT_LOW(event) atomic_or(&events_flags[0], 1 << (event))
@@ -96,7 +98,7 @@ extern void AsebaESP32_Run(void);
 #endif
 // Might be usefull if the firmware want to automatically update the settings
 // USE WITH CAUTION !
-void AsebaNative__system_settings_flash(AsebaVMState *vm);
+void AsebaNative__system_settings_flash(AsebaVMState* vm);
 
 // Call this when everything is initialised and you are ready to give full control to the VM
 void __attribute((noreturn)) run_aseba_main_loop(void);

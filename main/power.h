@@ -21,6 +21,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include <stdbool.h>
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -58,5 +60,11 @@ extern void Power_EnableVA(void);
 //! \param     None
 //! \return    None
 extern void Power_DisableVA(void);
+
+//! \brief     Handle the power mode request
+//! \pre       First initialize the power
+//! \param     None
+//! \return    None
+extern void Power_HandlePowerModeRequest(void);
 
 #endif // POWER_H_

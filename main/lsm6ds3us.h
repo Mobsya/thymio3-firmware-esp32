@@ -24,6 +24,8 @@
 
 #include <stdint.h>
 
+#include "error.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -51,22 +53,40 @@ typedef struct
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the LSM303C device
+//! \brief     Initialize the accelerometer of the LSM6DS3US device
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void LSM6DS3US_Init(void);
+extern void LSM6DS3US_InitAccelerometer(void);
+
+//! \brief     Get the acceleration in [???]
+//! \pre       First initialize the LSM6DS3US device
+//! \param     acceleration - Acceleration
+//! \return    None
+extern void LSM6DS3US_GetAcceleration(T_Axis* acceleration);
+
+//! \brief     Get the acceleration tap source
+//! \pre       First initialize the LSM6DS3US device
+//! \param     source - Source of the tap
+//! \return    None
+extern void LSM6DS3US_GetTapSource(uint8_t* source);
+
+//! \brief     Initialize the gyroscope of the LSM6DS3US device
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void LSM6DS3US_InitGyroscope(void);
+
+//! \brief     Get the angular position in [???]
+//! \pre       First initialize the LSM6DS3US device
+//! \param     angularPosition - Angular position
+//! \return    None
+extern void LSM6DS3US_GetAngularPosition(T_Axis* angularPosition);
 
 //! \brief     Check the manufacturer ID
 //! \pre       None
 //! \param     None
-//! \return    None
-extern void LSM6DS3US_CheckManufacturerId(void);
-
-//! \brief     Get the acceleration in [???]
-//! \pre       First initialize the LSM303C device
-//! \param     None
-//! \return    None
-extern T_Axis* LSM6DS3US_GetAcceleration(void);
+//! \return    E_Error_None if no error, otherwise E_Error_Acc_InvalidID
+extern T_Error LSM6DS3US_CheckManufacturerId(void);
 
 #endif // LSM6DS3US_H_

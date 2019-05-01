@@ -19,6 +19,8 @@
 //-----------------------------------------------------------------------------
 
 #include <driver/gpio.h>
+#include "driver/timer.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -31,7 +33,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define ESP_INTR_FLAG_DEFAULT 0
+#define ESP_INTR_FLAG_DEFAULT     0
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -53,7 +55,10 @@ typedef struct
 
 static const char* Tag = "gpio";
 
-static xQueueHandle gpio_evt_queue = NULL;
+static uint64_t RisingEdge = 0;
+static uint64_t FallingEdge = 0;
+
+static uint32_t PulseCounter = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -65,7 +70,7 @@ static T_PullUpDown SetResistor(T_GpioResistor resistor);
 
 static gpio_int_type_t SetInterrupt(T_GpioInterrupt interrupt);
 
-static void IRAM_ATTR gpio_isr_handler(void* arg);
+static void IRAM_ATTR ISR_GPIOHandler(void* arg);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -77,87 +82,8 @@ static void IRAM_ATTR gpio_isr_handler(void* arg);
 
 void Gpio_Init(void)
 {
-  //gpio_config_t io_conf;
-
-#if 0
-  //disable interrupt
-  io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
-  //set as output mode
-  io_conf.mode = GPIO_MODE_OUTPUT;
-  //bit mask of the pins that you want to set,e.g.GPIO18/19
-  io_conf.pin_bit_mask = MOTOR_PIN_SEL;
-  //disable pull-down mode
-  io_conf.pull_down_en = 0;
-  //disable pull-up mode
-  io_conf.pull_up_en = 0;
-#endif
-
-  //configure GPIO with the given settings
-  //gpio_config(&io_conf);
-
-  //interrupt of rising edge
-  //io_conf.intr_type = GPIO_PIN_INTR_POSEDGE;
-  //bit mask of the button pins
-  //io_conf.pin_bit_mask = BUTTON_PIN_SEL;
-  //set as input mode
-  //io_conf.mode = GPIO_MODE_INPUT;
-  //enable pull-up mode
-  //io_conf.pull_up_en = 1;
-
-  //gpio_config(&io_conf);
-
-  //create a queue to handle gpio event from isr
-  gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
-
-  //install gpio isr service
+  // Install the GPIO ISR service
   gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
-#if 0
-  //hook isr handler for specific gpio pins
-  gpio_isr_handler_add(BUTTON_FORWARD_PIN, gpio_isr_handler, (void*) BUTTON_FORWARD_PIN);
-  gpio_isr_handler_add(BUTTON_BACKWARD_PIN, gpio_isr_handler, (void*) BUTTON_BACKWARD_PIN);
-  gpio_isr_handler_add(BUTTON_LEFT_PIN, gpio_isr_handler, (void*) BUTTON_LEFT_PIN);
-  gpio_isr_handler_add(BUTTON_RIGHT_PIN, gpio_isr_handler, (void*) BUTTON_RIGHT_PIN);
-  gpio_isr_handler_add(BUTTON_CENTER_PIN, gpio_isr_handler, (void*) BUTTON_CENTER_PIN);
-
-  //gpio_set_direction(M1_PWM_1A_PIN, GPIO_MODE_OUTPUT);
-
-  //gpio_set_direction(IR_PULSE_GROUND_LEFT, GPIO_MODE_OUTPUT);
-  //gpio_set_direction(IR_PULSE_GROUND_RIGHT, GPIO_MODE_OUTPUT);
-#endif
-}
-
-//_____________________________________________________________________________
-
-#if 0
-void Gpio_Task(void* arg)
-{
-  uint32_t io_num;
-
-  for (;;)
-  {
-    if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY))
-    {
-      //printf("GPIO[%d] intr, val: %d\n", io_num, gpio_get_level(io_num));
-
-      if (gpio_get_level(io_num) == 1)
-      {
-        printf("GPIO[%d] intr, val: %d\n", io_num, gpio_get_level(io_num));
-      }
-    }
-
-    vTaskDelay(100 / portTICK_RATE_MS);
-  }
-}
-#endif
-
-void Gpio_Task(void)
-{
-  uint32_t io_num;
-
-  if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY))
-  {
-    printf("GPIO[%d] intr, val: %d\n", io_num, gpio_get_level(io_num));
-  }
 }
 
 //_____________________________________________________________________________
@@ -182,11 +108,14 @@ void Gpio_ConfigurePin(const T_GpioPinConfig* config)
       if (config->interrupt > E_GpioInterrupt_Disable)
       {
         //ESP_ERROR_CHECK(gpio_isr_handler_add(config->pinNumber, gpio_isr_handler, (void*) config->pinNumber));
-        gpio_isr_handler_add(config->pinNumber, gpio_isr_handler, (void*) config->pinNumber);
+        gpio_isr_handler_add(config->pinNumber, ISR_GPIOHandler, (void*)config->pinNumber);
       }
 
-      //ESP_LOGI(Tag, "Pin %d is configured", config->pinNumber);
-      ESP_ERROR_CHECK(gpio_set_level(config->pinNumber, config->level));
+      if (config->mode == E_GpioMode_Output)
+      {
+        //ESP_LOGI(Tag, "Pin %d is configured", config->pinNumber);
+        ESP_ERROR_CHECK(gpio_set_level(config->pinNumber, config->level));
+      }
     }
     else
     {
@@ -218,9 +147,37 @@ void Gpio_TogglePinLevel(uint16_t pinNumber)
 
 //_____________________________________________________________________________
 
-int Gpio_GetPinLevel(uint16_t pinNumber)
+T_GpioLevel Gpio_GetPinLevel(uint16_t pinNumber)
 {
-  return gpio_get_level(pinNumber);
+  T_GpioLevel level = E_GpioLevel_Low;
+
+  if (gpio_get_level(pinNumber) == 1)
+  {
+    level = E_GpioLevel_High;
+  }
+
+  return level;
+}
+
+//_____________________________________________________________________________
+
+uint16_t Gpio_GetPulseCounter(void)
+{
+  return PulseCounter;
+}
+
+//_____________________________________________________________________________
+
+uint16_t Gpio_GetRisingEdgeTime(void)
+{
+  return RisingEdge;
+}
+
+//_____________________________________________________________________________
+
+uint16_t Gpio_GetFallingEdgeTime(void)
+{
+  return FallingEdge;
 }
 
 //_____________________________________________________________________________
@@ -332,8 +289,32 @@ static gpio_int_type_t SetInterrupt(T_GpioInterrupt interrupt)
 
 //_____________________________________________________________________________
 
-static void IRAM_ATTR gpio_isr_handler(void* arg)
+static void IRAM_ATTR ISR_GPIOHandler(void* arg)
 {
   uint32_t gpio_num = (uint32_t) arg;
-  xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+
+  static uint64_t start = 0;
+  static uint64_t stop = 0;
+
+  static bool risingEdgeBackRightDone = false;
+
+  if (gpio_num == IR_SENSE_BACK_RIGHT_PIN)
+  {
+    if (Gpio_GetPinLevel(gpio_num) == E_GpioLevel_High)
+    {
+      timer_get_counter_value(0, 1, &start);
+      risingEdgeBackRightDone = true;
+    }
+    else
+    {
+      if (risingEdgeBackRightDone)
+      {
+        timer_get_counter_value(0, 1, &stop);
+        RisingEdge = start;
+        FallingEdge = stop;
+        PulseCounter++;
+        risingEdgeBackRightDone = false;
+      }
+    }
+  }
 }

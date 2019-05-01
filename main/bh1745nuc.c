@@ -24,8 +24,6 @@
 
 #include "i2c.h"
 
-#include "aseba_esp32.h"
-
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -59,6 +57,13 @@
 #define MANUFACTURER_ID_REG_ADDRESS   0x92u  //!< Manufacturer ID register address               (Read only)
 
 #define MANUFACTURER_ID               0xE0u  //!< Manufacturer ID
+
+// Register bits mask
+// MODE_CONTROL2 bits mask
+#define ADC_GAIN_BIT_MASK             0xFCu  //!< Mask of bit ADC_GAIN
+
+// INTERRUPT bits mask
+#define INT_SOURCE_BIT_MASK           0xF3u  //!< Mask of bit INT_SOURCE
 
 // MODE_CONTROL2 bits position
 #define RGBC_EN_BIT_POS                  4u  //!< Position of bit RGBC_EN
@@ -125,9 +130,7 @@ typedef uint8_t T_InterruptSource;  //!< Interrupt source
 // Private Data
 //-----------------------------------------------------------------------------
 
-static const char* Tag = "color_sensor";
-
-static T_Illuminance Illuminance;
+static const char* Tag = "bh1745nuc";
 
 static uint8_t Threshold[THRESHOLD_BYTE_NUM] =
 {
@@ -193,12 +196,6 @@ static void EnableMeasurement(void);
 //! \return    None
 static void EnableInterruptPin(void);
 
-//! \brief     Read the RGBC illuminance
-//! \pre       None
-//! \param     None
-//! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\ReadIlluminance.svg
-static void ReadIlluminance(void);
 
 //! \brief     Read the manufacturer ID
 //! \pre       None
@@ -276,20 +273,26 @@ void BH1745NUC_Init(void)
   UpdateModeControl3();
   EnableMeasurement();
   EnableInterruptPin();
+
+  ESP_LOGI(Tag, "BH1745NUC is initialized");
 }
 
 //_____________________________________________________________________________
 
-void BH1745NUC_CheckManufacturerId(void)
+T_Error BH1745NUC_CheckManufacturerId(void)
 {
   uint8_t id = 0x00u;
+  T_Error err = E_Error_None;
 
   ReadManufacturerId(&id);
 
   if (id != MANUFACTURER_ID)
   {
+    err = E_Error_Color_InvalidID;
     ESP_LOGE(Tag, "Invalid manufacturer ID: %d", id);
   }
+
+  return err;
 }
 
 //_____________________________________________________________________________
@@ -324,16 +327,18 @@ void BH1745NUC_ReadRegisters(void)
 
 //_____________________________________________________________________________
 
-T_Illuminance* BH1745NUC_GetIlluminance_lux(void)
+void BH1745NUC_ReadIlluminance(T_Illuminance* illuminance)
 {
-  ReadIlluminance();
+  uint8_t colors[8u];
 
-  vmVariables.illuminance[0] = Illuminance.Red;
-  vmVariables.illuminance[1] = Illuminance.Green;
-  vmVariables.illuminance[2] = Illuminance.Blue;
-  vmVariables.illuminance[3] = Illuminance.Clear;
+  I2C_ReadFromAddress(SLAVE_ADDRESS, RED_DATA_LSB_REG_ADDRESS, colors, 8u);
 
-  return &Illuminance;
+  illuminance->Red   = (uint16_t)((uint16_t)colors[1u] << 8u) | colors[0u];
+  illuminance->Green = (uint16_t)((uint16_t)colors[3u] << 8u) | colors[2u];
+  illuminance->Blue  = (uint16_t)((uint16_t)colors[5u] << 8u) | colors[4u];
+  illuminance->Clear = (uint16_t)((uint16_t)colors[7u] << 8u) | colors[6u];
+
+  //ESP_LOGI(Tag, "Red: %d, Green: %d, Blue: %d, Clear: %d", Illuminance.Red, Illuminance.Green, Illuminance.Blue, Illuminance.Clear);
 }
 
 //_____________________________________________________________________________
@@ -366,6 +371,7 @@ static void UpdateADCGain(T_ADCGain gain)
   {
     I2C_ReadFromAddress(SLAVE_ADDRESS, MODE_CONTROL2_REG_ADDRESS, &data, 1u);
 
+    data &= ADC_GAIN_BIT_MASK;
     data |= gain;
 
     I2C_WriteToAddress(SLAVE_ADDRESS, MODE_CONTROL2_REG_ADDRESS, &data, 1u);
@@ -399,6 +405,7 @@ static void UpdateInterruptSource(T_InterruptSource source)
   {
     I2C_ReadFromAddress(SLAVE_ADDRESS, INTERRUPT_REG_ADDRESS, &data, 1u);
 
+    data &= INT_SOURCE_BIT_MASK;
     data |= (source << INT_SOURCE_BIT_POS);
 
     I2C_WriteToAddress(SLAVE_ADDRESS, INTERRUPT_REG_ADDRESS, &data, 1u);
@@ -449,22 +456,6 @@ static void EnableInterruptPin(void)
   data |= 1u;
 
   I2C_WriteToAddress(SLAVE_ADDRESS, INTERRUPT_REG_ADDRESS, &data, 1u);
-}
-
-//_____________________________________________________________________________
-
-static void ReadIlluminance(void)
-{
-  uint8_t colors[8u];
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, RED_DATA_LSB_REG_ADDRESS, colors, 8u);
-
-  Illuminance.Red   = (uint16_t)((uint16_t)colors[1u] << 8u) | colors[0u];
-  Illuminance.Green = (uint16_t)((uint16_t)colors[3u] << 8u) | colors[2u];
-  Illuminance.Blue  = (uint16_t)((uint16_t)colors[5u] << 8u) | colors[4u];
-  Illuminance.Clear = (uint16_t)((uint16_t)colors[7u] << 8u) | colors[6u];
-
-  //ESP_LOGI(Tag, "Red: %d, Green: %d, Blue: %d, Clear: %d", Illuminance.Red, Illuminance.Green, Illuminance.Blue, Illuminance.Clear);
 }
 
 //_____________________________________________________________________________
