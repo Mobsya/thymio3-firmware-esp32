@@ -18,9 +18,9 @@
 	along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <common/consts.h>
-#include <common/types.h>
-#include <vm/natives.h>
+#include "aseba/common/consts.h"
+#include "aseba/common/types.h"
+#include "aseba/vm/natives.h"
 #include <string.h>
 
 #include <assert.h>

@@ -18,9 +18,9 @@
 	along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <transport/buffer/vm-buffer.h>
-#include <common/consts.h>
-#include <common/types.h>
+#include "aseba/transport/buffer/vm-buffer.h"
+#include "aseba/common/consts.h"
+#include "aseba/common/types.h"
 #include <string.h>
 #include <assert.h>
 
