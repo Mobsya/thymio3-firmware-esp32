@@ -87,7 +87,7 @@ static const char* get_mdns_hostname() {
   if(!hostname) {
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
-    if(asprintf(&hostname, "NotAThymio3-%02X%02X%02X", mac[3], mac[4], mac[5]) == -1)
+    if(asprintf(&hostname, "NotAThymio3-%02X%02X%02X%02X", mac[3], mac[4], mac[5], esp_random()) == -1)
       abort();
   }
   return hostname;
@@ -114,15 +114,43 @@ void TCPServer_Init(void)
 
 //_____________________________________________________________________________
 
+
+
+int socket_loop() {
+  // Loop reading data
+  uint8_t rx_buffer[RX_BUFFER_SIZE];
+  while (1)
+  {
+    int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
+
+    // Error occured during receiving
+    if (len < 0)
+    {
+      ESP_LOGE(Tag, "recv failed: errno %d", errno);
+      break;
+    }
+    else if (len == 0)  // Connection closed
+    {
+      ESP_LOGI(Tag, "Connection closed");
+      break;
+    }
+    else  // Data received
+    {
+      // Fill the FIFO
+      Fifo8bits_Write(TCPFifoRx, rx_buffer, len);
+    }
+  }
+  return 0;
+}
+
 void TCPServer_RunTask(void)
 {
-  uint8_t rx_buffer[RX_BUFFER_SIZE];
   char addr_str[128];
   int addr_family;
   int ip_protocol;
 
-  while (1)
-  {
+  while(1) {
+
 #ifdef CONFIG_IPV4
     struct sockaddr_in destAddr;
 
@@ -179,48 +207,25 @@ void TCPServer_RunTask(void)
     struct sockaddr_in6 sourceAddr;  // Large enough for both IPv4 or IPv6
     uint32_t addrLen = sizeof(sourceAddr);
 
-    sock = accept(listen_sock, (struct sockaddr*)&sourceAddr, (socklen_t*)&addrLen);
-
-    if (sock < 0)
-    {
-      ESP_LOGE(Tag, "Unable to accept connection: errno %d", errno);
-      break;
-    }
-
-    SocketIsAccepted = true;
-    ESP_LOGI(Tag, "Socket accepted");
-
-    // Loop reading data
-    while (1)
-    {
-      int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-
-      // Error occured during receiving
-      if (len < 0)
-      {
-        ESP_LOGE(Tag, "recv failed: errno %d", errno);
+    while(1) {
+      sock = accept(listen_sock, (struct sockaddr*)&sourceAddr, (socklen_t*)&addrLen);
+      if (sock < 0) {
+        ESP_LOGE(Tag, "Unable to accept connection: errno %d", errno);
         break;
       }
-      else if (len == 0)  // Connection closed
-      {
-        ESP_LOGI(Tag, "Connection closed");
-        break;
-      }
-      else  // Data received
-      {
-        // Get the sender's IP address as string
-        if (sourceAddr.sin6_family == PF_INET)
-        {
-          inet_ntoa_r(((struct sockaddr_in*)&sourceAddr)->sin_addr.s_addr, addr_str, sizeof(addr_str) - 1);
-        }
-        else if (sourceAddr.sin6_family == PF_INET6)
-        {
-          inet6_ntoa_r(sourceAddr.sin6_addr, addr_str, sizeof(addr_str) - 1);
-        }
 
-        // Fill the FIFO
-        Fifo8bits_Write(TCPFifoRx, rx_buffer, len);
+      // Get the sender's IP address as string
+      if (sourceAddr.sin6_family == PF_INET)
+      {
+        inet_ntoa_r(((struct sockaddr_in*)&sourceAddr)->sin_addr.s_addr, addr_str, sizeof(addr_str) - 1);
       }
+      else if (sourceAddr.sin6_family == PF_INET6)
+      {
+        inet6_ntoa_r(sourceAddr.sin6_addr, addr_str, sizeof(addr_str) - 1);
+      }
+      SocketIsAccepted = true;
+      ESP_LOGI(Tag, "Socket accepted");
+      socket_loop(sock);
     }
 
     if (sock != -1)
