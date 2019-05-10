@@ -137,7 +137,7 @@ void sound_playback(AsebaVMState* vm)
   }
 #endif
 
-  MP3_Start(number);
+  //MP3_Start(number);
 
 #if 0
   xTaskCreatePinnedToCore(

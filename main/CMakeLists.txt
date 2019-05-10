@@ -1,4 +1,4 @@
-set(COMPONENT_SRCS 
+set(COMPONENT_SRCS
     accelerometer.c
     accelerometer.h
     adc.c
@@ -42,8 +42,8 @@ set(COMPONENT_SRCS
     melody.h
     mode.c
     mode.h
-    mp3.c
-    mp3.h
+    #mp3.c
+    #mp3.h
     natives.c
     ota_update.c
     ota_update.h
