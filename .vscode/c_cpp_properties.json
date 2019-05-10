@@ -2,11 +2,6 @@
     "configurations": [
         {
             "name": "Linux",
-            "includePath": [
-                "${workspaceFolder}/**",
-                "${IDF_PATH}/components/**",
-                "${XTENSA_ESP32_ELF_PATH}/xtensa-esp32-elf/**"
-            ],
             "defines": [
                 "ESP32",
                 "FREERTOS"
@@ -14,9 +9,10 @@
             "compilerPath": "${XTENSA_ESP32_ELF_PATH}/bin/xtensa-esp32-elf-gcc",
             "cStandard": "c11",
             "cppStandard": "c++17",
-            "intelliSenseMode": "clang-x64",
-            "configurationProvider": "vector-of-bool.cmake-tools"
+            "intelliSenseMode": "gcc-x64",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
         }
     ],
     "version": 4
+
 }

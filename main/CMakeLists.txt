@@ -88,6 +88,6 @@ set(COMPONENT_SRCS
 
 set(COMPONENT_EMBED_FILES server_certs/ca_cert.pem adf_music.mp3 chicken.mp3 dixie_horn.mp3)
 
-set(COMPONENT_ADD_INCLUDEDIRS "")
+set(COMPONENT_ADD_INCLUDEDIRS ".")
 
 register_component()

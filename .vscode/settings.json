@@ -1,3 +1,9 @@
 {
-    "cmake.configureOnOpen": true
+    "cmake.configureOnOpen": true,
+    "C_Cpp.default.intelliSenseMode": "gcc-x64",
+    "C_Cpp.errorSquiggles": "Enabled",
+    "files.associations": {
+        "*.qbs": "qml",
+        "aseba_esp32_user.h": "c"
+    }
 }
