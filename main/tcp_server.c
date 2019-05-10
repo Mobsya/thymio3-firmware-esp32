@@ -226,13 +226,12 @@ void TCPServer_RunTask(void)
       SocketIsAccepted = true;
       ESP_LOGI(Tag, "Socket accepted");
       socket_loop(sock);
-    }
-
-    if (sock != -1)
-    {
-      ESP_LOGE(Tag, "Shutting down socket and restarting...");
-      shutdown(sock, 0);
-      close(sock);
+      if (sock != -1)
+      {
+        ESP_LOGE(Tag, "Shutting down socket and restarting...");
+        shutdown(sock, 0);
+        close(sock);
+      }
     }
   }
   vTaskDelete(NULL);
