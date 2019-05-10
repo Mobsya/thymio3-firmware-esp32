@@ -30,6 +30,7 @@
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
+#include "mdns.h"
 #include <lwip/netdb.h>
 
 #include "tcp_server.h"
@@ -77,6 +78,34 @@ static int sock;
 //-----------------------------------------------------------------------------
 // Functions Implementation
 //-----------------------------------------------------------------------------
+
+
+static const char* MDNS_TAG = "mdns";
+
+static const char* get_mdns_hostname() {
+  static char* hostname = NULL;
+  if(!hostname) {
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    if(asprintf(&hostname, "NotAThymio3-%02X%02X%02X", mac[3], mac[4], mac[5]) == -1)
+      abort();
+  }
+  return hostname;
+}
+
+void start_zeroconf_service(uint16_t port)
+{
+  ESP_ERROR_CHECK( mdns_init() );
+  ESP_ERROR_CHECK( mdns_hostname_set(get_mdns_hostname()) );
+  ESP_LOGI(MDNS_TAG, "mdns hostname set to: [%s]", get_mdns_hostname());
+  mdns_instance_name_set("Not A Thymio 3");
+
+  mdns_txt_item_t serviceTxtData[2] = {
+        {"type","Thymio II"},
+        {"protovers","9"}
+    };
+  ESP_ERROR_CHECK( mdns_service_add("Not A Thymio 3", "_aseba", "_tcp", port, serviceTxtData, 2) );
+}
 
 void TCPServer_Init(void)
 {
@@ -142,6 +171,8 @@ void TCPServer_RunTask(void)
       ESP_LOGE(Tag, "Error occured during listen: errno %d", errno);
       break;
     }
+
+    start_zeroconf_service(PORT_NUM);
 
     ESP_LOGI(Tag, "Socket listening");
 
