@@ -13,7 +13,8 @@
             "label": "flash",
             "type": "shell",
             "problemMatcher": "$gcc",
-            "command": "cmake --build ${workspaceFolder}/build --target flash"
+            //"command": "cmake --build ${workspaceFolder}/build --target flash"
+            "command": "idf.py flash -b 115200 -B ${workspaceFolder}/build -C ${workspaceFolder}"
         },
         {
             "label": "monitor",
