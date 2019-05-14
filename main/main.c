@@ -28,6 +28,7 @@
 
 #include "esp_log.h"
 
+#include "adc.h"
 #include "aseba_esp32.h"
 //#include "audio.h"
 #include "behavior.h"
@@ -36,10 +37,12 @@
 #include "fifo.h"
 #include "file_system.h"
 #include "gpio.h"
+#include "ground_ir.h"
 #include "leds.h"
 #include "mode.h"
 #include "mp3.h"
 #include "power.h"
+#include "prox_ir.h"
 #include "sensors.h"
 #include "sound.h"
 //#include "sound_data.h"
@@ -115,15 +118,6 @@ int app_main(void)
 // Initialization
 //*****************************************************************************
 
-#if 0
-  WIFI_InitNVS();
-  WIFI_Init();
-  //WifiUpdate_Init();
-
-  while (!WIFI_IsConnected())
-  {}
-#endif
-
   Settings_Init();
 #if 0
   FileSystem_Init();
@@ -142,24 +136,25 @@ int app_main(void)
   Gpio_Init();
   Power_Init();
 
-  //Leds_Init();
-  Sensors_Init();
+  ADC_Init();
+
+  Leds_Init();
+
+  GroundIR_Init();
+  ProxIR_Init();
+
+  Sound_Init();
+  //Sound_Process();
+  //I2S_Process();
+
+  //I2S_Record();
+  //Sound_Replay();
 
   Comm_Init();
 
   Fifo8bits_Init();
   Fifo16bits_Init();
   FifoFloat_Init();
-
-  Sound_Init();
-  //Sound_Record();
-  //Sound_Process();
-  //I2S_Process();
-
-  //MP3_Init();
-  //MP3_Task();
-
-  //Sensors_Init();
 
   Test_Run();
 
@@ -170,17 +165,6 @@ int app_main(void)
 
   AsebaTimer0 = TimerHw_Create(0, Callback_AsebaTimer0);
   AsebaTimer1 = TimerHw_Create(0, Callback_AsebaTimer1);
-
-#if 0
-  //WIFI_InitNVS();
-  //WIFI_Init();
-  WIFIUpdate_InitNVS();
-  WIFIUpdate_Init();
-  //WifiUpdate_Connect(DEFAULT_WIFI_SSID, DEFAULT_WIFI_PASSWORD);
-
-  //while (!WIFIUpdate_IsConnected())
-  {}
-#endif
 
   WIFI_Init();
 
@@ -194,11 +178,16 @@ int app_main(void)
   //MP3_Start(1);
   WIFI_Start();
   AsebaESP32_Start();
-  Sound_StartProcessing();
+
+  //Sound_StartProcessing();
+
   Behavior_Start();
   Comm_Start();
+  ProxIR_Start();
+  GroundIR_Start();
+  Leds_Start();
   //Sound_StartAcquisition();
-  Sensors_Start();
+  //Sensors_Start();
 
   return 0;
 }

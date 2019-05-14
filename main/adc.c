@@ -66,7 +66,7 @@ void ADC_Init(void)
 
 //_____________________________________________________________________________
 
-void ADC_AcquireValues(uint16_t* value)
+void ADC_AcquireGroundIRValues(uint16_t* value)
 {
   value[1] = adc1_get_raw(ADC1_CHANNEL_6);  // IR_SENSE_GROUND_LEFT_PIN
   value[2] = adc1_get_raw(ADC1_CHANNEL_3);  // IR_SENSE_GROUND_RIGHT_PIN

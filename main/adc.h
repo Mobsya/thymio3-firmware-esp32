@@ -49,11 +49,11 @@
 //! \return    None
 extern void ADC_Init(void);
 
-//! \brief     Acquire the ADC values
+//! \brief     Acquire the Ground IR ADC values
 //! \pre       First initialize the internal ADC
 //! \param     value - Value read on the ADC channels
 //! \return    None
-extern void ADC_AcquireValues(uint16_t* value);
+extern void ADC_AcquireGroundIRValues(uint16_t* value);
 
 extern void ADC_AcquireMicrophoneValues(uint16_t* value);
 

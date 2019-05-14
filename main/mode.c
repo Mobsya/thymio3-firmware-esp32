@@ -57,7 +57,7 @@
 #define DIR_L_LEFT   (-2)
 #define DIR_RIGHT     (1)
 #define DIR_L_RIGHT   (2)
-#define DIR_LOST	 (10)
+#define DIR_LOST     (10)
 #define DIR_FRONT     (0)
 
 //-----------------------------------------------------------------------------
@@ -355,26 +355,6 @@ static void StartMode(T_Mode mode)
         NULL,          // Task handle
         0);            // Core where the task should run
 #endif
-#if 0
-      xTaskCreatePinnedToCore(
-        MP3_RunTask,
-        "sound",       // Name of the task
-        4096,          // Stack size in words
-        &index,        // Task input parameter
-        2,             // Priority of the task
-        NULL,          // Task handle
-        0);            // Core where the task should run
-#endif
-#if 0
-      xTaskCreatePinnedToCore(
-        Sound_RunReplayerTask,
-        "sound",       // Name of the task
-        2048,          // Stack size in words
-        NULL,          // Task input parameter
-        2,             // Priority of the task
-        NULL,          // Task handle
-        0);            // Core where the task should run
-#endif
       break;
 
     case E_Mode_LineTracker:
@@ -611,7 +591,7 @@ static void RunLineTracker(void)
 
   if (!CalibrateLevelUsingButtons(&bs_black_level, &bs_white_level))
   {
-	// Calibration is not in progress
+    // Calibration is not in progress
 
     GetLineSensorsState(&bs_black_level, &bs_white_level, state);
 #if 0
@@ -959,7 +939,7 @@ static void HandlePositiveSpeed(int16_t speed)
 
   if (vmVariables.target[0] < -600)
   {
-      vmVariables.target[0] = -600;
+    vmVariables.target[0] = -600;
   }
   else if (vmVariables.target[0] > 600)
   {
@@ -1205,9 +1185,9 @@ static bool CalibrateLevelUsingButtons(uint16_t* blackLevel, uint16_t* whiteLeve
   // if the user is trying to calibrate, then don't try to move
   if (calibrationIsInProgress)
   {
-	Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-	vmVariables.target[0] = 0;
-	vmVariables.target[1] = 0;
+    Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+    vmVariables.target[0] = 0;
+    vmVariables.target[1] = 0;
   }
 
   return calibrationIsInProgress;
@@ -1245,7 +1225,7 @@ static void GetLineDirection(uint8_t* state, int16_t* direction)
   if ((state[0] == STATE_BLACK) && (state[1] == STATE_BLACK))
   {
     // Black line right under us
-	*direction = DIR_FRONT;
+    *direction = DIR_FRONT;
   }
   else if ((state[0] == STATE_WHITE) && (state[1] == STATE_BLACK))
   {

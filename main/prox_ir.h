@@ -51,6 +51,8 @@
 //! \return    None
 extern void ProxIR_Init(void);
 
+extern void ProxIR_Start(void);
+
 //! \brief     Run the proximity IR sensors task
 //! \pre       First initialize the proximity IR sensors
 //! \param     tick - Tick counter

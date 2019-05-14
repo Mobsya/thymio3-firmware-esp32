@@ -160,7 +160,7 @@ void Behavior_Start(void)
     "behavior",       // Name of the task
     4096,             // Stack size in words
     NULL,             // Task input parameter
-    5,                // Priority of the task
+    3,                // Priority of the task
     NULL,             // Task handle
     0);               // Core where the task should run
 }
@@ -227,12 +227,12 @@ static void RunBehaviors(void)
     Mode_Run();
   }
 
-//#if 0  // FIXME
+#if 0  // FIXME
   if (ENABLED(B_SOUND_BUTTON))
   {
     PlaySoundButtons();
   }
-//#endif
+#endif
 
 //#if 0
   if (ENABLED(B_SETTING))
@@ -683,26 +683,26 @@ static void PlaySoundButtons(void)
 
   when(buttonState[E_Button_Backward] != 0u)
   {
-    Sound_StartPlaying(&MelodyButton);
+    Sound_StartPlayer(&MelodyButton);
   }
 
   when(buttonState[E_Button_Left] != 0u)
   {
-    Sound_StartPlaying(&MelodyButton);
+    Sound_StartPlayer(&MelodyButton);
   }
 
   when(buttonState[E_Button_Center] != 0u)
   {
-    Sound_StartPlaying(&MelodyCenterButton);
+    Sound_StartPlayer(&MelodyCenterButton);
   }
 
   when(buttonState[E_Button_Forward] != 0u)
   {
-    Sound_StartPlaying(&MelodyButton);
+    Sound_StartPlayer(&MelodyButton);
   }
 
   when(buttonState[E_Button_Right] != 0u)
   {
-    Sound_StartPlaying(&MelodyButton);
+    Sound_StartPlayer(&MelodyButton);
   }
 }

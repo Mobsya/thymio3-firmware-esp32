@@ -74,8 +74,8 @@ static void RunCommTask(void* arg);
 
 void Comm_Init(void)
 {
-  UART_Init();
   I2C_Init();
+  UART_Init();
 
   ColorSensor_Init();
   Accelerometer_Init();
@@ -93,7 +93,7 @@ void Comm_Start(void)
     "comm",       // Name of the task
     2048,         // Stack size in words
     NULL,         // Task input parameter
-    5,            // Priority of the task
+    3,            // Priority of the task
     NULL,         // Task handle
     0);           // Core where the task should run
 }

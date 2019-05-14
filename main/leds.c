@@ -18,11 +18,16 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+
 #include "esp_log.h"
 
 #include "leds.h"
 
 #include "shift_registers.h"
+#include "timer_hw.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -35,6 +40,10 @@
 #define LED_OFF_BANK_2          0x0Fu  // LSB --> U15.QA
 #define LED_OFF_BANK_3          0x0Fu  // LSB --> U16.QA
 #define LED_OFF_BANK_4          0x0Fu  // LSB --> U14.QA
+
+//#define LEDS_TASK_PERIOD_us      125u  //!< Leds task frequency = 8 [kHz] -> Leds frequency = 8 [kHz] / 32 = 250 [Hz]
+#define LEDS_TASK_PERIOD_us      312u  //!< Leds task frequency = 3.2 [kHz] -> Leds frequency = 3.2 [kHz] / 32 = 100 [Hz]
+//#define LEDS_TASK_PERIOD_us      625u  //!< Leds task frequency = 1.6 [kHz] -> Leds frequency = 1.6 [kHz] / 32 = 50 [Hz]
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -60,9 +69,17 @@ static const uint8_t LedsOff[REGISTERS_NUM] = {LED_OFF_BANK_0,
                                                LED_OFF_BANK_4
                                               };
 
+static T_TimerHw* LedsTaskTimer = NULL;  //!< Used to schedule the Leds task
+
+static TaskHandle_t TaskToNotify;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
+
+static void RunLedsTask(void* arg);
+
+static void Callback_TimerLedsTask(void* arg);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -86,23 +103,23 @@ void Leds_Init(void)
 
   ShiftRegisters_Fill(&LedsTable[0][0], REGISTERS_NUM);
 
+  LedsTaskTimer = TimerHw_Create(LEDS_TASK_PERIOD_us, Callback_TimerLedsTask);
+
   ESP_LOGI(Tag, "LEDs are initialized");
 }
 
 //_____________________________________________________________________________
 
-void Leds_Run(void)
+void Leds_Start(void)
 {
-  static uint8_t row = 0u;
-
-  ShiftRegisters_Fill(&LedsTable[row][0u], REGISTERS_NUM);
-
-  row++;
-
-  if (row == MAX_BRIGHTNESS)
-  {
-    row = 0u;
-  }
+  xTaskCreatePinnedToCore(
+    RunLedsTask,    // Function to implement the task
+    "sensor",       // Name of the task
+    4096,           // Stack size in words
+    NULL,           // Task input parameter
+    6,              // Priority of the task
+    &TaskToNotify,  // Task handle
+    0);             // Core where the task should run
 }
 
 //_____________________________________________________________________________
@@ -213,4 +230,55 @@ void Leds_SetBodyBrightness(uint8_t red, uint8_t green, uint8_t blue)
   Leds_SetTopBrightness(red, green, blue);
   Leds_SetBottomLeftBrightness(red, green, blue);
   Leds_SetBottomRightBrightness(red, green, blue);
+}
+
+//_____________________________________________________________________________
+
+static void RunLedsTask(void* arg)
+{
+  static uint8_t row = 0u;
+
+  ESP_LOGI(Tag, "Start Leds Task");
+
+  TimerHw_StartTimerPeriodically(LedsTaskTimer, LEDS_TASK_PERIOD_us);
+
+  while (1)
+  {
+	if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY) != 0u)
+    {
+      ShiftRegisters_Fill(&LedsTable[row][0u], REGISTERS_NUM);
+
+      row++;
+
+      if (row == MAX_BRIGHTNESS)
+      {
+        row = 0u;
+      }
+    }
+    else
+    {
+      ESP_LOGI(Tag, "OUPS");
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
+static void Callback_TimerLedsTask(void* arg)
+{
+  BaseType_t higherPriorityTaskWoken = pdFALSE;
+  //BaseType_t result;
+
+  vTaskNotifyGiveFromISR(TaskToNotify, &higherPriorityTaskWoken);
+  //result = xTaskNotifyFromISR(TaskToNotify, 0, eNoAction, &higherPriorityTaskWoken);
+
+
+  // If the call to xTaskNotifyFromISR() returns pdFAIL then the task
+  // is not keeping up with the rate at which the timer elapsed.
+  //configASSERT(result == pdTRUE);
+
+  //if (higherPriorityTaskWoken != pdFALSE)
+  {
+    portYIELD_FROM_ISR();
+  }
 }

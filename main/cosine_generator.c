@@ -99,7 +99,7 @@ void CosineGenerator_Init(void)
   // IR_PULSE_BACK_PIN (GPIO26)
   CLEAR_PERI_REG_MASK(SENS_SAR_DAC_CTRL2_REG, SENS_DAC_CW_EN2_M);
 
-  dac_output_enable(DAC_CHANNEL_1);
+  //dac_output_enable(DAC_CHANNEL_1);
 }
 
 //_____________________________________________________________________________

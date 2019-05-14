@@ -51,6 +51,8 @@
 //! \return    None
 extern void GroundIR_Init(void);
 
+extern void GroundIR_Start(void);
+
 //! \brief     Run the ground IR sensors task
 //! \pre       First initialize the Ground IR sensors
 //! \param     tick - Tick counter

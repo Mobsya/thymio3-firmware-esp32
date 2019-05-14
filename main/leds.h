@@ -107,11 +107,7 @@ typedef uint8_t T_Led;
 //! \return    None
 extern void Leds_Init(void);
 
-//! \brief     Run the LEDs
-//! \pre       First initialize the LEDs
-//! \param     None
-//! \return    None
-extern void Leds_Run(void);
+extern void Leds_Start(void);
 
 //! \brief     Set the brightness of a single LED
 //! \pre       First initialize the LEDs

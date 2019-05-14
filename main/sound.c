@@ -74,6 +74,8 @@ TaskHandle_t AcquisitionTask;
 
 static const char* Tag = "sound";
 
+static TaskHandle_t PlayerTask = NULL;
+
 static T_TimerHw* GeneratorTimer = NULL;  //!< Used to generate the sound
 
 static bool NoteInProgress = false;
@@ -105,13 +107,16 @@ static bool AcquiredDataAreReady = false;
 
 static T_TimerHw* AcquisitionTaskTimer = NULL;  //!< Used to schedule the Acquisition task
 
+static bool PlayerIsBusy = false;
+//static bool NewSoundIsRequested = false;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
 //! \brief     Run the task to play a sound
 //! \pre       First initialize the sound
-//! \param     pvParameter - Task parameter
+//! \param     arg - Task parameter
 //! \return    None
 static void RunPlayingTask(T_Melody* arg);
 
@@ -119,9 +124,21 @@ static void RunAcquisitionTask(void* arg);
 
 //! \brief     Run the task to process a sound
 //! \pre       First initialize the sound
-//! \param     pvParameter - Task parameter
+//! \param     arg - Task parameter
 //! \return    None
 static void RunProcessingTask(void* arg);
+
+//! \brief     Run the task to record a sound
+//! \pre       First initialize the sound
+//! \param     arg - Task parameter
+//! \return    None
+static void RunRecordingTask(void* arg);
+
+//! \brief     Run the task to replay a sound
+//! \pre       First initialize the sound
+//! \param     arg - Task parameter
+//! \return    None
+static void RunReplayingTask(void* arg);
 
 //! \brief     Calculate the duration of the note
 //! \pre       First initialize the sound
@@ -169,16 +186,38 @@ void Sound_Init(void)
 
 //_____________________________________________________________________________
 
-void Sound_StartPlaying(T_Melody* melody)
+void Sound_StartPlayer(T_Melody* melody)
 {
-  xTaskCreatePinnedToCore(
-    RunPlayingTask,  // Function to implement the task
-    "play",          // Name of the task
-    2048,            // Stack size in words
-    melody,          // Task input parameter
-    2,               // Priority of the task
-    NULL,            // Task handle
-    0);              // Core where the task should run
+#if 0
+  if (PlayerIsBusy)
+  {
+    TimerHw_StopTimer(GeneratorTimer);
+    CosineGenerator_Disable();
+    NoteInProgress = false;
+    MelodyIsFinished = false;
+    NextNote = 0u;
+    NextLoop = 0u;
+
+    vTaskDelete(PlayerTask);
+  }
+#endif
+
+  //PlayerIsBusy = true;
+  //NewSoundIsRequested = true;
+
+  if (!PlayerIsBusy)
+  {
+    PlayerIsBusy = true;
+
+    xTaskCreatePinnedToCore(
+      RunPlayingTask,  // Function to implement the task
+      "play",          // Name of the task
+      2048,            // Stack size in words
+      melody,          // Task input parameter
+      2,               // Priority of the task
+      &PlayerTask,     // Task handle
+      0);              // Core where the task should run
+  }
 }
 
 //_____________________________________________________________________________
@@ -211,24 +250,30 @@ void Sound_StartProcessing(void)
 
 //_____________________________________________________________________________
 
-void Sound_RunReplayerTask(void* pvParameter)
+void Sound_StartRecording(void)
 {
-  while (1)
-  {
-    Sound_Replay();
-    vTaskDelete(NULL);
-  }
+  xTaskCreatePinnedToCore(
+    RunRecordingTask,  // Function to implement the task
+    "sound",           // Name of the task
+    4096,              // Stack size in words
+    NULL,              // Task input parameter
+    3,                 // Priority of the task
+    NULL,              // Task handle
+    1);                // Core where the task should run
 }
 
 //_____________________________________________________________________________
 
-void Sound_RunRecordingTask(void* pvParameter)
+void Sound_StartReplaying(void)
 {
-  while (1)
-  {
-    Sound_Record();
-    //vTaskDelete(NULL);
-  }
+  xTaskCreatePinnedToCore(
+    RunReplayingTask,  // Function to implement the task
+    "sound",           // Name of the task
+    4096,              // Stack size in words
+    NULL,              // Task input parameter
+    3,                 // Priority of the task
+    NULL,              // Task handle
+    1);                // Core where the task should run
 }
 
 //_____________________________________________________________________________
@@ -323,13 +368,6 @@ void Sound_PlayMelody(const T_Note* melody, T_Tempo tempo, uint16_t loop, uint16
 
 //_____________________________________________________________________________
 
-void Sound_Record(void)
-{
-  I2S_Record();
-}
-
-//_____________________________________________________________________________
-
 void Sound_Replay(void)
 {
   if (DacStatus == E_DacStatus_Cosine)
@@ -340,6 +378,7 @@ void Sound_Replay(void)
   DacStatus = E_DacStatus_I2S;
 
   I2S_EnableDAC();
+
   I2S_ReadFromFlash();
 }
 
@@ -354,6 +393,7 @@ static void RunPlayingTask(T_Melody* arg)
     if (MelodyIsFinished)
     {
       MelodyIsFinished = false;
+      PlayerIsBusy = false;
       vTaskDelete(NULL);
     }
 
@@ -378,11 +418,9 @@ static void RunAcquisitionTask(void* arg)
 
   while (1)
   {
-	// The task being notified should wait for the notification using the ulTaskNotifyTake()
-	// API function rather than the xTaskNotifyWait() API function
-	result = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-    if (result != 0u)
+    // The task being notified should wait for the notification using the ulTaskNotifyTake()
+    // API function rather than the xTaskNotifyWait() API function
+    if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY) != 0u)
     {
       ADC_AcquireMicrophoneValues(&micro);
 
@@ -397,7 +435,7 @@ static void RunAcquisitionTask(void* arg)
       if (count == NUMBER_OF_SAMPLES)
       {
         //ESP_LOGI(Tag, "val = %d", count);
-    	//printf("SOUND Hello world from core %d!\n", xPortGetCoreID());
+        //printf("SOUND Hello world from core %d!\n", xPortGetCoreID());
         count = 0;
         FifoFloat_Write(MicrophoneFifo, table, NUMBER_OF_SAMPLES);
         AcquiredDataAreReady = true;
@@ -448,9 +486,8 @@ static void RunProcessingTask(void* arg)
 //#if 0
   while (1)
   {
-    //if (xTaskNotifyWait(0, 0, &result, portMAX_DELAY) == pdTRUE)
     if (FifoFloat_GetNumberOfElements(MicrophoneFifo) >= NUMBER_OF_SAMPLES)
-    //if (AcquiredDataAreReady)
+      //if (AcquiredDataAreReady)
     {
       FifoFloat_Read(MicrophoneFifo, input, NUMBER_OF_SAMPLES);
       AcquiredDataAreReady = false;
@@ -482,6 +519,29 @@ static void RunProcessingTask(void* arg)
 //#endif
 }
 //#endif
+
+//_____________________________________________________________________________
+
+static void RunRecordingTask(void* arg)
+{
+  //while (1)
+  {
+    I2S_Record();
+    //vTaskDelete(NULL);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void RunReplayingTask(void* arg)
+{
+  while (1)
+  {
+    Sound_Replay();
+    vTaskDelete(NULL);
+  }
+}
+
 //_____________________________________________________________________________
 
 static int16_t CalculateNoteDuration(T_NoteValue noteValue, T_Tempo tempo)

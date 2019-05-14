@@ -36,29 +36,37 @@
 #include "aseba_esp32.h"
 #include "board.h"
 #include "gpio.h"
+#include "timer.h"
 #include "timer_hw.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define PROX_IR_PIN_NUM          3u
+#define PROX_IR_PIN_NUM                   3u
 
-#define CALIB_HYSTERESIS         20
+#define CALIB_HYSTERESIS                  20
 
-#define DEFAULT_CALIB        0x7FFF
+#define DEFAULT_CALIB                 0x7FFF
 
-#define CAP0_INT_EN         BIT(27)  // Capture 0 interrupt bit
-#define CAP1_INT_EN         BIT(28)  // Capture 1 interrupt bit
-#define CAP2_INT_EN         BIT(29)  // Capture 2 interrupt bit
+#define CAP0_INT_EN                  BIT(27)  // Capture 0 interrupt bit
+#define CAP1_INT_EN                  BIT(28)  // Capture 1 interrupt bit
+#define CAP2_INT_EN                  BIT(29)  // Capture 2 interrupt bit
 
-#define CAP_SIG_NUM              3u  // Three capture signals
+#define CAP_SIG_NUM                       3u  // Three capture signals
 
-#define MAX_PULSE_DURATION    4600u
+#define MAX_PULSE_DURATION             4600u
 
-#define PULSE_DURATION_FACTOR    4u  // Factor to adapt the pulse duration
+#define PULSE_DURATION_FACTOR             4u  // Factor to adapt the pulse duration
 
-#define TX_PULSE_DURATION_us    60u
+// Duration of the pulse = 60 [us] -> TIMER_SCALE * 60 [us] = 300 (timer_group)
+#define TX_PULSE_DURATION               300u
+
+// Duration of the pulse = 60 [us] -> TIMER_SCALE * 1 [s] = TIMER_SCALE (timer_group)
+#define BACK_RIGHT_TIMER_DURATION   5000000u
+
+#define READ_RX_PULSE_us                750u
+//#define READ_UNIT1_INTERVAL_us          875u
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -96,14 +104,7 @@ static const T_GpioPinConfig PinConfig[PROX_IR_PIN_NUM] =
 };
 // Other pins are configured by the input capture module
 
-static uint8_t ProxCalibMaxCounter[PROX_IR_SENSORS_NUM];
-static uint16_t LoopbackDelay[PROX_IR_SENSORS_NUM];
-
 static T_NetworkStatus NetworkStatus = E_NetworkStatus_Disabled;
-
-static uint16_t last_tx;
-
-static uint8_t edge[PROX_IR_SENSORS_NUM];
 
 static bool FirstTxPulsesAreInProgress = false;
 static bool SecondTxPulsesAreInProgress = false;
@@ -119,37 +120,35 @@ static volatile uint32_t FallingEdgeCounter[7] = {0u, 0u, 0u, 0u, 0u, 0u, 0u};  
 
 static uint32_t PulseDuration[7];
 
-static T_TimerHw* TxPulsesDurationTimer = NULL;  //!< Timer used to determine the duration of the TX pulses
-static T_TimerHw* TxPulsesGapTimer = NULL;       //!< Timer used to determine the gap between two TX pulses
+//static T_TimerHw* TxPulsesDurationTimer = NULL;  //!< Timer used to determine the duration of the TX pulses
+static T_TimerHw* ReadRxPulseTimer = NULL;
+//static T_TimerHw* ReadUnit1Timer        = NULL;
+//static T_TimerHw* TxPulsesGapTimer = NULL;       //!< Timer used to determine the gap between two TX pulses
 
 static uint8_t SlotNumber = 0xFFu;
+
+TaskHandle_t TaskToNotify;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
+static void RunTxProxIRTask(void* arg);
+
+static void RunRxProxIRTask(void* arg);
+
 static void ConfigureInputCapture(void);
 
-static void ReadUnit0PulseDuration(void);
+static void CalculateRxPulseDuration(void);
 
 static void EnableInputCapture(void);
 
-static void DisableInputCapture(void);
-
-static void ReadUnit1PulseDuration(void);
-
-static int16_t PerformCalibration(int16_t raw, T_Sensor sensor);
-
-static int16_t Calibrate(int16_t value, T_Sensor sensor);
-
-static void ResetRx(void);
-
-static void ir_tx(int value);
+//static void DisableInputCapture(void);
 
 static mcpwm_dev_t* MCPWM[2] = {&MCPWM0, &MCPWM1};
 
-static void Callback_TimerTxPulsesDuration(void* arg);
-static void Callback_TimerTxPulsesGap(void* arg);
+static void Callback_TimerReadRxPulse(void* arg);
+//static void Callback_TimerTxPulsesGap(void* arg);
 
 static void IRAM_ATTR ISR_InputCaptureUnit0(void* arg);
 static void IRAM_ATTR ISR_InputCaptureUnit1(void* arg);
@@ -180,49 +179,84 @@ void ProxIR_Init(void)
     }
   }
 
-  TxPulsesDurationTimer = TimerHw_Create(TX_PULSE_DURATION_us, Callback_TimerTxPulsesDuration);
-  TxPulsesGapTimer      = TimerHw_Create(200, Callback_TimerTxPulsesGap);
-
   ConfigureInputCapture();
 
-  //EnableInputCapture();
+  Timer_Init(1, 1, true, 1);  // Timer used to handle the IR_SENSE_BACK_RIGHT_PIN
+  Timer_Start(1, 1);
+
+  Timer_Init1(1, 0, true, TX_PULSE_DURATION);  // Timer used to generate the TX pulse
+
+  // When this timer expires, the duration of the RX pulse is calculated
+  ReadRxPulseTimer = TimerHw_Create(READ_RX_PULSE_us, Callback_TimerReadRxPulse);
+
+  //TxPulsesGapTimer      = TimerHw_Create(200, Callback_TimerTxPulsesGap);
 
   ESP_LOGI(Tag, "Proximity IR sensors are initialized");
 }
 
 //_____________________________________________________________________________
 
-void ProxIR_Run(uint16_t tick)
+void ProxIR_Start(void)
 {
-  switch (tick)
+  xTaskCreatePinnedToCore(
+    RunTxProxIRTask,  // Function to implement the task
+    "tx",             // Name of the task
+    4096,             // Stack size in words
+    NULL,             // Task input parameter
+    5,                // Priority of the task
+    NULL,             // Task handle
+    0);               // Core where the task should run
+
+  xTaskCreatePinnedToCore(
+    RunRxProxIRTask,  // Function to implement the task
+    "rx",             // Name of the task
+    4096,             // Stack size in words
+    NULL,             // Task input parameter
+    5,                // Priority of the task
+    &TaskToNotify,   // Task handle
+    0);               // Core where the task should run
+}
+
+//_____________________________________________________________________________
+
+static void RunTxProxIRTask(void* arg)
+{
+  ESP_LOGI(Tag, "Start TX Prox IR Task");
+
+  while (1)
   {
-    case 4:
-      EnableInputCapture();
-      break;
+    Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_High);
+    Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_High);
 
-    case 5:
-      // Transmitting the first pulse
-      TimerHw_StartTimerOnce(TxPulsesDurationTimer, TX_PULSE_DURATION_us);
+    Timer_Start(1, 0);  // Timer used to generate the TX pulse
 
-      Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_High);
-      Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_High);
+    FirstTxPulsesAreInProgress = true;
 
-      FirstTxPulsesAreInProgress = true;
-      break;
+    // When this timer expires, the duration of the RX pulse is calculated
+    TimerHw_StartTimerOnce(ReadRxPulseTimer, READ_RX_PULSE_us);
 
-    case 11:
-      ReadUnit0PulseDuration();
-      break;
+    //ESP_LOGE(Tag, "old = %d, new = %d", OldPulseCounter[0], PulseCounter[0]);
 
-    case 12:
-      ReadUnit1PulseDuration();
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+}
 
-      //DisableInputCapture();
-      break;
+//_____________________________________________________________________________
 
-    default:
-      // Do nothing
-      break;
+static void RunRxProxIRTask(void* arg)
+{
+  ESP_LOGI(Tag, "Start RX Prox IR Task");
+
+  while (1)
+  {
+    if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY) != 0u)
+    {
+      CalculateRxPulseDuration();
+    }
+    else
+    {
+      ESP_LOGI(Tag, "OUPS");
+    }
   }
 }
 
@@ -269,6 +303,8 @@ static void ConfigureInputCapture(void)
   MCPWM[MCPWM_UNIT_1]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;
   mcpwm_isr_register(MCPWM_UNIT_0, ISR_InputCaptureUnit0, NULL, ESP_INTR_FLAG_IRAM, NULL);  // Set ISR Handler
   mcpwm_isr_register(MCPWM_UNIT_1, ISR_InputCaptureUnit1, NULL, ESP_INTR_FLAG_IRAM, NULL);  // Set ISR Handler
+
+  EnableInputCapture();
 }
 
 //_____________________________________________________________________________
@@ -284,7 +320,7 @@ static void EnableInputCapture(void)
 }
 
 //_____________________________________________________________________________
-
+#if 0
 static void DisableInputCapture(void)
 {
   mcpwm_capture_disable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);
@@ -294,12 +330,13 @@ static void DisableInputCapture(void)
   mcpwm_capture_disable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1);
   mcpwm_capture_disable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2);
 }
-
+#endif
 //_____________________________________________________________________________
 
-static void ReadUnit0PulseDuration(void)
+static void CalculateRxPulseDuration(void)
 {
-  for (uint8_t index = 0u; index <= 2u; index++)
+  // Calculate the RX pulse duration of the 5 front sensors and the back left sensor
+  for (uint8_t index = 0u; index <= 5u; index++)
   {
     if (OldPulseCounter[index] != PulseCounter[index])
     {
@@ -314,6 +351,10 @@ static void ReadUnit0PulseDuration(void)
       else
       {
         //ESP_LOGE(Tag, "index = %d, pulse = %d", index, PulseDuration[index]);
+        if (index == 0)
+        {
+          ESP_LOGE(Tag, "Pulse duration too high");
+        }
         vmVariables.prox[index] = 0;
       }
 
@@ -321,66 +362,27 @@ static void ReadUnit0PulseDuration(void)
     }
     else if (RisingEdgeCounter[index] != PulseCounter[index])
     {
+      if (index == 0)
+      {
+        //ESP_LOGE(Tag, "A");
+      }
       RisingEdgeCounter[index] = PulseCounter[index];
     }
     else if (FallingEdgeCounter[index] != PulseCounter[index])
     {
+      if (index == 0)
+      {
+        //ESP_LOGE(Tag, "B");
+      }
       FallingEdgeCounter[index] = PulseCounter[index];
     }
     else  // No obstacle detected (or unfortunately no pulse detected)
     {
       vmVariables.prox[index] = 0;
-
-#if 0
-      if (index == 2u)
-      {
-        ESP_LOGE(Tag, "index = %d, rise = %d, fall = %d, pulse = %d", index, RisingEdgeCounter[index],
-                 FallingEdgeCounter[index], PulseCounter[index]);
-      }
-#endif
-    }
-  }
-}
-
-//_____________________________________________________________________________
-
-static void ReadUnit1PulseDuration(void)
-{
-  for (uint8_t index = 3u; index <= 5u; index++)
-  {
-    if (OldPulseCounter[index] != PulseCounter[index])
-    {
-      // FIXME ESP_LOGI(Tag, "index = %d, rise = %d, fall = %d, pulse = %d", index, RisingEdgeCounter[index], FallingEdgeCounter[index], PulseCounter[index]);
-
-      PulseDuration[index] = ((FallingEdgeTime[index] - RisingEdgeTime[index]) / PULSE_DURATION_FACTOR);
-
-      if (PulseDuration[index] < MAX_PULSE_DURATION)
-      {
-        vmVariables.prox[index] = PulseDuration[index];
-      }
-      else
-      {
-        // FIXME ESP_LOGE(Tag, "index = %d, pulse = %d", index, PulseDuration[index]);
-        vmVariables.prox[index] = 0;
-      }
-
-      OldPulseCounter[index] = PulseCounter[index];
-    }
-    else if (RisingEdgeCounter[index] != PulseCounter[index])
-    {
-      RisingEdgeCounter[index] = PulseCounter[index];
-    }
-    else if (FallingEdgeCounter[index] != PulseCounter[index])
-    {
-      FallingEdgeCounter[index] = PulseCounter[index];
-    }
-    else
-    {
-      vmVariables.prox[index] = 0;
-      // FIXME ESP_LOGE(Tag, "index = %d, rise = %d, fall = %d, pulse = %d", index, RisingEdgeCounter[index], FallingEdgeCounter[index], PulseCounter[index]);
     }
   }
 
+  // Calculate the RX pulse duration of the back right sensor
   PulseCounter[6] = Gpio_GetPulseCounter();
 
   if (OldPulseCounter[6] != PulseCounter[6])
@@ -419,184 +421,17 @@ void ProxIR_DisableNetwork(void)
 
 //_____________________________________________________________________________
 
-static int16_t PerformCalibration(int16_t raw, T_Sensor sensor)
+static void Callback_TimerReadRxPulse(void* arg)
 {
-  int16_t value = raw;
-  int16_t calibration = 0;
+  BaseType_t higherPriorityTaskWoken = pdFALSE;
 
-  if (settings.prox_min[sensor] > 0)
-  {
-    // On the fly re-calibration
-    calibration = Calibrate(value, sensor);
-  }
-  else
-  {
-    // Calibration disabled if settings are negative
-    calibration = value;
-  }
+  vTaskNotifyGiveFromISR(TaskToNotify, &higherPriorityTaskWoken);
 
-  return calibration;
-}
-
-//_____________________________________________________________________________
-
-static int16_t Calibrate(int16_t value, T_Sensor sensor)
-{
-  int16_t ret;
-
-  if ((value - CALIB_HYSTERESIS) < settings.prox_min[sensor])
-  {
-    if (++ProxCalibMaxCounter[sensor] > 3)
-    {
-      if (value < settings.prox_min[sensor])
-      {
-        settings.prox_min[sensor] = value;
-        set_save_settings();
-      }
-      else
-      {
-        ProxCalibMaxCounter[sensor] = 0;
-      }
-    }
-  }
-  else
-  {
-    ProxCalibMaxCounter[sensor] = 0;
-  }
-
-  if (settings.prox_min[sensor] == DEFAULT_CALIB)
-  {
-    ret = value;
-  }
-  else
-  {
-    ret = value - (3 * ((unsigned int) settings.prox_min[sensor])) / 4 + 800;
-  }
-
-  if (ret < 0)
-  {
-    ret = 0;
-  }
-
-  return ret;
-}
-
-//_____________________________________________________________________________
-
-static void ResetRx(void)
-{
-  for (uint8_t sensor = 0u; sensor < PROX_IR_SENSORS_NUM; sensor++)
-  {
-#if 0
-    while (ic_bufne(sensor))
-    {
-      ic_buf(sensor);
-    }
-#endif
-    edge[sensor] = 0;
-  }
+  portYIELD_FROM_ISR();
 }
 
 //_____________________________________________________________________________
 #if 0
-static int16_t ir_prox_rx_oa(void)
-{
-  int16_t temp[2];
-  int16_t ret = 0;
-
-  for (int16_t sensor = 0; sensor < SENSORS_NUM; sensor++)
-  {
-    vmVariables.prox[sensor] = 0;
-    LoopbackDelay[sensor] = 0;
-
-    if (ic_bufne(sensor))
-    {
-      temp[0] = ic_buf(sensor);
-
-      if (ic_bufne(sensor))
-      {
-        temp[1] = ic_buf(sensor);
-        LoopbackDelay[sensor] = temp[0];
-
-        // Validity check
-        if (temp[0] < 2000)
-        {
-          if (temp[0] > 100)
-          {
-            vmVariables.prox[sensor] = PerformCalibration((temp[1] - temp[0]), sensor);
-          }
-          else if (!sensors_prox_drift())
-          {
-            ret = ((temp[0] & 0x3) - 2) * 5; // Should use random here ....
-          }
-        }
-        else if (!sensors_prox_drift())
-        {
-          ret = ((temp[0] & 0x3) - 1) * 5; // Should use random here ....
-        }
-      }
-    }
-
-    // Reset the calibration counter if the sensor did not see something:
-    // => perform_calib was not triggered, thus, ProxCalibMaxCounter was not updated
-    // So, do it here.
-    if (!vmVariables.prox[sensor])
-    {
-      ProxCalibMaxCounter[sensor] = 0;
-    }
-  }
-
-  return ret;
-}
-#endif
-//_____________________________________________________________________________
-
-static void ir_tx(int value)
-{
-
-}
-
-//_____________________________________________________________________________
-
-static void Callback_TimerTxPulsesDuration(void* arg)
-{
-  if (FirstTxPulsesAreInProgress)
-  {
-    Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_Low);
-    Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
-
-    // Start the timer to determine the gap with the 2nd pulse
-    TimerHw_StartTimerOnce(TxPulsesGapTimer, 200);
-
-    FirstTxPulsesAreInProgress = false;
-  }
-  else if (SecondTxPulsesAreInProgress)
-  {
-    Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_Low);
-	Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
-
-	SecondTxPulsesAreInProgress = false;
-  }
-  else
-  {
-    // Do nothing
-  }
-}
-
-//_____________________________________________________________________________
-#if 0
-static void Callback_TimerBackPulses(void* arg)
-{
-  if (BackPulseIsInProgress)
-  {
-    Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
-    BackPulseIsInProgress = false;
-  }
-}
-#endif
-
-//_____________________________________________________________________________
-
 static void Callback_TimerTxPulsesGap(void* arg)
 {
   // Transmitting the 2nd pulse
@@ -607,20 +442,17 @@ static void Callback_TimerTxPulsesGap(void* arg)
 
   SecondTxPulsesAreInProgress = true;
 }
-
+#endif
 //_____________________________________________________________________________
 
 static void IRAM_ATTR ISR_InputCaptureUnit0(void* arg)
 {
   volatile uint32_t mcpwm_intr_status;
 
-  static uint32_t tmp2nd[CAP_SIG_NUM] = {0, 0, 0};
   static uint32_t tmp[CAP_SIG_NUM] = {0, 0, 0};
   static bool risingEdgeFront1Done = false;
   static bool risingEdgeFront2Done = false;
   static bool risingEdgeFront3Done = false;
-
-  static uint8_t tmpSlot = 0;
 
   mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val;  // Read interrupt status
 
@@ -632,12 +464,6 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void* arg)
 
       RisingEdgeCounter[0]++;
       risingEdgeFront1Done = true;
-
-      // Rising edge received during the same slot
-      if (SlotNumber == tmpSlot)
-      {
-    	tmp2nd[0] = tmp[0];
-      }
     }
     else  // Falling edge
     {
@@ -647,7 +473,6 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void* arg)
       {
         risingEdgeFront1Done = false;
         RisingEdgeTime[0] = tmp[0];
-        tmpSlot = SlotNumber;
         FallingEdgeTime[0] = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);
         PulseCounter[0]++;
       }

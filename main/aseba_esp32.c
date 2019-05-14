@@ -20,6 +20,9 @@
 
 #include <string.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 // Molole include
 //#include <flash/flash.h>
 //#include <error/error.h>
@@ -40,10 +43,7 @@
 #include "aseba_esp32.h"
 //#include "memory_layout.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-
-#include "leds.h"  // only for debug
+//#include "leds.h"  // only for debug
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions

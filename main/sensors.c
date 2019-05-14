@@ -92,15 +92,15 @@ static void Callback_TimerSensorsTask(void* arg);
 
 void Sensors_Init(void)
 {
-  ADC_Init();
+  //ADC_Init();
   Leds_Init();
-  GroundIR_Init();
-  ProxIR_Init();
+  //GroundIR_Init();
+  //ProxIR_Init();
 
   //TaskToNotify = xTaskGetCurrentTaskHandle();
 
   SensorsTaskTimer = TimerHw_Create(SENSORS_TASK_PERIOD_us, Callback_TimerSensorsTask);
-  Timer_Init(0, 1, 1, 1);         // Timer used to handle the IR_SENSE_BACK_RIGHT_PIN
+  //Timer_Init(0, 1, 1, 1);         // Timer used to handle the IR_SENSE_BACK_RIGHT_PIN
 
   ESP_LOGI(Tag, "Sensors are initialized");
 }
@@ -114,7 +114,7 @@ void Sensors_Start(void)
     "sensor",        // Name of the task
     4096,            // Stack size in words
     NULL,            // Task input parameter
-    6,               // Priority of the task
+    3,               // Priority of the task
     &TaskToNotify,   // Task handle
     0);              // Core where the task should run
 }
@@ -132,17 +132,17 @@ static void RunSensorsTask(void* arg)
   //TaskToNotify = xTaskGetCurrentTaskHandle();
 
   TimerHw_StartTimerPeriodically(SensorsTaskTimer, SENSORS_TASK_PERIOD_us);
-  Timer_Start(0, 1);
+  //Timer_Start(0, 1);
 
   while (1)
   {
     //result = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  // portMAX_DELAY
 
     if (xTaskNotifyWait(0, 0, &result, portMAX_DELAY) == pdTRUE)  // portMAX_DELAY
-    //if (result == 1)
+      //if (result == 1)
     {
-      Leds_Run();
-      RunSensors();
+      //Leds_Run();
+      //RunSensors();
 
       //xTaskNotifyGive(AcquisitionTask);
     }
@@ -169,7 +169,7 @@ static void RunSensors(void)
 
   if ((tick == 50) || (tick == 53) || (tick == 56))
   {
-    ADC_AcquireValues(sensors);
+    ADC_AcquireGroundIRValues(sensors);
   }
 #if 0
   if (tick % 100 == 0)  // Every 12.5 [ms]
@@ -188,7 +188,7 @@ static void RunSensors(void)
   }
 #endif
 
-  ProxIR_Run(tick);
+  //ProxIR_Run(tick);
   //PeriodAccumulator += ProxIR_Run(tick);
   //PeriodAccumulator = 0;
 
@@ -204,7 +204,7 @@ static void RunSensors(void)
 
   // The ground IR sensors need a period of 100ms (frequency = 10Hz),
   // The ground IR sensors trigger at time = 50, need 6 cycles
-  GroundIR_EmitPulses(tick, sensors[1], sensors[2]);
+  //GroundIR_EmitPulses(tick, sensors[1], sensors[2]);
 
   if (PeriodAccumulator < 0)
   {

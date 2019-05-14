@@ -302,14 +302,14 @@ static void IRAM_ATTR ISR_GPIOHandler(void* arg)
   {
     if (Gpio_GetPinLevel(gpio_num) == E_GpioLevel_High)
     {
-      timer_get_counter_value(0, 1, &start);
+      timer_get_counter_value(1, 1, &start);
       risingEdgeBackRightDone = true;
     }
     else
     {
       if (risingEdgeBackRightDone)
       {
-        timer_get_counter_value(0, 1, &stop);
+        timer_get_counter_value(1, 1, &stop);
         RisingEdge = start;
         FallingEdge = stop;
         PulseCounter++;

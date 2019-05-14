@@ -41,20 +41,22 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the xxx
+//! \brief     Initialize the MP3 module
 //! \pre       None
 //! \param     None
 //! \return    None
 extern void MP3_Init(void);
 
-extern void MP3_Start(int number);
-
-//! \brief     Run the xxx task
-//! \pre       First initialize the xxx
+//! \brief     Start the MP3 player task
+//! \pre       None
 //! \param     None
 //! \return    None
-extern void MP3_Task(void* pvParameter);
+extern void MP3_StartPlayer(int number);
 
-extern void MP3_RunTask(void* pvParameter);
+//! \brief     Start the MP3 recorder task
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void MP3_StartRecorder(void);
 
 #endif // MP3_H_

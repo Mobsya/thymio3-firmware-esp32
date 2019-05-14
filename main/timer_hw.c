@@ -29,7 +29,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define MAX_TIMERS_ALLOWED    12u  //!< Maximum number of timers allowed
+#define MAX_TIMERS_ALLOWED    15u  //!< Maximum number of timers allowed
 
 //-----------------------------------------------------------------------------
 // Types Definitions

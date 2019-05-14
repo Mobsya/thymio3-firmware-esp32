@@ -47,6 +47,12 @@
 //! \return    None
 extern void Timer_Init(int16_t timerNum, int timerIndex, bool autoReload, double interval_sec);
 
+//! \brief     Initialize the timer
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void Timer_Init1(int16_t timerNum, int timerIndex, bool autoReload, double interval);
+
 //! \brief     Start the timer
 //! \pre       First initialize the timer
 //! \param     None

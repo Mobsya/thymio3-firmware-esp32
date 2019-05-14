@@ -38,6 +38,8 @@
 #include "sound.h"
 #include "mp3.h"
 
+#include "i2s.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -137,18 +139,7 @@ void sound_playback(AsebaVMState* vm)
   }
 #endif
 
-  //MP3_Start(number);
-
-#if 0
-  xTaskCreatePinnedToCore(
-    MP3_RunTask,
-    "sound",       // Name of the task
-    4096,          // Stack size in words
-    &number,       // Task input parameter
-    2,             // Priority of the task
-    NULL,          // Task handle
-    0);            // Core where the task should run
-#endif
+  //MP3_StartPlayer(number);
 
 #if 0
   MelodyAseba.Melody = JamesBond;
@@ -198,14 +189,10 @@ void sound_record(AsebaVMState* vm)
   sd_start_record(name);
 #endif
 
-  xTaskCreatePinnedToCore(
-    Sound_RunRecordingTask,
-    "sound",  // Name of the task
-    4096,     // Stack size in words
-    NULL,     // Task input parameter
-    2,        // Priority of the task
-    NULL,     // Task handle
-    0);       // Core where the task should run
+  //Sound_StartRecording();
+  //I2S_Record();
+
+  //MP3_StartRecorder();
 }
 
 //_____________________________________________________________________________
@@ -238,6 +225,9 @@ void sound_replay(AsebaVMState* vm)
     play_user_sound(name);
   }
 #endif
+
+  //Sound_StartReplaying();
+  Sound_Replay();
 }
 
 //_____________________________________________________________________________

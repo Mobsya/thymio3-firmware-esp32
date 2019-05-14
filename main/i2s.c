@@ -150,17 +150,17 @@ void I2S_Init(void)
     .use_apll             = false
   };
 
-  adc1_config_width(ADC_WIDTH_BIT_12);
-  adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);  // MICROPHONE_PIN
+  //adc1_config_width(ADC_WIDTH_BIT_12);
+  //adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);  // MICROPHONE_PIN
 
   // Install and start I2S driver
   i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
 
-  // Init ADC pad
-  i2s_set_adc_mode(ADC_UNIT_NUM, ADC_CHANNEL_NUM);
-
   // Init DAC pad
   i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE);
+
+  // Init ADC pad
+  i2s_set_adc_mode(ADC_UNIT_NUM, ADC_CHANNEL_NUM);
 
   //i2s_adc_enable(I2S_NUM);
 
@@ -228,7 +228,7 @@ void I2S_Record(void)
   {
     //read data from I2S bus, in this case, from ADC.
     i2s_read(I2S_NUM, (void*) i2s_read_buff, i2s_read_len, &bytes_read, portMAX_DELAY);
-    //PrintBuffer((uint8_t*) i2s_read_buff, 64);
+    PrintBuffer((uint8_t*) i2s_read_buff, 64);
     //save original data from I2S(ADC) into flash.
     esp_partition_write(data_partition, flash_wr_size, i2s_read_buff, i2s_read_len);
     flash_wr_size += i2s_read_len;
@@ -266,7 +266,7 @@ void I2S_StartReading(void)
     4096,               // Stack size in words
     data,               // Task input parameter
     2,                  // Priority of the task
-    &(data->i2s_task), // Task handle
+    & (data->i2s_task), // Task handle
     0);                 // Core where the task should run
 }
 
@@ -286,7 +286,7 @@ static void RunReadingTask(void* arg)
     {
       size_t data_recd = 0;
 
-      ESP_ERROR_CHECK(i2s_read(I2S_NUM, data->buffer, data_remaining, &data_recd,portMAX_DELAY));
+      ESP_ERROR_CHECK(i2s_read(I2S_NUM, data->buffer, data_remaining, &data_recd, portMAX_DELAY));
 
       data_remaining -= data_recd;
     }
@@ -433,13 +433,13 @@ void I2S_ReadFromFlash(void)
 
   for (int rd_offset = 0; rd_offset < flash_wr_size; rd_offset += FLASH_SECTOR_SIZE)
   {
-    //read I2S(ADC) original data from flash
+    // Read I2S(ADC) original data from flash
     esp_partition_read(data_partition, rd_offset, flash_read_buff, FLASH_SECTOR_SIZE);
 
-    //process data and scale to 8bit for I2S DAC.
+    // Process data and scale to 8bit for I2S DAC.
     Scale12BitsTo8Bits(i2s_write_buff, flash_read_buff, FLASH_SECTOR_SIZE);
 
-    //send data
+    // Send data
     i2s_write(I2S_NUM, i2s_write_buff, FLASH_SECTOR_SIZE, &bytes_written, portMAX_DELAY);
     printf("playing: %d %%\n", rd_offset * 100 / flash_wr_size);
   }

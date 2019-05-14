@@ -138,7 +138,7 @@ extern void Sound_Init(void);
 //! \pre       First initialize the sound
 //! \param     melody - The melody to play
 //! \return    None
-extern void Sound_StartPlaying(T_Melody* melody);
+extern void Sound_StartPlayer(T_Melody* melody);
 
 //! \brief     Start the task to acquire a sound
 //! \pre       First initialize the sound
@@ -152,17 +152,17 @@ extern void Sound_StartAcquisition(void);
 //! \return    None
 extern void Sound_StartProcessing(void);
 
-//! \brief     Run the task to replay a sound
+//! \brief     Start the task to record a sound
 //! \pre       First initialize the sound
-//! \param     pvParameter - Task parameter
+//! \param     None
 //! \return    None
-extern void Sound_RunReplayerTask(void* pvParameter);
+extern void Sound_StartRecording(void);
 
-//! \brief     Run the task to record a sound
+//! \brief     Start the task to replay a sound
 //! \pre       First initialize the sound
-//! \param     pvParameter - Task parameter
+//! \param     None
 //! \return    None
-extern void Sound_RunRecordingTask(void* pvParameter);
+extern void Sound_StartReplaying(void);
 
 //extern void Sound_Process(void);
 //extern void Sound_Process(uint16_t* data, uint16_t size);
@@ -183,12 +183,6 @@ extern void Sound_PlayNote(T_Note note, int16_t duration_ms);
 //! \param     size - Number of note in the melody
 //! \return    None
 extern void Sound_PlayMelody(const T_Note* melody, T_Tempo tempo, uint16_t loop, uint16_t size);
-
-//! \brief     Record a sound to the FLASH
-//! \pre       First initialize the sound
-//! \param     None
-//! \return    None
-extern void Sound_Record(void);
 
 //! \brief     Replay the last sound stored into the FLASH
 //! \pre       First initialize the sound

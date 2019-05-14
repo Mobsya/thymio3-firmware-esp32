@@ -109,10 +109,10 @@ void Power_HandlePowerModeRequest(void)
     {
       if (!STM32_IsAllowedToSwitchOff())
       {
-    	if (first)
-    	{
-    	  //PinConfig.mode = E_GpioMode_Input;
-    	  //Gpio_ConfigurePin(&PinConfig);
+        if (first)
+        {
+          //PinConfig.mode = E_GpioMode_Input;
+          //Gpio_ConfigurePin(&PinConfig);
 
           ESP_LOGW(Tag, "Sleep mode requested");
 
@@ -127,7 +127,7 @@ void Power_HandlePowerModeRequest(void)
           //ESP_LOGW(Tag, "Start timer");
           //TimerHw_StartTimerOnce(PowerModeTimer, POWER_MODE_DURATION_us);
           first = false;
-    	}
+        }
       }
     }
   }
