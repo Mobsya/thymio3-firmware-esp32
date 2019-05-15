@@ -34,6 +34,7 @@
 #include "fifo.h"
 #include "leds.h"
 #include "stm32.h"
+#include "tcp_server.h"
 #include "timer_hw.h"
 
 #include "color_sensor.h"
@@ -261,7 +262,7 @@ void Mode_Run(void)
     }
   }
 
-  if (STM32_IsUSBPortOpen())
+  if (STM32_IsUSBPortOpen() || TCPServer_IsSocketAccepted())
   {
     ExitMode(CurrentMode);
     Behavior_Disable(B_MODE);
