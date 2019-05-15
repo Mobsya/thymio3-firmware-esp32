@@ -137,7 +137,7 @@ void GroundIR_Start(void)
 
   xTaskCreatePinnedToCore(
     RunRightGroundIRTask,  // Function to implement the task
-    "sensor",              // Name of the task
+    "right",              // Name of the task
     4096,                  // Stack size in words
     NULL,                  // Task input parameter
     4,                     // Priority of the task
@@ -146,7 +146,7 @@ void GroundIR_Start(void)
 
   xTaskCreatePinnedToCore(
     RunLeftGroundIRTask,  // Function to implement the task
-    "sensor",             // Name of the task
+    "left",             // Name of the task
     4096,                 // Stack size in words
     NULL,                 // Task input parameter
     4,                    // Priority of the task
@@ -168,7 +168,7 @@ static void RunGroundIRTask(void* arg)
 {
   ESP_LOGI(Tag, "Start Ground IR Task");
 
-  uint16_t sensors[3];
+  uint16_t sensors[2];
 
   while (1)
   {
@@ -176,8 +176,8 @@ static void RunGroundIRTask(void* arg)
 
     ADC_AcquireGroundIRValues(sensors);
 
-    vmVariables.ground_ambiant[0] = sensors[1];  // left
-    vmVariables.ground_ambiant[1] = sensors[2];  // right
+    vmVariables.ground_ambiant[0] = sensors[0];  // Left sensor
+    vmVariables.ground_ambiant[1] = sensors[1];  // Right sensor
 
     Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_High);
 
@@ -192,7 +192,7 @@ static void RunGroundIRTask(void* arg)
 
 static void RunRightGroundIRTask(void* arg)
 {
-  uint16_t sensors[3];
+  uint16_t sensors[2];
 
   ESP_LOGI(Tag, "Start Right Ground IR Task");
 
@@ -204,8 +204,8 @@ static void RunRightGroundIRTask(void* arg)
 
       ADC_AcquireGroundIRValues(sensors);
 
-      vmVariables.ground_reflected[1] = sensors[2];
-      vmVariables.ground_delta[1] = PerformCalibration((sensors[2] - vmVariables.ground_ambiant[1]), E_Sensor_Right);
+      vmVariables.ground_reflected[1] = sensors[1];
+      vmVariables.ground_delta[1] = PerformCalibration((sensors[1] - vmVariables.ground_ambiant[1]), E_Sensor_Right);
 
       Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_Low);
       Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_High);
@@ -223,7 +223,7 @@ static void RunRightGroundIRTask(void* arg)
 
 static void RunLeftGroundIRTask(void* arg)
 {
-  uint16_t sensors[3];
+  uint16_t sensors[2];
 
   ESP_LOGI(Tag, "Start Left Ground IR Task");
 
@@ -237,8 +237,8 @@ static void RunLeftGroundIRTask(void* arg)
 
       ADC_AcquireGroundIRValues(sensors);
 
-      vmVariables.ground_reflected[0] = sensors[1];
-      vmVariables.ground_delta[0] = PerformCalibration((sensors[1] - vmVariables.ground_ambiant[0]), E_Sensor_Left);
+      vmVariables.ground_reflected[0] = sensors[0];
+      vmVariables.ground_delta[0] = PerformCalibration((sensors[0] - vmVariables.ground_ambiant[0]), E_Sensor_Left);
 
       Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_Low);
 

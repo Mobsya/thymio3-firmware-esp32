@@ -68,13 +68,13 @@ void ADC_Init(void)
 
 void ADC_AcquireGroundIRValues(uint16_t* value)
 {
-  value[1] = adc1_get_raw(ADC1_CHANNEL_6);  // IR_SENSE_GROUND_LEFT_PIN
-  value[2] = adc1_get_raw(ADC1_CHANNEL_3);  // IR_SENSE_GROUND_RIGHT_PIN
+  value[0] = adc1_get_raw(ADC1_CHANNEL_6);  // IR_SENSE_GROUND_LEFT_PIN
+  value[1] = adc1_get_raw(ADC1_CHANNEL_3);  // IR_SENSE_GROUND_RIGHT_PIN
 }
 
 //_____________________________________________________________________________
 
 void ADC_AcquireMicrophoneValues(uint16_t* value)
 {
-  value[0] = adc1_get_raw(ADC1_CHANNEL_0);  // MICROPHONE_PIN
+  value[2] = adc1_get_raw(ADC1_CHANNEL_0);  // MICROPHONE_PIN
 }
