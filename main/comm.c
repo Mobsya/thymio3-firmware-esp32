@@ -117,6 +117,7 @@ static void RunCommTask(void* arg)
   {
     BusIsAvailable = false;
 
+    // Every 20 [ms], 50 [Hz] (vTaskDelay = 20 [ms])
     Accelerometer_ReadTapSource();
     Accelerometer_GetAcceleration();
     Gyroscope_GetAngularPosition();
@@ -124,12 +125,12 @@ static void RunCommTask(void* arg)
     STM32_ReadInducedVoltage();
     STM32_ReadButtonStatus();
 
-    if ((counter % 2u) == 0u)  // Every 40 [ms] (vTaskDelay = 20 [ms])
+    if ((counter % 2u) == 0u)  // Every 40 [ms], 25 [Hz] (vTaskDelay = 20 [ms])
     {
       ColorSensor_ReadColor();
     }
 
-    if ((counter % 3u) == 0u)  // Every 60 [ms] (vTaskDelay = 20 [ms])
+    if ((counter % 3u) == 0u)  // Every 60 [ms], 16.6 [Hz] (vTaskDelay = 20 [ms])
     {
       STM32_ReadStatus();
       STM32_ReadMotorCurrent();
