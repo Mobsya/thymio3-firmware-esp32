@@ -160,7 +160,7 @@ void Behavior_Start(void)
     "behavior",       // Name of the task
     4096,             // Stack size in words
     NULL,             // Task input parameter
-    3,                // Priority of the task
+    2,                // Priority of the task
     NULL,             // Task handle
     0);               // Core where the task should run
 }
@@ -192,7 +192,7 @@ static void RunBehaviorTask(void* arg)
   while (1)
   {
     RunBehaviors();
-    vTaskDelay(20 / portTICK_PERIOD_MS);
+    vTaskDelay(19 / portTICK_PERIOD_MS);
   }
 }
 
