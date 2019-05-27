@@ -82,12 +82,13 @@ struct _vmVariables
   int16_t sound_mean;
   int16_t timers[2];
   int16_t acc_tap;
-  int16_t sd_present;
   /*****
     ---> PUT YOUR VARIABLES HERE <---
   ******/
   int16_t color[4];
   int16_t gyro[3];
+  int16_t angle[3];
+  int16_t angle_deg[3];
   int16_t ip[4];
   int16_t settings[2];
   int16_t freeSpace[VM_VARIABLES_FREE_SPACE];
@@ -102,14 +103,14 @@ enum Event
   EVENT_B_RIGHT,
   EVENT_BUTTONS,
   EVENT_PROX,
-  EVENT_DATA,
+  //EVENT_DATA,
   EVENT_TAP,
   EVENT_ACC,
   EVENT_GYRO,
-  EVENT_MIC,
-  EVENT_SOUND_FINISHED,
-  EVENT_TEMPERATURE,
-  EVENT_RC5,
+  //EVENT_MIC,
+  //EVENT_SOUND_FINISHED,
+  //EVENT_TEMPERATURE,
+  //EVENT_RC5,
   EVENT_MOTOR,
   EVENT_COLOR,
   // Must be consecutive

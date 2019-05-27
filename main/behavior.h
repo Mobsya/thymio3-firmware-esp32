@@ -35,7 +35,7 @@
 #define B_MODE          (1 << 10)
 #define B_SETTING       (1 << 12)
 
-#define B_ALWAYS    (B_LEDS_BATTERY | B_LEDS_BUTTON | B_SOUND_BUTTON)  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_LEDS_SD | B_SOUND_BUTTON | B_LEDS_BUTTON)
+#define B_ALWAYS    (B_LEDS_BATTERY | B_LEDS_BUTTON | B_SOUND_BUTTON)  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_SOUND_BUTTON | B_LEDS_BUTTON)
 
 //-----------------------------------------------------------------------------
 // Types Definitions

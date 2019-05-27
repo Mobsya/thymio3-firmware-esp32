@@ -162,7 +162,7 @@ static void RunAsebaTask(void* arg)
   {
     AsebaESP32_Run();
 
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(3 / portTICK_PERIOD_MS);
   }
 }
 
@@ -309,7 +309,6 @@ const AsebaVMDescription vmDescription =
 
     {1, "acc._tap"},
 
-    {1, "sd.present"},
     /******
      ---> PUT YOUR VARIABLES DESCRIPTIONS HERE <---
     first value is the number of element in the array (1 if not an array)
@@ -318,6 +317,8 @@ const AsebaVMDescription vmDescription =
 
     {4, "color"},
     {3, "gyro"},
+    {3, "angle"},
+    {3, "angle_deg"},
     {4, "ip"},
     {2, "settings"},
     {0, NULL} // Null terminated
@@ -338,14 +339,14 @@ static const AsebaLocalEventDescription localEvents[] =
   { "button.right", "Right button status changed"},
   { "buttons", "Buttons values updated"},
   { "prox", "Proximity values updated"},
-  { "prox.comm", "Data received on the proximity communication"},
+  //{ "prox.comm", "Data received on the proximity communication"},
   { "tap", "A tap is detected"},
   { "acc", "Accelerometer values updated"},
   { "gyro", "Gyroscope values updated"},
-  { "mic", "Fired when microphone intensity is above threshold"},
-  { "sound.finished", "Fired when the playback of a user initiated sound is finished"},
-  { "temperature", "Temperature value updated"},
-  { "rc5", "RC5 message received"},
+  //{ "mic", "Fired when microphone intensity is above threshold"},
+  //{ "sound.finished", "Fired when the playback of a user initiated sound is finished"},
+  //{ "temperature", "Temperature value updated"},
+  //{ "rc5", "RC5 message received"},
   { "motor", "Motor timer"},
   { "color", "Color values updated"},
   { "timer0", "Timer 0"},

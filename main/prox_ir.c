@@ -414,7 +414,7 @@ void ProxIR_DisableNetwork(void)
 {
   NetworkStatus = E_NetworkStatus_Disabled;
 
-  CLEAR_EVENT(EVENT_DATA);
+  //CLEAR_EVENT(EVENT_DATA);
   vmVariables.rx_data = 0;
   vmVariables.ir_tx_data = 0;
 }

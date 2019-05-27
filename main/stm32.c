@@ -359,6 +359,8 @@ void STM32_ReadButtonStatus(void)
 
     vmVariables.buttons_state[button] = (int16_t)ButtonStatus[button];
   }
+
+  SET_EVENT(EVENT_BUTTONS);
 }
 
 //_____________________________________________________________________________
