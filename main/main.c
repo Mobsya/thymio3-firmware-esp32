@@ -43,7 +43,6 @@
 #include "mp3.h"
 #include "power.h"
 #include "prox_ir.h"
-#include "sensors.h"
 #include "sound.h"
 //#include "sound_data.h"
 #include "stm32.h"
@@ -183,11 +182,10 @@ int app_main(void)
 
   Behavior_Start();
   Comm_Start();
-  ProxIR_Start();
   GroundIR_Start();
+  ProxIR_Start();
   Leds_Start();
   //Sound_StartAcquisition();
-  //Sensors_Start();
 
   return 0;
 }
@@ -401,7 +399,5 @@ void AsebaVMResetCB(AsebaVMState* vm)
   vmVariables.productid = PRODUCT_ID;
   vmVariables.fwversion[0] = FW_VERSION;
   vmVariables.fwversion[1] = FW_VARIANT;
-  vmVariables.sd_present = !sd_user_open("_TESTSD");
-  sd_user_open(NULL);
 #endif
 }
