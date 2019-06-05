@@ -18,8 +18,6 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include "driver/timer.h"
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/portmacro.h"
@@ -113,6 +111,42 @@ void Timer_Init(int16_t timerNum, int timerIndex, bool autoReload, double interv
 
 //_____________________________________________________________________________
 
+void Timer_Init1(int16_t timerGroup, int timerIndex, bool autoReload, double interval, void (*fn)(void*))
+{
+  // Select and initialize basic parameters of the timer
+  timer_config_t config;
+
+  config.divider     = TIMER_DIVIDER;
+  config.counter_dir = TIMER_COUNT_UP;
+  config.counter_en  = TIMER_PAUSE;
+  config.alarm_en    = TIMER_ALARM_EN;
+  config.intr_type   = TIMER_INTR_LEVEL;
+  config.auto_reload = autoReload;
+
+  if ((timerGroup < TIMER_GROUP_MAX) && (timerIndex < TIMER_MAX))
+  {
+    timer_init(timerGroup, timerIndex, &config);
+
+    // Timer's counter will initially start from value below
+    // Also, if auto_reload is set, this value will be automatically reload on alarm
+    timer_set_counter_value(timerGroup, timerIndex, 0x00000000ULL);
+
+    // Configure the alarm value and the interrupt on alarm
+    timer_set_alarm_value(timerGroup, timerIndex, interval);
+    timer_enable_intr(timerGroup, timerIndex);
+
+
+    timer_isr_register(timerGroup, timerIndex, fn,
+                      (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL);
+   
+    ESP_LOGI(Tag, "Group %d Timer %d is initialized", timerGroup, timerIndex);
+  }
+  else
+  {
+    ESP_LOGE(Tag, "Invalid parameters, Group = %d, Index = %d", timerGroup, timerIndex);
+  }   
+}
+#if 0
 void Timer_Init1(int16_t timerNum, int timerIndex, bool autoReload, double interval)
 {
   // Select and initialize basic parameters of the timer
@@ -151,12 +185,19 @@ void Timer_Init1(int16_t timerNum, int timerIndex, bool autoReload, double inter
     ESP_LOGI(Tag, "Group %d Timer %d is initialized", timerNum, timerIndex);
   }
 }
-
+#endif
 //_____________________________________________________________________________
 
 void Timer_Start(int16_t timerNum, int16_t timerIndex)
 {
   timer_start(timerNum, timerIndex);
+}
+
+//_____________________________________________________________________________
+
+void Timer_Stop(int16_t timerNum, int16_t timerIndex)
+{
+  timer_pause(timerNum, timerIndex);
 }
 
 //_____________________________________________________________________________
@@ -202,11 +243,11 @@ static void IRAM_ATTR ISR_TimerGroup1(void* para)
   // Clear the interrupt and update the alarm time for the timer with without reload
   if ((intr_status & BIT(timer_idx)) && (timer_idx == TIMER_0))
   {
-    Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_Low);
-    Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
+    //Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_Low);
+    //Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
 
-    TIMERG1.int_clr_timers.t0 = 1;
-    timer_pause(1, 0);
+    //TIMERG1.int_clr_timers.t0 = 1;
+    //timer_pause(1, 0);
   }
   else if ((intr_status & BIT(timer_idx)) && (timer_idx == TIMER_1))
   {

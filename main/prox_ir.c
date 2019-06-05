@@ -153,6 +153,8 @@ static void Callback_TimerReadRxPulse(void* arg);
 static void IRAM_ATTR ISR_InputCaptureUnit0(void* arg);
 static void IRAM_ATTR ISR_InputCaptureUnit1(void* arg);
 
+static void IRAM_ATTR ISR_EndOfTxPulse(void* para);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -184,7 +186,7 @@ void ProxIR_Init(void)
   Timer_Init(1, 1, true, 1);  // Timer used to handle the IR_SENSE_BACK_RIGHT_PIN
   Timer_Start(1, 1);
 
-  Timer_Init1(1, 0, true, TX_PULSE_DURATION);  // Timer used to generate the TX pulse
+  Timer_Init1(1, 0, true, TX_PULSE_DURATION, ISR_EndOfTxPulse);  // Timer used to generate the TX pulse
 
   // When this timer expires, the duration of the RX pulse is calculated
   ReadRxPulseTimer = TimerHw_Create(READ_RX_PULSE_us, Callback_TimerReadRxPulse);
@@ -611,4 +613,27 @@ static void IRAM_ATTR ISR_InputCaptureUnit1(void* arg)
   }
 
   MCPWM[MCPWM_UNIT_1]->int_clr.val = mcpwm_intr_status;
+}
+
+//_____________________________________________________________________________
+
+static void IRAM_ATTR ISR_EndOfTxPulse(void* para)
+{
+  // Retrieve the interrupt status and the counter value
+  // from the timer that reported the interrupt
+  uint32_t intr_status = TIMERG1.int_st_timers.val;
+  TIMERG1.hw_timer[0].update = 1;
+
+  // Clear the interrupt and update the alarm time for the timer with without reload
+  if (intr_status & BIT(0))
+  {
+    Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_Low);
+    Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
+
+    TIMERG1.int_clr_timers.t0 = 1;
+    timer_pause(1, 0);
+  }
+
+  // After the alarm has been triggered, we need enable it again, so it is triggered the next time
+  TIMERG1.hw_timer[0].config.alarm_en = TIMER_ALARM_EN;
 }

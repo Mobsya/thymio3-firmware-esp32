@@ -21,6 +21,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include "driver/timer.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -51,12 +53,15 @@ extern void Timer_Init(int16_t timerNum, int timerIndex, bool autoReload, double
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void Timer_Init1(int16_t timerNum, int timerIndex, bool autoReload, double interval);
+extern void Timer_Init1(int16_t timerGroup, int timerIndex, bool autoReload, double interval, void (*fn)(void*));
+//extern void Timer_Init1(int16_t timerNum, int timerIndex, bool autoReload, double interval);
 
 //! \brief     Start the timer
 //! \pre       First initialize the timer
 //! \param     None
 //! \return    None
 extern void Timer_Start(int16_t timerNum, int16_t timerIndex);
+
+extern void Timer_Stop(int16_t timerNum, int16_t timerIndex);
 
 #endif // TIMER_H_
