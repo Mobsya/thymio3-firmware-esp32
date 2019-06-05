@@ -36,8 +36,8 @@
 #include "aseba_esp32.h"
 #include "board.h"
 #include "gpio.h"
-#include "timer.h"
 #include "timer_hw.h"
+#include "timer_sw.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -61,9 +61,6 @@
 
 // Duration of the pulse = 60 [us] -> TIMER_SCALE * 60 [us] = 300 (timer_group)
 #define TX_PULSE_DURATION               300u
-
-// Duration of the pulse = 60 [us] -> TIMER_SCALE * 1 [s] = TIMER_SCALE (timer_group)
-#define BACK_RIGHT_TIMER_DURATION   5000000u
 
 #define READ_RX_PULSE_us                750u
 //#define READ_UNIT1_INTERVAL_us          875u
@@ -120,10 +117,12 @@ static volatile uint32_t FallingEdgeCounter[7] = {0u, 0u, 0u, 0u, 0u, 0u, 0u};  
 
 static uint32_t PulseDuration[7];
 
-//static T_TimerHw* TxPulsesDurationTimer = NULL;  //!< Timer used to determine the duration of the TX pulses
-static T_TimerHw* ReadRxPulseTimer = NULL;
-//static T_TimerHw* ReadUnit1Timer        = NULL;
-//static T_TimerHw* TxPulsesGapTimer = NULL;       //!< Timer used to determine the gap between two TX pulses
+//static T_TimerSw* TxPulsesDurationTimer = NULL;  //!< Timer used to determine the duration of the TX pulses
+static T_TimerSw* ReadRxPulseTimer = NULL;
+//static T_TimerSw* ReadUnit1Timer        = NULL;
+//static T_TimerSw* TxPulsesGapTimer = NULL;       //!< Timer used to determine the gap between two TX pulses
+
+static T_TimerSw* BackRightPulseTimer = NULL;
 
 static uint8_t SlotNumber = 0xFFu;
 
@@ -183,15 +182,13 @@ void ProxIR_Init(void)
 
   ConfigureInputCapture();
 
-  Timer_Init(1, 1, true, 1);  // Timer used to handle the IR_SENSE_BACK_RIGHT_PIN
-  Timer_Start(1, 1);
-
-  Timer_Init1(1, 0, true, TX_PULSE_DURATION, ISR_EndOfTxPulse);  // Timer used to generate the TX pulse
+  // Timer used to generate the TX pulse
+  TimerHw_Init1(1, 0, true, TX_PULSE_DURATION, ISR_EndOfTxPulse);
 
   // When this timer expires, the duration of the RX pulse is calculated
-  ReadRxPulseTimer = TimerHw_Create(READ_RX_PULSE_us, Callback_TimerReadRxPulse);
+  ReadRxPulseTimer = TimerSw_Create(READ_RX_PULSE_us, Callback_TimerReadRxPulse);
 
-  //TxPulsesGapTimer      = TimerHw_Create(200, Callback_TimerTxPulsesGap);
+  //TxPulsesGapTimer      = TimerSw_Create(200, Callback_TimerTxPulsesGap);
 
   ESP_LOGI(Tag, "Proximity IR sensors are initialized");
 }
@@ -230,12 +227,12 @@ static void RunTxProxIRTask(void* arg)
     Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_High);
     Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_High);
 
-    Timer_Start(1, 0);  // Timer used to generate the TX pulse
+    TimerHw_Start(1, 0);  // Timer used to generate the TX pulse
 
     FirstTxPulsesAreInProgress = true;
 
     // When this timer expires, the duration of the RX pulse is calculated
-    TimerHw_StartTimerOnce(ReadRxPulseTimer, READ_RX_PULSE_us);
+    TimerSw_StartTimerOnce(ReadRxPulseTimer, READ_RX_PULSE_us);
 
     //ESP_LOGE(Tag, "old = %d, new = %d", OldPulseCounter[0], PulseCounter[0]);
 
@@ -389,7 +386,7 @@ static void CalculateRxPulseDuration(void)
 
   if (OldPulseCounter[6] != PulseCounter[6])
   {
-    PulseDuration[6] = (Gpio_GetFallingEdgeTime() - Gpio_GetRisingEdgeTime()) * 4u;
+    PulseDuration[6] = (Gpio_GetFallingEdgeTime() - Gpio_GetRisingEdgeTime()) * 20u;
     vmVariables.prox[6] = PulseDuration[6];
 
     OldPulseCounter[6] = PulseCounter[6];
@@ -433,11 +430,12 @@ static void Callback_TimerReadRxPulse(void* arg)
 }
 
 //_____________________________________________________________________________
+
 #if 0
 static void Callback_TimerTxPulsesGap(void* arg)
 {
   // Transmitting the 2nd pulse
-  TimerHw_StartTimerOnce(TxPulsesDurationTimer, TX_PULSE_DURATION_us);
+  TimerSw_StartTimerOnce(TxPulsesDurationTimer, TX_PULSE_DURATION_us);
 
   Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_High);
   Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_High);

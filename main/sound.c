@@ -37,7 +37,7 @@
 #include "fifo.h"
 #include "i2s.h"
 #include "mp3.h"
-#include "timer_hw.h"
+#include "timer_sw.h"
 
 #include "melody.h"
 
@@ -76,7 +76,7 @@ static const char* Tag = "sound";
 
 static TaskHandle_t PlayerTask = NULL;
 
-static T_TimerHw* GeneratorTimer = NULL;  //!< Used to generate the sound
+static T_TimerSw* GeneratorTimer = NULL;  //!< Used to generate the sound
 
 static bool NoteInProgress = false;
 static bool MelodyIsFinished = false;
@@ -105,7 +105,7 @@ static bool AcquiredDataAreReady = false;
 
 //static TaskHandle_t ProcessingTask = NULL;
 
-static T_TimerHw* AcquisitionTaskTimer = NULL;  //!< Used to schedule the Acquisition task
+static T_TimerSw* AcquisitionTaskTimer = NULL;  //!< Used to schedule the Acquisition task
 
 static bool PlayerIsBusy = false;
 //static bool NewSoundIsRequested = false;
@@ -173,13 +173,13 @@ void Sound_Init(void)
 
   CosineGenerator_Init();
 
-  GeneratorTimer = TimerHw_Create(1000, Callback_TimerGenerator);
+  GeneratorTimer = TimerSw_Create(1000, Callback_TimerGenerator);
 
   DacStatus = E_DacStatus_Cosine;
 
   MicrophoneFifo = FifoFloat_Create(MicrophoneBuffer, MICROPHONE_BUFFER_SIZE);
 
-  //AcquisitionTaskTimer = TimerHw_Create(ACQUISITION_TASK_PERIOD_us, Callback_TimerAcquisitionTask);
+  //AcquisitionTaskTimer = TimerSw_Create(ACQUISITION_TASK_PERIOD_us, Callback_TimerAcquisitionTask);
 
   ESP_LOGI(Tag, "Sound is initialized");
 }
@@ -343,7 +343,7 @@ void Sound_PlayNote(T_Note note, int16_t duration_ms)
   {
     NoteInProgress = true;
 
-    TimerHw_StartTimerOnce(GeneratorTimer, (duration_ms * 1000));
+    TimerSw_StartTimerOnce(GeneratorTimer, (duration_ms * 1000));
 
     CosineGenerator_ConfigureSignal(note.Name, note.Dynamics);
   }

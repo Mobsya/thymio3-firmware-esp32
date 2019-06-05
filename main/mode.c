@@ -35,7 +35,7 @@
 #include "leds.h"
 #include "stm32.h"
 #include "tcp_server.h"
-#include "timer_hw.h"
+#include "timer_sw.h"
 
 #include "color_sensor.h"
 
@@ -88,8 +88,8 @@ static bool MovementTimerIsRunning = false;
 static bool StopTimerIsRunning = false;
 static uint16_t Position = 0u;
 
-static T_TimerHw* MovementTimer = NULL;  //!< Used to move the robot in obedient mode
-static T_TimerHw* StopTimer = NULL;      //!< Used to stop the robot in obedient mode
+static T_TimerSw* MovementTimer = NULL;  //!< Used to move the robot in obedient mode
+static T_TimerSw* StopTimer = NULL;      //!< Used to stop the robot in obedient mode
 
 const T_Note Accord[4];
 
@@ -202,8 +202,8 @@ void Mode_Init(void)
   MovementIsInProgress = false;
   MovementTimerIsRunning = false;
   StopTimerIsRunning = false;
-  MovementTimer = TimerHw_Create(MOVEMENT_DURATION_us, Callback_TimerMovement);
-  StopTimer = TimerHw_Create(STOP_DURATION_us, Callback_TimerStop);
+  MovementTimer = TimerSw_Create(MOVEMENT_DURATION_us, Callback_TimerMovement);
+  StopTimer = TimerSw_Create(STOP_DURATION_us, Callback_TimerStop);
 
   ESP_LOGI(Tag, "Mode is initialized");
 }
@@ -1383,7 +1383,7 @@ static void PlayMovementSequence(void)
 
       if (data == (1 << E_Button_Backward))
       {
-        TimerHw_StartTimerOnce(MovementTimer, MOVEMENT_DURATION_us);
+        TimerSw_StartTimerOnce(MovementTimer, MOVEMENT_DURATION_us);
         MovementIsInProgress = true;
         MovementTimerIsRunning = true;
 
@@ -1393,7 +1393,7 @@ static void PlayMovementSequence(void)
 
       if (data == (1 << E_Button_Forward))
       {
-        TimerHw_StartTimerOnce(MovementTimer, MOVEMENT_DURATION_us);
+        TimerSw_StartTimerOnce(MovementTimer, MOVEMENT_DURATION_us);
         MovementIsInProgress = true;
         MovementTimerIsRunning = true;
 
@@ -1418,13 +1418,13 @@ static void PlayMovementSequence(void)
     }
     else if (MovementIsInProgress && !MovementTimerIsRunning && !StopTimerIsRunning)
     {
-      TimerHw_StartTimerOnce(StopTimer, STOP_DURATION_us);
+      TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
       StopTimerIsRunning = true;
     }
   }
   else if (!MovementTimerIsRunning)  // Handle the last stop delay
   {
-    TimerHw_StartTimerOnce(StopTimer, STOP_DURATION_us);
+    TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
     StopTimerIsRunning = true;
 
     RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence

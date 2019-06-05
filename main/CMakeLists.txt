@@ -70,10 +70,10 @@ set(COMPONENT_SRCS
     thymio-buffer.h
     thymio_natives.c
     thymio_natives.h
-    timer.c
-    timer.h
     timer_hw.c
     timer_hw.h
+    timer_sw.c
+    timer_sw.h
     uart.c
     uart.h
     vm-buffer.c

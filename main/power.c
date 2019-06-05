@@ -29,7 +29,7 @@
 #include "board.h"
 #include "gpio.h"
 #include "stm32.h"
-#include "timer_hw.h"
+#include "timer_sw.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -58,7 +58,7 @@ static T_GpioPinConfig PinConfig = {VA_ENABLE_PIN,
                                     E_GpioInterrupt_Disable
                                    };
 
-static T_TimerHw* PowerModeTimer = NULL;  //!< Used to switch off the ESP32
+static T_TimerSw* PowerModeTimer = NULL;  //!< Used to switch off the ESP32
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -78,7 +78,7 @@ void Power_Init(void)
 {
   Gpio_ConfigurePin(&PinConfig);
 
-  PowerModeTimer = TimerHw_Create(POWER_MODE_DURATION_us, Callback_TimerPowerMode);
+  PowerModeTimer = TimerSw_Create(POWER_MODE_DURATION_us, Callback_TimerPowerMode);
 
   Power_EnableVA();
 }
@@ -125,7 +125,7 @@ void Power_HandlePowerModeRequest(void)
           //vTaskDelay(200 / portTICK_PERIOD_MS);
 
           //ESP_LOGW(Tag, "Start timer");
-          //TimerHw_StartTimerOnce(PowerModeTimer, POWER_MODE_DURATION_us);
+          //TimerSw_StartTimerOnce(PowerModeTimer, POWER_MODE_DURATION_us);
           first = false;
         }
       }

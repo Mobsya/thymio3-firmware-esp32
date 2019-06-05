@@ -1,27 +1,27 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    timer.h
-//! \brief   This module provides the useful functions to use the timer
+//! \file    timer_sw.h
+//! \brief   This module provides the useful functions to use the SW timers
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: timer.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \version $Id: timer_sw.h 18076 2017-04-20 12:28:12Z v.gonet $
 //_____________________________________________________________________________
 
-#ifndef TIMER_H_
-#define TIMER_H_
+#ifndef TIMER_SW_H_
+#define TIMER_SW_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include "driver/timer.h"
+#include <stdint.h>
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -30,6 +30,9 @@
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
+
+struct PrivateTimer;
+typedef struct PrivateTimer T_TimerSw;  //!< Definition of T_TimerSw type
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -43,25 +46,37 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the timer
+//! \brief     Initializes the Timer module
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void Timer_Init(int16_t timerNum, int timerIndex, bool autoReload, double interval_sec);
+extern void TimerSw_Init(void);
 
-//! \brief     Initialize the timer
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void Timer_Init1(int16_t timerGroup, int timerIndex, bool autoReload, double interval, void (*fn)(void*));
-//extern void Timer_Init1(int16_t timerNum, int timerIndex, bool autoReload, double interval);
-
-//! \brief     Start the timer
+//! \brief     Create the timer
 //! \pre       First initialize the timer
-//! \param     None
+//! \param     duration_us - Duration in [us]
+//! \param     callback - Callback function called when duration is reached
+//! \return    Timer created
+extern T_TimerSw* TimerSw_Create(uint32_t duration_us, void (*callback)(void*));
+
+//! \brief     Start the timer once
+//! \pre       First initialize the timer
+//! \param     timer - Timer to start once
+//! \param     duration_us - Duration in [us]
 //! \return    None
-extern void Timer_Start(int16_t timerNum, int16_t timerIndex);
+extern void TimerSw_StartTimerOnce(T_TimerSw* timer, uint32_t duration_us);
 
-extern void Timer_Stop(int16_t timerNum, int16_t timerIndex);
+//! \brief     Start the timer periodically
+//! \pre       First initialize the timer
+//! \param     timer - Timer to start periodically
+//! \param     duration_us - Duration in [us]
+//! \return    None
+extern void TimerSw_StartTimerPeriodically(T_TimerSw* timer, uint32_t duration_us);
 
-#endif // TIMER_H_
+//! \brief     Stop the timer
+//! \pre       First initialize the timer
+//! \param     timer - Timer to stop
+//! \return    None
+extern void TimerSw_StopTimer(T_TimerSw* timer);
+
+#endif // TIMER_SW_H_

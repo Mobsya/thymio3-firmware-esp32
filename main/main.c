@@ -47,8 +47,8 @@
 //#include "sound_data.h"
 #include "stm32.h"
 #include "test.h"
-#include "timer.h"
 #include "timer_hw.h"
+#include "timer_sw.h"
 //#include "uart.h"
 #include "wifi.h"
 #include "wifi_update.h"
@@ -82,8 +82,8 @@ static int16_t OldTimerDuration[2] = {0, 0};
 static T_Settings Settings;
 static T_Settings OldSettings;
 
-static T_TimerHw* AsebaTimer0 = NULL;  //!< Used to schedule the Aseba timer 0
-static T_TimerHw* AsebaTimer1 = NULL;  //!< Used to schedule the Aseba timer 0
+static T_TimerSw* AsebaTimer0 = NULL;  //!< Used to schedule the Aseba timer 0
+static T_TimerSw* AsebaTimer1 = NULL;  //!< Used to schedule the Aseba timer 0
 
 //T_Wav Wav;
 
@@ -117,6 +117,10 @@ int app_main(void)
 // Initialization
 //*****************************************************************************
 
+  ESP_LOGI(Tag, "***************");
+  ESP_LOGI(Tag, "Initializations");
+  ESP_LOGI(Tag, "***************");
+
   Settings_Init();
 #if 0
   FileSystem_Init();
@@ -130,7 +134,7 @@ int app_main(void)
   FileSystem_ReadSettingsFile();
 #endif
 
-  TimerHw_Init();
+  TimerSw_Init();
 
   Gpio_Init();
   Power_Init();
@@ -155,21 +159,28 @@ int app_main(void)
   Fifo16bits_Init();
   FifoFloat_Init();
 
-  Test_Run();
+  //Test_Run();
 
   Behavior_Init();
 
   Mode_Init();
   Mode_InitVM();
 
-  AsebaTimer0 = TimerHw_Create(0, Callback_AsebaTimer0);
-  AsebaTimer1 = TimerHw_Create(0, Callback_AsebaTimer1);
+  AsebaTimer0 = TimerSw_Create(0, Callback_AsebaTimer0);
+  AsebaTimer1 = TimerSw_Create(0, Callback_AsebaTimer1);
 
   WIFI_Init();
+
+  while (!WIFI_IsConnected())
+  {}
 
 //*****************************************************************************
 // Start the tasks
 //*****************************************************************************
+
+  ESP_LOGI(Tag, "***************");
+  ESP_LOGI(Tag, "Tasks");
+  ESP_LOGI(Tag, "***************");
 
   //Test_StartDebugging();
   //I2S_StartReading();
@@ -317,25 +328,25 @@ static void UpdateTimers(void)
 
   if (TimerDuration[0] != OldTimerDuration[0])
   {
-    TimerHw_StopTimer(AsebaTimer0);
+    TimerSw_StopTimer(AsebaTimer0);
 
     OldTimerDuration[0] = TimerDuration[0];
 
     if (TimerDuration[0] > 0)
     {
-      TimerHw_StartTimerPeriodically(AsebaTimer0, TimerDuration[0] * 1000);
+      TimerSw_StartTimerPeriodically(AsebaTimer0, TimerDuration[0] * 1000);
     }
   }
 
   if (TimerDuration[1] != OldTimerDuration[1])
   {
-    TimerHw_StopTimer(AsebaTimer1);
+    TimerSw_StopTimer(AsebaTimer1);
 
     OldTimerDuration[1] = TimerDuration[1];
 
     if (TimerDuration[1] > 0)
     {
-      TimerHw_StartTimerPeriodically(AsebaTimer1, TimerDuration[1] * 1000);
+      TimerSw_StartTimerPeriodically(AsebaTimer1, TimerDuration[1] * 1000);
     }
   }
 }

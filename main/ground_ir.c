@@ -30,7 +30,7 @@
 #include "aseba_esp32.h"
 #include "board.h"
 #include "gpio.h"
-#include "timer_hw.h"
+#include "timer_sw.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -75,8 +75,8 @@ static bool AmbientTaskIsInProgress = false;
 static bool RightTaskIsInProgress   = false;
 static bool LeftTaskIsInProgress    = false;
 
-static T_TimerHw* RightTaskTimer  = NULL;
-static T_TimerHw* LeftTaskTimer = NULL;
+static T_TimerSw* RightTaskTimer  = NULL;
+static T_TimerSw* LeftTaskTimer = NULL;
 
 static TaskHandle_t RightTaskToNotify;
 static TaskHandle_t LeftTaskToNotify;
@@ -116,8 +116,8 @@ void GroundIR_Init(void)
     Gpio_ConfigurePin(&PinConfig[index]);
   }
 
-  RightTaskTimer = TimerHw_Create(RIGHT_TASK_INTERVAL_us, Callback_TimerRightTask);
-  LeftTaskTimer  = TimerHw_Create(LEFT_TASK_INTERVAL_us, Callback_TimerLeftTask);
+  RightTaskTimer = TimerSw_Create(RIGHT_TASK_INTERVAL_us, Callback_TimerRightTask);
+  LeftTaskTimer  = TimerSw_Create(LEFT_TASK_INTERVAL_us, Callback_TimerLeftTask);
 
   ESP_LOGI(Tag, "Ground IR sensors are initialized");
 }
@@ -181,8 +181,8 @@ static void RunGroundIRTask(void* arg)
 
     Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_High);
 
-    TimerHw_StartTimerOnce(RightTaskTimer, RIGHT_TASK_INTERVAL_us);
-    //TimerHw_StartTimerOnce(LeftTaskTimer, LEFT_TASK_INTERVAL_us);
+    TimerSw_StartTimerOnce(RightTaskTimer, RIGHT_TASK_INTERVAL_us);
+    //TimerSw_StartTimerOnce(LeftTaskTimer, LEFT_TASK_INTERVAL_us);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
@@ -210,7 +210,7 @@ static void RunRightGroundIRTask(void* arg)
       Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_Low);
       Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_High);
 
-      TimerHw_StartTimerOnce(LeftTaskTimer, LEFT_TASK_INTERVAL_us);
+      TimerSw_StartTimerOnce(LeftTaskTimer, LEFT_TASK_INTERVAL_us);
     }
     else
     {
@@ -324,7 +324,7 @@ static void Callback_TimerRightTask(void* arg)
   {
     AmbientTaskIsInProgress = false;
 
-    //TimerHw_StartTimerOnce(LeftTaskTimer, LEFT_TASK_INTERVAL_us);
+    //TimerSw_StartTimerOnce(LeftTaskTimer, LEFT_TASK_INTERVAL_us);
 
     vTaskNotifyGiveFromISR(RightTaskToNotify, &higherPriorityTaskWoken);
 
@@ -364,8 +364,8 @@ static void Callback_TimerFirstInterval(void* arg)
   {
     AmbientTaskIsInProgress = false;
 
-    //TimerHw_Stop(FirstTimer);
-    TimerHw_StartTimerOnce(FirstTimer, FIRST_INTERVAL_us);
+    //TimerSw_Stop(FirstTimer);
+    TimerSw_StartTimerOnce(FirstTimer, FIRST_INTERVAL_us);
 
     vTaskNotifyGiveFromISR(RightTaskToNotify, &higherPriorityTaskWoken);
 

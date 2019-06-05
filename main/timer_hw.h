@@ -7,7 +7,7 @@
 //_____________________________________________________________________________
 //
 //! \file    timer_hw.h
-//! \brief   This module provides the useful functions to use the hardware timers
+//! \brief   This module provides the useful functions to use the HW timers
 //!
 //! \author  Vincent Gonet
 //!
@@ -21,7 +21,7 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <stdint.h>
+#include "driver/timer.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -30,9 +30,6 @@
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
-
-struct PrivateTimer;
-typedef struct PrivateTimer T_TimerHw;  //!< Definition of T_TimerHw type
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -46,37 +43,25 @@ typedef struct PrivateTimer T_TimerHw;  //!< Definition of T_TimerHw type
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initializes the Timer module
+//! \brief     Initialize the timer
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void TimerHw_Init(void);
+extern void TimerHw_Init(int16_t timerNum, int timerIndex, bool autoReload, double interval_sec);
 
-//! \brief     Create the timer
-//! \pre       First initialize the timer
-//! \param     duration_us - Duration in [us]
-//! \param     callback - Callback function called when duration is reached
-//! \return    Timer created
-extern T_TimerHw* TimerHw_Create(uint32_t duration_us, void (*callback)(void*));
-
-//! \brief     Start the timer once
-//! \pre       First initialize the timer
-//! \param     timer - Timer to start once
-//! \param     duration_us - Duration in [us]
+//! \brief     Initialize the timer
+//! \pre       None
+//! \param     None
 //! \return    None
-extern void TimerHw_StartTimerOnce(T_TimerHw* timer, uint32_t duration_us);
+extern void TimerHw_Init1(int16_t timerGroup, int timerIndex, bool autoReload, double interval, void (*fn)(void*));
+//extern void Timer_Init1(int16_t timerNum, int timerIndex, bool autoReload, double interval);
 
-//! \brief     Start the timer periodically
+//! \brief     Start the timer
 //! \pre       First initialize the timer
-//! \param     timer - Timer to start periodically
-//! \param     duration_us - Duration in [us]
+//! \param     None
 //! \return    None
-extern void TimerHw_StartTimerPeriodically(T_TimerHw* timer, uint32_t duration_us);
+extern void TimerHw_Start(int16_t timerNum, int16_t timerIndex);
 
-//! \brief     Stop the timer
-//! \pre       First initialize the timer
-//! \param     timer - Timer to stop
-//! \return    None
-extern void TimerHw_StopTimer(T_TimerHw* timer);
+extern void TimerHw_Stop(int16_t timerNum, int16_t timerIndex);
 
 #endif // TIMER_HW_H_

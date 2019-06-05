@@ -27,7 +27,7 @@
 #include "leds.h"
 
 #include "shift_registers.h"
-#include "timer_hw.h"
+#include "timer_sw.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -71,7 +71,7 @@ static const uint8_t LedsOff[REGISTERS_NUM] = {LED_OFF_BANK_0,
                                                LED_OFF_BANK_4
                                               };
 
-static T_TimerHw* LedsTaskTimer = NULL;  //!< Used to schedule the Leds task
+static T_TimerSw* LedsTaskTimer = NULL;  //!< Used to schedule the Leds task
 
 static TaskHandle_t TaskToNotify;
 
@@ -105,7 +105,7 @@ void Leds_Init(void)
 
   ShiftRegisters_Fill(&LedsTable[0][0], REGISTERS_NUM);
 
-  LedsTaskTimer = TimerHw_Create(LEDS_TASK_PERIOD_us, Callback_TimerLedsTask);
+  LedsTaskTimer = TimerSw_Create(LEDS_TASK_PERIOD_us, Callback_TimerLedsTask);
 
   ESP_LOGI(Tag, "LEDs are initialized");
 }
@@ -242,7 +242,7 @@ static void RunLedsTask(void* arg)
 
   ESP_LOGI(Tag, "Start Leds Task");
 
-  TimerHw_StartTimerPeriodically(LedsTaskTimer, LEDS_TASK_PERIOD_us);
+  TimerSw_StartTimerPeriodically(LedsTaskTimer, LEDS_TASK_PERIOD_us);
 
   while (1)
   {
