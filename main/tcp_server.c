@@ -61,6 +61,8 @@ T_FifoBytes* TCPFifoRx = NULL;
 
 static const char* Tag = "tcp_server";
 
+static const char* MDNS_Tag = "mdns";
+
 static bool SocketIsAccepted = false;
 
 static uint8_t RxBuffer[RX_BUFFER_SIZE];  // RECV_QUEUE_SIZE
@@ -71,6 +73,12 @@ static int sock;
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
+static const char* get_mdns_hostname(void);
+
+static void start_zeroconf_service(uint16_t port);
+
+static int socket_loop(int socket);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -79,34 +87,6 @@ static int sock;
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-
-static const char* MDNS_TAG = "mdns";
-
-static const char* get_mdns_hostname() {
-  static char* hostname = NULL;
-  if(!hostname) {
-    uint8_t mac[6];
-    esp_read_mac(mac, ESP_MAC_WIFI_STA);
-    if(asprintf(&hostname, "NotAThymio3-%02X%02X%02X%02X", mac[3], mac[4], mac[5], esp_random()) == -1)
-      abort();
-  }
-  return hostname;
-}
-
-void start_zeroconf_service(uint16_t port)
-{
-  ESP_ERROR_CHECK( mdns_init() );
-  ESP_ERROR_CHECK( mdns_hostname_set(get_mdns_hostname()) );
-  ESP_LOGI(MDNS_TAG, "mdns hostname set to: [%s]", get_mdns_hostname());
-  mdns_instance_name_set("Not A Thymio 3");
-
-  mdns_txt_item_t serviceTxtData[2] = {
-        {"type","Thymio II"},
-        {"protovers","9"}
-    };
-  ESP_ERROR_CHECK( mdns_service_add("Not A Thymio 3", "_aseba", "_tcp", port, serviceTxtData, 2) );
-}
-
 void TCPServer_Init(void)
 {
   TCPFifoRx = Fifo8bits_Create(RxBuffer, RX_BUFFER_SIZE);
@@ -114,43 +94,14 @@ void TCPServer_Init(void)
 
 //_____________________________________________________________________________
 
-
-
-int socket_loop() {
-  // Loop reading data
-  uint8_t rx_buffer[RX_BUFFER_SIZE];
-  while (1)
-  {
-    int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-
-    // Error occured during receiving
-    if (len < 0)
-    {
-      ESP_LOGE(Tag, "recv failed: errno %d", errno);
-      break;
-    }
-    else if (len == 0)  // Connection closed
-    {
-      ESP_LOGI(Tag, "Connection closed");
-      break;
-    }
-    else  // Data received
-    {
-      // Fill the FIFO
-      Fifo8bits_Write(TCPFifoRx, rx_buffer, len);
-    }
-  }
-  return 0;
-}
-
 void TCPServer_RunTask(void)
 {
   char addr_str[128];
   int addr_family;
   int ip_protocol;
 
-  while(1) {
-
+  while(1)
+  {
 #ifdef CONFIG_IPV4
     struct sockaddr_in destAddr;
 
@@ -207,9 +158,12 @@ void TCPServer_RunTask(void)
     struct sockaddr_in6 sourceAddr;  // Large enough for both IPv4 or IPv6
     uint32_t addrLen = sizeof(sourceAddr);
 
-    while(1) {
+    while(1)
+    {
       sock = accept(listen_sock, (struct sockaddr*)&sourceAddr, (socklen_t*)&addrLen);
-      if (sock < 0) {
+      
+      if (sock < 0)
+      {
         ESP_LOGE(Tag, "Unable to accept connection: errno %d", errno);
         break;
       }
@@ -223,9 +177,11 @@ void TCPServer_RunTask(void)
       {
         inet6_ntoa_r(sourceAddr.sin6_addr, addr_str, sizeof(addr_str) - 1);
       }
+
       SocketIsAccepted = true;
       ESP_LOGI(Tag, "Socket accepted");
       socket_loop(sock);
+
       if (sock != -1)
       {
         ESP_LOGE(Tag, "Shutting down socket and restarting...");
@@ -234,6 +190,7 @@ void TCPServer_RunTask(void)
       }
     }
   }
+
   vTaskDelete(NULL);
 }
 
@@ -263,4 +220,75 @@ void TCPServer_Send(const uint8_t* data, uint16_t size)
   {
     //ESP_LOGE(Tag, "Error occured during sending: errno %d", errno);  // TODO Send this message only once
   }
+}
+
+//_____________________________________________________________________________
+
+static const char* get_mdns_hostname(void)
+{
+  static char* hostname = NULL;
+  
+  if (!hostname)
+  {
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    
+    if (asprintf(&hostname, "NotAThymio3-%02X%02X%02X%02X", mac[3], mac[4], mac[5], esp_random()) == -1)
+    {
+      abort();
+    }
+  }
+
+  return hostname;
+}
+
+//_____________________________________________________________________________
+
+static void start_zeroconf_service(uint16_t port)
+{
+  ESP_ERROR_CHECK(mdns_init());
+  ESP_ERROR_CHECK(mdns_hostname_set(get_mdns_hostname()));
+  
+  ESP_LOGI(MDNS_Tag, "mdns hostname set to: [%s]", get_mdns_hostname());
+  mdns_instance_name_set("Not A Thymio 3");
+
+  mdns_txt_item_t serviceTxtData[2] =
+  {
+    {"type","Thymio II"},
+    {"protovers","9"}
+  };
+  
+  ESP_ERROR_CHECK( mdns_service_add("Not A Thymio 3", "_aseba", "_tcp", port, serviceTxtData, 2) );
+}
+
+//_____________________________________________________________________________
+
+static int socket_loop(int socket)
+{
+  // Loop reading data
+  uint8_t rx_buffer[RX_BUFFER_SIZE];
+  
+  while (1)
+  {
+    int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
+
+    // Error occured during receiving
+    if (len < 0)
+    {
+      ESP_LOGE(Tag, "recv failed: errno %d", errno);
+      break;
+    }
+    else if (len == 0)  // Connection closed
+    {
+      ESP_LOGI(Tag, "Connection closed");
+      break;
+    }
+    else  // Data received
+    {
+      // Fill the FIFO
+      Fifo8bits_Write(TCPFifoRx, rx_buffer, len);
+    }
+  }
+  
+  return 0;
 }
