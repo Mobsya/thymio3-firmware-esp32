@@ -52,8 +52,6 @@ set(COMPONENT_SRCS
     prox_ir.c
     prox_ir.h
     rf.h
-    sensors.c
-    sensors.h
     shift_registers.c
     shift_registers.h
     sn74hc595.c
