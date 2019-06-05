@@ -119,7 +119,7 @@ void Leds_Start(void)
     "sensor",       // Name of the task
     4096,           // Stack size in words
     NULL,           // Task input parameter
-    6,              // Priority of the task
+    2,              // Priority of the task
     &TaskToNotify,  // Task handle
     0);             // Core where the task should run
 }
@@ -273,7 +273,6 @@ static void Callback_TimerLedsTask(void* arg)
 
   vTaskNotifyGiveFromISR(TaskToNotify, &higherPriorityTaskWoken);
   //result = xTaskNotifyFromISR(TaskToNotify, 0, eNoAction, &higherPriorityTaskWoken);
-
 
   // If the call to xTaskNotifyFromISR() returns pdFAIL then the task
   // is not keeping up with the rate at which the timer elapsed.

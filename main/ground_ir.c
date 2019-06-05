@@ -40,8 +40,8 @@
 
 #define CALIB_HYSTERESIS             20
 
-#define RIGHT_TASK_INTERVAL_us     375u
-#define LEFT_TASK_INTERVAL_us      375u
+#define RIGHT_TASK_INTERVAL_us     275u  // 275us + 100us = 375us  --> 100us for the ADC conversions
+#define LEFT_TASK_INTERVAL_us      275u
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -131,7 +131,7 @@ void GroundIR_Start(void)
     "sensor",         // Name of the task
     4096,             // Stack size in words
     NULL,             // Task input parameter
-    4,                // Priority of the task
+    3,                // Priority of the task
     NULL,             // Task handle
     0);               // Core where the task should run
 
@@ -140,7 +140,7 @@ void GroundIR_Start(void)
     "right",              // Name of the task
     4096,                  // Stack size in words
     NULL,                  // Task input parameter
-    4,                     // Priority of the task
+    3,                     // Priority of the task
     &RightTaskToNotify,    // Task handle
     0);                    // Core where the task should run
 
@@ -149,7 +149,7 @@ void GroundIR_Start(void)
     "left",             // Name of the task
     4096,                 // Stack size in words
     NULL,                 // Task input parameter
-    4,                    // Priority of the task
+    3,                    // Priority of the task
     &LeftTaskToNotify,    // Task handle
     0);                   // Core where the task should run
 }
@@ -168,7 +168,7 @@ static void RunGroundIRTask(void* arg)
 {
   ESP_LOGI(Tag, "Start Ground IR Task");
 
-  uint16_t sensors[2];
+  uint16_t sensors[2] = {0u, 0u};
 
   while (1)
   {
@@ -192,7 +192,7 @@ static void RunGroundIRTask(void* arg)
 
 static void RunRightGroundIRTask(void* arg)
 {
-  uint16_t sensors[2];
+  uint16_t sensors[2] = {0u, 0u};
 
   ESP_LOGI(Tag, "Start Right Ground IR Task");
 
@@ -223,7 +223,7 @@ static void RunRightGroundIRTask(void* arg)
 
 static void RunLeftGroundIRTask(void* arg)
 {
-  uint16_t sensors[2];
+  uint16_t sensors[2] = {0u, 0u};
 
   ESP_LOGI(Tag, "Start Left Ground IR Task");
 
