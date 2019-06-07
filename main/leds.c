@@ -42,10 +42,10 @@
 #define LED_OFF_BANK_4          0x0Fu  // LSB --> U14.QA
 
 //#define LEDS_TASK_PERIOD_us      125u  //!< Leds task frequency = 8 [kHz] -> Leds frequency = 8 [kHz] / 32 = 250 [Hz]
-#define LEDS_TASK_PERIOD_us      312u  //!< Leds task frequency = 3.2 [kHz] -> Leds frequency = 3.2 [kHz] / 32 = 100 [Hz]
+//#define LEDS_TASK_PERIOD_us      312u  //!< Leds task frequency = 3.2 [kHz] -> Leds frequency = 3.2 [kHz] / 32 = 100 [Hz]
 //#define LEDS_TASK_PERIOD_us      625u  //!< Leds task frequency = 1.6 [kHz] -> Leds frequency = 1.6 [kHz] / 32 = 50 [Hz]
 
-//#define LEDS_TASK_PERIOD_us     1250u  //!< Leds task frequency = 800 [Hz] -> Leds frequency = 800 [Hz] / 8 = 100 [Hz]
+#define LEDS_TASK_PERIOD_us     1250u  //!< Leds task frequency = 800 [Hz] -> Leds frequency = 800 [Hz] / 8 = 100 [Hz]
 
 //-----------------------------------------------------------------------------
 // Types Definitions

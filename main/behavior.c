@@ -192,7 +192,7 @@ static void RunBehaviorTask(void* arg)
   while (1)
   {
     RunBehaviors();
-    vTaskDelay(19 / portTICK_PERIOD_MS);
+    vTaskDelay(80 / portTICK_PERIOD_MS);
   }
 }
 
@@ -465,7 +465,7 @@ static void SetAccelerometerLeds(void)
     }
 
     //intensity = (40 - (abs(vmVariables.acc_bis[2]) * 2));  // TODO
-    intensity = 32;
+    intensity = MAX_BRIGHTNESS;
 
     if (intensity < 0)
     {
