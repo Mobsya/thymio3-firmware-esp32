@@ -137,7 +137,7 @@ void GroundIR_Start(void)
 
   xTaskCreatePinnedToCore(
     RunRightGroundIRTask,  // Function to implement the task
-    "right",              // Name of the task
+    "right",               // Name of the task
     4096,                  // Stack size in words
     NULL,                  // Task input parameter
     3,                     // Priority of the task
@@ -146,7 +146,7 @@ void GroundIR_Start(void)
 
   xTaskCreatePinnedToCore(
     RunLeftGroundIRTask,  // Function to implement the task
-    "left",             // Name of the task
+    "left",               // Name of the task
     4096,                 // Stack size in words
     NULL,                 // Task input parameter
     3,                    // Priority of the task
@@ -350,54 +350,3 @@ static void Callback_TimerLeftTask(void* arg)
     }
   }
 }
-
-
-#if 0
-static void Callback_TimerFirstInterval(void* arg)
-{
-  BaseType_t higherPriorityTaskWoken = pdFALSE;
-
-  if (AmbientTaskIsInProgress)
-  {
-    AmbientTaskIsInProgress = false;
-
-    //TimerSw_Stop(FirstTimer);
-    TimerSw_StartTimerOnce(FirstTimer, FIRST_INTERVAL_us);
-
-    vTaskNotifyGiveFromISR(RightTaskToNotify, &higherPriorityTaskWoken);
-
-    //if (higherPriorityTaskWoken != pdFALSE)
-    {
-      portYIELD_FROM_ISR();
-    }
-  }
-  if (RightTaskIsInProgress)
-  {
-    RightTaskIsInProgress = false;
-
-    vTaskNotifyGiveFromISR(LeftTaskToNotify, &higherPriorityTaskWoken);
-
-    //if (higherPriorityTaskWoken != pdFALSE)
-    {
-      portYIELD_FROM_ISR();
-    }
-  }
-}
-#endif
-
-//_____________________________________________________________________________
-#if 0
-static void Callback_TimerSecondInterval(void* arg)
-{
-  uint16_t sensors[3];
-
-  ADC_AcquireGroundIRValues(sensors);
-
-  vmVariables.ground_reflected[0] = sensors[1];
-  vmVariables.ground_delta[0] = PerformCalibration((sensors[1] - vmVariables.ground_ambiant[0]), E_Sensor_Left);
-
-  Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_Low);
-
-  SET_EVENT(EVENT_PROX);
-}
-#endif

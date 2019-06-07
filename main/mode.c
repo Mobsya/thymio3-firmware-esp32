@@ -1316,28 +1316,24 @@ static void RecordButtonsSequence(void)
   {
     data |= (1 << E_Button_Backward);
     Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-    ESP_LOGI(Tag, "data = %d", data);
   }
 
   when(buttonState[E_Button_Left])
   {
     data |= (1 << E_Button_Left);
     Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-    ESP_LOGI(Tag, "data = %d", data);
   }
 
   when(buttonState[E_Button_Forward])
   {
     data |= (1 << E_Button_Forward);
     Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-    ESP_LOGI(Tag, "data = %d", data);
   }
 
   when(buttonState[E_Button_Right])
   {
     data |= (1 << E_Button_Right);
     Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-    ESP_LOGI(Tag, "data = %d", data);
   }
 
   when(tap)
@@ -1376,10 +1372,7 @@ static void PlayMovementSequence(void)
       }
 
       Fifo8bits_Read(ButtonsSeqFifo, &data, 1);
-
       Fifo8bits_Peek(ButtonsSeqFifo, &next, 1);
-
-      ESP_LOGI(Tag, "data = %d, next = %d", data, next);
 
       if (data == (1 << E_Button_Backward))
       {

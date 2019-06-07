@@ -114,8 +114,6 @@ void Power_HandlePowerModeRequest(void)
           //PinConfig.mode = E_GpioMode_Input;
           //Gpio_ConfigurePin(&PinConfig);
 
-          ESP_LOGW(Tag, "Sleep mode requested");
-
           STM32_AllowToSwitchOff();  // Give the permission to the STM32 to switch off
 
           Power_DisableVA();  // Switch off the IR sensors, the color sensor, the accelerometer/gyroscope, the microphone and some LEDs
