@@ -47,14 +47,7 @@
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void TimerHw_Init(int16_t timerNum, int timerIndex, bool autoReload, double interval_sec);
-
-//! \brief     Initialize the timer
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void TimerHw_Init1(int16_t timerGroup, int timerIndex, bool autoReload, double interval, void (*fn)(void*));
-//extern void Timer_Init1(int16_t timerNum, int timerIndex, bool autoReload, double interval);
+extern void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, double interval, void (*fn)(void*));
 
 //! \brief     Start the timer
 //! \pre       First initialize the timer

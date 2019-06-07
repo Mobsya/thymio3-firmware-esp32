@@ -183,7 +183,7 @@ void ProxIR_Init(void)
   ConfigureInputCapture();
 
   // Timer used to generate the TX pulse
-  TimerHw_Init1(1, 0, true, TX_PULSE_DURATION, ISR_EndOfTxPulse);
+  TimerHw_Init(1, 0, true, TX_PULSE_DURATION, ISR_EndOfTxPulse);
 
   // When this timer expires, the duration of the RX pulse is calculated
   ReadRxPulseTimer = TimerSw_Create(READ_RX_PULSE_us, Callback_TimerReadRxPulse);

@@ -117,7 +117,7 @@ void TCPServer_RunTask(void)
 
     bzero(&destAddr.sin6_addr.un, sizeof(destAddr.sin6_addr.un));
     destAddr.sin6_family = AF_INET6;
-    destAddr.sin6_port = htons(PORT);
+    destAddr.sin6_port = htons(PORT_NUM);
     addr_family = AF_INET6;
     ip_protocol = IPPROTO_IPV6;
     inet6_ntoa_r(destAddr.sin6_addr, addr_str, sizeof(addr_str) - 1);

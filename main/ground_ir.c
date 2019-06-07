@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -182,7 +182,6 @@ static void RunGroundIRTask(void* arg)
     Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_High);
 
     TimerSw_StartTimerOnce(RightTaskTimer, RIGHT_TASK_INTERVAL_us);
-    //TimerSw_StartTimerOnce(LeftTaskTimer, LEFT_TASK_INTERVAL_us);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
@@ -231,8 +230,6 @@ static void RunLeftGroundIRTask(void* arg)
   {
     if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY) != 0u)
     {
-      //ESP_LOGE(Tag, "L");
-
       LeftTaskIsInProgress = true;
 
       ADC_AcquireGroundIRValues(sensors);

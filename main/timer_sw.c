@@ -79,7 +79,7 @@ void TimerSw_Init(void)
     TableTimers[i].Duration_us = 0ul;
   }
 
-  ESP_LOGI(Tag, "Hardware Timer is initialized");
+  ESP_LOGI(Tag, "Software Timer is initialized");
 }
 
 //_____________________________________________________________________________
@@ -105,7 +105,7 @@ T_TimerSw* TimerSw_Create(uint32_t duration_us, void (*callback)(void*))
     }
   }
 
-  ESP_LOGI(Tag, "Hardware Timer %d is created", i);
+  ESP_LOGI(Tag, "Software Timer %d is created", i);
 
   return timer;
 }
