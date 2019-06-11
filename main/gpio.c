@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -11,7 +11,7 @@
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: gpio.c 18076 2017-04-20 12:28:12Z v.gonet $
+//! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
 //-----------------------------------------------------------------------------
@@ -302,14 +302,14 @@ static void IRAM_ATTR ISR_GPIOHandler(void* arg)
   {
     if (Gpio_GetPinLevel(gpio_num) == E_GpioLevel_High)
     {
-      timer_get_counter_value(1, 1, &start);
+      start = esp_timer_get_time();
       risingEdgeBackRightDone = true;
     }
     else
     {
       if (risingEdgeBackRightDone)
       {
-        timer_get_counter_value(1, 1, &stop);
+        stop = esp_timer_get_time();
         RisingEdge = start;
         FallingEdge = stop;
         PulseCounter++;
