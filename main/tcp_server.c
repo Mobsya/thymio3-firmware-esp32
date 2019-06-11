@@ -11,7 +11,7 @@
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: tcp_server.c 18076 2017-04-20 12:28:12Z v.gonet $
+//! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
 //-----------------------------------------------------------------------------
@@ -141,7 +141,7 @@ void TCPServer_RunTask(void)
       break;
     }
 
-    ESP_LOGI(Tag, "Socket binded");
+    ESP_LOGI(Tag, "Socket bound, port %d", PORT_NUM);
 
     err = listen(listen_sock, 1);
 

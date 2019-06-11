@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -11,7 +11,7 @@
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: wifi.c 18076 2017-04-20 12:28:12Z v.gonet $
+//! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
 //-----------------------------------------------------------------------------
@@ -138,10 +138,10 @@ void WIFI_Configure(void)
     {
       .ssid = CONFIG_WIFI_SSID,
       .password = CONFIG_WIFI_PASSWORD,
-      .scan_method = DEFAULT_SCAN_METHOD,
-      .sort_method = DEFAULT_SORT_METHOD,
-      .threshold.rssi = DEFAULT_RSSI,
-      .threshold.authmode = DEFAULT_AUTHMODE,
+      //.scan_method = DEFAULT_SCAN_METHOD,
+      //.sort_method = DEFAULT_SORT_METHOD,
+      //.threshold.rssi = DEFAULT_RSSI,
+      //.threshold.authmode = DEFAULT_AUTHMODE,
       //.bssid_set = false
     },
   };
@@ -169,7 +169,7 @@ void WIFI_Init(void)
   WIFI_InitNVS();
   WIFI_Configure();
   //WIFIUpdate_Init();
-  WIFI_WaitForIP();
+  //WIFI_WaitForIP();
 //#endif
 
   ESP_LOGI(Tag, "WIFI is initialized");
@@ -247,7 +247,7 @@ void WIFI_GetIPAddress(void)
 }
 
 //_____________________________________________________________________________
-
+#if 0
 void WIFI_WaitForIP(void)
 {
   uint32_t bits = (IPV4_GOTIP_BIT | IPV6_GOTIP_BIT);
@@ -258,7 +258,7 @@ void WIFI_WaitForIP(void)
   ESP_LOGI(Tag, "Connected to AP");
   WifiIsConnected = true;
 }
-
+#endif
 //_____________________________________________________________________________
 
 static void RunWifiTask(void* arg)
@@ -268,26 +268,6 @@ static void RunWifiTask(void* arg)
   TCPServer_RunTask();
 }
 
-#if 0
-static void RunWifiTask(void* arg)
-{
-  ESP_LOGI(Tag, "Start Wifi Task");
-  //NVS_Init();
-  //WifiUpdate_Init();
-  //WifiUpdate_Connect(DEFAULT_WIFI_SSID, DEFAULT_WIFI_PASSWORD);
-
-  WIFI_InitNVS();
-  WIFI_Init();
-//#if 0
-  while (1)
-  {
-    //vTaskDelete(NULL);
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-  }
-//#endif
-}
-#endif
-
 //_____________________________________________________________________________
 
 static esp_err_t EventHandler(void* ctx, system_event_t* event)
@@ -296,67 +276,15 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
 
   switch (event->event_id)
   {
-    case SYSTEM_EVENT_SCAN_DONE:
-      esp_wifi_scan_get_ap_num(&apCount);
-
-      printf("Number of access points found: %d\n", event->event_info.scan_done.number);
-
-      if (apCount > 0u)
-      {
-        wifi_ap_record_t* list = (wifi_ap_record_t*)malloc(sizeof(wifi_ap_record_t) * apCount);
-        ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&apCount, list));
-
-        printf("======================================================================\n");
-        printf("             SSID             |    RSSI    |           AUTH           \n");
-        printf("======================================================================\n");
-
-        for (uint16_t i = 0u; i < apCount; i++)
-        {
-          char* authmode;
-
-          switch (list[i].authmode)
-          {
-            case WIFI_AUTH_OPEN:
-              authmode = "WIFI_AUTH_OPEN";
-              break;
-
-            case WIFI_AUTH_WEP:
-              authmode = "WIFI_AUTH_WEP";
-              break;
-
-            case WIFI_AUTH_WPA_PSK:
-              authmode = "WIFI_AUTH_WPA_PSK";
-              break;
-
-            case WIFI_AUTH_WPA2_PSK:
-              authmode = "WIFI_AUTH_WPA2_PSK";
-              break;
-
-            case WIFI_AUTH_WPA_WPA2_PSK:
-              authmode = "WIFI_AUTH_WPA_WPA2_PSK";
-              break;
-
-            default:
-              authmode = "Unknown";
-              break;
-          }
-
-          printf("%26.26s    |    % 4d    |    %22.22s\n", list[i].ssid, list[i].rssi, authmode);
-        }
-        free(list);
-        printf("\n\n");
-      }
-      break;
-
     case SYSTEM_EVENT_STA_START:
       ESP_ERROR_CHECK(esp_wifi_connect());
       ESP_LOGI(Tag, "SYSTEM_EVENT_STA_START");
       break;
 
-    case SYSTEM_EVENT_STA_CONNECTED:
+    //case SYSTEM_EVENT_STA_CONNECTED:
       /* enable ipv6 */
-      tcpip_adapter_create_ip6_linklocal(TCPIP_ADAPTER_IF_STA);
-      break;
+      //tcpip_adapter_create_ip6_linklocal(TCPIP_ADAPTER_IF_STA);
+      //break;
 
     case SYSTEM_EVENT_STA_DISCONNECTED:
       ESP_ERROR_CHECK(esp_wifi_connect());
@@ -373,15 +301,17 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
       //ESP_LOGI(Tag, "%d", ip_uint);
       //ESP_LOGI(Tag, "got ip:%s", ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
 
+      WifiIsConnected = true;
+
       xEventGroupSetBits(EventGroup, IPV4_GOTIP_BIT);
       ESP_LOGI(Tag, "SYSTEM_EVENT_STA_GOT_IP");
       break;
 
-    case SYSTEM_EVENT_AP_STACONNECTED:
-      ESP_LOGI(Tag, "station:"MACSTR" join, AID=%d",
-               MAC2STR(event->event_info.sta_connected.mac),
-               event->event_info.sta_connected.aid);
-      break;
+    //case SYSTEM_EVENT_AP_STACONNECTED:
+      //ESP_LOGI(Tag, "station:"MACSTR" join, AID=%d",
+      //         MAC2STR(event->event_info.sta_connected.mac),
+      //         event->event_info.sta_connected.aid);
+      //break;
 
     case SYSTEM_EVENT_AP_STADISCONNECTED:
       ESP_LOGI(Tag, "station:"MACSTR"leave, AID=%d",
@@ -389,11 +319,11 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
                event->event_info.sta_disconnected.aid);
       break;
 
-    case SYSTEM_EVENT_AP_PROBEREQRECVED:
-      ESP_LOGI(Tag, "SYSTEM_EVENT_AP_STADISCONNECTED: " MACSTR " rssi=%d",
-               MAC2STR(event->event_info.ap_probereqrecved.mac),
-               event->event_info.ap_probereqrecved.rssi);
-      break;
+    //case SYSTEM_EVENT_AP_PROBEREQRECVED:
+      //ESP_LOGI(Tag, "SYSTEM_EVENT_AP_STADISCONNECTED: " MACSTR " rssi=%d",
+      //         MAC2STR(event->event_info.ap_probereqrecved.mac),
+      //         event->event_info.ap_probereqrecved.rssi);
+      //break;
 
     case SYSTEM_EVENT_AP_STA_GOT_IP6:
       xEventGroupSetBits(EventGroup, IPV6_GOTIP_BIT);
