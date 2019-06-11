@@ -122,24 +122,20 @@ static void RunCommTask(void* arg)
     Accelerometer_GetAcceleration();
     Gyroscope_GetAngularPosition();
 
+    ColorSensor_ReadColor();
+
     STM32_ReadInducedVoltage();
     STM32_ReadButtonStatus();
+    STM32_ReadStatus();
+    STM32_ReadMotorCurrent();
+    STM32_ReadBatteryVoltage();
+    STM32_ReadPwmDutyCycle();
+    STM32_ReadButtonRawData();
+    STM32_ReadButtonMean();
+    STM32_ReadButtonNoise();
 
-    if ((counter % 2u) == 0u)  // Every 40 [ms], 25 [Hz] (vTaskDelay = 20 [ms])
+    if ((counter % 5u) == 0u)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 20 [ms])
     {
-      ColorSensor_ReadColor();
-    }
-
-    if ((counter % 3u) == 0u)  // Every 60 [ms], 16.6 [Hz] (vTaskDelay = 20 [ms])
-    {
-      STM32_ReadStatus();
-      STM32_ReadMotorCurrent();
-      STM32_ReadBatteryVoltage();
-      STM32_ReadPwmDutyCycle();
-      STM32_ReadButtonRawData();
-      STM32_ReadButtonMean();
-      STM32_ReadButtonNoise();
-
       Power_HandlePowerModeRequest();
     }
 
