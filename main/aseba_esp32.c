@@ -38,7 +38,6 @@
 //#include <usb/usb.h>
 //#include "usb_function_cdc.h"
 //#include "usb_uart.h"
-#include "rf.h"
 //#include "log.h"
 #include "aseba_esp32.h"
 //#include "memory_layout.h"

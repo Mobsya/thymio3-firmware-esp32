@@ -20,17 +20,15 @@
 
 #include "esp_log.h"
 
-#include "aseba_esp32.h"
-#include "rf.h"
 #include "thymio-buffer.h"
-#include "uart.h"
 
-#include "stm32.h"
+#include "aseba_esp32.h"
 #include "fifo.h"
-#include "tcp_server.h"
-#include "wifi.h"
-
 #include "leds.h"
+#include "stm32.h"
+#include "tcp_server.h"
+#include "uart.h"
+#include "wifi.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -41,7 +39,7 @@
 // USB is connected _AND_ running (DTE bit set)
 #define MODE_USB    0x1
 // RF link is present
-#define MODE_RF     0x0
+#define MODE_WIFI   0x0
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -125,7 +123,7 @@ void AsebaFifoCheckConnectionMode(void)
   {
     if (TCPServer_IsSocketAccepted())
     {
-      connection_mode = MODE_RF;
+      connection_mode = MODE_WIFI;
     }
     else
     {
@@ -164,7 +162,7 @@ void AsebaFifoCheckConnectionMode(void)
   // No usb, so try RF.
   if (rf_get_status() & RF_PRESENT)
   {
-    if (connection_mode == MODE_RF)
+    if (connection_mode == MODE_WIFI)
     {
       return;  // Nothing to do
     }
@@ -178,7 +176,7 @@ void AsebaFifoCheckConnectionMode(void)
       rf_set_link(RF_UP);
     }
 
-    connection_mode = MODE_RF;
+    connection_mode = MODE_WIFI;
 
     return;
   }
@@ -324,7 +322,7 @@ void AsebaSendBuffer(AsebaVMState* vm, const uint8_t* data, uint16_t length)
       }
     }
   }
-  else if (connection_mode == MODE_RF)
+  else if (connection_mode == MODE_WIFI)
   {
     if (length >= 2)
     {
@@ -486,7 +484,7 @@ uint16_t AsebaGetBuffer(AsebaVMState* vm, uint8_t* data, uint16_t maxLength, uin
       ret = len;
     }
   }
-  else if (connection_mode == MODE_RF)
+  else if (connection_mode == MODE_WIFI)
   {
     if (used >= 6)
     {

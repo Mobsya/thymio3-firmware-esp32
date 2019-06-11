@@ -51,7 +51,6 @@ set(COMPONENT_SRCS
     power.h
     prox_ir.c
     prox_ir.h
-    rf.h
     shift_registers.c
     shift_registers.h
     sn74hc595.c
