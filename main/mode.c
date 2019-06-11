@@ -464,8 +464,6 @@ static T_Mode SelectNextMode(T_Mode mode, int16_t index)
   }
   while (!IsModeEnabled(temp));
 
-  ESP_LOGE(Tag, "next = %d", temp);
-
   return (T_Mode)temp;
 }
 
@@ -563,8 +561,8 @@ static void RunExplorer(void)
   }
   else
   {
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0);
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0u);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0u);
   }
 }
 
@@ -764,7 +762,7 @@ static void RunFollower(void)
       // Do nothing
     }
 
-    Leds_SetCircleBrightness(0, (led_state >> 4), (led_state >> 3), led_state, 32, led_state, (led_state >> 3),
+    Leds_SetCircleBrightness(0, (led_state >> 4), (led_state >> 3), led_state, MAX_BRIGHTNESS, led_state, (led_state >> 3),
                              (led_state >> 4));
   }
   else
@@ -800,8 +798,8 @@ static void RunFollower(void)
   }
   else
   {
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0);
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0u);
+    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0u);
   }
 
   if (does_see_friend)
@@ -1015,9 +1013,9 @@ static int16_t GetBodyColorPulse(void)
   {
     ret = led_pulse;
 
-    if (led_pulse >= 32)
+    if (led_pulse >= MAX_BRIGHTNESS)
     {
-      led_pulse = -128;
+      led_pulse = -(MAX_BRIGHTNESS * 4);
     }
   }
   else
@@ -1044,7 +1042,7 @@ static void GetRainbow(uint8_t* rgb)
   }
 
   rgb[0] = led_i;
-  rgb[1] = (led_i + 32);
+  rgb[1] = (led_i + MAX_BRIGHTNESS);
 
   if (rgb[1] > 96)
   {
@@ -1073,7 +1071,7 @@ static uint8_t GetRainbowBrightness(uint8_t index)
   {
     brightness = (64u - index);
   }
-  else if (index < 32u)
+  else if (index < MAX_BRIGHTNESS)
   {
     brightness = index;
   }
@@ -1096,9 +1094,9 @@ static void RunCircleLedRotation(void)
   led_state += 2;
   fixed = (led_state / MAX_BRIGHTNESS);
 
-  l[fixed] = MAX_BRIGHTNESS;
-  l[(fixed - 1) & 0x7] = (MAX_BRIGHTNESS - (led_state & 0x1F));
-  l[(fixed + 1) & 0x7] = (led_state & 0x1F);
+  l[fixed & 0x7] = MAX_BRIGHTNESS;
+  l[(fixed - 1) & 0x7] = (MAX_BRIGHTNESS - (led_state & (MAX_BRIGHTNESS - 1)));
+  l[(fixed + 1) & 0x7] = (led_state & (MAX_BRIGHTNESS - 1));
 
   Leds_SetCircleBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
 }
@@ -1114,10 +1112,10 @@ static void RunCircleLedCross(void)
   led_state += 2;
   fixed = (led_state / MAX_BRIGHTNESS);
 
-  l[fixed] = MAX_BRIGHTNESS;
-  l[(fixed - 2) & 0x7] = (MAX_BRIGHTNESS - (led_state & 0x1F));
-  l[(fixed + 2) & 0x7] = (led_state & 0x1F);
-  l[(fixed + 4) & 0x7] = (led_state & 0x1F);
+  l[fixed & 0x7] = MAX_BRIGHTNESS;
+  l[(fixed - 2) & 0x7] = (MAX_BRIGHTNESS - (led_state & (MAX_BRIGHTNESS - 1)));
+  l[(fixed + 2) & 0x7] = (led_state & (MAX_BRIGHTNESS - 1));
+  l[(fixed + 4) & 0x7] = (led_state & (MAX_BRIGHTNESS - 1));
 
   Leds_SetCircleBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
 }
@@ -1292,7 +1290,7 @@ static void SetTargetAccordingToDirection(int16_t* direction)
   {
     vmVariables.target[0] = SPEED_LINE;
     vmVariables.target[1] = -SPEED_LINE;
-    //leds_set_circle(32,32,32,32,32,32,32,32);
+    //leds_set_circle(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
   }
   else
   {
@@ -1396,17 +1394,17 @@ static void PlayMovementSequence(void)
 
       if (next == 0)
       {
-        Leds_SetCircleBrightness(32, 0, 32, 0, 32, 0, 32, 0);
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u);
       }
 
       if (next == (1 << E_Button_Backward))
       {
-        Leds_SetCircleBrightness(0, 0, 0, 0, 32, 0, 0, 0);
+        Leds_SetCircleBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u);
       }
 
       if (next == (1 << E_Button_Forward))
       {
-        Leds_SetCircleBrightness(32, 0, 0, 0, 0, 0, 0, 0);
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
       }
     }
     else if (MovementIsInProgress && !MovementTimerIsRunning && !StopTimerIsRunning)

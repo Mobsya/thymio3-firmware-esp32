@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -11,7 +11,7 @@
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: behavior.c 18076 2017-04-20 12:28:12Z v.gonet $
+//! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
 //-----------------------------------------------------------------------------
@@ -192,7 +192,7 @@ static void RunBehaviorTask(void* arg)
   while (1)
   {
     RunBehaviors();
-    vTaskDelay(80 / portTICK_PERIOD_MS);
+    vTaskDelay(40 / portTICK_PERIOD_MS);  // MAX_BRIGHTNESS = 16
   }
 }
 
@@ -246,9 +246,7 @@ static void RunBehaviors(void)
 
 static void SetButtonsLeds(void)
 {
-  static uint8_t brightness[BUTTONS_NUM] = {MIN_BRIGHTNESS, MIN_BRIGHTNESS, MIN_BRIGHTNESS,
-                                            MIN_BRIGHTNESS, MIN_BRIGHTNESS
-                                           };
+  static uint8_t brightness[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
   uint8_t* buttonState;
 
   buttonState = STM32_GetButtonStatus();
@@ -266,11 +264,11 @@ static void SetButtonsLeds(void)
     }
     else
     {
-      brightness[index] = MIN_BRIGHTNESS;
+      brightness[index] = 0u;
     }
   }
 
-  if (brightness[E_Button_Center] > MIN_BRIGHTNESS)
+  if (brightness[E_Button_Center] > 0u)
   {
     for (T_Led index = E_Led_Button_0; index <= E_Led_Button_1; index++)
     {
@@ -279,49 +277,49 @@ static void SetButtonsLeds(void)
   }
   else
   {
-    if (brightness[E_Button_Backward] != MIN_BRIGHTNESS)
+    if (brightness[E_Button_Backward] != 0u)
     {
       Leds_SetSingleBrightness(E_Led_Button_2, brightness[E_Button_Backward]);
     }
 
-    if (brightness[E_Button_Left] != MIN_BRIGHTNESS)
+    if (brightness[E_Button_Left] != 0u)
     {
       Leds_SetSingleBrightness(E_Led_Button_3, brightness[E_Button_Left]);
     }
 
-    if (brightness[E_Button_Forward] != MIN_BRIGHTNESS)
+    if (brightness[E_Button_Forward] != 0u)
     {
       Leds_SetSingleBrightness(E_Led_Button_0, brightness[E_Button_Forward]);
     }
 
-    if (brightness[E_Button_Right] != MIN_BRIGHTNESS)
+    if (brightness[E_Button_Right] != 0u)
     {
       Leds_SetSingleBrightness(E_Led_Button_1, brightness[E_Button_Right]);
     }
   }
 
-  if ((brightness[E_Button_Backward] == MIN_BRIGHTNESS) &&
-      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
+  if ((brightness[E_Button_Backward] == 0u) &&
+      (brightness[E_Button_Center] == 0u))
   {
-    Leds_SetSingleBrightness(E_Led_Button_2, MIN_BRIGHTNESS);
+    Leds_SetSingleBrightness(E_Led_Button_2, 0u);
   }
 
-  if ((brightness[E_Button_Left] == MIN_BRIGHTNESS) &&
-      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
+  if ((brightness[E_Button_Left] == 0u) &&
+      (brightness[E_Button_Center] == 0u))
   {
-    Leds_SetSingleBrightness(E_Led_Button_3, MIN_BRIGHTNESS);
+    Leds_SetSingleBrightness(E_Led_Button_3, 0u);
   }
 
-  if ((brightness[E_Button_Forward] == MIN_BRIGHTNESS) &&
-      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
+  if ((brightness[E_Button_Forward] == 0u) &&
+      (brightness[E_Button_Center] == 0u))
   {
-    Leds_SetSingleBrightness(E_Led_Button_0, MIN_BRIGHTNESS);
+    Leds_SetSingleBrightness(E_Led_Button_0, 0u);
   }
 
-  if ((brightness[E_Button_Right] == MIN_BRIGHTNESS) &&
-      (brightness[E_Button_Center] == MIN_BRIGHTNESS))
+  if ((brightness[E_Button_Right] == 0u) &&
+      (brightness[E_Button_Center] == 0u))
   {
-    Leds_SetSingleBrightness(E_Led_Button_1, MIN_BRIGHTNESS);
+    Leds_SetSingleBrightness(E_Led_Button_1, 0u);
   }
 }
 

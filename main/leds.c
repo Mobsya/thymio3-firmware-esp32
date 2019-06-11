@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -11,7 +11,7 @@
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: leds.c 18076 2017-04-20 12:28:12Z v.gonet $
+//! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
 //-----------------------------------------------------------------------------
@@ -35,17 +35,21 @@
 
 #define MAX_LEDS_NUM            (REGISTERS_NUM * PINS_PER_REGISTER_NUM)
 
-#define LED_OFF_BANK_0          0x03u  // LSB --> U17.QA
-#define LED_OFF_BANK_1          0x00u  // LSB --> U13.QA
-#define LED_OFF_BANK_2          0x0Fu  // LSB --> U15.QA
-#define LED_OFF_BANK_3          0x0Fu  // LSB --> U16.QA
-#define LED_OFF_BANK_4          0x0Fu  // LSB --> U14.QA
+#define LED_OFF_BANK_0          0x03u  //!< LSB --> U17.QA
+#define LED_OFF_BANK_1          0x00u  //!< LSB --> U13.QA
+#define LED_OFF_BANK_2          0x0Fu  //!< LSB --> U15.QA
+#define LED_OFF_BANK_3          0x0Fu  //!< LSB --> U16.QA
+#define LED_OFF_BANK_4          0x0Fu  //!< LSB --> U14.QA
 
-//#define LEDS_TASK_PERIOD_us      125u  //!< Leds task frequency = 8 [kHz] -> Leds frequency = 8 [kHz] / 32 = 250 [Hz]
-//#define LEDS_TASK_PERIOD_us      312u  //!< Leds task frequency = 3.2 [kHz] -> Leds frequency = 3.2 [kHz] / 32 = 100 [Hz]
-//#define LEDS_TASK_PERIOD_us      625u  //!< Leds task frequency = 1.6 [kHz] -> Leds frequency = 1.6 [kHz] / 32 = 50 [Hz]
+#define LEDS_FREQUENCY_Hz      100.0f  //!< Frequency of the LEDs in [Hz]
 
-#define LEDS_TASK_PERIOD_us     1250u  //!< Leds task frequency = 800 [Hz] -> Leds frequency = 800 [Hz] / 8 = 100 [Hz]
+#define TIMING_FACTOR      1000000.0f  //!< Factor to convert [s] to [us]  
+
+//!< Calculation of the LEDs task period in [Hz]
+#define LEDS_TASK_PERIOD_Hz      (LEDS_FREQUENCY_Hz * MAX_BRIGHTNESS)
+
+//! Calculation of the LEDs task period in [us]
+const uint32_t LEDS_TASK_PERIOD_us = (uint32_t)((double)(1.0 / LEDS_TASK_PERIOD_Hz) * TIMING_FACTOR);
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -73,14 +77,22 @@ static const uint8_t LedsOff[REGISTERS_NUM] = {LED_OFF_BANK_0,
 
 static T_TimerSw* LedsTaskTimer = NULL;  //!< Used to schedule the Leds task
 
-static TaskHandle_t TaskToNotify;
+static TaskHandle_t TaskToNotify;        //!< Used to notified the Leds task
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
+//! \brief     Run the LEDs task
+//! \pre       First initialize the LEDs
+//! \param     arg - Task parameter
+//! \return    None
 static void RunLedsTask(void* arg);
 
+//! \brief     Called when the LedsTaskTimer elapsed
+//! \pre       First initialize the LEDs
+//! \param     arg - Task parameter
+//! \return    None
 static void Callback_TimerLedsTask(void* arg);
 
 //-----------------------------------------------------------------------------
@@ -95,7 +107,7 @@ void Leds_Init(void)
 {
   ShiftRegisters_Init();
 
-  for (uint8_t row = MIN_BRIGHTNESS; row < MAX_BRIGHTNESS; row++)
+  for (uint8_t row = 0u; row < MAX_BRIGHTNESS; row++)
   {
     for (uint8_t column = 0u; column < REGISTERS_NUM; column++)
     {
@@ -107,7 +119,7 @@ void Leds_Init(void)
 
   LedsTaskTimer = TimerSw_Create(LEDS_TASK_PERIOD_us, Callback_TimerLedsTask);
 
-  ESP_LOGI(Tag, "LEDs are initialized");
+  ESP_LOGI(Tag, "LEDs are initialized at %d [us]", LEDS_TASK_PERIOD_us);
 }
 
 //_____________________________________________________________________________
@@ -140,7 +152,7 @@ void Leds_SetSingleBrightness(T_Led led, uint8_t brightness)
     position = (1u << pin);
     polarity = (LedsOff[bank] & position);
 
-    for (uint8_t row = MIN_BRIGHTNESS; row < MAX_BRIGHTNESS; row++)
+    for (uint8_t row = 0u; row < MAX_BRIGHTNESS; row++)
     {
       if (row < brightness)
       {
@@ -269,16 +281,10 @@ static void RunLedsTask(void* arg)
 static void Callback_TimerLedsTask(void* arg)
 {
   BaseType_t higherPriorityTaskWoken = pdFALSE;
-  //BaseType_t result;
 
   vTaskNotifyGiveFromISR(TaskToNotify, &higherPriorityTaskWoken);
-  //result = xTaskNotifyFromISR(TaskToNotify, 0, eNoAction, &higherPriorityTaskWoken);
 
-  // If the call to xTaskNotifyFromISR() returns pdFAIL then the task
-  // is not keeping up with the rate at which the timer elapsed.
-  //configASSERT(result == pdTRUE);
-
-  //if (higherPriorityTaskWoken != pdFALSE)
+  if (higherPriorityTaskWoken != pdFALSE)
   {
     portYIELD_FROM_ISR();
   }
