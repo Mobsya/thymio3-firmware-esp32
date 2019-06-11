@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -11,7 +11,7 @@
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: power.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
 #ifndef POWER_H_

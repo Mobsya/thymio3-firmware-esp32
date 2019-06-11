@@ -11,7 +11,7 @@
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: file_system.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
 #ifndef FILE_SYSTEM_H_

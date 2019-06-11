@@ -1,17 +1,17 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
 //! \file    main.c
-//! \brief   This module provides the useful functions to use the xxx
+//! \brief   This module provides the useful functions to run the application
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: main.c 18076 2017-04-20 12:28:12Z v.gonet $
+//! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
 //-----------------------------------------------------------------------------
@@ -47,13 +47,10 @@
 //#include "sound_data.h"
 #include "stm32.h"
 #include "test.h"
-#include "timer_hw.h"
 #include "timer_sw.h"
 //#include "uart.h"
 #include "wifi.h"
 #include "wifi_update.h"
-
-#include "i2s.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -117,9 +114,9 @@ int app_main(void)
 // Initialization
 //*****************************************************************************
 
-  ESP_LOGI(Tag, "***************");
-  ESP_LOGI(Tag, "Initializations");
-  ESP_LOGI(Tag, "***************");
+  ESP_LOGI(Tag, "*********************");
+  ESP_LOGI(Tag, "** Initializations **");
+  ESP_LOGI(Tag, "*********************");
 
   Settings_Init();
 #if 0
@@ -178,9 +175,9 @@ int app_main(void)
 // Start the tasks
 //*****************************************************************************
 
-  ESP_LOGI(Tag, "***************");
-  ESP_LOGI(Tag, "Tasks");
-  ESP_LOGI(Tag, "***************");
+  ESP_LOGI(Tag, "*********************");
+  ESP_LOGI(Tag, "******* Tasks *******");
+  ESP_LOGI(Tag, "*********************");
 
   //Test_StartDebugging();
   //I2S_StartReading();

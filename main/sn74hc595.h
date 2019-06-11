@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2018                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -12,7 +12,7 @@
 //!
 //! \author  Vincent Gonet
 //!
-//! \version $Id: sn74hc595.h 18076 2017-04-20 12:28:12Z v.gonet $
+//! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
 #ifndef SN74HC595_H_
@@ -50,13 +50,13 @@
 //! \return    None
 extern void SN74HC595_Init(void);
 
-//! \brief     Disable the outputs QA – QH.
+//! \brief     Disable the outputs QA ï¿½ QH.
 //! \pre       First initialize the shift registers
 //! \param     None
 //! \return    None
 extern void SN74HC595_DisableOutputs(void);
 
-//! \brief     Enable the outputs QA – QH.
+//! \brief     Enable the outputs QA ï¿½ QH.
 //! \pre       First initialize the shift registers
 //! \param     None
 //! \return    None
