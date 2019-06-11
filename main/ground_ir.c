@@ -170,11 +170,15 @@ static void RunGroundIRTask(void* arg)
 
   uint16_t sensors[2] = {0u, 0u};
 
+  portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+
   while (1)
   {
+    portENTER_CRITICAL(&mux);
     AmbientTaskIsInProgress = true;
 
     ADC_AcquireGroundIRValues(sensors);
+    portEXIT_CRITICAL(&mux);
 
     vmVariables.ground_ambiant[0] = sensors[0];  // Left sensor
     vmVariables.ground_ambiant[1] = sensors[1];  // Right sensor
@@ -193,15 +197,19 @@ static void RunRightGroundIRTask(void* arg)
 {
   uint16_t sensors[2] = {0u, 0u};
 
+  portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+
   ESP_LOGI(Tag, "Start Right Ground IR Task");
 
   while (1)
   {
     if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY) != 0u)
     {
+      portENTER_CRITICAL(&mux);
       RightTaskIsInProgress = true;
 
       ADC_AcquireGroundIRValues(sensors);
+      portEXIT_CRITICAL(&mux);
 
       vmVariables.ground_reflected[1] = sensors[1];
       vmVariables.ground_delta[1] = PerformCalibration((sensors[1] - vmVariables.ground_ambiant[1]), E_Sensor_Right);
@@ -224,15 +232,19 @@ static void RunLeftGroundIRTask(void* arg)
 {
   uint16_t sensors[2] = {0u, 0u};
 
+  portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+
   ESP_LOGI(Tag, "Start Left Ground IR Task");
 
   while (1)
   {
     if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY) != 0u)
     {
+      portENTER_CRITICAL(&mux);
       LeftTaskIsInProgress = true;
 
       ADC_AcquireGroundIRValues(sensors);
+      portEXIT_CRITICAL(&mux);
 
       vmVariables.ground_reflected[0] = sensors[0];
       vmVariables.ground_delta[0] = PerformCalibration((sensors[0] - vmVariables.ground_ambiant[0]), E_Sensor_Left);
