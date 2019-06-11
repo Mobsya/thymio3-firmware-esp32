@@ -4,6 +4,14 @@
     "C_Cpp.errorSquiggles": "Enabled",
     "files.associations": {
         "*.qbs": "qml",
-        "aseba_esp32_user.h": "c"
+        "aseba_esp32_user.h": "c",
+        "task.h": "c",
+        "string.h": "c",
+        "lsm6ds3us.h": "c",
+        "board.h": "c",
+        "timer_sw.h": "c",
+        "leds.h": "c",
+        "stm32.h": "c",
+        "aseba_esp32.h": "c"
     }
 }
