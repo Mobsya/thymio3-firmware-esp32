@@ -23,26 +23,29 @@
 #include "freertos/task.h"
 
 #include "esp_log.h"
-#include "esp_peripherals.h"
+//#include "esp_peripherals.h"
 
-#include "amrnb_encoder.h"
-#include "amr_decoder.h"
+//#include "amrnb_encoder.h"
+//#include "amr_decoder.h"
 #include "audio_element.h"
 #include "audio_pipeline.h"
 #include "audio_event_iface.h"
 #include "audio_mem.h"
 #include "audio_common.h"
-#include "filter_resample.h"
+//#include "filter_resample.h"
 #include "i2s_stream.h"
 #include "mp3_decoder.h"
-#include "spiffs_stream.h"
+//#include "spiffs_stream.h"
 
 #include "mp3.h"
+
+#include "prox_ir.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
+#if 0
 #define RECORD_RATE         48000
 #define RECORD_CHANNEL          1  // Mono
 #define RECORD_BITS            16
@@ -57,6 +60,7 @@
 
 #define ADC_UNIT_NUM      ADC_UNIT_1
 #define ADC_CHANNEL_NUM   ADC1_CHANNEL_0
+#endif
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -102,7 +106,7 @@ static int16_t Number = -1;
 
 static bool PlayerIsBusy = false;
 
-static esp_periph_set_handle_t set;
+//static esp_periph_set_handle_t set;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -116,13 +120,13 @@ static void SelectFile(int16_t index);
 
 static void StopMP3Player(void);
 
-static audio_element_handle_t CreateI2SStream(int sample_rates, int bits, int channels, audio_stream_type_t type);
+//static audio_element_handle_t CreateI2SStream(int sample_rates, int bits, int channels, audio_stream_type_t type);
 
-static audio_element_handle_t CreateFilter(int source_rate, int source_channel, int dest_rate, int dest_channel, audio_codec_type_t type);
+//static audio_element_handle_t CreateFilter(int source_rate, int source_channel, int dest_rate, int dest_channel, audio_codec_type_t type);
 
-static audio_element_handle_t CreateAMREncoder(void);
+//static audio_element_handle_t CreateAMREncoder(void);
 
-static audio_element_handle_t CreateSPIFFSStream(int sample_rates, int bits, int channels, audio_stream_type_t type);
+//static audio_element_handle_t CreateSPIFFSStream(int sample_rates, int bits, int channels, audio_stream_type_t type);
 
 int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t wait_time, void* ctx);
 
@@ -152,13 +156,15 @@ void MP3_StartPlayer(int number)
 
   PlayerIsBusy = true;
 
+  //vTaskDelete(TxProxIRTask);
+
   xTaskCreatePinnedToCore(
     RunMP3PlayerTask,  // Function to implement the task
-    "mp3",             // Name of the task
+    "player",          // Name of the task
     4096,              // Stack size in words
     NULL,              // Task input parameter
     1,                 // Priority of the task
-    &PlayerTask,         // Task handle
+    &PlayerTask,       // Task handle
     1);                // Core where the task should run
 }
 
@@ -172,7 +178,7 @@ void MP3_StartRecorder(void)
     4096,                // Stack size in words
     NULL,                // Task input parameter
     1,                   // Priority of the task
-    &RecorderTask,         // Task handle
+    &RecorderTask,       // Task handle
     1);                  // Core where the task should run
 }
 //#endif
@@ -194,7 +200,11 @@ static void RunMP3PlayerTask(void* arg)
 
   ESP_LOGI(Tag, "[1.2] Create i2s stream to write data to ESP32 internal DAC");
   i2s_stream_cfg_t i2s_cfg = I2S_STREAM_INTERNAL_DAC_CFG_DEFAULT();
-  i2s_cfg.type = AUDIO_STREAM_WRITER;
+  i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ALL_RIGHT;
+  //i2s_cfg.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_IRAM;
+  i2s_cfg.task_prio = 2;
+  //i2s_cfg.type = AUDIO_STREAM_WRITER;
+  //i2s_cfg.task_core = 1;
   i2s_stream_writer = i2s_stream_init(&i2s_cfg);
 
   ESP_LOGI(Tag, "[1.3] Register all elements to audio pipeline");
@@ -256,6 +266,7 @@ static void RunMP3PlayerTask(void* arg)
 
 static void RunMP3RecorderTask(void* arg)
 {
+#if 0
   audio_pipeline_handle_t pipeline_rec = NULL;
   //audio_pipeline_handle_t pipeline_play = NULL;
   audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
@@ -314,6 +325,7 @@ static void RunMP3RecorderTask(void* arg)
   {
 
   }
+#endif
 }
 
 //_____________________________________________________________________________
@@ -370,12 +382,14 @@ static void StopMP3Player(void)
   audio_element_deinit(i2s_stream_writer);
   audio_element_deinit(mp3_decoder);
 
+  //ProxIR_Start();
+
   PlayerIsBusy = false;
   vTaskDelete(PlayerTask);
 }
 
 //_____________________________________________________________________________
-
+#if 0
 static audio_element_handle_t CreateI2SStream(int sample_rates, int bits, int channels, audio_stream_type_t type)
 {
   i2s_stream_cfg_t i2s_cfg = I2S_STREAM_INTERNAL_ADC_CFG_CUSTOM();
@@ -436,7 +450,7 @@ static audio_element_handle_t CreateSPIFFSStream(int sample_rates, int bits, int
 
   return spiffs_stream;
 }
-
+#endif
 //_____________________________________________________________________________
 
 int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t wait_time, void* ctx)

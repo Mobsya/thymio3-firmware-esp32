@@ -138,7 +138,7 @@ void sound_playback(AsebaVMState* vm)
   }
 #endif
 
-  //MP3_StartPlayer(number);
+  MP3_StartPlayer(number);
 
 #if 0
   MelodyAseba.Melody = JamesBond;
