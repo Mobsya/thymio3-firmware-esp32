@@ -63,6 +63,9 @@
 #define TX_PULSE_DURATION               300u
 
 #define READ_RX_PULSE_us                750u
+// Duration of the pulse = 750 [us] -> TIMER_SCALE * 750 [us] = 3750 (timer_group)
+#define RX_PULSE_READ_DURATION         3750u
+
 //#define READ_UNIT1_INTERVAL_us          875u
 
 //-----------------------------------------------------------------------------
@@ -106,7 +109,7 @@ static T_NetworkStatus NetworkStatus = E_NetworkStatus_Disabled;
 static bool FirstTxPulsesAreInProgress = false;
 static bool SecondTxPulsesAreInProgress = false;
 
-static volatile uint32_t PulseCounter[7]    = {0u, 0u, 0u, 0u, 0u, 0u, 0u};
+static volatile uint32_t PulseCounter[7] = {0u, 0u, 0u, 0u, 0u, 0u, 0u};
 static uint32_t OldPulseCounter[7] = {0u, 0u, 0u, 0u, 0u, 0u, 0u};
 
 static volatile uint32_t RisingEdgeTime[7]  = {0u, 0u, 0u, 0u, 0u, 0u, 0u};
@@ -126,7 +129,8 @@ static T_TimerSw* BackRightPulseTimer = NULL;
 
 static uint8_t SlotNumber = 0xFFu;
 
-TaskHandle_t TaskToNotify;
+TaskHandle_t TxProxIRTask;
+TaskHandle_t RxProxIRTask;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -153,6 +157,8 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void* arg);
 static void IRAM_ATTR ISR_InputCaptureUnit1(void* arg);
 
 static void IRAM_ATTR ISR_EndOfTxPulse(void* para);
+
+static void IRAM_ATTR ISR_ReadRxPulse(void* para);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -186,7 +192,8 @@ void ProxIR_Init(void)
   TimerHw_Init(1, 0, true, TX_PULSE_DURATION, ISR_EndOfTxPulse);
 
   // When this timer expires, the duration of the RX pulse is calculated
-  ReadRxPulseTimer = TimerSw_Create(READ_RX_PULSE_us, Callback_TimerReadRxPulse);
+  //ReadRxPulseTimer = TimerSw_Create(READ_RX_PULSE_us, Callback_TimerReadRxPulse);
+  TimerHw_Init(1, 1, true, RX_PULSE_READ_DURATION, ISR_ReadRxPulse);
 
   //TxPulsesGapTimer      = TimerSw_Create(200, Callback_TimerTxPulsesGap);
 
@@ -203,7 +210,7 @@ void ProxIR_Start(void)
     4096,             // Stack size in words
     NULL,             // Task input parameter
     5,                // Priority of the task
-    NULL,             // Task handle
+    &TxProxIRTask,    // Task handle
     0);               // Core where the task should run
 
   xTaskCreatePinnedToCore(
@@ -212,7 +219,7 @@ void ProxIR_Start(void)
     4096,             // Stack size in words
     NULL,             // Task input parameter
     5,                // Priority of the task
-    &TaskToNotify,   // Task handle
+    &RxProxIRTask,    // Task handle
     0);               // Core where the task should run
 }
 
@@ -228,11 +235,12 @@ static void RunTxProxIRTask(void* arg)
     Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_High);
 
     TimerHw_Start(1, 0);  // Timer used to generate the TX pulse
+    TimerHw_Start(1, 1);  // When this timer expires, the duration of the RX pulse is calculated
 
     FirstTxPulsesAreInProgress = true;
 
     // When this timer expires, the duration of the RX pulse is calculated
-    TimerSw_StartTimerOnce(ReadRxPulseTimer, READ_RX_PULSE_us);
+    //TimerSw_StartTimerOnce(ReadRxPulseTimer, READ_RX_PULSE_us);
 
     //ESP_LOGE(Tag, "old = %d, new = %d", OldPulseCounter[0], PulseCounter[0]);
 
@@ -334,6 +342,8 @@ static void DisableInputCapture(void)
 
 static void CalculateRxPulseDuration(void)
 {
+  portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+
   // Calculate the RX pulse duration of the 5 front sensors and the back left sensor
   for (uint8_t index = 0u; index <= 5u; index++)
   {
@@ -343,6 +353,11 @@ static void CalculateRxPulseDuration(void)
 
       PulseDuration[index] = ((FallingEdgeTime[index] - RisingEdgeTime[index]) / PULSE_DURATION_FACTOR);
 
+      //if (index == 5)
+      {
+    	//ESP_LOGE(Tag, "COUCOU");
+      }
+
       if (PulseDuration[index] < MAX_PULSE_DURATION)
       {
         vmVariables.prox[index] = PulseDuration[index];
@@ -350,9 +365,9 @@ static void CalculateRxPulseDuration(void)
       else
       {
         //ESP_LOGE(Tag, "index = %d, pulse = %d", index, PulseDuration[index]);
-        if (index == 0)
+        //if (index == 0)
         {
-          ESP_LOGE(Tag, "Pulse duration too high");
+          //ESP_LOGE(Tag, "Pulse duration too high, %d", PulseDuration[0]);
         }
         vmVariables.prox[index] = 0;
       }
@@ -361,22 +376,36 @@ static void CalculateRxPulseDuration(void)
     }
     else if (RisingEdgeCounter[index] != PulseCounter[index])
     {
-      if (index == 0)
+      //if (index == 0)
       {
-        //ESP_LOGE(Tag, "A");
+        //ESP_LOGE(Tag, "A, %d ,%d", RisingEdgeCounter[0], PulseCounter[0]);
       }
+
+      portENTER_CRITICAL(&mux);
       RisingEdgeCounter[index] = PulseCounter[index];
+      //if (index == 0)
+      {
+        //ESP_LOGE(Tag, "A1, %d ,%d", RisingEdgeCounter[0], PulseCounter[0]);
+      }
+      portEXIT_CRITICAL(&mux);
     }
     else if (FallingEdgeCounter[index] != PulseCounter[index])
     {
-      if (index == 0)
+      //if (index == 0)
       {
-        //ESP_LOGE(Tag, "B");
+    	//ESP_LOGE(Tag, "B, %d ,%d", FallingEdgeCounter[0], PulseCounter[0]);
       }
+
+      portENTER_CRITICAL(&mux);
       FallingEdgeCounter[index] = PulseCounter[index];
+      portEXIT_CRITICAL(&mux);
     }
     else  // No obstacle detected (or unfortunately no pulse detected)
     {
+      //if (index == 4)
+      {
+        //ESP_LOGE(Tag, "C");
+      }
       vmVariables.prox[index] = 0;
     }
   }
@@ -424,7 +453,7 @@ static void Callback_TimerReadRxPulse(void* arg)
 {
   BaseType_t higherPriorityTaskWoken = pdFALSE;
 
-  vTaskNotifyGiveFromISR(TaskToNotify, &higherPriorityTaskWoken);
+  vTaskNotifyGiveFromISR(RxProxIRTask, &higherPriorityTaskWoken);
 
   portYIELD_FROM_ISR();
 }
@@ -450,9 +479,7 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void* arg)
   volatile uint32_t mcpwm_intr_status;
 
   static uint32_t tmp[CAP_SIG_NUM] = {0, 0, 0};
-  static bool risingEdgeFront1Done = false;
-  static bool risingEdgeFront2Done = false;
-  static bool risingEdgeFront3Done = false;
+  static bool risingEdgeDone[CAP_SIG_NUM] = {false, false, false};
 
   mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val;  // Read interrupt status
 
@@ -463,15 +490,15 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void* arg)
       tmp[0] = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);
 
       RisingEdgeCounter[0]++;
-      risingEdgeFront1Done = true;
+      risingEdgeDone[0] = true;
     }
     else  // Falling edge
     {
       FallingEdgeCounter[0]++;
 
-      if (risingEdgeFront1Done)
+      if (risingEdgeDone[0])
       {
-        risingEdgeFront1Done = false;
+        risingEdgeDone[0] = false;
         RisingEdgeTime[0] = tmp[0];
         FallingEdgeTime[0] = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);
         PulseCounter[0]++;
@@ -486,15 +513,15 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void* arg)
       tmp[1] = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP1);
 
       RisingEdgeCounter[1]++;
-      risingEdgeFront2Done = true;
+      risingEdgeDone[1] = true;
     }
     else  // Falling edge
     {
       FallingEdgeCounter[1]++;
 
-      if (risingEdgeFront2Done)
+      if (risingEdgeDone[1])
       {
-        risingEdgeFront2Done = false;
+        risingEdgeDone[1] = false;
         RisingEdgeTime[1] = tmp[1];
         FallingEdgeTime[1] = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP1);
         PulseCounter[1]++;
@@ -509,15 +536,15 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void* arg)
       tmp[2] = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP2);
 
       RisingEdgeCounter[2]++;
-      risingEdgeFront3Done = true;
+      risingEdgeDone[2] = true;
     }
     else  // Falling edge
     {
       FallingEdgeCounter[2]++;
 
-      if (risingEdgeFront3Done)
+      if (risingEdgeDone[2])
       {
-        risingEdgeFront3Done = false;
+        risingEdgeDone[2] = false;
         RisingEdgeTime[2] = tmp[2];
         FallingEdgeTime[2] = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP2);
         PulseCounter[2]++;
@@ -532,12 +559,10 @@ static void IRAM_ATTR ISR_InputCaptureUnit0(void* arg)
 
 static void IRAM_ATTR ISR_InputCaptureUnit1(void* arg)
 {
-  uint32_t mcpwm_intr_status;
+  volatile uint32_t mcpwm_intr_status;
 
   static uint32_t tmp[CAP_SIG_NUM] = {0, 0, 0};
-  static bool risingEdgeFront4Done = false;
-  static bool risingEdgeFront5Done = false;
-  static bool risingEdgeFront6Done = false;
+  static bool risingEdgeDone[CAP_SIG_NUM] = {false, false, false};
 
   mcpwm_intr_status = MCPWM[MCPWM_UNIT_1]->int_st.val;  // Read interrupt status
 
@@ -548,15 +573,15 @@ static void IRAM_ATTR ISR_InputCaptureUnit1(void* arg)
       tmp[0] = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP0);
 
       RisingEdgeCounter[3]++;
-      risingEdgeFront4Done = true;
+      risingEdgeDone[0] = true;
     }
     else  // Falling edge
     {
       FallingEdgeCounter[3]++;
 
-      if (risingEdgeFront4Done)
+      if (risingEdgeDone[0])
       {
-        risingEdgeFront4Done = false;
+        risingEdgeDone[0] = false;
         RisingEdgeTime[3] = tmp[0];
         FallingEdgeTime[3] = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP0);
         PulseCounter[3]++;
@@ -571,15 +596,15 @@ static void IRAM_ATTR ISR_InputCaptureUnit1(void* arg)
       tmp[1] = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP1);
 
       RisingEdgeCounter[4]++;
-      risingEdgeFront5Done = true;
+      risingEdgeDone[1] = true;
     }
     else  // Falling edge
     {
       FallingEdgeCounter[4]++;
 
-      if (risingEdgeFront5Done)
+      if (risingEdgeDone[1])
       {
-        risingEdgeFront5Done = false;
+        risingEdgeDone[1] = false;
         RisingEdgeTime[4] = tmp[1];
         FallingEdgeTime[4] = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP1);
         PulseCounter[4]++;
@@ -594,15 +619,15 @@ static void IRAM_ATTR ISR_InputCaptureUnit1(void* arg)
       tmp[2] = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP2);
 
       RisingEdgeCounter[5]++;
-      risingEdgeFront6Done = true;
+      risingEdgeDone[2] = true;
     }
     else  // Falling edge
     {
       FallingEdgeCounter[5]++;
 
-      if (risingEdgeFront6Done)
+      if (risingEdgeDone[2])
       {
-        risingEdgeFront6Done = false;
+        risingEdgeDone[2] = false;
         RisingEdgeTime[5] = tmp[2];
         FallingEdgeTime[5] = mcpwm_capture_signal_get_value(MCPWM_UNIT_1, MCPWM_SELECT_CAP2);
         PulseCounter[5]++;
@@ -634,4 +659,33 @@ static void IRAM_ATTR ISR_EndOfTxPulse(void* para)
 
   // After the alarm has been triggered, we need enable it again, so it is triggered the next time
   TIMERG1.hw_timer[0].config.alarm_en = TIMER_ALARM_EN;
+}
+
+//_____________________________________________________________________________
+
+static void IRAM_ATTR ISR_ReadRxPulse(void* para)
+{
+  BaseType_t higherPriorityTaskWoken = pdFALSE;
+
+  // Retrieve the interrupt status and the counter value
+  // from the timer that reported the interrupt
+  uint32_t intr_status = TIMERG1.int_st_timers.val;
+  TIMERG1.hw_timer[1].update = 1;
+
+  // After the alarm has been triggered, we need enable it again, so it is triggered the next time
+  TIMERG1.hw_timer[1].config.alarm_en = TIMER_ALARM_EN;
+
+  // Clear the interrupt and update the alarm time for the timer with without reload
+  if (intr_status & BIT(1))
+  {
+    vTaskNotifyGiveFromISR(RxProxIRTask, &higherPriorityTaskWoken);
+
+    TIMERG1.int_clr_timers.t1 = 1;
+    timer_pause(1, 1);
+
+    if (higherPriorityTaskWoken != pdFALSE)
+    {
+      portYIELD_FROM_ISR();
+    }
+  }
 }
