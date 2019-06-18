@@ -298,7 +298,7 @@ static void IRAM_ATTR ISR_GPIOHandler(void* arg)
 
   static bool risingEdgeBackRightDone = false;
 
-  if (gpio_num == IR_SENSE_BACK_RIGHT_PIN)
+  //if (gpio_num == IR_SENSE_BACK_RIGHT_PIN)
   {
     if (Gpio_GetPinLevel(gpio_num) == E_GpioLevel_High)
     {

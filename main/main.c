@@ -32,17 +32,18 @@
 #include "aseba_esp32.h"
 //#include "audio.h"
 #include "behavior.h"
+#include "buttons.h"
 #include "comm.h"
 #include "cosine_generator.h"
 #include "fifo.h"
 #include "file_system.h"
 #include "gpio.h"
-#include "ground_ir.h"
+//#include "ground_ir.h"
 #include "leds.h"
 #include "mode.h"
 #include "mp3.h"
 #include "power.h"
-#include "prox_ir.h"
+//#include "prox_ir.h"
 #include "sound.h"
 //#include "sound_data.h"
 #include "stm32.h"
@@ -140,8 +141,10 @@ int app_main(void)
 
   Leds_Init();
 
-  GroundIR_Init();
-  ProxIR_Init();
+  Buttons_Init();
+
+  //GroundIR_Init();
+  //ProxIR_Init();
 
   Sound_Init();
   //Sound_Process();
@@ -190,8 +193,9 @@ int app_main(void)
 
   Behavior_Start();
   Comm_Start();
-  GroundIR_Start();
-  ProxIR_Start();
+  Buttons_Start();
+  //GroundIR_Start();
+  //ProxIR_Start();
   Leds_Start();
   //Sound_StartAcquisition();
 

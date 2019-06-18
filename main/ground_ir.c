@@ -60,14 +60,14 @@ typedef enum
 //-----------------------------------------------------------------------------
 // Private Data
 //-----------------------------------------------------------------------------
-
+#if 0
 static const T_GpioPinConfig PinConfig[GROUND_IR_PIN_NUM] =
 {
   // PinNumber                Mode               Resistor             Level            Interrupt
   {IR_PULSE_GROUND_LEFT_PIN,  E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
   {IR_PULSE_GROUND_RIGHT_PIN, E_GpioMode_Output, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable}
 };
-
+#endif
 static uint8_t ProxCalibMaxCounter[GROUND_IR_SENSORS_NUM];
 static int16_t ProxGroundMax[GROUND_IR_SENSORS_NUM];       // the calibration is not stored in settings
 
@@ -113,7 +113,7 @@ void GroundIR_Init(void)
 {
   for (uint16_t index = 0u; index < GROUND_IR_PIN_NUM; index++)
   {
-    Gpio_ConfigurePin(&PinConfig[index]);
+    //Gpio_ConfigurePin(&PinConfig[index]);
   }
 
   RightTaskTimer = TimerSw_Create(RIGHT_TASK_INTERVAL_us, Callback_TimerRightTask);
@@ -158,8 +158,8 @@ void GroundIR_Start(void)
 
 void GroundIR_Shutdown(void)
 {
-  Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_Low);
-  Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_Low);
+  //Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_Low);
+  //Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_Low);
 }
 
 //_____________________________________________________________________________
@@ -183,7 +183,7 @@ static void RunGroundIRTask(void* arg)
     vmVariables.ground_ambiant[0] = sensors[0];  // Left sensor
     vmVariables.ground_ambiant[1] = sensors[1];  // Right sensor
 
-    Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_High);
+    //Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_High);
 
     TimerSw_StartTimerOnce(RightTaskTimer, RIGHT_TASK_INTERVAL_us);
 
@@ -214,8 +214,8 @@ static void RunRightGroundIRTask(void* arg)
       vmVariables.ground_reflected[1] = sensors[1];
       vmVariables.ground_delta[1] = PerformCalibration((sensors[1] - vmVariables.ground_ambiant[1]), E_Sensor_Right);
 
-      Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_Low);
-      Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_High);
+      //Gpio_SetPinLevel(IR_PULSE_GROUND_RIGHT_PIN, E_GpioLevel_Low);
+      //Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_High);
 
       TimerSw_StartTimerOnce(LeftTaskTimer, LEFT_TASK_INTERVAL_us);
     }
@@ -249,7 +249,7 @@ static void RunLeftGroundIRTask(void* arg)
       vmVariables.ground_reflected[0] = sensors[0];
       vmVariables.ground_delta[0] = PerformCalibration((sensors[0] - vmVariables.ground_ambiant[0]), E_Sensor_Left);
 
-      Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_Low);
+      //Gpio_SetPinLevel(IR_PULSE_GROUND_LEFT_PIN, E_GpioLevel_Low);
 
       SET_EVENT(EVENT_PROX);
     }

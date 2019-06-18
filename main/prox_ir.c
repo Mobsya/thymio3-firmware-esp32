@@ -95,6 +95,7 @@ typedef enum
 
 static const char* Tag = "prox_ir";
 
+#if 0
 static const T_GpioPinConfig PinConfig[PROX_IR_PIN_NUM] =
 {
   // PinNumber              Mode               Resistor             Level            Interrupt
@@ -103,6 +104,7 @@ static const T_GpioPinConfig PinConfig[PROX_IR_PIN_NUM] =
   {IR_SENSE_BACK_RIGHT_PIN, E_GpioMode_Input,  E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_AnyEdge}
 };
 // Other pins are configured by the input capture module
+#endif
 
 static T_NetworkStatus NetworkStatus = E_NetworkStatus_Disabled;
 
@@ -172,7 +174,7 @@ void ProxIR_Init(void)
 {
   for (uint16_t index = 0u; index < PROX_IR_PIN_NUM; index++)
   {
-    Gpio_ConfigurePin(&PinConfig[index]);
+    //Gpio_ConfigurePin(&PinConfig[index]);
   }
 
   // brand-new robots will have a settings to 0
@@ -231,8 +233,8 @@ static void RunTxProxIRTask(void* arg)
 
   while (1)
   {
-    Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_High);
-    Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_High);
+    //Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_High);
+    //Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_High);
 
     TimerHw_Start(1, 0);  // Timer used to generate the TX pulse
     TimerHw_Start(1, 1);  // When this timer expires, the duration of the RX pulse is calculated
@@ -278,12 +280,12 @@ static void SetSlotNumber(uint16_t tick)
 
 static void ConfigureInputCapture(void)
 {
-  mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_0, IR_SENSE_FRONT_1_PIN);
-  mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_1, IR_SENSE_FRONT_2_PIN);
-  mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_2, IR_SENSE_FRONT_3_PIN);
-  mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_0, IR_SENSE_FRONT_4_PIN);
-  mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_1, IR_SENSE_FRONT_5_PIN);
-  mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_2, IR_SENSE_BACK_LEFT_PIN);
+  //mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_0, IR_SENSE_FRONT_1_PIN);
+  //mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_1, IR_SENSE_FRONT_2_PIN);
+  //mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_2, IR_SENSE_FRONT_3_PIN);
+  //mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_0, IR_SENSE_FRONT_4_PIN);
+  //mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_1, IR_SENSE_FRONT_5_PIN);
+  //mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_2, IR_SENSE_BACK_LEFT_PIN);
   // IR_SENSE_BACK_RIGHT_PIN is handled by the GPIO ISR
 
 #if 0
@@ -650,8 +652,8 @@ static void IRAM_ATTR ISR_EndOfTxPulse(void* para)
   // Clear the interrupt and update the alarm time for the timer with without reload
   if (intr_status & BIT(0))
   {
-    Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_Low);
-    Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
+    //Gpio_SetPinLevel(IR_PULSE_FRONT_PIN, E_GpioLevel_Low);
+    //Gpio_SetPinLevel(IR_PULSE_BACK_PIN, E_GpioLevel_Low);
 
     TIMERG1.int_clr_timers.t0 = 1;
     timer_pause(1, 0);
