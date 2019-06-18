@@ -27,10 +27,12 @@
 #include "comm.h"
 
 #include "accelerometer.h"
+#include "board.h"
 #include "color_sensor.h"
 #include "gyroscope.h"
 #include "i2c.h"
 #include "power.h"
+#include "spi.h"
 #include "stm32.h"
 #include "uart.h"
 
@@ -51,6 +53,8 @@
 //-----------------------------------------------------------------------------
 
 static const char* Tag = "comm";
+
+static spi_device_handle_t Microcontroller;
 
 static bool BusIsAvailable = false;
 
@@ -80,6 +84,9 @@ void Comm_Init(void)
   ColorSensor_Init();
   Accelerometer_Init();
   Gyroscope_Init();
+
+  Spi_InitVSPI();
+  Spi_AddDeviceVSPI(&Microcontroller, SPI_CS_PIN);
 
   BusIsAvailable = false;
 }
@@ -133,6 +140,8 @@ static void RunCommTask(void* arg)
     STM32_ReadButtonRawData();
     STM32_ReadButtonMean();
     STM32_ReadButtonNoise();
+
+    Spi_Write(Microcontroller, &counter, 1);
 
     if ((counter % 5u) == 0u)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 20 [ms])
     {

@@ -44,18 +44,31 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the SPI protocol
+//! \brief     Initialize the HSPI SPI protocol
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void Spi_Init(void);
+extern void Spi_InitHSPI(void);
 
-//! \brief     Add a device on the SPI bus
-//! \pre       First initialize the SPI
-//! \param     device - Device to add on the SPI bus
+//! \brief     Initialize the HSPI SPI protocol
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void Spi_InitVSPI(void);
+
+//! \brief     Add a device on the HSPI SPI bus
+//! \pre       First initialize the HSPI SPI
+//! \param     device - Device to add on the HSPI SPI bus
 //! \param     csPin, Chip select pin number
 //! \return    None
-extern void Spi_AddDevice(spi_device_handle_t* device, int csPin);
+extern void Spi_AddDeviceHSPI(spi_device_handle_t* device, int csPin);
+
+//! \brief     Add a device on the VSPI SPI bus
+//! \pre       First initialize the VSPI SPI
+//! \param     device - Device to add on the VSPI SPI bus
+//! \param     csPin, Chip select pin number
+//! \return    None
+extern void Spi_AddDeviceVSPI(spi_device_handle_t* device, int csPin);
 
 //! \brief     Write a data
 //! \pre       First initialize the SPI

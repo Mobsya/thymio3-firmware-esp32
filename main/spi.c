@@ -63,9 +63,9 @@ static const char* Tag = "spi";
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void Spi_Init(void)
+void Spi_InitHSPI(void)
 {
-  spi_bus_config_t bus_config =
+  spi_bus_config_t hspi_config =
   {
     .sclk_io_num   = LED_CLK_PIN,
     .mosi_io_num   = LED_SDI_PIN,
@@ -74,14 +74,32 @@ void Spi_Init(void)
     .quadhd_io_num = -1  // Not used
   };
 
-  ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &bus_config, 1));
+  ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &hspi_config, 1));
 
-  ESP_LOGI(Tag, "SPI is initialized");
+  ESP_LOGI(Tag, "HSPI SPI is initialized");
 }
 
 //_____________________________________________________________________________
 
-void Spi_AddDevice(spi_device_handle_t* device, int csPin)
+void Spi_InitVSPI(void)
+{
+  spi_bus_config_t vspi_config =
+  {
+    .sclk_io_num   = SPI_CLK_PIN,
+    .mosi_io_num   = SPI_MOSI_PIN,
+    .miso_io_num   = SPI_MISO_PIN,
+    .quadwp_io_num = -1, // Not used
+    .quadhd_io_num = -1  // Not used
+  };
+
+  ESP_ERROR_CHECK(spi_bus_initialize(VSPI_HOST, &vspi_config, 2));
+
+  ESP_LOGI(Tag, "VSPI SPI is initialized");
+}
+
+//_____________________________________________________________________________
+
+void Spi_AddDeviceHSPI(spi_device_handle_t* device, int csPin)
 {
   spi_device_interface_config_t dev_config =
   {
@@ -100,8 +118,33 @@ void Spi_AddDevice(spi_device_handle_t* device, int csPin)
     .post_cb          = NULL
   };
 
-  ESP_LOGI(Tag, "... Adding device bus.");
+  ESP_LOGI(Tag, "Add device on HSPI bus");
   ESP_ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &dev_config, device));
+}
+
+//_____________________________________________________________________________
+
+void Spi_AddDeviceVSPI(spi_device_handle_t* device, int csPin)
+{
+  spi_device_interface_config_t dev_config =
+  {
+    .address_bits     = 0,
+    .command_bits     = 0,
+    .dummy_bits       = 0,
+    .mode             = 0,
+    .duty_cycle_pos   = 0,
+    .cs_ena_posttrans = 0,
+    .cs_ena_pretrans  = 0,
+    .clock_speed_hz   = SPI_CLK_FREQENCY_Hz,
+    .spics_io_num     = csPin,
+    .flags            = 0,
+    .queue_size       = 1,
+    .pre_cb           = NULL,
+    .post_cb          = NULL
+  };
+
+  ESP_LOGI(Tag, "Add device on VSPI bus");
+  ESP_ERROR_CHECK(spi_bus_add_device(VSPI_HOST, &dev_config, device));
 }
 
 //_____________________________________________________________________________

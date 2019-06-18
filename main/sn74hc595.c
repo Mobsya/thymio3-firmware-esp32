@@ -82,8 +82,8 @@ void SN74HC595_Init(void)
   }
 #endif
 
-  Spi_Init();
-  Spi_AddDevice(&ShiftRegisters, LED_CS_PIN);
+  Spi_InitHSPI();
+  Spi_AddDeviceHSPI(&ShiftRegisters, LED_CS_PIN);
 
   ESP_LOGI(Tag, "SN74HC595 are initialized");
 }
