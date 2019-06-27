@@ -100,7 +100,7 @@ void TCPServer_RunTask(void)
   int addr_family;
   int ip_protocol;
 
-  while(1)
+  while (1)
   {
 #ifdef CONFIG_IPV4
     struct sockaddr_in destAddr;
@@ -158,10 +158,10 @@ void TCPServer_RunTask(void)
     struct sockaddr_in6 sourceAddr;  // Large enough for both IPv4 or IPv6
     uint32_t addrLen = sizeof(sourceAddr);
 
-    while(1)
+    while (1)
     {
       sock = accept(listen_sock, (struct sockaddr*)&sourceAddr, (socklen_t*)&addrLen);
-      
+
       if (sock < 0)
       {
         ESP_LOGE(Tag, "Unable to accept connection: errno %d", errno);
@@ -227,12 +227,12 @@ void TCPServer_Send(const uint8_t* data, uint16_t size)
 static const char* get_mdns_hostname(void)
 {
   static char* hostname = NULL;
-  
+
   if (!hostname)
   {
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
-    
+
     if (asprintf(&hostname, "NotAThymio3-%02X%02X%02X%02X", mac[3], mac[4], mac[5], esp_random()) == -1)
     {
       abort();
@@ -248,17 +248,17 @@ static void start_zeroconf_service(uint16_t port)
 {
   ESP_ERROR_CHECK(mdns_init());
   ESP_ERROR_CHECK(mdns_hostname_set(get_mdns_hostname()));
-  
+
   ESP_LOGI(MDNS_Tag, "mdns hostname set to: [%s]", get_mdns_hostname());
   mdns_instance_name_set("Not A Thymio 3");
 
   mdns_txt_item_t serviceTxtData[2] =
   {
-    {"type","Thymio II"},
-    {"protovers","9"}
+    {"type", "Thymio II"},
+    {"protovers", "9"}
   };
-  
-  ESP_ERROR_CHECK( mdns_service_add("Not A Thymio 3", "_aseba", "_tcp", port, serviceTxtData, 2) );
+
+  ESP_ERROR_CHECK(mdns_service_add("Not A Thymio 3", "_aseba", "_tcp", port, serviceTxtData, 2));
 }
 
 //_____________________________________________________________________________
@@ -267,7 +267,7 @@ static int socket_loop(int socket)
 {
   // Loop reading data
   uint8_t rx_buffer[RX_BUFFER_SIZE];
-  
+
   while (1)
   {
     int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
@@ -289,6 +289,6 @@ static int socket_loop(int socket)
       Fifo8bits_Write(TCPFifoRx, rx_buffer, len);
     }
   }
-  
+
   return 0;
 }

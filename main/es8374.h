@@ -51,7 +51,7 @@
 //! \pre       None
 //! \param     None
 //! \return    None
-extern esp_err_t ES8374_Init(audio_hal_codec_config_t *cfg);
+extern esp_err_t ES8374_Init(audio_hal_codec_config_t* cfg);
 
 //! \brief     De-initialize the external audio codec
 //! \pre       None
@@ -63,12 +63,12 @@ extern esp_err_t ES8374_Deinit(void);
 //! \pre       First initialize the codec
 //! \param     None
 //! \return    None
-extern esp_err_t ES8374_ConfigureI2S(audio_hal_codec_mode_t mode, audio_hal_codec_i2s_iface_t *iface);
+extern esp_err_t ES8374_ConfigureI2S(audio_hal_codec_mode_t mode, audio_hal_codec_i2s_iface_t* iface);
 
 //min volume = 0; max volume = 96
 extern esp_err_t ES8374_SetVoiceVolume(int volume);
 
-extern esp_err_t ES8374_GetVoiceVolume(int *volume);
+extern esp_err_t ES8374_GetVoiceVolume(int* volume);
 
 extern esp_err_t ES8374_ControlState(audio_hal_codec_mode_t mode, audio_hal_ctrl_t ctrl_state);
 

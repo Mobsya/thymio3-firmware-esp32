@@ -258,7 +258,7 @@ static void RunLedsTask(void* arg)
 
   while (1)
   {
-	if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY) != 0u)
+    if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY) != 0u)
     {
       ShiftRegisters_Fill(&LedsTable[row][0u], REGISTERS_NUM);
 

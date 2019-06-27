@@ -282,9 +282,9 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
       break;
 
     //case SYSTEM_EVENT_STA_CONNECTED:
-      /* enable ipv6 */
-      //tcpip_adapter_create_ip6_linklocal(TCPIP_ADAPTER_IF_STA);
-      //break;
+    /* enable ipv6 */
+    //tcpip_adapter_create_ip6_linklocal(TCPIP_ADAPTER_IF_STA);
+    //break;
 
     case SYSTEM_EVENT_STA_DISCONNECTED:
       ESP_ERROR_CHECK(esp_wifi_connect());
@@ -308,10 +308,10 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
       break;
 
     //case SYSTEM_EVENT_AP_STACONNECTED:
-      //ESP_LOGI(Tag, "station:"MACSTR" join, AID=%d",
-      //         MAC2STR(event->event_info.sta_connected.mac),
-      //         event->event_info.sta_connected.aid);
-      //break;
+    //ESP_LOGI(Tag, "station:"MACSTR" join, AID=%d",
+    //         MAC2STR(event->event_info.sta_connected.mac),
+    //         event->event_info.sta_connected.aid);
+    //break;
 
     case SYSTEM_EVENT_AP_STADISCONNECTED:
       ESP_LOGI(Tag, "station:"MACSTR"leave, AID=%d",
@@ -320,10 +320,10 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
       break;
 
     //case SYSTEM_EVENT_AP_PROBEREQRECVED:
-      //ESP_LOGI(Tag, "SYSTEM_EVENT_AP_STADISCONNECTED: " MACSTR " rssi=%d",
-      //         MAC2STR(event->event_info.ap_probereqrecved.mac),
-      //         event->event_info.ap_probereqrecved.rssi);
-      //break;
+    //ESP_LOGI(Tag, "SYSTEM_EVENT_AP_STADISCONNECTED: " MACSTR " rssi=%d",
+    //         MAC2STR(event->event_info.ap_probereqrecved.mac),
+    //         event->event_info.ap_probereqrecved.rssi);
+    //break;
 
     case SYSTEM_EVENT_AP_STA_GOT_IP6:
       xEventGroupSetBits(EventGroup, IPV6_GOTIP_BIT);

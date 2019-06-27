@@ -90,14 +90,14 @@ void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, double in
 
 
     timer_isr_register(timerGroup, timerIndex, fn,
-                      (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL);
-   
+                       (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL);
+
     ESP_LOGI(Tag, "Group %d Timer %d is initialized", timerGroup, timerIndex);
   }
   else
   {
     ESP_LOGE(Tag, "Invalid parameters, Group = %d, Index = %d", timerGroup, timerIndex);
-  }   
+  }
 }
 
 //_____________________________________________________________________________
