@@ -42,9 +42,9 @@
 #define LED_OFF_BANK_4          0x0Fu  //!< LSB --> U29.QA
 #define LED_OFF_BANK_5          0x00u  //!< LSB --> U30.QA
 
-#define LEDS_FREQUENCY_Hz      100.0f  //!< Frequency of the LEDs in [Hz]
+#define LEDS_FREQUENCY_Hz      100.0F  //!< Frequency of the LEDs in [Hz]
 
-#define TIMING_FACTOR      1000000.0f  //!< Factor to convert [s] to [us]  
+#define TIMING_FACTOR      1000000.0F  //!< Factor to convert [s] to [us]
 
 //!< Calculation of the LEDs task period in [Hz]
 #define LEDS_TASK_PERIOD_Hz      (LEDS_FREQUENCY_Hz * MAX_BRIGHTNESS)
@@ -74,7 +74,7 @@ static const uint8_t LedsOff[REGISTERS_NUM] = {LED_OFF_BANK_0,
                                                LED_OFF_BANK_2,
                                                LED_OFF_BANK_3,
                                                LED_OFF_BANK_4,
-											   LED_OFF_BANK_5
+                                               LED_OFF_BANK_5
                                               };
 
 static T_TimerSw* LedsTaskTimer = NULL;  //!< Used to schedule the Leds task
@@ -198,11 +198,10 @@ void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, ui
 }
 
 //_____________________________________________________________________________
-
+#if 0
 void Leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
                               uint8_t l7)
 {
-#if 0
   Leds_SetSingleBrightness(E_Led_Front_IR_0,    l0);
   Leds_SetSingleBrightness(E_Led_Front_IR_1,    l1);
   Leds_SetSingleBrightness(E_Led_Front_IR_2A,   l2);
@@ -211,9 +210,8 @@ void Leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, ui
   Leds_SetSingleBrightness(E_Led_Front_IR_4,    l5);
   Leds_SetSingleBrightness(E_Led_IR_Back_Left,  l6);
   Leds_SetSingleBrightness(E_Led_IR_Back_Right, l7);
-#endif
 }
-
+#endif
 //_____________________________________________________________________________
 
 void Leds_SetColorSensorBrightness(uint8_t red, uint8_t green, uint8_t blue)

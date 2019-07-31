@@ -470,7 +470,8 @@ void set_hprox_leds(AsebaVMState* vm)
 
   Behavior_Disable(B_LEDS_PROX);
 
-  Leds_SetProxIRBrightness(l1, l2, l3, l4, l5, l6, l7, l8);
+  // TODO send to STM32
+  //Leds_SetProxIRBrightness(l1, l2, l3, l4, l5, l6, l7, l8);
 }
 
 //_____________________________________________________________________________

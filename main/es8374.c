@@ -19,7 +19,7 @@
 //-----------------------------------------------------------------------------
 
 #include "esp_log.h"
-#include "esp_err.h""
+#include "esp_err.h"
 
 #include "es8374.h"
 
@@ -203,7 +203,7 @@
 enum
 {
   E_DACMute_Normal,  //!< DAC is activated
-  E_DACMute_Mute,    //!< DAC is muted
+  E_DACMute_Mute     //!< DAC is muted
 };
 typedef uint8_t T_DACMute;  //!< DAC mute configuration
 
@@ -251,7 +251,7 @@ typedef enum
   MCLK_DIV_7   = 29,
   MCLK_DIV_13  = 30,
   MCLK_DIV_14  = 31,
-  MCLK_DIV_MAX,
+  MCLK_DIV_MAX = 32
 } es_sclk_div_t;
 
 typedef enum
@@ -282,7 +282,7 @@ typedef enum
   LCLK_DIV_1088 = 25,
   LCLK_DIV_1496 = 26,
   LCLK_DIV_1500 = 27,
-  LCLK_DIV_MAX,
+  LCLK_DIV_MAX  = 28
 } es_lclk_div_t;
 
 typedef struct
