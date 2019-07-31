@@ -29,10 +29,10 @@
 #include "behavior.h"
 
 #include "aseba_esp32.h"
-#include "ground_ir.h"
+#include "board.h"
+#include "buttons.h"
 #include "leds.h"
 #include "mode.h"
-#include "prox_ir.h"
 #include "sound.h"
 #include "stm32.h"
 
@@ -98,29 +98,11 @@ static void RunBehaviors(void);
 //! \return    None
 static void SetButtonsLeds(void);
 
-//! \brief     Set the proximity IR sensors LEDs
-//! \pre       None
-//! \param     None
-//! \return    None
-static void SetProxIRSensorsLeds(void);
-
-//! \brief     Set the ground IR sensors LEDs
-//! \pre       None
-//! \param     None
-//! \return    None
-static void SetGroundIRSensorsLeds(void);
-
 //! \brief     Set the accelerometer LEDs
 //! \pre       None
 //! \param     None
 //! \return    None
 static void SetAccelerometerLeds(void);
-
-//! \brief     Set the battery LEDs
-//! \pre       None
-//! \param     None
-//! \return    None
-static void SetBatteryLeds(void);
 
 //! \brief     Update the settings
 //! \pre       None
@@ -200,22 +182,11 @@ static void RunBehaviorTask(void* arg)
 
 static void RunBehaviors(void)
 {
-#if 0
-  if (ENABLED(B_LEDS_BATTERY))
-  {
-    SetBatteryLeds();
-  }
-#endif
   if (ENABLED(B_LEDS_BUTTON))
   {
     SetButtonsLeds();
   }
 
-  if (ENABLED(B_LEDS_PROX))
-  {
-    SetProxIRSensorsLeds();
-    SetGroundIRSensorsLeds();
-  }
 #if 0  // FIXME
   if (ENABLED(B_LEDS_ACC))
   {
@@ -249,7 +220,7 @@ static void SetButtonsLeds(void)
   static uint8_t brightness[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
   uint8_t* buttonState;
 
-  buttonState = STM32_GetButtonStatus();
+  buttonState = Buttons_GetStatus();
 
   for (T_Button index = E_Button_Backward; index <= E_Button_Right; index++)
   {
@@ -270,7 +241,7 @@ static void SetButtonsLeds(void)
 
   if (brightness[E_Button_Center] > 0u)
   {
-    for (T_Led index = E_Led_Button_0; index <= E_Led_Button_1; index++)
+    for (T_Led index = E_Led_Button_Forward; index <= E_Led_Button_Left; index++)
     {
       Leds_SetSingleBrightness(index, brightness[E_Button_Center]);
     }
@@ -279,130 +250,47 @@ static void SetButtonsLeds(void)
   {
     if (brightness[E_Button_Backward] != 0u)
     {
-      Leds_SetSingleBrightness(E_Led_Button_2, brightness[E_Button_Backward]);
+      Leds_SetSingleBrightness(E_Led_Button_Backward, brightness[E_Button_Backward]);
     }
 
     if (brightness[E_Button_Left] != 0u)
     {
-      Leds_SetSingleBrightness(E_Led_Button_3, brightness[E_Button_Left]);
+      Leds_SetSingleBrightness(E_Led_Button_Left, brightness[E_Button_Left]);
     }
 
     if (brightness[E_Button_Forward] != 0u)
     {
-      Leds_SetSingleBrightness(E_Led_Button_0, brightness[E_Button_Forward]);
+      Leds_SetSingleBrightness(E_Led_Button_Forward, brightness[E_Button_Forward]);
     }
 
     if (brightness[E_Button_Right] != 0u)
     {
-      Leds_SetSingleBrightness(E_Led_Button_1, brightness[E_Button_Right]);
+      Leds_SetSingleBrightness(E_Led_Button_Right, brightness[E_Button_Right]);
     }
   }
 
   if ((brightness[E_Button_Backward] == 0u) &&
       (brightness[E_Button_Center] == 0u))
   {
-    Leds_SetSingleBrightness(E_Led_Button_2, 0u);
+    Leds_SetSingleBrightness(E_Led_Button_Backward, 0u);
   }
 
   if ((brightness[E_Button_Left] == 0u) &&
       (brightness[E_Button_Center] == 0u))
   {
-    Leds_SetSingleBrightness(E_Led_Button_3, 0u);
+    Leds_SetSingleBrightness(E_Led_Button_Left, 0u);
   }
 
   if ((brightness[E_Button_Forward] == 0u) &&
       (brightness[E_Button_Center] == 0u))
   {
-    Leds_SetSingleBrightness(E_Led_Button_0, 0u);
+    Leds_SetSingleBrightness(E_Led_Button_Forward, 0u);
   }
 
   if ((brightness[E_Button_Right] == 0u) &&
       (brightness[E_Button_Center] == 0u))
   {
-    Leds_SetSingleBrightness(E_Led_Button_1, 0u);
-  }
-}
-
-//_____________________________________________________________________________
-
-void SetProxIRSensorsLeds(void)
-{
-  static int16_t max[PROX_IR_SENSORS_NUM] = {4200, 4200, 4200, 4200, 4200, 4200, 4200};
-  static int16_t min[PROX_IR_SENSORS_NUM] = {1000, 1000, 1000, 1000, 1000, 1000, 100};
-
-  static T_Led led[PROX_IR_SENSORS_NUM] = {E_Led_Front_IR_0, E_Led_Front_IR_1, E_Led_Front_IR_2A,
-                                           E_Led_Front_IR_3, E_Led_Front_IR_4, E_Led_IR_Back_Left,
-                                           E_Led_IR_Back_Right
-                                          };
-
-  int16_t s = 0;
-  int16_t delta = 0;
-  int16_t brightness = 0;
-
-  for (uint8_t index = 0u; index < PROX_IR_SENSORS_NUM; index++)
-  {
-    if (max[index] < vmVariables.prox[index])
-    {
-      max[index] = vmVariables.prox[index];
-    }
-
-    if ((vmVariables.prox[index] != 0) && (min[index] > vmVariables.prox[index]))
-    {
-      min[index] = vmVariables.prox[index];
-    }
-  }
-
-  // Do a linear transformation from min-max to led 0-31!
-  for (uint8_t index = 0u; index < PROX_IR_SENSORS_NUM; index++)
-  {
-    // Because of the min&max calculation above, we cannot have a
-    // Division by 0 here.
-    s = vmVariables.prox[index] - min[index];
-    delta = (max[index] - min[index]);
-
-    if (s < 0)
-    {
-      s = 0;
-    }
-
-    brightness = ((int32_t)s * MAX_BRIGHTNESS) / delta;
-
-    Leds_SetSingleBrightness(led[index], brightness);
-
-    // The Front IR sensor has 2 LEDs (E_Led_Front_IR_2A and E_Led_Front_IR_2B)
-    if (index == 2u)
-    {
-      Leds_SetSingleBrightness(led[index] + 1, brightness);
-    }
-  }
-}
-
-//_____________________________________________________________________________
-
-void SetGroundIRSensorsLeds(void)
-{
-  static int16_t max[GROUND_IR_SENSORS_NUM] = {900, 900};
-
-  static T_Led led[GROUND_IR_SENSORS_NUM] = {E_Led_Ground_IR_0, E_Led_Ground_IR_1};
-
-  int16_t s = 0;
-  int16_t brightness = 0;
-
-  for (uint8_t index = 0u; index < GROUND_IR_SENSORS_NUM; index++)
-  {
-    if (max[index] < vmVariables.ground_delta[index])
-    {
-      max[index] = vmVariables.ground_delta[index];
-      // min is fixed to 0 ... this is _physical_
-    }
-  }
-
-  for (uint8_t index = 0u; index < GROUND_IR_SENSORS_NUM; index++)
-  {
-    s = (vmVariables.ground_delta[index] > 0) ? vmVariables.ground_delta[index] : 0;
-    brightness = ((int32_t)s * MAX_BRIGHTNESS) / max[index];
-
-    Leds_SetSingleBrightness(led[index], brightness);
+    Leds_SetSingleBrightness(E_Led_Button_Right, 0u);
   }
 }
 
@@ -462,7 +350,7 @@ static void SetAccelerometerLeds(void)
       // Do nothing
     }
 
-    //intensity = (40 - (abs(vmVariables.acc_bis[2]) * 2));  // TODO
+    //intensity = (40 - (abs(vmVariables.acc[2]) * 2));  // TODO
     intensity = MAX_BRIGHTNESS;
 
     if (intensity < 0)
@@ -496,162 +384,6 @@ static void SetAccelerometerLeds(void)
 
 //_____________________________________________________________________________
 
-static void SetBatteryLeds(void)
-{
-  static uint8_t counter = 0u;
-  static bool wasCharging = false;
-
-  int16_t vbat = STM32_GetBatteryVoltage();
-
-  if (STM32_IsUSBCablePresent())
-  {
-    static uint8_t state = 0u;
-
-#if 0
-    int16_t v = STM32_GetBatteryVoltage();
-    int32_t temp = v * 1000;
-    v = (temp / 3978);
-
-    ESP_LOGE(Tag, "v: %d", v);
-#endif
-
-    if (!wasCharging)
-    {
-      // switch off everything.
-      Leds_SetSingleBrightness(E_Led_Battery_0, 0u);
-      Leds_SetSingleBrightness(E_Led_Battery_1, 0u);
-      Leds_SetSingleBrightness(E_Led_Battery_2, 0u);
-      wasCharging = true;
-    }
-
-    // On 5V
-    //int i = counter ? counter : 1;
-    //counter += i > 10 ? 7 : i/2 + 1;
-    int16_t i;
-
-    if (counter >= 1u)
-    {
-      i = counter;
-    }
-    else
-    {
-      i = 1;
-    }
-
-    if (i > 10)
-    {
-      counter += 7;
-    }
-    else
-    {
-      counter += ((i / 2) + 1);
-    }
-
-    if (counter > 100u)
-    {
-      state++;
-      counter = 1u;
-
-      if (state == 3u)
-      {
-        state = 0u;
-      }
-
-      switch (state)
-      {
-        case 0:
-          Leds_SetSingleBrightness(E_Led_Battery_2, 0u);
-          Leds_SetSingleBrightness(E_Led_Battery_1, 0u);
-          break;
-      }
-    }
-
-    //ESP_LOGE(Tag, "i: %d, counter: %d, state: %d", i, counter, state);
-
-    Leds_SetSingleBrightness(E_Led_Battery_0 + state, counter);
-  }
-  else
-  {
-    vbat = STM32_GetBatteryVoltage();
-    int32_t temp = vbat * 1000;
-    vbat = (temp / 3978);
-
-    if (wasCharging)
-    {
-      wasCharging = false;
-
-      if (vbat >= BAT_HIGH)
-      {
-        Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
-        Leds_SetSingleBrightness(E_Led_Battery_1, MAX_BRIGHTNESS);
-        Leds_SetSingleBrightness(E_Led_Battery_2, MAX_BRIGHTNESS);
-      }
-      else if (vbat > BAT_MIDDLE)
-      {
-        Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
-        Leds_SetSingleBrightness(E_Led_Battery_1, MAX_BRIGHTNESS);
-        Leds_SetSingleBrightness(E_Led_Battery_2, 0u);
-      }
-      else if (vbat > BAT_LOW)
-      {
-        Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
-        Leds_SetSingleBrightness(E_Led_Battery_1, 0u);
-        Leds_SetSingleBrightness(E_Led_Battery_2, 0u);
-      }
-      else
-      {
-        // Do nothing
-      }
-    }
-
-    when(vbat >= BAT_HIGH)
-    {
-      Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
-      Leds_SetSingleBrightness(E_Led_Battery_1, MAX_BRIGHTNESS);
-      Leds_SetSingleBrightness(E_Led_Battery_2, MAX_BRIGHTNESS);
-    }
-
-    when((vbat > BAT_MIDDLE) && (vbat < (BAT_HIGH - 5)))
-    {
-      Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
-      Leds_SetSingleBrightness(E_Led_Battery_1, MAX_BRIGHTNESS);
-      Leds_SetSingleBrightness(E_Led_Battery_2, 0u);
-    }
-
-    when((vbat > BAT_LOW) && (vbat <= (BAT_MIDDLE - 5)))
-    {
-      Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
-      Leds_SetSingleBrightness(E_Led_Battery_1, 0u);
-      Leds_SetSingleBrightness(E_Led_Battery_2, 0u);
-    }
-
-    when(vbat <= BAT_LOW)
-    {
-      Leds_SetSingleBrightness(E_Led_Battery_1, 0u);
-      Leds_SetSingleBrightness(E_Led_Battery_2, 0u);
-    }
-
-
-    if (vbat <= BAT_LOW)
-    {
-      counter++;
-
-      if (counter == 3u)
-      {
-        Leds_SetSingleBrightness(E_Led_Battery_0, MAX_BRIGHTNESS);
-      }
-
-      if (counter > 5u)
-      {
-        Leds_SetSingleBrightness(E_Led_Battery_0, 0u);
-        counter = 0u;
-      }
-    }
-  }
-}
-
-//_____________________________________________________________________________
-
 static void UpdateSettings(void)
 {
   T_Setting setting = E_Setting_Motor;
@@ -677,7 +409,7 @@ static void PlaySoundButtons(void)
 {
   uint8_t* buttonState;
 
-  buttonState = STM32_GetButtonStatus();
+  buttonState = Buttons_GetStatus();
 
   when(buttonState[E_Button_Backward] != 0u)
   {
