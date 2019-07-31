@@ -61,8 +61,11 @@ void sound_system(AsebaVMState* vm);
 extern AsebaNativeFunctionDescription AsebaNativeDescription_set_led_circle;
 void set_led_circle(AsebaVMState* vm);
 
-extern AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_top;
-void set_rgb_top(AsebaVMState* vm);
+extern AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_fl;
+void set_rgb_fl(AsebaVMState* vm);
+
+extern AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_fr;
+void set_rgb_fr(AsebaVMState* vm);
 
 extern AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_bl;
 void set_rgb_bl(AsebaVMState* vm);
@@ -122,7 +125,8 @@ void sound_duration(AsebaVMState* vm);
   &AsebaNativeDescription_replay, \
   &AsebaNativeDescription_sound_system, \
   &AsebaNativeDescription_set_led_circle, \
-  &AsebaNativeDescription_set_led_rgb_top, \
+  &AsebaNativeDescription_set_led_rgb_fl, \
+  &AsebaNativeDescription_set_led_rgb_fr, \
   &AsebaNativeDescription_set_led_rgb_bl, \
   &AsebaNativeDescription_set_led_rgb_br, \
   &AsebaNativeDescription_play_freq, \
@@ -148,7 +152,8 @@ void sound_duration(AsebaVMState* vm);
   sound_replay, \
   sound_system, \
   set_led_circle, \
-  set_rgb_top, \
+  set_rgb_fl, \
+  set_rgb_fr, \
   set_rgb_bl, \
   set_rgb_br, \
   play_freq, \

@@ -318,10 +318,10 @@ void set_led_circle(AsebaVMState* vm)
 
 //_____________________________________________________________________________
 
-AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_top =
+AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_fl =
 {
-  "leds.top",
-  "Set RGB top led",
+  "leds.front.left",
+  "Set RGB front left led",
   {
     {1, "red"},
     {1, "green"},
@@ -330,21 +330,21 @@ AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_top =
   }
 };
 
-void set_rgb_top(AsebaVMState* vm)
+void set_rgb_fl(AsebaVMState* vm)
 {
   int r = vm->variables[AsebaNativePopArg(vm)];
   int g = vm->variables[AsebaNativePopArg(vm)];
   int b = vm->variables[AsebaNativePopArg(vm)];
 
-  Leds_SetTopBrightness(r, g, b);
+  Leds_SetFrontLeftBrightness(r, g, b);
 }
 
 //_____________________________________________________________________________
 
-AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_br =
+AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_fr =
 {
-  "leds.bottom.right",
-  "Set RGB botom right led",
+  "leds.front.right",
+  "Set RGB front right led",
   {
     {1, "red"},
     {1, "green"},
@@ -353,21 +353,21 @@ AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_br =
   }
 };
 
-void set_rgb_br(AsebaVMState* vm)
+void set_rgb_fr(AsebaVMState* vm)
 {
   int r = vm->variables[AsebaNativePopArg(vm)];
   int g = vm->variables[AsebaNativePopArg(vm)];
   int b = vm->variables[AsebaNativePopArg(vm)];
 
-  Leds_SetBottomRightBrightness(r, g, b);
+  Leds_SetFrontRightBrightness(r, g, b);
 }
 
 //_____________________________________________________________________________
 
 AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_bl =
 {
-  "leds.bottom.left",
-  "Set RGB botom left led",
+  "leds.back.left",
+  "Set RGB back left led",
   {
     {1, "red"},
     {1, "green"},
@@ -382,7 +382,30 @@ void set_rgb_bl(AsebaVMState* vm)
   int g = vm->variables[AsebaNativePopArg(vm)];
   int b = vm->variables[AsebaNativePopArg(vm)];
 
-  Leds_SetBottomLeftBrightness(r, g, b);
+  Leds_SetBackLeftBrightness(r, g, b);
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_br =
+{
+  "leds.back.right",
+  "Set RGB back right led",
+  {
+    {1, "red"},
+    {1, "green"},
+    {1, "blue"},
+    {0, 0},
+  }
+};
+
+void set_rgb_br(AsebaVMState* vm)
+{
+  int r = vm->variables[AsebaNativePopArg(vm)];
+  int g = vm->variables[AsebaNativePopArg(vm)];
+  int b = vm->variables[AsebaNativePopArg(vm)];
+
+  Leds_SetBackRightBrightness(r, g, b);
 }
 
 //_____________________________________________________________________________
@@ -409,10 +432,10 @@ void set_buttons_leds(AsebaVMState* vm)
 
   Behavior_Disable(B_LEDS_BUTTON);
 
-  Leds_SetSingleBrightness(E_Led_Button_0, l1);
-  Leds_SetSingleBrightness(E_Led_Button_1, l2);
-  Leds_SetSingleBrightness(E_Led_Button_2, l3);
-  Leds_SetSingleBrightness(E_Led_Button_3, l4);
+  Leds_SetSingleBrightness(E_Led_Button_Forward, l1);
+  Leds_SetSingleBrightness(E_Led_Button_Right, l2);
+  Leds_SetSingleBrightness(E_Led_Button_Backward, l3);
+  Leds_SetSingleBrightness(E_Led_Button_Left, l4);
 }
 
 //_____________________________________________________________________________
@@ -447,7 +470,7 @@ void set_hprox_leds(AsebaVMState* vm)
 
   Behavior_Disable(B_LEDS_PROX);
 
-  leds_SetProxIRBrightness(l1, l2, l3, l4, l5, l6, l7, l8);
+  Leds_SetProxIRBrightness(l1, l2, l3, l4, l5, l6, l7, l8);
 }
 
 //_____________________________________________________________________________
@@ -470,8 +493,10 @@ void set_vprox_leds(AsebaVMState* vm)
 
   Behavior_Disable(B_LEDS_PROX);
 
+#if 0 // TODO Send to STM32
   Leds_SetSingleBrightness(E_Led_Ground_IR_0, l1);
   Leds_SetSingleBrightness(E_Led_Ground_IR_1, l2);
+#endif
 }
 
 //_____________________________________________________________________________
@@ -492,7 +517,7 @@ void set_rc_leds(AsebaVMState* vm)
 #if 0 // FIXME
   Behavior_Disable(B_LEDS_RC5);
 #endif
-  Leds_SetSingleBrightness(E_Led_RC, l1);
+  Leds_SetSingleBrightness(E_Led_RC5, l1);
 }
 
 //_____________________________________________________________________________
@@ -513,7 +538,9 @@ void set_sound_leds(AsebaVMState* vm)
 #if 0 // FIXME
   Behavior_Disable(B_LEDS_MIC);
 #endif
+#if 0 // TODO Send to STM32
   Leds_SetSingleBrightness(E_Led_Sound, l1);
+#endif
 }
 
 //_____________________________________________________________________________
@@ -536,8 +563,8 @@ void set_ntc_leds(AsebaVMState* vm)
 #if 0 // FIXME
   Behavior_Disable(B_LEDS_TEMPERATURE);
 #endif
-  Leds_SetSingleBrightness(E_Led_Temp_Red, l1);
-  Leds_SetSingleBrightness(E_Led_Temp_Blue, l2);
+  //Leds_SetSingleBrightness(E_Led_Temp_Red, l1);
+  //Leds_SetSingleBrightness(E_Led_Temp_Blue, l2);
 }
 
 //_____________________________________________________________________________

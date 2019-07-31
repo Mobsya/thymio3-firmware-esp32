@@ -28,7 +28,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define REGISTERS_NUM             5u  //!< Number of shift registers
+#define REGISTERS_NUM             6u  //!< Number of shift registers
 #define PINS_PER_REGISTER_NUM     8u  //!< Number of pins per shift register
 
 //-----------------------------------------------------------------------------

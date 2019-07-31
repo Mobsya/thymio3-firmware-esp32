@@ -35,11 +35,12 @@
 
 #define MAX_LEDS_NUM            (REGISTERS_NUM * PINS_PER_REGISTER_NUM)
 
-#define LED_OFF_BANK_0          0x03u  //!< LSB --> U17.QA
-#define LED_OFF_BANK_1          0x00u  //!< LSB --> U13.QA
-#define LED_OFF_BANK_2          0x0Fu  //!< LSB --> U15.QA
-#define LED_OFF_BANK_3          0x0Fu  //!< LSB --> U16.QA
-#define LED_OFF_BANK_4          0x0Fu  //!< LSB --> U14.QA
+#define LED_OFF_BANK_0          0x0Fu  //!< LSB --> U26.QA
+#define LED_OFF_BANK_1          0x0Fu  //!< LSB --> U27.QA
+#define LED_OFF_BANK_2          0x00u  //!< LSB --> U25.QA
+#define LED_OFF_BANK_3          0x0Fu  //!< LSB --> U28.QA
+#define LED_OFF_BANK_4          0x0Fu  //!< LSB --> U29.QA
+#define LED_OFF_BANK_5          0x00u  //!< LSB --> U30.QA
 
 #define LEDS_FREQUENCY_Hz      100.0f  //!< Frequency of the LEDs in [Hz]
 
@@ -72,7 +73,8 @@ static const uint8_t LedsOff[REGISTERS_NUM] = {LED_OFF_BANK_0,
                                                LED_OFF_BANK_1,
                                                LED_OFF_BANK_2,
                                                LED_OFF_BANK_3,
-                                               LED_OFF_BANK_4
+                                               LED_OFF_BANK_4,
+											   LED_OFF_BANK_5
                                               };
 
 static T_TimerSw* LedsTaskTimer = NULL;  //!< Used to schedule the Leds task
@@ -197,9 +199,10 @@ void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, ui
 
 //_____________________________________________________________________________
 
-void leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
+void Leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
                               uint8_t l7)
 {
+#if 0
   Leds_SetSingleBrightness(E_Led_Front_IR_0,    l0);
   Leds_SetSingleBrightness(E_Led_Front_IR_1,    l1);
   Leds_SetSingleBrightness(E_Led_Front_IR_2A,   l2);
@@ -208,42 +211,71 @@ void leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, ui
   Leds_SetSingleBrightness(E_Led_Front_IR_4,    l5);
   Leds_SetSingleBrightness(E_Led_IR_Back_Left,  l6);
   Leds_SetSingleBrightness(E_Led_IR_Back_Right, l7);
+#endif
 }
 
 //_____________________________________________________________________________
 
-void Leds_SetTopBrightness(uint8_t red, uint8_t green, uint8_t blue)
+void Leds_SetColorSensorBrightness(uint8_t red, uint8_t green, uint8_t blue)
 {
-  Leds_SetSingleBrightness(E_Led_R_Top, red);
-  Leds_SetSingleBrightness(E_Led_G_Top, green);
-  Leds_SetSingleBrightness(E_Led_B_Top, blue);
+  Leds_SetSingleBrightness(E_Led_R_Color_Sensor, red);
+  Leds_SetSingleBrightness(E_Led_G_Color_Sensor, green);
+  Leds_SetSingleBrightness(E_Led_B_Color_Sensor, blue);
 }
 
 //_____________________________________________________________________________
 
-void Leds_SetBottomLeftBrightness(uint8_t red, uint8_t green, uint8_t blue)
+void Leds_SetFrontLeftBrightness(uint8_t red, uint8_t green, uint8_t blue)
 {
-  Leds_SetSingleBrightness(E_Led_R_Bottom_Left, red);
-  Leds_SetSingleBrightness(E_Led_G_Bottom_Left, green);
-  Leds_SetSingleBrightness(E_Led_B_Bottom_Left, blue);
+  Leds_SetSingleBrightness(E_Led_R_Front_Left, red);
+  Leds_SetSingleBrightness(E_Led_G_Front_Left, green);
+  Leds_SetSingleBrightness(E_Led_B_Front_Left, blue);
 }
 
 //_____________________________________________________________________________
 
-void Leds_SetBottomRightBrightness(uint8_t red, uint8_t green, uint8_t blue)
+void Leds_SetFrontRightBrightness(uint8_t red, uint8_t green, uint8_t blue)
 {
-  Leds_SetSingleBrightness(E_Led_R_Bottom_Right, red);
-  Leds_SetSingleBrightness(E_Led_G_Bottom_Right, green);
-  Leds_SetSingleBrightness(E_Led_B_Bottom_Right, blue);
+  Leds_SetSingleBrightness(E_Led_R_Front_Right, red);
+  Leds_SetSingleBrightness(E_Led_G_Front_Right, green);
+  Leds_SetSingleBrightness(E_Led_B_Front_Right, blue);
+}
+
+//_____________________________________________________________________________
+
+void Leds_SetBackLeftBrightness(uint8_t red, uint8_t green, uint8_t blue)
+{
+  Leds_SetSingleBrightness(E_Led_R_Back_Left, red);
+  Leds_SetSingleBrightness(E_Led_G_Back_Left, green);
+  Leds_SetSingleBrightness(E_Led_B_Back_Left, blue);
+}
+
+//_____________________________________________________________________________
+
+void Leds_SetBackRightBrightness(uint8_t red, uint8_t green, uint8_t blue)
+{
+  Leds_SetSingleBrightness(E_Led_R_Back_Right, red);
+  Leds_SetSingleBrightness(E_Led_G_Back_Right, green);
+  Leds_SetSingleBrightness(E_Led_B_Back_Right, blue);
+}
+
+//_____________________________________________________________________________
+
+void Leds_SetDebugBrightness(uint8_t green, uint8_t blue)
+{
+  Leds_SetSingleBrightness(E_Led_G_Debug, green);
+  Leds_SetSingleBrightness(E_Led_B_Debug, blue);
 }
 
 //_____________________________________________________________________________
 
 void Leds_SetBodyBrightness(uint8_t red, uint8_t green, uint8_t blue)
 {
+#if 0
   Leds_SetTopBrightness(red, green, blue);
   Leds_SetBottomLeftBrightness(red, green, blue);
   Leds_SetBottomRightBrightness(red, green, blue);
+#endif
 }
 
 //_____________________________________________________________________________

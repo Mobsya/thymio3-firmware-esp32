@@ -33,58 +33,73 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
+//  -----       -----       -----       -----       -----       -----
+// | U30 | --> | U29 | --> | U28 | --> | U25 | --> | U27 | --> | U26 |
+//  -----       -----       -----       -----       -----       -----
+
 //! \details The name of the LEDs
 enum
 {
-  // LEDs connected to U17
-  E_Led_IR_Back_Left,    // U17.QA --> D25
-  E_Led_IR_Back_Right,   // U17.QB --> D26
-  E_Led_R_Top,           // U17.QC --> D27 and D38
-  E_Led_G_Top,           // U17.QD --> D27 and D38
-  E_Led_B_Top,           // U17.QE --> D27 and D38
-  E_Led_Battery_0,       // U17.QF --> D28
-  E_Led_Battery_1,       // U17.QG --> D29
-  E_Led_Battery_2,       // U17.GH --> D30
+  // LEDs connected to U26
+  E_Led_Button_Forward,  // U26.QA --> D21
+  E_Led_Button_Right,    // U26.QB --> D22
+  E_Led_Button_Backward, // U26.QC --> D23
+  E_Led_Button_Left,     // U26.QD --> D24
+  E_Led_R_Color_Sensor,  // U26.QE --> D25 Red
+  E_Led_G_Color_Sensor,  // U26.QF --> D25 Green
+  E_Led_B_Color_Sensor,  // U26.QG --> D25 Blue
+  E_Led_White_Sensor,    // U26.GH --> D20
 
-  // LEDs connected to U13
-  E_Led_R_Bottom_Left,   // U13.QA --> D2
-  E_Led_G_Bottom_Left,   // U13.QB --> D2
-  E_Led_B_Bottom_Left,   // U13.QC --> D2
-  E_Led_R_Bottom_Right,  // U13.QD --> D6
-  E_Led_G_Bottom_Right,  // U13.QE --> D6
-  E_Led_B_Bottom_Right,  // U13.QF --> D6
-  E_Led_SD_Card,         // U13.QG --> D35
-  E_Led_White_Sensor,    // U13.QH --> D39
+  // LEDs connected to U27
+  E_Led_Circle_0,        // U27.QA --> D27
+  E_Led_Circle_1,        // U27.QB --> D30
+  E_Led_Circle_2,        // U27.QC --> D33
+  E_Led_Circle_3,        // U27.QD --> D36
+  E_Led_Circle_4,        // U27.QE --> D39
+  E_Led_Circle_5,        // U27.QF --> D42
+  E_Led_Circle_6,        // U27.QG --> D45
+  E_Led_Circle_7,        // U27.QH --> D48
 
-  // LEDs connected to U15
-  E_Led_Front_IR_0,      // U15.QA -->
-  E_Led_Front_IR_1,      // U15.QB -->
-  E_Led_Front_IR_3,      // U15.QC -->
-  E_Led_Front_IR_4,      // U15.QD -->
-  E_Led_Front_IR_2A,     // U15.QE -->
-  E_Led_Front_IR_2B,     // U15.QF -->
-  E_Led_Ground_IR_0,     // U15.QG --> Not connected
-  E_Led_Ground_IR_1,     // U15.QH --> Not connected
+  // LEDs connected to U25
+  E_Led_R_Front_Left,    // U25.QA --> D19 Red
+  E_Led_G_Front_Left,    // U25.QB --> D19 Green
+  E_Led_B_Front_Left,    // U25.QC --> D19 Blue
+  E_Led_R_Front_Right,   // U25.QD --> D26 Red
+  E_Led_G_Front_Right,   // U25.QE --> D26 Green
+  E_Led_B_Front_Right,   // U25.QF --> D26 Blue
+  E_Led_RC5,             // U25.QG --> D18
+  E_Led_NC,              // U25.QH --> Not connected
 
-  // LEDs connected to U16
-  E_Led_Circle_0,        // U16.QA -->
-  E_Led_Circle_1,        // U16.QB -->
-  E_Led_Circle_2,        // U16.QC -->
-  E_Led_Circle_3,        // U16.QD -->
-  E_Led_Circle_4,        // U16.QE -->
-  E_Led_RC,              // U16.QF -->
-  E_Led_Sound,           // U16.QG -->
-  E_Led_Circle_7,        // U16.QH -->
+  // LEDs connected to U28
+  E_Led_Lego_Front_0,    // U28.QA --> D28
+  E_Led_Lego_Front_1,    // U28.QB --> D31
+  E_Led_Lego_Front_2,    // U28.QC --> D34
+  E_Led_Lego_Front_3,    // U28.QD --> D37
+  E_Led_Lego_Front_4,    // U28.QE --> D40
+  E_Led_Lego_Front_5,    // U28.QF --> D43
+  E_Led_Lego_Front_6,    // U28.QG --> D46
+  E_Led_Lego_Front_7,    // U28.QH --> D49
 
-  // LEDs connected to U14
-  E_Led_Button_0,        // U14.QA --> D1
-  E_Led_Button_2,        // U14.QB --> D3
-  E_Led_Button_3,        // U14.QC --> D4
-  E_Led_Button_1,        // U14.QD --> D5
-  E_Led_Circle_5,        // U14.QE -->
-  E_Led_Circle_6,        // U14.QF -->
-  E_Led_Temp_Red,        // U14.QG -->
-  E_Led_Temp_Blue        // U14.QH -->
+  // LEDs connected to U29
+  E_Led_Lego_Back_0,     // U29.QA --> D29
+  E_Led_Lego_Back_1,     // U29.QB --> D32
+  E_Led_Lego_Back_2,     // U29.QC --> D35
+  E_Led_Lego_Back_3,     // U29.QD --> D38
+  E_Led_Lego_Back_4,     // U29.QE --> D41
+  E_Led_Lego_Back_5,     // U29.QF --> D44
+  E_Led_Lego_Back_6,     // U29.QG --> D47
+  E_Led_Lego_Back_7,     // U29.QH --> D50
+
+  // LEDs connected to U30 (bank 0)
+  E_Led_R_Back_Right,    // U30.QA --> D51 Red
+  E_Led_G_Back_Right,    // U30.QB --> D51 Green
+  E_Led_B_Back_Right,    // U30.QC --> D51 Blue
+  E_Led_R_Back_Left,     // U30.QD --> D52 Red
+  E_Led_G_Back_Left,     // U30.QE --> D52 Green
+  E_Led_B_Back_Left,     // U30.QF --> D52 Blue
+  E_Led_G_Debug,         // U30.QG --> D53 Green
+  E_Led_B_Debug          // U30.QH --> D53 Blue
+  // D53 Red is driven directly by GPIO17
 };
 typedef uint8_t T_Led;
 
@@ -126,32 +141,55 @@ extern void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t
 //! \pre       First initialize the LEDs
 //! \param     l0 to l7 - LEDs associated with the proximity IR sensors
 //! \return    None
-extern void leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
+extern void Leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
                                      uint8_t l7);
 
-//! \brief     Set the brightness of the top RGB LED
+//! \brief     Set the brightness of the color sensor RGB LED
 //! \pre       First initialize the LEDs
 //! \param     red - Red component of the RGB LED
 //! \param     green - Green component of the RGB LED
 //! \param     blue - Blue component of the RGB LED
 //! \return    None
-extern void Leds_SetTopBrightness(uint8_t red, uint8_t green, uint8_t blue);
+extern void Leds_SetColorSensorBrightness(uint8_t red, uint8_t green, uint8_t blue);
 
-//! \brief     Set the brightness of the bottom left RGB LED
+//! \brief     Set the brightness of the front left RGB LED
 //! \pre       First initialize the LEDs
 //! \param     red - Red component of the RGB LED
 //! \param     green - Green component of the RGB LED
 //! \param     blue - Blue component of the RGB LED
 //! \return    None
-void Leds_SetBottomLeftBrightness(uint8_t red, uint8_t green, uint8_t blue);
+extern void Leds_SetFrontLeftBrightness(uint8_t red, uint8_t green, uint8_t blue);
 
-//! \brief     Set the brightness of the bottom right RGB LED
+//! \brief     Set the brightness of the front right RGB LED
 //! \pre       First initialize the LEDs
 //! \param     red - Red component of the RGB LED
 //! \param     green - Green component of the RGB LED
 //! \param     blue - Blue component of the RGB LED
 //! \return    None
-void Leds_SetBottomRightBrightness(uint8_t red, uint8_t green, uint8_t blue);
+extern void Leds_SetFrontRightBrightness(uint8_t red, uint8_t green, uint8_t blue);
+
+//! \brief     Set the brightness of the back left RGB LED
+//! \pre       First initialize the LEDs
+//! \param     red - Red component of the RGB LED
+//! \param     green - Green component of the RGB LED
+//! \param     blue - Blue component of the RGB LED
+//! \return    None
+extern void Leds_SetBackLeftBrightness(uint8_t red, uint8_t green, uint8_t blue);
+
+//! \brief     Set the brightness of the back right RGB LED
+//! \pre       First initialize the LEDs
+//! \param     red - Red component of the RGB LED
+//! \param     green - Green component of the RGB LED
+//! \param     blue - Blue component of the RGB LED
+//! \return    None
+extern void Leds_SetBackRightBrightness(uint8_t red, uint8_t green, uint8_t blue);
+
+//! \brief     Set the brightness of the debug RGB LED
+//! \pre       First initialize the LEDs
+//! \param     green - Green component of the RGB LED
+//! \param     blue - Blue component of the RGB LED
+//! \return    None
+extern void Leds_SetDebugBrightness(uint8_t green, uint8_t blue);
 
 //! \brief     Set the brightness of the body RGB LED
 //! \pre       First initialize the LEDs
