@@ -35,6 +35,7 @@
 
 #include "i2s.h"
 
+#include "board.h"
 #include "dsp.h"
 #include "fifo.h"
 
@@ -139,15 +140,23 @@ void I2S_Init(void)
 {
   i2s_config_t i2s_config =
   {
-    .mode                 = (I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN | I2S_MODE_ADC_BUILT_IN),
+    .mode                 = (I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_RX),
     .sample_rate          = I2S_SAMPLE_RATE,
     .bits_per_sample      = I2S_SAMPLE_BITS,
-    .communication_format = I2S_COMM_FORMAT_I2S_MSB,
+    .communication_format = I2S_COMM_FORMAT_I2S,
     .channel_format       = I2S_FORMAT,
     .intr_alloc_flags     = 0,
     .dma_buf_count        = 2,
     .dma_buf_len          = 1024,
-    .use_apll             = false
+    .use_apll             = true
+  };
+
+  i2s_pin_config_t i2s_pin_config =
+  {
+    .bck_io_num   = I2S_SCLK_PIN,
+    .ws_io_num    = I2S_LCLK_PIN,
+    .data_out_num = I2S_DSIN_PIN,
+    .data_in_num  = I2S_DOUT_PIN
   };
 
   //adc1_config_width(ADC_WIDTH_BIT_12);
@@ -155,12 +164,13 @@ void I2S_Init(void)
 
   // Install and start I2S driver
   i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
+  i2s_set_pin(I2S_NUM, &i2s_pin_config);
 
   // Init DAC pad
-  i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE);
+  //i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE);
 
   // Init ADC pad
-  i2s_set_adc_mode(ADC_UNIT_NUM, ADC_CHANNEL_NUM);
+  //i2s_set_adc_mode(ADC_UNIT_NUM, ADC_CHANNEL_NUM);
 
   //i2s_adc_enable(I2S_NUM);
 
@@ -407,6 +417,17 @@ void I2S_Process(void)
   //flash_read_buff = (uint8_t*) calloc(i2s_read_len, sizeof(char));
 }
 #endif
+
+//_____________________________________________________________________________
+
+void I2S_Write(void)
+{
+  uint16_t table[4] = {0x24AA, 0x3912, 0x48CC, 0x72FA};
+  size_t i2s_bytes_write = 0;
+
+  i2s_set_clk(I2S_NUM, I2S_SAMPLE_RATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+  i2s_write(I2S_NUM, table, 8, &i2s_bytes_write, portMAX_DELAY);
+}
 
 //_____________________________________________________________________________
 

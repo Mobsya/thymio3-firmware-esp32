@@ -35,11 +35,10 @@
 //#include "filter_resample.h"
 #include "i2s_stream.h"
 #include "mp3_decoder.h"
+#include "audio_hal.h"
 //#include "spiffs_stream.h"
 
 #include "mp3.h"
-
-#include "prox_ir.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -151,7 +150,7 @@ void MP3_StartPlayer(int number)
 
   if (PlayerIsBusy)
   {
-	StopMP3Player();
+    StopMP3Player();
   }
 
   PlayerIsBusy = true;
@@ -188,41 +187,45 @@ static void RunMP3PlayerTask(void* arg)
 {
   SelectFile(Number);
 
-  ESP_LOGI(Tag, "[ 1 ] Create audio pipeline, add all elements to pipeline, and subscribe pipeline event");
+  ESP_LOGI(Tag, "[ 1 ] Start audio codec chip");
+  audio_hal_codec_config_t audio_hal_codec_cfg = AUDIO_HAL_ES8374_DEFAULT();
+  audio_hal_handle_t hal = audio_hal_init(&audio_hal_codec_cfg, 0);
+  audio_hal_ctrl_codec(hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
+
+  ESP_LOGI(Tag, "[ 2 ] Create audio pipeline, add all elements to pipeline, and subscribe pipeline event");
   audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
   pipeline = audio_pipeline_init(&pipeline_cfg);
   mem_assert(pipeline);
 
-  ESP_LOGI(Tag, "[1.1] Create mp3 decoder to decode mp3 file and set custom read callback");
+  ESP_LOGI(Tag, "[2.1] Create mp3 decoder to decode mp3 file and set custom read callback");
   mp3_decoder_cfg_t mp3_cfg = DEFAULT_MP3_DECODER_CONFIG();
   mp3_decoder = mp3_decoder_init(&mp3_cfg);
   audio_element_set_read_cb(mp3_decoder, mp3_music_read_cb, NULL);
 
-  ESP_LOGI(Tag, "[1.2] Create i2s stream to write data to ESP32 internal DAC");
-  i2s_stream_cfg_t i2s_cfg = I2S_STREAM_INTERNAL_DAC_CFG_DEFAULT();
+  ESP_LOGI(Tag, "[2.2] Create i2s stream to write data to ESP32 internal DAC");
+  i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
   i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ALL_RIGHT;
-  //i2s_cfg.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_IRAM;
-  i2s_cfg.task_prio = 2;
-  //i2s_cfg.type = AUDIO_STREAM_WRITER;
-  //i2s_cfg.task_core = 1;
+  i2s_cfg.i2s_config.sample_rate = 48000;
   i2s_stream_writer = i2s_stream_init(&i2s_cfg);
 
-  ESP_LOGI(Tag, "[1.3] Register all elements to audio pipeline");
+  ESP_LOGI(Tag, "[2.3] Register all elements to audio pipeline");
   audio_pipeline_register(pipeline, mp3_decoder, "mp3");
   audio_pipeline_register(pipeline, i2s_stream_writer, "i2s");
 
-  ESP_LOGI(Tag, "[1.4] Link it together [mp3_music_read_cb]-->mp3_decoder-->i2s_stream-->[ESP32 DAC]");
-  audio_pipeline_link(pipeline, (const char* []) {"mp3", "i2s"}, 2);
+  ESP_LOGI(Tag, "[2.4] Link it together [mp3_music_read_cb]-->mp3_decoder-->i2s_stream-->[ESP32 DAC]");
+  audio_pipeline_link(pipeline, (const char* [])
+  {"mp3", "i2s"
+  }, 2);
 
-  ESP_LOGI(Tag, "[ 2 ] Set up  event listener");
+  ESP_LOGI(Tag, "[ 3 ] Set up  event listener");
   audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
   //audio_event_iface_handle_t evt = audio_event_iface_init(&evt_cfg);
   evt = audio_event_iface_init(&evt_cfg);
 
-  ESP_LOGI(Tag, "[2.1] Listening event from all elements of pipeline");
+  ESP_LOGI(Tag, "[3.1] Listening event from all elements of pipeline");
   audio_pipeline_set_listener(pipeline, evt);
 
-  ESP_LOGI(Tag, "[ 3 ] Start audio_pipeline");
+  ESP_LOGI(Tag, "[ 4 ] Start audio_pipeline");
   audio_pipeline_run(pipeline);
 
   while (1)
@@ -278,9 +281,11 @@ static void RunMP3RecorderTask(void* arg)
 
   ESP_LOGI(Tag, "[1.2] Create audio elements for recorder pipeline");
   audio_element_handle_t i2s_reader = CreateI2SStream(RECORD_RATE, RECORD_BITS, RECORD_CHANNEL, AUDIO_STREAM_READER);
-  audio_element_handle_t filter_downsample = CreateFilter(RECORD_RATE, RECORD_CHANNEL, SAVE_FILE_RATE, SAVE_FILE_CHANNEL, AUDIO_CODEC_TYPE_ENCODER);
+  audio_element_handle_t filter_downsample = CreateFilter(RECORD_RATE, RECORD_CHANNEL, SAVE_FILE_RATE, SAVE_FILE_CHANNEL,
+      AUDIO_CODEC_TYPE_ENCODER);
   audio_element_handle_t amr_encoder = CreateAMREncoder();
-  audio_element_handle_t spiffs_writer = CreateSPIFFSStream(SAVE_FILE_RATE, SAVE_FILE_BITS, SAVE_FILE_CHANNEL, AUDIO_STREAM_WRITER);
+  audio_element_handle_t spiffs_writer = CreateSPIFFSStream(SAVE_FILE_RATE, SAVE_FILE_BITS, SAVE_FILE_CHANNEL,
+                                         AUDIO_STREAM_WRITER);
 
   ESP_LOGI(Tag, "[1.3] Register all elements to record pipeline");
   audio_pipeline_register(pipeline_rec, i2s_reader, "i2s_reader");
@@ -289,7 +294,9 @@ static void RunMP3RecorderTask(void* arg)
   audio_pipeline_register(pipeline_rec, spiffs_writer, "file_writer");
 
   ESP_LOGI(Tag, "[1.4] Link it together [ESP32 ADC]-->i2s_stream-->filter-->amr_encoder-->spiffs_stream-->[flash]");
-  audio_pipeline_link(pipeline_rec, (const char* []) {"i2s_reader", "filter_downsample", "amr_encoder", "file_writer"}, 4);
+  audio_pipeline_link(pipeline_rec, (const char* [])
+  {"i2s_reader", "filter_downsample", "amr_encoder", "file_writer"
+  }, 4);
 
   ESP_LOGI(Tag, "Setup file path to save recorded audio");
   i2s_stream_set_clk(i2s_reader, RECORD_RATE, RECORD_BITS, RECORD_CHANNEL);
@@ -309,10 +316,13 @@ static void RunMP3RecorderTask(void* arg)
 #if 0
   // Playback
   ESP_LOGI(Tag, "[2.2] Create audio elements for playback pipeline");
-  audio_element_handle_t spiffs_reader = create_spiffs_stream(SAVE_FILE_RATE, SAVE_FILE_BITS, SAVE_FILE_CHANNEL, AUDIO_STREAM_READER);
+  audio_element_handle_t spiffs_reader = create_spiffs_stream(SAVE_FILE_RATE, SAVE_FILE_BITS, SAVE_FILE_CHANNEL,
+                                         AUDIO_STREAM_READER);
   audio_element_handle_t amr_decoder = create_amr_decoder();
-  audio_element_handle_t filter_upsample = CreateFilter(SAVE_FILE_RATE, SAVE_FILE_CHANNEL, PLAYBACK_RATE, PLAYBACK_CHANNEL, AUDIO_CODEC_TYPE_DECODER);
-  audio_element_handle_t i2s_writer = CreateI2SStream(PLAYBACK_RATE, PLAYBACK_BITS, PLAYBACK_CHANNEL, AUDIO_STREAM_WRITER);
+  audio_element_handle_t filter_upsample = CreateFilter(SAVE_FILE_RATE, SAVE_FILE_CHANNEL, PLAYBACK_RATE,
+      PLAYBACK_CHANNEL, AUDIO_CODEC_TYPE_DECODER);
+  audio_element_handle_t i2s_writer = CreateI2SStream(PLAYBACK_RATE, PLAYBACK_BITS, PLAYBACK_CHANNEL,
+                                      AUDIO_STREAM_WRITER);
 
   ESP_LOGI(TAG, "[2.3] Register audio elements to playback pipeline");
   audio_pipeline_register(pipeline_play, spiffs_reader_el,     "file_reader");
@@ -412,7 +422,8 @@ static audio_element_handle_t CreateI2SStream(int sample_rates, int bits, int ch
 
 //_____________________________________________________________________________
 
-static audio_element_handle_t CreateFilter(int source_rate, int source_channel, int dest_rate, int dest_channel, audio_codec_type_t type)
+static audio_element_handle_t CreateFilter(int source_rate, int source_channel, int dest_rate, int dest_channel,
+    audio_codec_type_t type)
 {
   rsp_filter_cfg_t rsp_cfg = DEFAULT_RESAMPLE_FILTER_CONFIG();
   rsp_cfg.src_rate = source_rate;

@@ -363,6 +363,7 @@ static esp_err_t UpdateBitsPerSample(T_Mode mode, T_BitsPerSample number);
 static esp_err_t SetADCDACVolume(T_Mode mode, int volume, int dot);
 
 // TODO static esp_err_t ConfigureDACOutput(es_dac_output_t output);
+static esp_err_t ConfigureDACOutput(void);
 
 // TODO static esp_err_t ConfigureADCInput(es_adc_input_t input);
 
@@ -1079,40 +1080,46 @@ static esp_err_t SetADCDACVolume(T_Mode mode, int volume, int dot)
 }
 
 //_____________________________________________________________________________
-#if 0  // TODO
-static esp_err_t ConfigureDACOutput(es_dac_output_t output)
+//#if 0  // TODO
+//static esp_err_t ConfigureDACOutput(es_dac_output_t output)
+static esp_err_t ConfigureDACOutput(void)
 {
   esp_err_t result = ESP_OK;
-  uint8_t data = 0x1d;
+  uint8_t data = 0x02u;
 
-  res = es8374_write_reg(reg, 0x02);
-  res |= es8374_read_reg(0x1c, &reg); // set spk mixer
-  reg |= 0x80;
-  res |= es8374_write_reg(0x1c, reg);
-  res |= es8374_write_reg(0x1D, 0x02); // spk set
-  res |= es8374_write_reg(0x1F, 0x00); // spk set
-  res |= es8374_write_reg(0x1E, 0xA0); // spk on
+  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &data, 1u);
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
+  data |= 0x80u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
+
+  data = 0x02u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &data, 1u);
+
+  data = 0x00u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &data, 1u);
+
+  data = 0xA0u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &data, 1u);
 
   return result;
 }
-#endif
+//#endif
 //_____________________________________________________________________________
-#if 0  // TODO
-static esp_err_t ConfigureADCInput(es_adc_input_t input)
+//#if 0  // TODO
+//static esp_err_t ConfigureADCInput(es_adc_input_t input)
+static esp_err_t ConfigureADCInput(void)
 {
-  int res = 0;
-  uint8_t reg = 0;
+  esp_err_t result = ESP_OK;
+  uint8_t data = 0x00u;
 
-  res |= es8374_read_reg(0x21, &reg);
-  if (res == 0)
-  {
-    reg = (reg & 0xcf) | 0x14;
-    res |= es8374_write_reg(0x21, reg);
-  }
+  I2C_ReadFromAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
+  data = (data & 0xCFu) | 0x14u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
 
-  return res;
+  return result;
 }
-#endif
+//#endif
 //_____________________________________________________________________________
 
 static esp_err_t SetMicrophoneGain(T_MicroGain gain_dB)
@@ -1292,7 +1299,9 @@ static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T
   I2C_WriteToAddress(SLAVE_ADDRESS, 0x73, &data, 1u);
 
   // TODO res |= ConfigureDACOutput(out_channel);  //0x3c Enable DAC and Enable Lout/Rout/1/2
+  result |= ConfigureDACOutput();
   // TODO res |= ConfigureADCInput(in_channel);  //0x00 LINSEL & RINSEL, LIN1/RIN1 as ADC Input; DSSEL,use one DS Reg11; DSR, LINPUT1-RINPUT1
+  result |= ConfigureADCInput();
   result |= ES8374_SetVoiceVolume(0);
 
   data = 0x00;

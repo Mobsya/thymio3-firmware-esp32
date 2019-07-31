@@ -61,6 +61,8 @@ extern void I2S_Process(void);
 
 extern void I2S_AcquireMicrophoneValues(void);
 
+extern void I2S_Write(void);
+
 extern void I2S_Read(void);
 
 extern void I2S_ReadFromFlash(void);

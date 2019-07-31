@@ -31,7 +31,6 @@
 
 #include "sound.h"
 
-#include "adc.h"
 #include "cosine_generator.h"
 #include "dsp.h"
 #include "fifo.h"
@@ -422,7 +421,7 @@ static void RunAcquisitionTask(void* arg)
     // API function rather than the xTaskNotifyWait() API function
     if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY) != 0u)
     {
-      ADC_AcquireMicrophoneValues(&micro);
+      //ADC_AcquireMicrophoneValues(&micro);
 
       val = ((micro * 1.1) / 4095) * 3.6;
 
