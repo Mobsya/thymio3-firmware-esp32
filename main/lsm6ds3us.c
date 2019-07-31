@@ -193,7 +193,11 @@ typedef uint8_t T_Gyro_EnableAxis;  //!< Gyroscope enable/disable axis
 
 static const char* Tag = "lsm6ds3us";
 
-static const T_GpioPinConfig PinConfig = {ACC_INT_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable};
+static const T_GpioPinConfig PinConfig[2] =
+{
+  {ACC_INT1_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
+  {ACC_INT2_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable}
+};
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -270,7 +274,10 @@ static void ReadManufacturerId(uint8_t* data);
 
 void LSM6DS3US_InitAccelerometer(void)
 {
-  Gpio_ConfigurePin(&PinConfig);
+  for (uint8_t index = 0u; index < 2u; index++)
+  {
+    Gpio_ConfigurePin(&PinConfig[index]);
+  }
 
   UpdateAccOutputDataRate(E_Acc_OutputDataRate_104Hz);
 

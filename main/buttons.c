@@ -29,6 +29,8 @@
 
 #include "buttons.h"
 
+#include "aseba_esp32.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -37,7 +39,7 @@
 #define TOUCH_THRESH_PERCENT  (80)
 #define TOUCHPAD_FILTER_TOUCH_PERIOD (10)
 
-#define BUTTONS_NUM            6u
+#define BUTTONS_NUM            5u
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -55,7 +57,7 @@ static const char* Tag = "buttons";
 
 static touch_pad_t Buttons_Table[BUTTONS_NUM];
 
-static bool s_pad_activated[BUTTONS_NUM];
+static uint8_t ButtonStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
 static uint32_t s_pad_init_val[BUTTONS_NUM];
 
 //-----------------------------------------------------------------------------
@@ -66,7 +68,7 @@ static void RunButtonsTask(void* arg);
 
 static void tp_example_touch_pad_init();
 
-static void tp_example_rtc_intr(void * arg);
+static void tp_example_rtc_intr(void* arg);
 
 static void tp_example_set_thresholds(void);
 
@@ -103,6 +105,9 @@ void Buttons_Init(void)
   // Register touch interrupt ISR
   touch_pad_isr_register(tp_example_rtc_intr, NULL);
 
+  // Interrupt mode, enable touch interrupt
+  touch_pad_intr_enable();
+
   ESP_LOGI(Tag, "Buttons are initialized");
 }
 
@@ -122,6 +127,32 @@ void Buttons_Start(void)
 
 //_____________________________________________________________________________
 
+uint8_t* Buttons_GetStatus(void)
+{
+  return ButtonStatus;
+}
+
+//_____________________________________________________________________________
+
+void Buttons_UpdateStatus(void)
+{
+  for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
+  {
+    vmVariables.buttons_state[button] = (int16_t)ButtonStatus[button];
+
+    if (ButtonStatus[button] != 0u)
+    {
+      //ESP_LOGI(Tag, "COUCOU T%d activated!", Buttons_Table[index]);
+
+      // Wait a while for the pad being released
+      vTaskDelay(200 / portTICK_PERIOD_MS);
+      ButtonStatus[button] = 0u;
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
 static void RunButtonsTask(void* arg)
 {
   static int show_message;
@@ -135,17 +166,19 @@ static void RunButtonsTask(void* arg)
       //interrupt mode, enable touch interrupt
       touch_pad_intr_enable();
 
-      for (uint8_t index = 0u; index < BUTTONS_NUM; index++)
+      for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
       {
-        if (s_pad_activated[index] == true)
+        vmVariables.buttons_state[button] = (int16_t)ButtonStatus[button];
+
+        if (ButtonStatus[button] != 0u)
         {
-          ESP_LOGI(Tag, "T%d activated!", Buttons_Table[index]);
+          ESP_LOGI(Tag, "T%d activated!", Buttons_Table[button]);
 
           // Wait a while for the pad being released
           vTaskDelay(200 / portTICK_PERIOD_MS);
 
           // Clear information on pad activation
-          s_pad_activated[index] = false;
+          ButtonStatus[button] = 0u;
 
           // Reset the counter triggering a message
           // that application is running
@@ -156,7 +189,7 @@ static void RunButtonsTask(void* arg)
 #if 0
       for (int i = 0; i < TOUCH_PAD_MAX; i++)
       {
-        if (s_pad_activated[i] == true)
+        if (ButtonStatus[i])
         {
           ESP_LOGI(Tag, "T%d activated!", i);
 
@@ -164,7 +197,7 @@ static void RunButtonsTask(void* arg)
           vTaskDelay(200 / portTICK_PERIOD_MS);
 
           // Clear information on pad activation
-          s_pad_activated[i] = false;
+          ButtonStatus[i] = false;
 
           // Reset the counter triggering a message
           // that application is running
@@ -235,7 +268,7 @@ static void RunButtonsTask(void* arg)
     if (change_mode++ % 2000 == 0)
     {
       filter_mode = !filter_mode;
-      ESP_LOGW(Tag, "Change mode...%s", filter_mode == 0? "interrupt mode": "filter mode");
+      ESP_LOGW(Tag, "Change mode...%s", filter_mode == 0 ? "interrupt mode" : "filter mode");
     }
 #endif
   }
@@ -245,21 +278,20 @@ static void RunButtonsTask(void* arg)
 
 static void tp_example_touch_pad_init()
 {
-  Buttons_Table[0] = TOUCH_PAD_NUM0;
-  Buttons_Table[1] = TOUCH_PAD_NUM2;
-  Buttons_Table[2] = TOUCH_PAD_NUM5;
-  Buttons_Table[3] = TOUCH_PAD_NUM7;
-  Buttons_Table[4] = TOUCH_PAD_NUM8;
-  Buttons_Table[5] = TOUCH_PAD_NUM9;
+  Buttons_Table[E_Button_Backward] = TOUCH_PAD_NUM0;
+  Buttons_Table[E_Button_Left]     = TOUCH_PAD_NUM2;
+  Buttons_Table[E_Button_Center]   = TOUCH_PAD_NUM5;
+  Buttons_Table[E_Button_Forward]  = TOUCH_PAD_NUM7;
+  Buttons_Table[E_Button_Right]    = TOUCH_PAD_NUM8;
 
-  for (uint8_t index = 0u; index < BUTTONS_NUM; index++)
+  for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
   {
     // Initialize RTC IO and mode for touch pad
-	touch_pad_config(Buttons_Table[index], TOUCH_THRESH_NO_USE);
+    touch_pad_config(Buttons_Table[button], TOUCH_THRESH_NO_USE);
   }
 
 #if 0
-  for (int i = 0; i < TOUCH_PAD_MAX;i++)
+  for (int i = 0; i < TOUCH_PAD_MAX; i++)
   {
     //init RTC IO and mode for touch pad.
     touch_pad_config(i, TOUCH_THRESH_NO_USE);
@@ -269,27 +301,30 @@ static void tp_example_touch_pad_init()
 
 //_____________________________________________________________________________
 
-static void tp_example_rtc_intr(void * arg)
+static void tp_example_rtc_intr(void* arg)
 {
   uint32_t pad_intr = touch_pad_get_status();
 
   //clear interrupt
   touch_pad_clear_status();
 
-  for (uint8_t index = 0u; index < BUTTONS_NUM; index++)
+  for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
   {
-	if ((pad_intr >> Buttons_Table[index]) & 0x01)
-	{
-	  s_pad_activated[index] = true;
-	}
+    if ((pad_intr >> Buttons_Table[button]) & 0x01)
+    {
+      ButtonStatus[button] = 1u;
+      SET_EVENT(button);
+    }
   }
+
+  SET_EVENT(EVENT_BUTTONS);
 
 #if 0
   for (int i = 0; i < TOUCH_PAD_MAX; i++)
   {
     if ((pad_intr >> i) & 0x01)
     {
-      s_pad_activated[i] = true;
+      ButtonStatus[i] = true;
     }
   }
 #endif
@@ -301,18 +336,18 @@ static void tp_example_set_thresholds(void)
 {
   uint16_t touch_value;
 
-  for (uint8_t index = 0u; index < BUTTONS_NUM; index++)
+  for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
   {
     //read filtered value
-    touch_pad_read_filtered(Buttons_Table[index], &touch_value);
-	s_pad_init_val[index] = touch_value;
-	ESP_LOGI(Tag, "test init: touch pad [%d] val is %d", index, touch_value);
-	//set interrupt threshold.
-	ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[index], touch_value * 2 / 3));
+    touch_pad_read_filtered(Buttons_Table[button], &touch_value);
+    s_pad_init_val[button] = touch_value;
+    ESP_LOGI(Tag, "test init: touch pad [%d] val is %d", button, touch_value);
+    //set interrupt threshold.
+    ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], touch_value * 2 / 3));
   }
 
 #if 0
-  for (int i = 0; i<TOUCH_PAD_MAX; i++)
+  for (int i = 0; i < TOUCH_PAD_MAX; i++)
   {
     //read filtered value
     touch_pad_read_filtered(i, &touch_value);

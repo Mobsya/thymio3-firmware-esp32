@@ -22,6 +22,8 @@
 
 #include "bh1745nuc.h"
 
+#include "board.h"
+#include "gpio.h"
 #include "i2c.h"
 
 //-----------------------------------------------------------------------------
@@ -131,6 +133,8 @@ typedef uint8_t T_InterruptSource;  //!< Interrupt source
 //-----------------------------------------------------------------------------
 
 static const char* Tag = "bh1745nuc";
+
+static const T_GpioPinConfig PinConfig = {COLOR_INT_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable};
 
 static uint8_t Threshold[THRESHOLD_BYTE_NUM] =
 {
@@ -265,6 +269,8 @@ static void ReadClearDataMsbRegister(uint8_t* data);
 
 void BH1745NUC_Init(void)
 {
+  Gpio_ConfigurePin(&PinConfig);
+
   UpdateMeasurementTime(E_MeasurementTime_160ms);
   UpdateADCGain(E_ADCGain_1x);
   UpdatePersistence(E_Persistence_UpdateAfter4);

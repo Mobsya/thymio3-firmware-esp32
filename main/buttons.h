@@ -31,6 +31,15 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
+typedef enum
+{
+  E_Button_Backward,  // Button 1
+  E_Button_Left,      // Button 2
+  E_Button_Center,    // Button 3
+  E_Button_Forward,   // Button 4
+  E_Button_Right      // Button 5
+} T_Button;
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -50,5 +59,14 @@
 extern void Buttons_Init(void);
 
 extern void Buttons_Start(void);
+
+//! \brief     Get the button status
+//! \pre       None
+//! \param     None
+//! \return    The status of the buttons
+extern uint8_t* Buttons_GetStatus(void);
+
+
+extern void Buttons_UpdateStatus(void);
 
 #endif // BUTTONS_H_
