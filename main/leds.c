@@ -184,8 +184,8 @@ void Leds_SetSingleBrightness(T_Led led, uint8_t brightness)
 
 //_____________________________________________________________________________
 
-void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
-                              uint8_t l7)
+void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
+		                      uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
 {
   Leds_SetSingleBrightness(E_Led_Circle_0, l0);
   Leds_SetSingleBrightness(E_Led_Circle_1, l1);
@@ -198,20 +198,35 @@ void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, ui
 }
 
 //_____________________________________________________________________________
-#if 0
-void Leds_SetProxIRBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3, uint8_t l4, uint8_t l5, uint8_t l6,
-                              uint8_t l7)
+
+void Leds_SetLegoFrontBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
+		                         uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
 {
-  Leds_SetSingleBrightness(E_Led_Front_IR_0,    l0);
-  Leds_SetSingleBrightness(E_Led_Front_IR_1,    l1);
-  Leds_SetSingleBrightness(E_Led_Front_IR_2A,   l2);
-  Leds_SetSingleBrightness(E_Led_Front_IR_2B,   l3);
-  Leds_SetSingleBrightness(E_Led_Front_IR_3,    l4);
-  Leds_SetSingleBrightness(E_Led_Front_IR_4,    l5);
-  Leds_SetSingleBrightness(E_Led_IR_Back_Left,  l6);
-  Leds_SetSingleBrightness(E_Led_IR_Back_Right, l7);
+  Leds_SetSingleBrightness(E_Led_Lego_Front_0, l0);
+  Leds_SetSingleBrightness(E_Led_Lego_Front_1, l1);
+  Leds_SetSingleBrightness(E_Led_Lego_Front_2, l2);
+  Leds_SetSingleBrightness(E_Led_Lego_Front_3, l3);
+  Leds_SetSingleBrightness(E_Led_Lego_Front_4, l4);
+  Leds_SetSingleBrightness(E_Led_Lego_Front_5, l5);
+  Leds_SetSingleBrightness(E_Led_Lego_Front_6, l6);
+  Leds_SetSingleBrightness(E_Led_Lego_Front_7, l7);
 }
-#endif
+
+//_____________________________________________________________________________
+
+void Leds_SetLegoBackBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
+		                        uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
+{
+  Leds_SetSingleBrightness(E_Led_Lego_Back_0, l0);
+  Leds_SetSingleBrightness(E_Led_Lego_Back_1, l1);
+  Leds_SetSingleBrightness(E_Led_Lego_Back_2, l2);
+  Leds_SetSingleBrightness(E_Led_Lego_Back_3, l3);
+  Leds_SetSingleBrightness(E_Led_Lego_Back_4, l4);
+  Leds_SetSingleBrightness(E_Led_Lego_Back_5, l5);
+  Leds_SetSingleBrightness(E_Led_Lego_Back_6, l6);
+  Leds_SetSingleBrightness(E_Led_Lego_Back_7, l7);
+}
+
 //_____________________________________________________________________________
 
 void Leds_SetColorSensorBrightness(uint8_t red, uint8_t green, uint8_t blue)
