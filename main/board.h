@@ -34,7 +34,6 @@
 //*****************************************************************************
 
 // Power and boot pins
-#define DEBUG_PIN                    17u  //!< DEBUG pin is GPIO17
 #define GPIO0_PIN                     0u  //!< GPIO0 pin is GPIO0
 
 // LEDs pins (HSPI)
@@ -65,6 +64,7 @@
 #define SCL_PIN                      22u  //!< SCL pin is GPIO22
 
 // I2S pins
+#define I2S_MCLK_PIN                 17u  //!< I2S_MCLK pin is GPIO17
 #define I2S_SCLK_PIN                 16u  //!< I2S_SCLK pin is GPIO16
 #define I2S_LCLK_PIN                 25u  //!< I2S_LCLK pin is GPIO25
 #define I2S_DSIN_PIN                 26u  //!< I2S_DSIN pin is GPIO26

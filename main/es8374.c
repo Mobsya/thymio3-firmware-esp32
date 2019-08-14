@@ -29,7 +29,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define ADDR_STATE                       0u  //!< ADDR state used to set the slave address
+#define ADDR_STATE                       1u  //!< ADDR state used to set the slave address
 #define ES8374_ADDRESS                0x10u  //!< Device address
 
 #define SLAVE_ADDRESS                 (ES8374_ADDRESS | ADDR_STATE)  //!< Slave address
@@ -371,6 +371,8 @@ static esp_err_t SetMicrophoneGain(T_MicroGain gain_dB);
 
 static esp_err_t ConfigurePGAGain(T_PGAGain config);
 
+static esp_err_t ConfigureClock(void);
+
 //static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T_I2SClock cfg, es_dac_output_t out_channel, es_adc_input_t in_channel);
 static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T_I2SClock cfg);
 
@@ -424,7 +426,7 @@ esp_err_t ES8374_ConfigureI2S(audio_hal_codec_mode_t mode, audio_hal_codec_i2s_i
   esp_err_t result = ESP_OK;
   T_BitsPerSample bitsPerSample = E_BitsPerSample_32bits;
 
-  result |= ConfigureI2SFormat(E_Mode_ADC_DAC, iface->fmt);
+  result |= ConfigureI2SFormat(mode, iface->fmt);
 
   if (iface->bits == AUDIO_HAL_BIT_LENGTH_16BITS)
   {
@@ -439,7 +441,7 @@ esp_err_t ES8374_ConfigureI2S(audio_hal_codec_mode_t mode, audio_hal_codec_i2s_i
     // Do nothing
   }
 
-  UpdateBitsPerSample(E_Mode_ADC_DAC, bitsPerSample);
+  UpdateBitsPerSample(mode, bitsPerSample);
 
   return result;
 }
@@ -449,6 +451,8 @@ esp_err_t ES8374_ConfigureI2S(audio_hal_codec_mode_t mode, audio_hal_codec_i2s_i
 esp_err_t ES8374_SetVoiceVolume(int volume)
 {
   uint8_t vol = 0;
+
+  uint8_t read = 0;
 
   if (volume < 0)
   {
@@ -464,6 +468,10 @@ esp_err_t ES8374_SetVoiceVolume(int volume)
   }
 
   I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_C_REG_ADDRESS, &vol, 1u);
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, 0x38, &read, 1u);
+  ESP_LOGI(Tag, "volume = %d, vol = %d, READ 0x38 VOLUME = %d", volume, vol, read);
+
 
   return ESP_OK;
 }
@@ -482,6 +490,8 @@ esp_err_t ES8374_GetVoiceVolume(int* volume)
   {
     *volume = 100;
   }
+
+  ESP_LOGI(Tag, "VOLUME = %d", *volume);
 
   return ESP_OK;
 }
@@ -530,7 +540,8 @@ esp_err_t ES8374_ControlState(audio_hal_codec_mode_t mode, audio_hal_ctrl_t ctrl
 static esp_err_t Start(T_Mode mode)
 {
   esp_err_t result = ESP_OK;
-  uint8_t data = 0u;
+  uint8_t data = 0x00u;
+  uint8_t constant = 0x00u;
 
   if (mode == E_Mode_Line)
   {
@@ -544,14 +555,14 @@ static esp_err_t Start(T_Mode mode)
     data |= 0x40u;
     I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
 
-    data = 0x02u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &data, 1u);
+    constant = 0x02u;
+    I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
 
-    data = 0x00u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &data, 1u);
+    constant = 0x00u;
+    I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &constant, 1u);
 
-    data = 0xA0u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &data, 1u);
+    constant = 0xA0u;
+    I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
   }
 
   if (mode == E_Mode_ADC || mode == E_Mode_ADC_DAC || mode == E_Mode_Line)
@@ -573,11 +584,11 @@ static esp_err_t Start(T_Mode mode)
     data &= 0xDFu;
     I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
 
-    data = 0x12u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &data, 1u);
+    constant = 0x12u;
+    I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
 
-    data = 0x20u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &data, 1u);
+    constant = 0x20u;
+    I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
 
     I2C_ReadFromAddress(SLAVE_ADDRESS, ANALOG_POWER_DOWN_REG_ADDRESS, &data, 1u);
     data &= 0xDFu;
@@ -589,11 +600,11 @@ static esp_err_t Start(T_Mode mode)
     data &= 0xF7u;
     I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
 
-    data = 0x02u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &data, 1u);
+    constant = 0x02u;
+    I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
 
-    data = 0xA0u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &data, 1u);
+    constant = 0xA0u;
+    I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
 
     result |= ConfigureDACMute(E_DACMute_Normal);
   }
@@ -607,6 +618,7 @@ static esp_err_t Stop(T_Mode mode)
 {
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
+  uint8_t constant = 0x00;
 
   if (mode <= E_Mode_Line)
   {
@@ -618,18 +630,18 @@ static esp_err_t Stop(T_Mode mode)
       data &= 0x9Fu;                      // Disable mono output and mixer output to mono output
       I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
 
-      data = 0x12u;                       // Mute mixer output level
-      I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &data, 1u);
+      constant = 0x12;
+      I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
 
-      data = (1u << LM2SPKLOUT_BIT_POS);  // Select mixer output to speaker output
-      I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &data, 1u);
+      constant = 0x20;
+      I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
 
       I2C_ReadFromAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
       data &= LAX2LSPKMX_BIT_MASK;       // Disable
       I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
 
-      data = 0x00u;
-      I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &data, 1u);
+      constant = 0x00u;
+      I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &constant, 1u);
     }
 
     if ((mode == E_Mode_DAC) || (mode == E_Mode_ADC_DAC))
@@ -642,11 +654,11 @@ static esp_err_t Stop(T_Mode mode)
       data &= 0xDFu;                      // Disable mono output
       I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
 
-      data = 0x12u;                       // Mute mixer output level
-      I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &data, 1u);
+      constant = 0x12u;                   // Mute mixer output level
+      I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
 
-      data = (1u << LM2SPKLOUT_BIT_POS);  // Select mixer output to speaker output
-      I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &data, 1u);
+      constant = 0x20;
+      I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
 
 
       I2C_ReadFromAddress(SLAVE_ADDRESS, ANALOG_POWER_DOWN_REG_ADDRESS, &data, 1u);
@@ -940,7 +952,7 @@ static esp_err_t ConfigureI2SFormat(T_Mode mode, uint8_t format)
   uint8_t fmt_tmp;
   uint8_t fmt_i2s;
 
-  if (format <= E_I2SFormat_DSP)
+  //if (format <= E_I2SFormat_DSP)
   {
     fmt_tmp = ((format & 0xF0u) >> 4);
     fmt_i2s =  format & 0x0Fu;
@@ -971,10 +983,10 @@ static esp_err_t ConfigureI2SFormat(T_Mode mode, uint8_t format)
       ESP_LOGE(Tag, "Invalid mode: %d", mode);
     }
   }
-  else
+  //else
   {
-    result = ESP_ERR_INVALID_ARG;
-    ESP_LOGE(Tag, "Invalid format: %d", format);
+    //result = ESP_ERR_INVALID_ARG;
+    //ESP_LOGE(Tag, "Invalid format: %d", format);
   }
 
   return result;
@@ -1086,21 +1098,23 @@ static esp_err_t ConfigureDACOutput(void)
 {
   esp_err_t result = ESP_OK;
   uint8_t data = 0x02u;
+  uint8_t constant = 0x00u;
 
-  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &data, 1u);
+  constant = 0x02u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
   data |= 0x80u;
   I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
 
-  data = 0x02u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &data, 1u);
+  constant = 0x02u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
 
-  data = 0x00u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &data, 1u);
+  constant = 0x00u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &constant, 1u);
 
-  data = 0xA0u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &data, 1u);
+  constant = 0xA0u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
 
   return result;
 }
@@ -1125,10 +1139,12 @@ static esp_err_t ConfigureADCInput(void)
 static esp_err_t SetMicrophoneGain(T_MicroGain gain_dB)
 {
   esp_err_t result = ESP_OK;
+  uint8_t data = 0x00u;
 
   if (gain_dB <= E_MicroGain_21dB)
   {
-    I2C_WriteToAddress(SLAVE_ADDRESS, PGA_GAIN_REG_ADDRESS, &gain_dB, 1u);
+	data = (gain_dB | (gain_dB << 4));
+    I2C_WriteToAddress(SLAVE_ADDRESS, PGA_GAIN_REG_ADDRESS, &data, 1u);
   }
   else
   {
@@ -1144,7 +1160,7 @@ static esp_err_t SetMicrophoneGain(T_MicroGain gain_dB)
 static esp_err_t ConfigurePGAGain(T_PGAGain config)
 {
   esp_err_t result = ESP_OK;
-  uint8_t data = 0u;
+  uint8_t data = 0x00u;
 
   if (config <= E_PGAGain_Enable)
   {
@@ -1163,140 +1179,380 @@ static esp_err_t ConfigurePGAGain(T_PGAGain config)
 }
 
 //_____________________________________________________________________________
+#if 0
+static esp_err_t ConfigureClock(void)
+{
+  esp_err_t result = ESP_OK;
+  uint8_t constant = 0x00u;
+
+  // FIXME unknown register
+  constant = 0xA0u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, 0x6F, &constant, 1u);
+
+  // FIXME unknown register
+  constant = 0x41u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, 0x72, &constant, 1u);
+
+  // CLOCK MANAGER I Register
+  // --------------------------------------------------------------------
+  // PLL_PDN     = 0... ....  Enable PLL analog
+  // PLL_RB      = .0.. ....  Reset PLL digital
+  // PLLDITH_MAG = ...0 00..  Dither off
+  // PLLOUT_SEL  = .... ..11  VCO out divide by 2
+  //               ---------
+  //               0000 0011 = 0x03
+  // --------------------------------------------------------------------
+  constant = 0x03u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &constant, 1u);
+
+  // Set PLL_K[21:16]
+  constant = 0x00u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_L_REG_ADDRESS, &constant, 1u);
+
+  // Set PLL_K[15:8]
+  constant = 0x00u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_M_REG_ADDRESS, &constant, 1u);
+
+  // Set PLL_K[7:0]
+  constant = 0x00u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_N_REG_ADDRESS, &constant, 1u);
+
+  // CLOCK MANAGER J Register
+  // --------------------------------------------------------------------
+  // PLL_LP     = 1... ....  PLL low power mode
+  // PLL_CP     = .000 ....  PLL cp gain0
+  // PLL_SUPSEL = .... 10..  VDDD =3.3v
+  // PLL_KVCO   = .... ..10  VCO gain2
+  //              ---------
+  //              1000 1010 = 0x8A
+  // --------------------------------------------------------------------
+  constant = 0x8Au;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_J_REG_ADDRESS, &constant, 1u);
+
+  // CLOCK MANAGER K Register
+  // --------------------------------------------------------------------
+  // PLL_CAL_SHORT = 0... ....  PLL calibration 64 data
+  // PLL_VCO_WAIT  = .00. ....  Wait 2 MCLK for vcoout stable when calibration
+  // PLL_N         = .... 1100  Integer part of PLL frequency ratio = 12
+  //              ------------
+  // CLOCK_MANAGER = 0000 1100 = 0x0C
+  // --------------------------------------------------------------------
+  constant = 0x0Cu;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_K_REG_ADDRESS, &constant, 1u);
+
+  // CLOCK MANAGER I Register
+  // --------------------------------------------------------------------
+  // PLL_PDN     = 0... ....  Enable PLL analog
+  // PLL_RB      = .1.. ....  PLL digital on
+  // PLLDITH_MAG = ...0 00..  Dither off
+  // PLLOUT_SEL  = .... ..11  VCO out divide by 2
+  //               ---------
+  //               0100 0011 = 0x43
+  // --------------------------------------------------------------------
+  constant = 0x43u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &constant, 1u);
+
+  // Set ADC_OSR = 32 (0x20)
+  constant = 0x20u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_C_REG_ADDRESS, &constant, 1u);
+
+  // CLOCK MANAGER E Register
+  // --------------------------------------------------------------------
+  // CLK_ADC_DIV = 0001 ....  CLK_ADC_DIV = 1
+  // CLK_DAC_DIV = .... 0001  CLK_DAC_DIV = 1
+  //               ---------
+  //               0001 0001 = 0x11
+  // --------------------------------------------------------------------
+  constant = 0x11u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_E_REG_ADDRESS, &constant, 1u);
+
+
+  // Set Class D speaker clock divider = 32 (0x20)
+  constant = 0x20u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_H_REG_ADDRESS, &constant, 1u);
+
+  // CLOCK MANAGER B Register
+  // --------------------------------------------------------------------
+  // CLK_ADC_CONT   = .0.. ....  CLK_ADC flex
+  // CLK_ADC_DOUBLE = ..0. ....  clk_adc control normal
+  // CLK_DAC_DOUBLE = ...0 ....  clk_dac control normal
+  // PLL_SEL        = .... 0...  PLL disable
+  // SYNCMODE       = .... ...0  Sync mode normal
+  //                  ---------
+  //                  0000 0000 = 0x00
+  // --------------------------------------------------------------------
+  constant = 0x00u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_B_REG_ADDRESS, &constant, 1u);
+
+  return result;
+}
+#endif
+//#if 0
+static esp_err_t ConfigureClock(void)
+{
+  esp_err_t result = ESP_OK;
+  uint8_t constant = 0x00u;
+
+  // FIXME unknown register
+  constant = 0xA0u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, 0x6F, &constant, 1u);
+
+  // FIXME unknown register
+  constant = 0x41u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, 0x72, &constant, 1u);
+
+  // CLOCK MANAGER I Register
+  // --------------------------------------------------------------------
+  // PLL_PDN     = 0... ....  Enable PLL analog
+  // PLL_RB      = .0.. ....  Reset PLL digital
+  // PLLDITH_MAG = ...0 00..  Dither off
+  // PLLOUT_SEL  = .... ..01  VCO out divide by 8
+  //               ---------
+  //               0000 0001 = 0x01
+  // --------------------------------------------------------------------
+  constant = 0x01u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &constant, 1u);
+
+  // Set PLL_K[21:16]
+  constant = 0x01u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_L_REG_ADDRESS, &constant, 1u);
+
+  // Set PLL_K[15:8]
+  constant = 0x55u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_M_REG_ADDRESS, &constant, 1u);
+
+  // Set PLL_K[7:0]
+  constant = 0x33u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_N_REG_ADDRESS, &constant, 1u);
+
+  // CLOCK MANAGER J Register
+  // --------------------------------------------------------------------
+  // PLL_LP     = 1... ....  PLL low power mode
+  // PLL_CP     = .000 ....  PLL cp gain0
+  // PLL_SUPSEL = .... 10..  VDDD =3.3v
+  // PLL_KVCO   = .... ..10  VCO gain2
+  //              ---------
+  //              1000 1010 = 0x8A
+  // --------------------------------------------------------------------
+  constant = 0x8Au;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_J_REG_ADDRESS, &constant, 1u);
+
+  // CLOCK MANAGER K Register
+  // --------------------------------------------------------------------
+  // PLL_CAL_SHORT = 0... ....  PLL calibration 64 data
+  // PLL_VCO_WAIT  = .00. ....  Wait 2 MCLK for vcoout stable when calibration
+  // PLL_N         = .... 1001  Integer part of PLL frequency ratio = 9
+  //              ------------
+  // CLOCK_MANAGER = 0000 1001 = 0x09
+  // --------------------------------------------------------------------
+  constant = 0x09u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_K_REG_ADDRESS, &constant, 1u);
+
+  // CLOCK MANAGER I Register
+  // --------------------------------------------------------------------
+  // PLL_PDN     = 0... ....  Enable PLL analog
+  // PLL_RB      = .1.. ....  PLL digital on
+  // PLLDITH_MAG = ...0 00..  Dither off
+  // PLLOUT_SEL  = .... ..01  VCO out divide by 8
+  //               ---------
+  //               0100 0001 = 0x41
+  // --------------------------------------------------------------------
+  constant = 0x41u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &constant, 1u);
+
+  // Set ADC_OSR = 32 (0x20)
+  constant = 0x20u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_C_REG_ADDRESS, &constant, 1u);
+
+  // CLOCK MANAGER E Register
+  // --------------------------------------------------------------------
+  // CLK_ADC_DIV = 0001 ....  CLK_ADC_DIV = 1
+  // CLK_DAC_DIV = .... 0001  CLK_DAC_DIV = 1
+  //               ---------
+  //               0001 0001 = 0x11
+  // --------------------------------------------------------------------
+  constant = 0x11u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_E_REG_ADDRESS, &constant, 1u);
+
+
+  // Set Class D speaker clock divider = 32 (0x20)
+  constant = 0x20u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_H_REG_ADDRESS, &constant, 1u);
+
+  // CLOCK MANAGER B Register
+  // --------------------------------------------------------------------
+  // CLK_ADC_CONT   = .0.. ....  CLK_ADC flex
+  // CLK_ADC_DOUBLE = ..0. ....  clk_adc control normal
+  // CLK_DAC_DOUBLE = ...0 ....  clk_dac control normal
+  // PLL_SEL        = .... 1...  PLL enable
+  // SYNCMODE       = .... ...0  Sync mode normal
+  //                  ---------
+  //                  0000 1000 = 0x08
+  // --------------------------------------------------------------------
+  constant = 0x08u;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_B_REG_ADDRESS, &constant, 1u);
+
+  return result;
+}
+//#endif
+//_____________________________________________________________________________
 
 //static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T_I2SClock cfg, es_dac_output_t out_channel, es_adc_input_t in_channel)
 static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T_I2SClock cfg)
 {
   esp_err_t result = ESP_OK;
+  uint8_t data = 0x00u;
+  uint8_t constant = 0x00u;
+
+  uint8_t read = 0x00u;
 
   // Reset DAC digital block, ADC digital block, master block, all registers, digital reset
-  uint8_t data = 0x3Fu;
+  constant = 0x3Fu;
+  I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &constant, 1u);
+  constant = 0x03u;                      // Reset DAC digital block, ADC digital block
+  I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &constant, 1u);
 
-  I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &data, 1u);
-  data = 0x03u;                      // Reset DAC digital block, ADC digital block
-  I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &data, 1u);
-
-  data = 0x7Fu;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_A_REG_ADDRESS, &data, 1u);
+  // CLOCK MANAGER Register
+  // --------------------------------------------------------------------
+  // MCLK_DIV2     = 1... ....  MCLK divide by 2
+  // MCLK_ON       = .1.. ....  MCLK on
+  // BCLK_ON       = ..1. ....  BCLK on
+  // CLKD_ON       = ...1 ....  Class D clock on
+  // CLK_ADC_ON    = .... 1...  ADC digital clock on
+  // CLK_DAC_ON    = .... .1..  DAC digital clock on
+  // ANACLK_ADC_ON = .... ..1.  ADC analog clock on
+  // ANACLK_DAC_ON = .... ...1  DAC analog clock on
+  //              -------------------
+  // CLOCK_MANAGER = 1111 1111 = 0xFF
+  // --------------------------------------------------------------------
+  constant = 0xFFu;
+  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_A_REG_ADDRESS, &constant, 1u);
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_A_REG_ADDRESS, &data, 1u);
   data &= MSC_BIT_MASK;              // Slave serial port mode
   data |= (ms_mode << MSC_BIT_POS);
   I2C_WriteToAddress(SLAVE_ADDRESS, SDP_A_REG_ADDRESS, &data, 1u);
 
-  // FIXME unknown register
-  data = 0xA0u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, 0x6F, &data, 1u);
+//  I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_A_REG_ADDRESS, &read, 1u);
+//  ESP_LOGI(Tag, "data = %d, ms_mode = %d, READ 0x0F = %d", data, ms_mode, read);
 
-  // FIXME unknown register
-  data = 0x41u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, 0x72, &data, 1u);
+  result |= ConfigureClock();
 
-  data = 0x01u;                      // Enable PLL analog, vcoout divide by 8
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &data, 1u);
+  //constant = 0x01u;                      // Enable PLL analog, vcoout divide by 8
+  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &constant, 1u);
 
-  data = 0x22u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_L_REG_ADDRESS, &data, 1u);
+//  I2C_ReadFromAddress(SLAVE_ADDRESS, 0x09, &read, 1u);
+//  ESP_LOGI(Tag, "READ 0x09 = %d", read);
 
-  data = 0x2Eu;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_M_REG_ADDRESS, &data, 1u);
+  //constant = 0x22u;
+  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_L_REG_ADDRESS, &constant, 1u);
 
-  data = 0xC6u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_N_REG_ADDRESS, &data, 1u);
+//  I2C_ReadFromAddress(SLAVE_ADDRESS, 0x0C, &read, 1u);
+//  ESP_LOGI(Tag, "READ 0x0C = %d", read);
 
-  data = 0x3Au;  // FIXME In the user guide 0x8Au
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_J_REG_ADDRESS, &data, 1u);
+  //constant = 0x2Eu;
+  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_M_REG_ADDRESS, &constant, 1u);
 
-  data = 0x07u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_K_REG_ADDRESS, &data, 1u);
+  //constant = 0xC6u;
+  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_N_REG_ADDRESS, &constant, 1u);
 
-  data = 0x41u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &data, 1u);
+  //constant = 0x8Au;  // 0x3A FIXME In the user guide 0x8Au
+  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_J_REG_ADDRESS, &constant, 1u);
+
+  //constant = 0x07u;
+  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_K_REG_ADDRESS, &constant, 1u);
+
+  //constant = 0x41u;
+  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &constant, 1u);
 
   result |= ConfigureI2SClock(cfg);
 
-  data = (1u << ADCHPF_BIT_POS);     // Enable ADC left channel high pass filter
-  I2C_WriteToAddress(SLAVE_ADDRESS, ADC_CONTROL_A_REG_ADDRESS, &data, 1u);
+  constant = 0x08u;  //(1u << ADCHPF_BIT_POS);     // Enable ADC left channel high pass filter
+  I2C_WriteToAddress(SLAVE_ADDRESS, ADC_CONTROL_A_REG_ADDRESS, &constant, 1u);
 
-  data = 0x00;
-  I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_A_REG_ADDRESS, &data, 1u);
+  constant = 0x00;
+  I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_A_REG_ADDRESS, &constant, 1u);
 
-  data = 0x30;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SYSTEM_A_REG_ADDRESS, &data, 1u);
+  constant = 0x30;
+  I2C_WriteToAddress(SLAVE_ADDRESS, SYSTEM_A_REG_ADDRESS, &constant, 1u);
 
-  data = 0x20;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SYSTEM_B_REG_ADDRESS, &data, 1u);
+  constant = 0x20;
+  I2C_WriteToAddress(SLAVE_ADDRESS, SYSTEM_B_REG_ADDRESS, &constant, 1u);
 
   result |= ConfigureI2SFormat(E_Mode_ADC, format);
   result |= ConfigureI2SFormat(E_Mode_DAC, format);
 
-  data = 0x50;
-  I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
+  constant = 0x50;
+  I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &constant, 1u);
 
-  data = 0xFF;
-  I2C_WriteToAddress(SLAVE_ADDRESS, PGA_GAIN_REG_ADDRESS, &data, 1u);
+  constant = 0xFF;
+  I2C_WriteToAddress(SLAVE_ADDRESS, PGA_GAIN_REG_ADDRESS, &constant, 1u);
 
-  data = 0x14;
-  I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
+  constant = 0x10; //0x14;
+  I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &constant, 1u);
 
-  data = 0x55;
-  I2C_WriteToAddress(SLAVE_ADDRESS, PGA_GAIN_REG_ADDRESS, &data, 1u);
+  //constant = 0x55;
+  //I2C_WriteToAddress(SLAVE_ADDRESS, PGA_GAIN_REG_ADDRESS, &constant, 1u);
 
-  data = 0x21;    // Set class D divider = 33, to avoid the high frequency tone on laudspeaker
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_H_REG_ADDRESS, &data, 1u);
+  //constant = 0x21;    // Set class D divider = 33, to avoid the high frequency tone on laudspeaker
+  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_H_REG_ADDRESS, &constant, 1u);
 
-  data = 0x80;  // IC START
-  I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &data, 1u);
+  constant = 0x80;  // IC START
+  I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &constant, 1u);
 
   result |= SetADCDACVolume(E_Mode_ADC, 0, 0);      // 0db
   result |= SetADCDACVolume(E_Mode_DAC, 0, 0);      // 0db
 
-  data = 0x8A;
-  I2C_WriteToAddress(SLAVE_ADDRESS, ANALOG_REF_REG_ADDRESS, &data, 1u);
+  constant = 0x8A;
+  I2C_WriteToAddress(SLAVE_ADDRESS, ANALOG_REF_REG_ADDRESS, &constant, 1u);
 
-  data = 0x40;
-  I2C_WriteToAddress(SLAVE_ADDRESS, ANALOG_POWER_DOWN_REG_ADDRESS, &data, 1u);
+  constant = 0x40;
+  I2C_WriteToAddress(SLAVE_ADDRESS, ANALOG_POWER_DOWN_REG_ADDRESS, &constant, 1u);
 
-  data = 0xA0;
-  I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
+  constant = 0xA0;
+  I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &constant, 1u);
 
-  data = 0x19;
-  I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_GAIN_REG_ADDRESS, &data, 1u);
+  constant = 0x19;
+  I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_GAIN_REG_ADDRESS, &constant, 1u);
 
-  data = 0x90;
-  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
+  constant = 0x90;
+  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &constant, 1u);
 
-  data = 0x01;
-  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &data, 1u);
+  constant = 0x02; //0x01;
+  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
 
-  data = 0x00;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &data, 1u);
+  constant = 0x00;
+  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &constant, 1u);
 
-  data = 0x20;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &data, 1u);
+  constant = 0xA0; //0x20;
+  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
 
-  data = 0x00;
-  I2C_WriteToAddress(SLAVE_ADDRESS, ALC_CONTROL_C_REG_ADDRESS, &data, 1u);
+  constant = 0x00;
+  I2C_WriteToAddress(SLAVE_ADDRESS, ALC_CONTROL_C_REG_ADDRESS, &constant, 1u);
 
-  data = 0x00;
-  I2C_WriteToAddress(SLAVE_ADDRESS, ADC_CONTROL_B_REG_ADDRESS, &data, 1u);
+  constant = 0x00;
+  I2C_WriteToAddress(SLAVE_ADDRESS, ADC_CONTROL_B_REG_ADDRESS, &constant, 1u);
 
-  data = 0x00;
-  I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_C_REG_ADDRESS, &data, 1u);
+  constant = 0x00;
+  I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_C_REG_ADDRESS, &constant, 1u);
 
-  data = 0x30;
-  I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_B_REG_ADDRESS, &data, 1u);
+  constant = 0x30;
+  I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_B_REG_ADDRESS, &constant, 1u);
 
-  data = 0x60;
-  I2C_WriteToAddress(SLAVE_ADDRESS, GPIO_AND_INT_CONTROL_REG_ADDRESS, &data, 1u);
+  constant = 0x60;
+  I2C_WriteToAddress(SLAVE_ADDRESS, GPIO_AND_INT_CONTROL_REG_ADDRESS, &constant, 1u);
+
+  // It's for testing
+  constant = 0x0C;
+  I2C_WriteToAddress(SLAVE_ADDRESS, SDP_C_REG_ADDRESS, &constant, 1u);
 
   // FIXME unknown register
-  data = 0x05u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, 0x71, &data, 1u);
+  //constant = 0x05u;
+  //I2C_WriteToAddress(SLAVE_ADDRESS, 0x71, &constant, 1u);
 
   // FIXME unknown register
-  data = 0x70u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, 0x73, &data, 1u);
+  //constant = 0x70u;
+  //I2C_WriteToAddress(SLAVE_ADDRESS, 0x73, &constant, 1u);
 
   // TODO res |= ConfigureDACOutput(out_channel);  //0x3c Enable DAC and Enable Lout/Rout/1/2
   result |= ConfigureDACOutput();
@@ -1304,8 +1560,8 @@ static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T
   result |= ConfigureADCInput();
   result |= ES8374_SetVoiceVolume(0);
 
-  data = 0x00;
-  I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_B_REG_ADDRESS, &data, 1u);
+  constant = 0x30;
+  I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_B_REG_ADDRESS, &constant, 1u);
 
   return result;
 }

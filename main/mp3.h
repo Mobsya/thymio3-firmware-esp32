@@ -13,7 +13,7 @@
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
-
+#if 0
 #ifndef MP3_H_
 #define MP3_H_
 
@@ -60,3 +60,4 @@ extern void MP3_StartPlayer(int number);
 extern void MP3_StartRecorder(void);
 
 #endif // MP3_H_
+#endif

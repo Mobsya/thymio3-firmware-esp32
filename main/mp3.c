@@ -17,7 +17,7 @@
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
-
+#if 0
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -482,3 +482,4 @@ int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t 
 
   return read_size;
 }
+#endif
