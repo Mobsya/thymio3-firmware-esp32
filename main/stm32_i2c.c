@@ -7,7 +7,7 @@
 //_____________________________________________________________________________
 //
 //! \file    stm32.c
-//! \brief   This module provides the useful functions to communicate with the STM32
+//! \brief   This module provides the useful functions to communicate with the STM32 by I2C
 //!
 //! \author  Vincent Gonet
 //!
@@ -20,41 +20,36 @@
 
 #include "esp_log.h"
 
-#include "stm32.h"
-
-#include "i2c.h"
+#include "stm32_i2c.h"
 
 #include "aseba_esp32.h"
+#include "i2c.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define SLAVE_ADDRESS                   0x04u  //!< Slave address
+#define SLAVE_ADDRESS                      0x04u  //!< Slave address
 
-#define SETTINGS_REG_ADDRESS            0x0Du  //!< Settings register address           (Read/Write)
-#define STATUS_REG_ADDRESS              0x0Eu  //!< Status register address             (Read/Write)
-#define WHO_AM_I_REG_ADDRESS            0x0Fu  //!< WHO_AM_I register address           (Read only)
-#define LEFT_MOTOR_TARGET_REG_ADDRESS   0x10u  //!< Left motor target register address  (Read/Write)
-#define RIGHT_MOTOR_TARGET_REG_ADDRESS  0x11u  //!< Right motor target register address (Read/Write)
-#define BATTERY_VOLTAGE_REG_ADDRESS     0x12u  //!< Battery voltage register address    (Read only)
-#define INDUCED_VOLTAGE_REG_ADDRESS     0x13u  //!< Induced voltage register address    (Read only)
-#define MOTOR_CURRENT_REG_ADDRESS       0x14u  //!< Motor current register address      (Read only)
-#define PWM_DUTY_CYCLE_REG_ADDRESS      0x15u  //!< PWM duty cycle register address     (Read only)
-#define BUTTON_STATUS_REG_ADDRESS       0x16u  //!< Button status register address      (Read only)
-#define BUTTON_RAW_DATA_REG_ADDRESS     0x17u  //!< Button raw data register address    (Read only)
-#define BUTTON_MEAN_REG_ADDRESS         0x18u  //!< Button mean register address        (Read only)
-#define BUTTON_NOISE_REG_ADDRESS        0x19u  //!< Button noise register address       (Read only)
+#define SETTINGS_REG_ADDRESS               0x0Du  //!< Settings register address           (Read/Write)
+#define STATUS_REG_ADDRESS                 0x0Eu  //!< Status register address             (Read/Write)
+#define WHO_AM_I_REG_ADDRESS               0x0Fu  //!< WHO_AM_I register address           (Read only)
+#define LEFT_MOTOR_TARGET_REG_ADDRESS      0x10u  //!< Left motor target register address  (Read/Write)
+#define RIGHT_MOTOR_TARGET_REG_ADDRESS     0x11u  //!< Right motor target register address (Read/Write)
+#define BATTERY_MOTOR_VOLTAGE_REG_ADDRESS  0x12u  //!< Battery voltage register address    (Read only)
+#define INDUCED_VOLTAGE_REG_ADDRESS        0x13u  //!< Induced voltage register address    (Read only)
+#define MOTOR_CURRENT_REG_ADDRESS          0x14u  //!< Motor current register address      (Read only)
+#define PWM_DUTY_CYCLE_REG_ADDRESS         0x15u  //!< PWM duty cycle register address     (Read only)
+#define BATTERY_VOLTAGE_REG_ADDRESS        0x16u  //!< Battery voltage register address    (Read only)
 
-#define STM32_ID                        0xBCu  //!< ID of the STM32
+#define STM32_ID                           0xBCu  //!< ID of the STM32
 
 // Status register bit mask
-#define USB_CABLE_IS_PRESENT_BIT_MASK   0x01u
-#define USB_PORT_IS_OPEN_BIT_MASK       0x02u
-#define MODE_UPDATE_BIT_MASK            0x04u
-#define READY_TO_SWITCH_OFF_BIT_MASK    0x08u
-#define OK_TO_SWITCH_OFF_BIT_MASK       0x10u
-#define GPIO0_PIN_MODE_BIT_MASK         0x20u
+#define USB_CABLE_IS_PRESENT_BIT_MASK      0x01u
+#define USB_PORT_IS_OPEN_BIT_MASK          0x02u
+#define MODE_UPDATE_BIT_MASK               0x04u
+#define READY_TO_SWITCH_OFF_BIT_MASK       0x08u
+#define OK_TO_SWITCH_OFF_BIT_MASK          0x10u
 
 // Status register bit position
 #define USB_CABLE_IS_PRESENT_BIT_POS       0u  // This bit is set by the STM32
@@ -62,7 +57,6 @@
 #define MODE_UPDATE_BIT_POS                2u  // This bit is set by the STM32
 #define READY_TO_SWITCH_OFF_BIT_POS        3u  // This bit is set by the STM32
 #define OK_TO_SWITCH_OFF_BIT_POS           4u  // This bit is set by the ESP32
-#define GPIO0_PIN_MODE_BIT_POS             5u  // This bit is set by the STM32
 
 #define MOTORS_NUM                         2u  //!< Number of motors
 
@@ -89,15 +83,12 @@ static const char* Tag = "stm32";
 
 static uint8_t Status = 0u;
 
-static int16_t ButtonRaw[BUTTONS_NUM]    = {0, 0, 0, 0, 0};
-static int16_t ButtonMean[BUTTONS_NUM]   = {0, 0, 0, 0, 0};
-static int16_t ButtonNoise[BUTTONS_NUM]  = {0, 0, 0, 0, 0};
-static uint8_t ButtonStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
-
-static int16_t Vbat[MOTORS_NUM]      = {0, 0};
+static int16_t VbatMotor[MOTORS_NUM] = {0, 0};
 static int16_t Vind[MOTORS_NUM]      = {0, 0};
 static int16_t DutyCycle[MOTORS_NUM] = {0, 0};
 static int16_t Current[MOTORS_NUM]   = {0, 0};
+
+static int16_t Vbat = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -117,6 +108,35 @@ static void ReadId(uint8_t* id);
 //-----------------------------------------------------------------------------
 // Functions Implementation
 //-----------------------------------------------------------------------------
+
+void STM32_UpdateBehaviorStatus(uint16_t status)
+{
+
+}
+
+//_____________________________________________________________________________
+
+void STM32_UpdateProxIRLedsBrightness(uint16_t l0, uint16_t l1, uint16_t l2, uint16_t l3,
+		                              uint16_t l4, uint16_t l5, uint16_t l6, uint16_t l7)
+{
+
+}
+
+//_____________________________________________________________________________
+
+void STM32_UpdateGroundIRLedsBrightness(uint16_t l0, uint16_t l1)
+{
+
+}
+
+//_____________________________________________________________________________
+
+void STM32_UpdateMicrophoneLedBrightness(uint16_t brightness)
+{
+
+}
+
+//_____________________________________________________________________________
 
 void STM32_UpdateSettings(T_Settings settings)
 {
@@ -193,13 +213,6 @@ bool STM32_IsAllowedToSwitchOff(void)
   return ((Status & (1 << OK_TO_SWITCH_OFF_BIT_POS)) == OK_TO_SWITCH_OFF_BIT_MASK);
 }
 
-//_____________________________________________________________________________
-
-bool STM32_IsGpio0InNormalMode(void)
-{
-  // 'True' means that the GPIO0 is in input (STM32) so it is possible to drive this pin for the ESP32
-  return ((Status & (1 << GPIO0_PIN_MODE_BIT_POS)) == GPIO0_PIN_MODE_BIT_MASK);
-}
 //_____________________________________________________________________________
 
 T_Error STM32_CheckId(void)
@@ -289,24 +302,24 @@ void STM32_ReadPwmDutyCycle(void)
 
 //_____________________________________________________________________________
 
-void STM32_ReadBatteryVoltage(void)
+void STM32_ReadBatteryMotorVoltage(void)
 {
   uint8_t data[4];
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, BATTERY_VOLTAGE_REG_ADDRESS, data, 4u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, BATTERY_MOTOR_VOLTAGE_REG_ADDRESS, data, 4u);
 
-  Vbat[E_Motor_Left]  = ((data[1] << 8) | data[0]);
-  Vbat[E_Motor_Right] = ((data[3] << 8) | data[2]);
+  VbatMotor[E_Motor_Left]  = ((data[1] << 8) | data[0]);
+  VbatMotor[E_Motor_Right] = ((data[3] << 8) | data[2]);
 
-  vmVariables.vbat[E_Motor_Left]  = Vbat[E_Motor_Left];
-  vmVariables.vbat[E_Motor_Right] = Vbat[E_Motor_Right];
+  vmVariables.vbat_motor[E_Motor_Left]  = VbatMotor[E_Motor_Left];
+  vmVariables.vbat_motor[E_Motor_Right] = VbatMotor[E_Motor_Right];
 }
 
 //_____________________________________________________________________________
 
-int16_t STM32_GetBatteryVoltage(void)
+int16_t STM32_GetBatteryMotorVoltage(void)
 {
-  return (Vbat[E_Motor_Left] + Vbat[E_Motor_Right]);
+  return (VbatMotor[E_Motor_Left] + VbatMotor[E_Motor_Right]);
 }
 
 //_____________________________________________________________________________
@@ -343,6 +356,26 @@ void STM32_ReadMotorCurrent(void)
 
 //_____________________________________________________________________________
 
+void STM32_ReadBatteryVoltage(void)
+{
+  uint8_t data[4];
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, BATTERY_VOLTAGE_REG_ADDRESS, data, 2u);
+
+  Vbat = ((data[1] << 8) | data[0]);
+
+  vmVariables.vbat = Vbat;
+}
+
+//_____________________________________________________________________________
+
+int16_t STM32_GetBatteryVoltage(void)
+{
+  return Vbat;
+}
+
+//_____________________________________________________________________________
+#if 0
 void STM32_ReadButtonStatus(void)
 {
   uint8_t data;
@@ -362,13 +395,6 @@ void STM32_ReadButtonStatus(void)
   }
 
   SET_EVENT(EVENT_BUTTONS);
-}
-
-//_____________________________________________________________________________
-
-uint8_t* STM32_GetButtonStatus(void)
-{
-  return ButtonStatus;
 }
 
 //_____________________________________________________________________________
@@ -433,7 +459,7 @@ void STM32_ReadButtonNoise(void)
   vmVariables.buttons_noise[E_Button_Forward]  = ButtonNoise[E_Button_Forward];
   vmVariables.buttons_noise[E_Button_Right]    = ButtonNoise[E_Button_Right];
 }
-
+#endif
 //_____________________________________________________________________________
 
 static void ReadId(uint8_t* id)

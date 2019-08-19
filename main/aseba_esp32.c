@@ -286,7 +286,7 @@ const AsebaVMDescription vmDescription =
 
     {1, "motor.left.target"},
     {1, "motor.right.target"},
-    {2, "_vbat"},
+    {2, "_vbat_motor"},
     {2, "_imot"},
     {1, "motor.left.speed"},
     {1, "motor.right.speed"},
@@ -320,6 +320,7 @@ const AsebaVMDescription vmDescription =
     {3, "angle_deg"},
     {4, "ip"},
     {2, "settings"},
+    {1, "vbat"},
     {0, NULL} // Null terminated
   }
 };
@@ -835,7 +836,7 @@ void __attribute((noreturn)) run_aseba_main_loop(void)
 void save_settings(void)
 {
 // if calibration is new, and Vbat > 3.3V, then flash
-  if (update_calib && vmVariables.vbat[0] > 655)
+  if (update_calib && vmVariables.vbat_motor[0] > 655)
   {
     AsebaNative__system_settings_flash(NULL);
     update_calib = 0;

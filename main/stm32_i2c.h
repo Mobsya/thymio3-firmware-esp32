@@ -42,15 +42,6 @@ typedef struct
 } T_Settings;
 //#endif
 
-typedef enum
-{
-  E_Button_Backward,  // Button 1
-  E_Button_Left,      // Button 2
-  E_Button_Center,    // Button 3
-  E_Button_Forward,   // Button 4
-  E_Button_Right      // Button 5
-} T_Button;
-
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -63,6 +54,14 @@ typedef enum
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
+extern void STM32_UpdateBehaviorStatus(uint16_t status);
+
+extern void STM32_UpdateProxIRLedsBrightness(uint16_t l0, uint16_t l1, uint16_t l2, uint16_t l3,
+                                         uint16_t l4, uint16_t l5, uint16_t l6, uint16_t l7);
+
+extern void STM32_UpdateGroundIRLedsBrightness(uint16_t l0, uint16_t l1);
+
+extern void STM32_UpdateMicrophoneLedBrightness(uint16_t brightness);
 //! \brief     Update the settings
 //! \pre       None
 //! \param     settings - Settings applied to the motors
@@ -149,18 +148,18 @@ extern void STM32_GetRightMotorTarget(int16_t* target);
 //! \return    None
 extern void STM32_ReadPwmDutyCycle(void);
 
-//! \brief     Read the battery voltage
+//! \brief     Read the battery motor voltage
 //! \pre       None
 //! \param     None
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\GetBattery.svg
-extern void STM32_ReadBatteryVoltage(void);
+extern void STM32_ReadBatteryMotorVoltage(void);
 
-//! \brief     Get the battery voltage
+//! \brief     Get the battery motor voltage
 //! \pre       None
 //! \param     None
-//! \return    Battery voltage
-extern int16_t STM32_GetBatteryVoltage(void);
+//! \return    The battery motor voltage
+extern int16_t STM32_GetBatteryMotorVoltage(void);
 
 //! \brief     Read the induced voltage
 //! \pre       None
@@ -174,34 +173,16 @@ extern void STM32_ReadInducedVoltage(void);
 //! \return    None
 extern void STM32_ReadMotorCurrent(void);
 
-//! \brief     Read the button status
+//! \brief     Read the battery voltage
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void STM32_ReadButtonStatus(void);
+extern void STM32_ReadBatteryVoltage(void);
 
-//! \brief     Get the button status
+//! \brief     Get the battery voltage
 //! \pre       None
 //! \param     None
-//! \return    None
-extern uint8_t* STM32_GetButtonStatus(void);
-
-//! \brief     Read the button raw data
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void STM32_ReadButtonRawData(void);
-
-//! \brief     Read the button mean
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void STM32_ReadButtonMean(void);
-
-//! \brief     Read the button noise
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void STM32_ReadButtonNoise(void);
+//! \return    The battery voltage
+extern int16_t STM32_GetBatteryVoltage(void);
 
 #endif // STM32_H_

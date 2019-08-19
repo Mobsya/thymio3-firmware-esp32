@@ -26,14 +26,10 @@
 
 #include "comm.h"
 
-#include "accelerometer.h"
+#include "behavior.h"
 #include "board.h"
-#include "color_sensor.h"
-#include "gyroscope.h"
-#include "i2c.h"
 #include "power.h"
-#include "spi.h"
-#include "stm32.h"
+#include "stm32_i2c.h"
 #include "uart.h"
 
 //-----------------------------------------------------------------------------
@@ -54,9 +50,9 @@
 
 static const char* Tag = "comm";
 
-static spi_device_handle_t Microcontroller;
-
 static bool BusIsAvailable = false;
+
+//static spi_device_handle_t Microcontroller;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -78,17 +74,13 @@ static void RunCommTask(void* arg);
 
 void Comm_Init(void)
 {
-  I2C_Init();
   UART_Init();
 
-  ColorSensor_Init();
-  Accelerometer_Init();
-  Gyroscope_Init();
-
-  Spi_InitVSPI();
-  Spi_AddDeviceVSPI(&Microcontroller, SPI_CS_PIN);
+  //STM32_Init();
 
   BusIsAvailable = false;
+
+  ESP_LOGI(Tag, "Communication is initialized");
 }
 
 //_____________________________________________________________________________
@@ -118,19 +110,23 @@ static void RunCommTask(void* arg)
 {
   static uint8_t counter = 0;
 
+  //static uint8_t tx[5] = {0x0A, 0x0C, 0x0E, 0x01, 0x03};
+  //static uint16_t rx[13] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  //static uint16_t rx[5] = {0x00, 0x00, 0x00, 0x00, 0x00};
+
   ESP_LOGI(Tag, "Start Comm Task");
 
   while (1)
   {
     BusIsAvailable = false;
 
-    // Every 20 [ms], 50 [Hz] (vTaskDelay = 20 [ms])
-    Accelerometer_ReadTapSource();
-    Accelerometer_GetAcceleration();
-    Gyroscope_GetAngularPosition();
+    //STM32_Communicate();
 
-    ColorSensor_ReadColor();
+    //STM32_CheckId();
+    //STM32_ReadBatteryVoltage();
+    STM32_ReadStatus();
 
+#if 0
     STM32_ReadInducedVoltage();
     STM32_ReadButtonStatus();
     STM32_ReadStatus();
@@ -140,14 +136,36 @@ static void RunCommTask(void* arg)
     STM32_ReadButtonRawData();
     STM32_ReadButtonMean();
     STM32_ReadButtonNoise();
+#endif
+    //Spi_WriteVSPI(Microcontroller, tx, 5);
 
-    Spi_Write(Microcontroller, &counter, 1);
+//    Spi_ReadVSPI(Microcontroller, rx, 13);
 
+    //if ((tx[0] != 0x0A) || (tx[1] != 0x0B) || (tx[2] != 0x0C) || (tx[3] != 0x0D) || (tx[4] != 0x0E))
+    {
+      //ESP_LOGI(Tag, "%d, %d, %d, %d, %d", tx[0], tx[1], tx[2], tx[3], tx[4]);
+    }
+
+    //if ((rx[0] != 0x70) || (rx[1] != 0x71) || (rx[2] != 0x72) || (rx[3] != 0x73) || (rx[4] != 0x74))
+    //if ((rx[0] != 0x6A) || (rx[1] != 0x70) || (rx[2] != 0x71) || (rx[3] != 0x72) || (rx[4] != 0x73) || (rx[5] != 0x74))
+#if 0
+    if ((rx[0] != 0x0201) || (rx[1] != 0x0403) || (rx[2] != 0x0605) || (rx[3] != 0x0807) || (rx[4] != 0x0A09) ||
+        (rx[5] != 0x0C0B) || (rx[6] != 0x0E0D) || (rx[7] != 0x000F) || (rx[8] != 0x0201) || (rx[9] != 0x0403) ||
+        (rx[10] != 0x0605))
+    {
+      ESP_LOGI(Tag, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d", rx[0], rx[1], rx[2], rx[3], rx[4], rx[5], rx[6], rx[7],
+               rx[8], rx[9], rx[10]);
+    }
+#endif
+
+    //ESP_LOGI(Tag, "%d, %d, %d, %d, %d", rx[0], rx[1], rx[2], rx[3], rx[4]);
+    //Spi_ReadVSPI();
+//#if 0
     if ((counter % 5u) == 0u)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 20 [ms])
     {
       Power_HandlePowerModeRequest();
     }
-
+//#endif
     counter++;
 
     BusIsAvailable = true;

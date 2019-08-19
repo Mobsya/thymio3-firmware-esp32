@@ -18,8 +18,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <driver/i2c.h>
-#include <esp_log.h>
+#include "driver/i2c.h"
+#include "esp_log.h"
 
 #include "i2c.h"
 #include "board.h"
@@ -131,6 +131,9 @@ void I2C_WriteToAddress(uint8_t slaveAddress, uint8_t registerAddress, uint8_t* 
 
   //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0));
   i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
+
+  // FIXME Only for debug
+  //ESP_LOGI(Tag, "reg = %d, data = %d", registerAddress, *data);
 
   i2c_cmd_link_delete(cmd);
 }

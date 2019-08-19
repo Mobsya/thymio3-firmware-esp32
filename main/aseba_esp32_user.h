@@ -69,7 +69,7 @@ struct _vmVariables
   int16_t ground_reflected[2];
   int16_t ground_delta[2];
   int16_t target[2];
-  int16_t vbat[2];
+  int16_t vbat_motor[2];
   int16_t imot[2];
   int16_t uind[2];
   int16_t pwm[2];
@@ -91,6 +91,7 @@ struct _vmVariables
   int16_t angle_deg[3];
   int16_t ip[4];
   int16_t settings[2];
+  int16_t vbat;
   int16_t freeSpace[VM_VARIABLES_FREE_SPACE];
 };
 
