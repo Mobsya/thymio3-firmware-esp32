@@ -30,12 +30,16 @@
 #define B_SOUND_BUTTON  (1 << 0)
 #define B_LEDS_BUTTON   (1 << 1)
 #define B_LEDS_PROX     (1 << 2)
+#define B_LEDS_LEGO     (1 << 3)
+#define B_LEDS_MIC      (1 << 4)
 #define B_LEDS_BATTERY  (1 << 5)
+#define B_LEDS_CIRCLE   (1 << 6)
 #define B_LEDS_ACC      (1 << 8)
+#define B_LEDS_RGB      (1 << 9)
 #define B_MODE          (1 << 10)
 #define B_SETTING       (1 << 12)
 
-#define B_ALWAYS    (B_LEDS_BATTERY | B_LEDS_BUTTON | B_SOUND_BUTTON)  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_SOUND_BUTTON | B_LEDS_BUTTON)
+#define B_ALWAYS    (B_LEDS_BATTERY | B_LEDS_BUTTON | B_SOUND_BUTTON | B_LEDS_LEGO | B_LEDS_CIRCLE | B_LEDS_RGB)  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_SOUND_BUTTON | B_LEDS_BUTTON)
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -67,14 +71,20 @@ extern void Behavior_Start(void);
 
 //! \brief     Enable the behavior
 //! \pre       None
-//! \param     b - Behavior to start
+//! \param     b The behavior to start
 //! \return    None
 extern void Behavior_Enable(uint16_t b);
 
 //! \brief     Disable the behavior
 //! \pre       None
-//! \param     b - Behavior to stop
+//! \param     b The behavior to stop
 //! \return    None
 extern void Behavior_Disable(uint16_t b);
+
+//! \brief     Get the status of behaviors
+//! \pre       None
+//! \param     None
+//! \return    The status (bit = 0 -> behavior is disabled, bit = 1 -> behavior is enabled)
+extern uint16_t Behavior_GetStatus(void);
 
 #endif // BEHAVIOR_H_

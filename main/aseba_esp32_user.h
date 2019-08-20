@@ -92,6 +92,13 @@ struct _vmVariables
   int16_t ip[4];
   int16_t settings[2];
   int16_t vbat;
+  int16_t leds_lego_circle[8];
+  int16_t leds_lego_front[8];
+  int16_t leds_lego_back[8];
+  int16_t led_front_left[3];
+  int16_t led_front_right[3];
+  int16_t led_back_left[3];
+  int16_t led_back_right[3];
   int16_t freeSpace[VM_VARIABLES_FREE_SPACE];
 };
 

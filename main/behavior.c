@@ -34,7 +34,7 @@
 #include "leds.h"
 #include "mode.h"
 #include "sound.h"
-#include "stm32.h"
+#include "stm32_i2c.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -64,11 +64,11 @@ typedef enum
 
 static const char* Tag = "behavior";
 
-static uint16_t behavior = 0u;
+static uint16_t Behavior = 0u;
 
-#define ENABLED(b)     (behavior & b)    // ({behavior & b;})
-#define ENABLE(b)      (behavior |= b)   // do {behavior |= b;} while(0)
-#define DISABLE(b)     (behavior &= ~b)  // do {behavior &= ~b;} while(0)  //(behavior &= ~b)
+#define ENABLED(b)     (Behavior & b)    // ({behavior & b;})
+#define ENABLE(b)      (Behavior |= b)   // do {behavior |= b;} while(0)
+#define DISABLE(b)     (Behavior &= ~b)  // do {behavior &= ~b;} while(0)  //(behavior &= ~b)
 
 const T_Note ButtonSound[1];
 const T_Note CenterButtonSound[3];
@@ -151,9 +151,11 @@ void Behavior_Start(void)
 
 void Behavior_Enable(uint16_t b)
 {
-  //ENABLE(b);
+  ENABLE(b);
 
-  behavior |= b;
+  //behavior |= b;
+
+  STM32_UpdateBehaviorStatus(Behavior);
 }
 
 //_____________________________________________________________________________
@@ -163,6 +165,15 @@ void Behavior_Disable(uint16_t b)
   DISABLE(b);
 
   //behavior &= ~b;
+
+  STM32_UpdateBehaviorStatus(Behavior);
+}
+
+//_____________________________________________________________________________
+
+uint16_t Behavior_GetStatus(void)
+{
+  return Behavior;
 }
 
 //_____________________________________________________________________________
@@ -182,6 +193,22 @@ static void RunBehaviorTask(void* arg)
 
 static void RunBehaviors(void)
 {
+  //Leds_SetSingleBrightness(E_Led_G_Debug, 0);
+  //Leds_SetSingleBrightness(E_Led_B_Debug, MAX_BRIGHTNESS);
+  //Leds_SetSingleBrightness(E_Led_B_Back_Left, MAX_BRIGHTNESS);
+  //Leds_SetSingleBrightness(E_Led_Lego_Back_3, MAX_BRIGHTNESS);
+  //Leds_SetSingleBrightness(E_Led_Lego_Back_4, MAX_BRIGHTNESS);
+  //Leds_SetSingleBrightness(E_Led_Lego_Back_5, MAX_BRIGHTNESS);
+  //Leds_SetSingleBrightness(E_Led_Lego_Back_6, MAX_BRIGHTNESS);
+  //Leds_SetSingleBrightness(E_Led_Lego_Back_7, MAX_BRIGHTNESS);
+
+  if (ENABLED(B_LEDS_LEGO))
+  {
+    //Leds_SetLegoBackBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 1, 1, 1, 1);
+    Leds_SetLegoBackBrightness(MAX_BRIGHTNESS, 0, 0, 0, 0, 0, 0, 0);
+  }
+
+#if 0
   if (ENABLED(B_LEDS_BUTTON))
   {
     SetButtonsLeds();
@@ -211,6 +238,7 @@ static void RunBehaviors(void)
     UpdateSettings();
   }
 //#endif
+#endif
 }
 
 //_____________________________________________________________________________

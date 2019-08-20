@@ -1,0 +1,462 @@
+//_____________________________________________________________________________
+//
+// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
+//_____________________________________________________________________________
+//
+// PROJECT   Thymio-III
+//_____________________________________________________________________________
+//
+//! \file    aseba.c
+//! \brief   This module provides the useful functions to use Aseba Studio
+//!
+//! \author  Vincent Gonet
+//!
+//! \license This project is released under the GNU Lesser General Public License
+//_____________________________________________________________________________
+
+//-----------------------------------------------------------------------------
+// Include Section
+//-----------------------------------------------------------------------------
+
+#include <stdio.h>
+#include <string.h>
+
+#include "esp_log.h"
+
+#include "aseba.h"
+
+#include "behavior.h"
+#include "comm.h"
+#include "leds.h"
+#include "stm32_i2c.h"
+#include "timer_sw.h"
+
+#include "aseba_esp32.h"
+
+//-----------------------------------------------------------------------------
+// Constants/Macros Definitions
+//-----------------------------------------------------------------------------
+
+#define FW_VERSION 13
+
+/* Firmware variant. Each variant of the firmware has it own number */
+
+/* Variant list:
+0: Standard one
+1: Development one
+
+*/
+#define FW_VARIANT 1
+
+//-----------------------------------------------------------------------------
+// Types Definitions
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Exported Global Data
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Private Data
+//-----------------------------------------------------------------------------
+
+static const char* Tag = "aseba";
+
+static T_TimerSw* AsebaTimer0 = NULL;  //!< Used to schedule the Aseba timer 0
+static T_TimerSw* AsebaTimer1 = NULL;  //!< Used to schedule the Aseba timer 0
+
+static int16_t Target[2] = {0, 0};
+static int16_t OldTarget[2] = {0, 0};
+
+static int16_t TimerDuration[2] = {0, 0};
+static int16_t OldTimerDuration[2] = {0, 0};
+
+static T_Settings Settings;
+static T_Settings OldSettings;
+
+//-----------------------------------------------------------------------------
+// Private Functions Prototypes
+//-----------------------------------------------------------------------------
+
+static void UpdateMotorTargets(void);
+
+static void UpdateTimers(void);
+
+static void UpdateSettings(void);
+
+static void UpdateLedsCircle(void);
+
+static void UpdateLedsLegoFront(void);
+
+static void UpdateLedsLegoBack(void);
+
+static void UpdateLedFrontLeft(void);
+
+static void UpdateLedFrontRight(void);
+
+static void UpdateLedBackLeft(void);
+
+static void UpdateLedBackRight(void);
+
+static void Callback_AsebaTimer0(void* arg);
+
+static void Callback_AsebaTimer1(void* arg);
+
+//-----------------------------------------------------------------------------
+// Inline Code Definition
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Functions Implementation
+//-----------------------------------------------------------------------------
+
+void Aseba_Init(void)
+{
+  Settings.LeftMotor  = 256;
+  Settings.RightMotor = 256;
+
+  OldSettings.LeftMotor  = 0;
+  OldSettings.RightMotor = 0;
+
+  AsebaTimer0 = TimerSw_Create(0, Callback_AsebaTimer0);
+  AsebaTimer1 = TimerSw_Create(0, Callback_AsebaTimer1);
+
+  ESP_LOGI(Tag, "Aseba is initialized");
+}
+
+//_____________________________________________________________________________
+
+void update_aseba_variables_write(void)
+{
+  if (Comm_IsBusAvailable())
+  {
+    UpdateMotorTargets();
+
+    UpdateSettings();
+  }
+
+  UpdateTimers();
+
+  UpdateLedsCircle();
+
+  UpdateLedsLegoFront();
+
+  UpdateLedsLegoBack();
+
+  UpdateLedFrontLeft();
+
+  UpdateLedFrontRight();
+
+  UpdateLedBackLeft();
+
+  UpdateLedBackRight();
+}
+
+//_____________________________________________________________________________
+
+void update_aseba_variables_read(void)
+{
+  // TODO: REMOVE ME (move to behavior ? /!\ behavior == IPL 1 !! race wrt aseba !)
+#if 0
+  usb_uart_tick();
+
+  motor_get_vind((int*) vmVariables.uind);
+#endif
+  //WIFI_GetIPAddress();
+  //WIFIUpdate_GetIPAddress();
+}
+
+//_____________________________________________________________________________
+
+void AsebaVMResetCB(AsebaVMState* vm)
+{
+  Leds_SetFrontLeftBrightness(0u, 0u, 0u);
+  Leds_SetFrontRightBrightness(0u, 0u, 0u);
+
+  Leds_SetBackLeftBrightness(0u, 0u, 0u);
+  Leds_SetBackRightBrightness(0u, 0u, 0u);
+
+  Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+
+  Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+
+
+  //Leds_SetSingleBrightness(E_Led_Battery_1, MAX_BRIGHTNESS);
+  //Leds_SetBodyBrightness(0u, 0u, 0u);
+#if 0 // FIXME
+  leds_set(LED_SOUND, 0);
+  leds_set(LED_RC, 0);
+#endif
+  Behavior_Enable(B_LEDS_ACC);
+#if 0 // FIXME
+  Behavior_Enable(B_LEDS_TEMPERATURE);
+  Behavior_Enable(B_LEDS_MIC);
+#endif
+  Behavior_Enable(B_LEDS_PROX);
+  Behavior_Enable(B_SOUND_BUTTON);
+#if 0 // FIXME
+  Behavior_Enable(B_LEDS_MIC);
+  Behavior_Enable(B_LEDS_RC5);
+  prox_disable_network();
+  events_flags[0] = 0;
+  events_flags[1] = 0;
+  memset(vm->variables, 0, vm->variablesSize * sizeof(int16_t));
+  vmVariables.id = vmState.nodeId;
+  vmVariables.productid = PRODUCT_ID;
+  vmVariables.fwversion[0] = FW_VERSION;
+  vmVariables.fwversion[1] = FW_VARIANT;
+#endif
+
+  //events_flags[0] = 0;
+  //events_flags[1] = 0;
+  memset(vm->variables, 0, vm->variablesSize * sizeof(int16_t));
+  vmVariables.id = vmState.nodeId;
+  vmVariables.productid = PRODUCT_ID;
+  vmVariables.fwversion[0] = FW_VERSION;
+  vmVariables.fwversion[1] = FW_VARIANT;
+}
+
+//_____________________________________________________________________________
+
+static void UpdateMotorTargets(void)
+{
+  Target[0] = vmVariables.target[0];
+  Target[1] = vmVariables.target[1];
+
+  if (Target[0] != OldTarget[0])
+  {
+    STM32_UpdateLeftMotorTarget(Target);
+    OldTarget[0] = Target[0];
+  }
+
+  if (Target[1] != OldTarget[1])
+  {
+    STM32_UpdateRightMotorTarget(Target);
+    OldTarget[1] = Target[1];
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateTimers(void)
+{
+  TimerDuration[0] = vmVariables.timers[0];
+  TimerDuration[1] = vmVariables.timers[1];
+
+  if (TimerDuration[0] != OldTimerDuration[0])
+  {
+    TimerSw_StopTimer(AsebaTimer0);
+
+    OldTimerDuration[0] = TimerDuration[0];
+
+    if (TimerDuration[0] > 0)
+    {
+      TimerSw_StartTimerPeriodically(AsebaTimer0, TimerDuration[0] * 1000);
+    }
+  }
+
+  if (TimerDuration[1] != OldTimerDuration[1])
+  {
+    TimerSw_StopTimer(AsebaTimer1);
+
+    OldTimerDuration[1] = TimerDuration[1];
+
+    if (TimerDuration[1] > 0)
+    {
+      TimerSw_StartTimerPeriodically(AsebaTimer1, TimerDuration[1] * 1000);
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateSettings(void)
+{
+  Settings.LeftMotor  = vmVariables.settings[0];
+  Settings.RightMotor = vmVariables.settings[1];
+
+  if ((Settings.LeftMotor != OldSettings.LeftMotor) ||
+      (Settings.RightMotor != OldSettings.RightMotor))
+  {
+    STM32_UpdateSettings(Settings);
+    OldSettings.LeftMotor  = Settings.LeftMotor;
+    OldSettings.RightMotor = Settings.RightMotor;
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateLedsCircle(void)
+{
+  // brightness[0] is assigned to the LED D27
+  // brightness[1] is assigned to the LED D30
+  // brightness[2] is assigned to the LED D33
+  // brightness[3] is assigned to the LED D36
+  // brightness[4] is assigned to the LED D39
+  // brightness[5] is assigned to the LED D42
+  // brightness[6] is assigned to the LED D45
+  // brightness[7] is assigned to the LED D48
+  static int16_t brightness[8] = {0, 0, 0, 0, 0, 0, 0 ,0};
+
+  for (uint8_t index = 0u; index < 8u; index++)
+  {
+    if (brightness[index] != vmVariables.leds_lego_circle[index])
+    {
+      brightness[index] = vmVariables.leds_lego_circle[index];
+
+      Behavior_Disable(B_LEDS_CIRCLE);
+      Leds_SetSingleBrightness((E_Led_Circle_0 + index), brightness[index]);
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateLedsLegoFront(void)
+{
+  // brightness[0] is assigned to the LED D28
+  // brightness[1] is assigned to the LED D31
+  // brightness[2] is assigned to the LED D34
+  // brightness[3] is assigned to the LED D37
+  // brightness[4] is assigned to the LED D40
+  // brightness[5] is assigned to the LED D43
+  // brightness[6] is assigned to the LED D46
+  // brightness[7] is assigned to the LED D49
+  static int16_t brightness[8] = {0, 0, 0, 0, 0, 0, 0 ,0};
+
+  for (uint8_t index = 0u; index < 8u; index++)
+  {
+    if (brightness[index] != vmVariables.leds_lego_front[index])
+    {
+      brightness[index] = vmVariables.leds_lego_front[index];
+
+      Behavior_Disable(B_LEDS_LEGO);
+      Leds_SetSingleBrightness((E_Led_Lego_Front_0 + index), brightness[index]);
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateLedsLegoBack(void)
+{
+  // brightness[0] is assigned to the LED D29
+  // brightness[1] is assigned to the LED D32
+  // brightness[2] is assigned to the LED D35
+  // brightness[3] is assigned to the LED D38
+  // brightness[4] is assigned to the LED D41
+  // brightness[5] is assigned to the LED D44
+  // brightness[6] is assigned to the LED D47
+  // brightness[7] is assigned to the LED D50
+  static int16_t brightness[8] = {0, 0, 0, 0, 0, 0, 0 ,0};
+
+  for (uint8_t index = 0u; index < 8u; index++)
+  {
+    if (brightness[index] != vmVariables.leds_lego_back[index])
+    {
+      brightness[index] = vmVariables.leds_lego_back[index];
+
+      Behavior_Disable(B_LEDS_LEGO);
+      Leds_SetSingleBrightness((E_Led_Lego_Back_0 + index), brightness[index]);
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateLedFrontLeft(void)
+{
+  // brightness[0] is assigned to the LED D19 (red)
+  // brightness[1] is assigned to the LED D19 (green)
+  // brightness[2] is assigned to the LED D19 (blue)
+  static int16_t brightness[3] = {0, 0, 0};
+
+  for (uint8_t index = 0u; index < 3u; index++)
+  {
+    if (brightness[index] != vmVariables.led_front_left[index])
+    {
+      brightness[index] = vmVariables.led_front_left[index];
+
+      Behavior_Disable(B_LEDS_RGB);
+      Leds_SetSingleBrightness((E_Led_R_Front_Left + index), brightness[index]);
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateLedFrontRight(void)
+{
+  // brightness[0] is assigned to the LED D26 (red)
+  // brightness[1] is assigned to the LED D26 (green)
+  // brightness[2] is assigned to the LED D26 (blue)
+  static int16_t brightness[3] = {0, 0, 0};
+
+  for (uint8_t index = 0u; index < 3u; index++)
+  {
+    if (brightness[index] != vmVariables.led_front_right[index])
+    {
+      brightness[index] = vmVariables.led_front_right[index];
+
+      Behavior_Disable(B_LEDS_RGB);
+      Leds_SetSingleBrightness((E_Led_R_Front_Right + index), brightness[index]);
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateLedBackLeft(void)
+{
+  // brightness[0] is assigned to the LED D52 (red)
+  // brightness[1] is assigned to the LED D52 (green)
+  // brightness[2] is assigned to the LED D52 (blue)
+  static int16_t brightness[3] = {0, 0, 0};
+
+  for (uint8_t index = 0u; index < 3u; index++)
+  {
+    if (brightness[index] != vmVariables.led_back_left[index])
+    {
+      brightness[index] = vmVariables.led_back_left[index];
+
+      Behavior_Disable(B_LEDS_RGB);
+      Leds_SetSingleBrightness((E_Led_R_Back_Left + index), brightness[index]);
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateLedBackRight(void)
+{
+  // brightness[0] is assigned to the LED D51 (red)
+  // brightness[1] is assigned to the LED D51 (green)
+  // brightness[2] is assigned to the LED D51 (blue)
+  static int16_t brightness[3] = {0, 0, 0};
+
+  for (uint8_t index = 0u; index < 3u; index++)
+  {
+    if (brightness[index] != vmVariables.led_back_right[index])
+    {
+      brightness[index] = vmVariables.led_back_right[index];
+
+      Behavior_Disable(B_LEDS_RGB);
+      Leds_SetSingleBrightness((E_Led_R_Back_Right + index), brightness[index]);
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
+static void Callback_AsebaTimer0(void* arg)
+{
+  SET_EVENT(EVENT_TIMER0);
+}
+
+//_____________________________________________________________________________
+
+static void Callback_AsebaTimer1(void* arg)
+{
+  SET_EVENT(EVENT_TIMER1);
+}
