@@ -28,8 +28,7 @@
 
 #include "board.h"
 #include "gpio.h"
-#include "stm32.h"
-#include "timer_sw.h"
+#include "stm32_i2c.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -51,20 +50,16 @@
 
 static const char* Tag = "power";
 
-static T_GpioPinConfig PinConfig = {VA_ENABLE_PIN,
-                                    E_GpioMode_Output,
+static T_GpioPinConfig PinConfig = {GPIO0_PIN,
+                                    E_GpioMode_Input,
                                     E_GpioResistor_None,
                                     E_GpioLevel_Low,
                                     E_GpioInterrupt_Disable
                                    };
 
-static T_TimerSw* PowerModeTimer = NULL;  //!< Used to switch off the ESP32
-
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
-
-static void Callback_TimerPowerMode(void* arg);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -78,23 +73,7 @@ void Power_Init(void)
 {
   Gpio_ConfigurePin(&PinConfig);
 
-  PowerModeTimer = TimerSw_Create(POWER_MODE_DURATION_us, Callback_TimerPowerMode);
-
-  Power_EnableVA();
-}
-
-//_____________________________________________________________________________
-
-void Power_EnableVA(void)
-{
-  Gpio_SetPinLevel(VA_ENABLE_PIN, E_GpioLevel_High);
-}
-
-//_____________________________________________________________________________
-
-void Power_DisableVA(void)
-{
-  Gpio_SetPinLevel(VA_ENABLE_PIN, E_GpioLevel_Low);
+  ESP_LOGI(Tag, "Power is initialized");
 }
 
 //_____________________________________________________________________________
@@ -111,29 +90,10 @@ void Power_HandlePowerModeRequest(void)
       {
         if (first)
         {
-          //PinConfig.mode = E_GpioMode_Input;
-          //Gpio_ConfigurePin(&PinConfig);
-
           STM32_AllowToSwitchOff();  // Give the permission to the STM32 to switch off
-
-          Power_DisableVA();  // Switch off the IR sensors, the color sensor, the accelerometer/gyroscope, the microphone and some LEDs
-
-          //ESP_LOGW(Tag, "VA disabled");
-
-          //vTaskDelay(200 / portTICK_PERIOD_MS);
-
-          //ESP_LOGW(Tag, "Start timer");
-          //TimerSw_StartTimerOnce(PowerModeTimer, POWER_MODE_DURATION_us);
           first = false;
         }
       }
     }
   }
-}
-
-//_____________________________________________________________________________
-
-static void Callback_TimerPowerMode(void* arg)
-{
-  //Power_DisableVA();  // Switch off the IR sensors, the color sensor, the accelerometer/gyroscope, the microphone and some LEDs
 }

@@ -74,14 +74,15 @@ static void RunSensorsTask(void* arg);
 
 void Sensors_Init(void)
 {
-  I2C_Init();
+  // FIXME If the I2C is only used by the sensors, the initialization can be done here.
+  // Else, it must be done in the main.c
+  //I2C_Init();
 
   Codec_Init();
 
   //ColorSensor_Init();
   //Accelerometer_Init();
   //Gyroscope_Init();
-
 }
 
 //_____________________________________________________________________________
@@ -107,12 +108,10 @@ static void RunSensorsTask(void* arg)
   while (1)
   {
     // Every 20 [ms], 50 [Hz] (vTaskDelay = 20 [ms])
-//    Accelerometer_ReadTapSource();
-//    Accelerometer_GetAcceleration();
-//    Gyroscope_GetAngularPosition();
-//    ColorSensor_ReadColor();
-
-	  ES8374_Dummy();
+    //Accelerometer_ReadTapSource();
+    //Accelerometer_GetAcceleration();
+    //Gyroscope_GetAngularPosition();
+    //ColorSensor_ReadColor();
 
 //    Buttons_UpdateStatus();
 

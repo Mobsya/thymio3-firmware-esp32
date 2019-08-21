@@ -49,18 +49,6 @@
 //! \return    None
 extern void Power_Init(void);
 
-//! \brief     Enable the power VA
-//! \pre       First initialize the power
-//! \param     None
-//! \return    None
-extern void Power_EnableVA(void);
-
-//! \brief     Disable the power VA
-//! \pre       First initialize the power
-//! \param     None
-//! \return    None
-extern void Power_DisableVA(void);
-
 //! \brief     Handle the power mode request
 //! \pre       First initialize the power
 //! \param     None

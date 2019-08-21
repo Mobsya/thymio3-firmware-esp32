@@ -147,9 +147,6 @@ int app_main(void)
 //  Mode_Init();
 //  Mode_InitVM();
 
-//  AsebaTimer0 = TimerSw_Create(0, Callback_AsebaTimer0);
-//  AsebaTimer1 = TimerSw_Create(0, Callback_AsebaTimer1);
-
   WIFI_Init();
 
   while (!WIFI_IsConnected())
@@ -166,16 +163,18 @@ int app_main(void)
 
   ESP_LOGI(Tag, "OTA");
 
+  WIFI_Start();
+  AsebaESP32_Start();
+
   //Test_StartDebugging();
   //I2S_StartReading();
 
   //Codec_StartMP3Player(0);
-  WIFI_Start();
-//  AsebaESP32_Start();
+
 
   //Sound_StartProcessing();
 
-//  Behavior_Start();
+  Behavior_Start();
 
 //  IRReceiver_Start();
 
@@ -187,63 +186,4 @@ int app_main(void)
   //Sound_StartAcquisition();
 
   return 0;
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_poweroff =
-{
-  "_poweroff",
-  "Poweroff",
-  {
-    {0, 0}
-  }
-};
-
-//_____________________________________________________________________________
-
-void power_off(AsebaVMState* vm)
-{
-  unsigned int flags;
-
-  switch_off();
-
-  // Protect against two racing poweroff:
-  //  One from the softirq (button)
-  //  One from the VM
-#if 0
-  RAISE_IPL(flags, 1);
-
-  Behavior_Disable(B_ALL);
-
-  play_sound_block(SOUND_POWEROFF);
-
-  // Shutdown all peripherals ...
-  switch_off();
-
-  // Switch off USB
-  // If we are connected to a PC, disconnect.
-  // If we are NOT connected to a PC but 5V is present
-  // ( == charger ) we need to keep the transciever on
-  if (usb_uart_configured())
-  {
-    USBDeviceDetach();
-  }
-
-  // In any case, disable the usb interrupt. It's safer
-  _USB1IE = 0;
-
-
-  CHARGE_ENABLE_DIR = 1;
-
-  analog_enter_poweroff_mode();
-#endif
-}
-
-//_____________________________________________________________________________
-
-void switch_off(void)
-{
-  //STM32_UpdateLeftMotorTarget(0);
-  //STM32_UpdateRightMotorTarget(0);
 }

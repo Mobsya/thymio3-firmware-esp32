@@ -321,7 +321,7 @@ const AsebaVMDescription vmDescription =
     {4, "ip"},
     {2, "settings"},
     {1, "vbat"},
-    {8, "leds_lego_circle"},
+    {8, "leds_circle"},
     {8, "leds_lego_front"},
     {8, "leds_lego_back"},
     {3, "led_front_left"},

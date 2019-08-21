@@ -37,7 +37,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define FW_VERSION 13
+//#define FW_VERSION 13
 
 /* Firmware variant. Each variant of the firmware has it own number */
 
@@ -46,7 +46,7 @@
 1: Development one
 
 */
-#define FW_VARIANT 1
+//#define FW_VARIANT 1
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -133,9 +133,9 @@ void update_aseba_variables_write(void)
     UpdateMotorTargets();
 
     UpdateSettings();
-  }
 
-  UpdateTimers();
+    UpdateTimers();
+  }
 
   UpdateLedsCircle();
 
@@ -208,13 +208,74 @@ void AsebaVMResetCB(AsebaVMState* vm)
   vmVariables.fwversion[1] = FW_VARIANT;
 #endif
 
+//#if 0
   //events_flags[0] = 0;
   //events_flags[1] = 0;
   memset(vm->variables, 0, vm->variablesSize * sizeof(int16_t));
   vmVariables.id = vmState.nodeId;
   vmVariables.productid = PRODUCT_ID;
-  vmVariables.fwversion[0] = FW_VERSION;
-  vmVariables.fwversion[1] = FW_VARIANT;
+  //vmVariables.fwversion[0] = FW_VERSION;
+  //vmVariables.fwversion[1] = FW_VARIANT;
+//#endif
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_poweroff =
+{
+  "_poweroff",
+  "Poweroff",
+  {
+    {0, 0}
+  }
+};
+
+//_____________________________________________________________________________
+
+void power_off(AsebaVMState* vm)
+{
+  unsigned int flags;
+
+  switch_off();
+
+  // Protect against two racing poweroff:
+  //  One from the softirq (button)
+  //  One from the VM
+#if 0
+  RAISE_IPL(flags, 1);
+
+  Behavior_Disable(B_ALL);
+
+  play_sound_block(SOUND_POWEROFF);
+
+  // Shutdown all peripherals ...
+  switch_off();
+
+  // Switch off USB
+  // If we are connected to a PC, disconnect.
+  // If we are NOT connected to a PC but 5V is present
+  // ( == charger ) we need to keep the transciever on
+  if (usb_uart_configured())
+  {
+    USBDeviceDetach();
+  }
+
+  // In any case, disable the usb interrupt. It's safer
+  _USB1IE = 0;
+
+
+  CHARGE_ENABLE_DIR = 1;
+
+  analog_enter_poweroff_mode();
+#endif
+}
+
+//_____________________________________________________________________________
+
+void switch_off(void)
+{
+  //STM32_UpdateLeftMotorTarget(0);
+  //STM32_UpdateRightMotorTarget(0);
 }
 
 //_____________________________________________________________________________
@@ -301,9 +362,9 @@ static void UpdateLedsCircle(void)
 
   for (uint8_t index = 0u; index < 8u; index++)
   {
-    if (brightness[index] != vmVariables.leds_lego_circle[index])
+    if (brightness[index] != vmVariables.leds_circle[index])
     {
-      brightness[index] = vmVariables.leds_lego_circle[index];
+      brightness[index] = vmVariables.leds_circle[index];
 
       Behavior_Disable(B_LEDS_CIRCLE);
       Leds_SetSingleBrightness((E_Led_Circle_0 + index), brightness[index]);

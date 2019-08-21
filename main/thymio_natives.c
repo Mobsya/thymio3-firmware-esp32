@@ -28,6 +28,7 @@
 
 #include "aseba_esp32.h"
 
+#include "codec.h"
 #include "leds.h"
 //#include "sd.h"
 //#include "playback.h"
@@ -36,8 +37,8 @@
 //#include "ir_prox.h"
 #include "sound.h"
 #include "mp3.h"
-
 #include "i2s.h"
+#include "stm32_i2c.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -138,7 +139,7 @@ void sound_playback(AsebaVMState* vm)
   }
 #endif
 
-  MP3_StartPlayer(number);
+  Codec_StartMP3Player(number);
 
 #if 0
   MelodyAseba.Melody = JamesBond;
@@ -472,6 +473,8 @@ void set_hprox_leds(AsebaVMState* vm)
 
   // TODO send to STM32
   //Leds_SetProxIRBrightness(l1, l2, l3, l4, l5, l6, l7, l8);
+
+  // FIXME STM32_UpdateProxIRLedsBrightness(l1, l2, l3, l4, l5, l6, l7, l8);
 }
 
 //_____________________________________________________________________________
@@ -498,6 +501,8 @@ void set_vprox_leds(AsebaVMState* vm)
   Leds_SetSingleBrightness(E_Led_Ground_IR_0, l1);
   Leds_SetSingleBrightness(E_Led_Ground_IR_1, l2);
 #endif
+
+  // FIXME STM32_UpdateGroundIRLedsBrightness(l1, l2);
 }
 
 //_____________________________________________________________________________
@@ -536,12 +541,13 @@ AsebaNativeFunctionDescription AsebaNativeDescription_set_sound_leds =
 void set_sound_leds(AsebaVMState* vm)
 {
   int l1 = vm->variables[AsebaNativePopArg(vm)];
-#if 0 // FIXME
+
   Behavior_Disable(B_LEDS_MIC);
-#endif
+
 #if 0 // TODO Send to STM32
   Leds_SetSingleBrightness(E_Led_Sound, l1);
 #endif
+  // FIXME STM32_UpdateMicrophoneLedBrightness(l1);
 }
 
 //_____________________________________________________________________________

@@ -31,9 +31,9 @@
 #include "accelerometer.h"
 #include "aseba_esp32.h"
 #include "behavior.h"
+#include "buttons.h"
 #include "fifo.h"
 #include "leds.h"
-#include "stm32.h"
 #include "tcp_server.h"
 #include "timer_sw.h"
 
@@ -41,6 +41,7 @@
 
 #include "sound.h"
 #include "mp3.h"
+#include "stm32_i2c.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -227,7 +228,7 @@ void Mode_Run(void)
 
   static uint8_t ignore;
 
-  buttonState = STM32_GetButtonStatus();
+  buttonState = Buttons_GetStatus();
 
   ignore++;
 
@@ -389,6 +390,7 @@ static void ExitMode(T_Mode mode)
 {
   Leds_SetBodyBrightness(0u, 0u, 0u);
   Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+#if 0  // FIXME
   Leds_SetSingleBrightness(E_Led_Front_IR_0, 0u);
   Leds_SetSingleBrightness(E_Led_Front_IR_1, 0u);
   Leds_SetSingleBrightness(E_Led_Front_IR_2A, 0u);
@@ -399,6 +401,7 @@ static void ExitMode(T_Mode mode)
   Leds_SetSingleBrightness(E_Led_Ground_IR_1, 0u);
   Leds_SetSingleBrightness(E_Led_IR_Back_Left, 0u);
   Leds_SetSingleBrightness(E_Led_IR_Back_Right, 0u);
+#endif
 
   switch (mode)
   {
@@ -499,27 +502,27 @@ static void SetModeColor(T_Mode mode)
   switch (mode)
   {
     case E_Mode_Menu:
-      Leds_SetTopBrightness(0u, 0u, 0u);
+      // FIXME Leds_SetTopBrightness(0u, 0u, 0u);
       break;
 
     case E_Mode_Follower:  // Green
-      Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, 0u);
+      // FIXME Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, 0u);
       break;
 
     case E_Mode_Explorer:  // Yellow
-      Leds_SetTopBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
+      // FIXME Leds_SetTopBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
       break;
 
     case E_Mode_Attentive:  // Dark blue
-      Leds_SetTopBrightness(0u, 0u, MAX_BRIGHTNESS);
+      // FIXME Leds_SetTopBrightness(0u, 0u, MAX_BRIGHTNESS);
       break;
 
     case E_Mode_LineTracker:  // Cyan
-      Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      // FIXME Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
       break;
 
     case E_Mode_Obedient:  // Magenta
-      Leds_SetTopBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
+      // FIXME Leds_SetTopBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
       break;
 
     default:
@@ -536,7 +539,7 @@ static void RunExplorer(void)
 
   int16_t p = GetBodyColorPulse();
 
-  Leds_SetTopBrightness(p, p, 0u);
+  // FIXME Leds_SetTopBrightness(p, p, 0u);
 
   RunCircleLedRotation();
 
@@ -556,13 +559,13 @@ static void RunExplorer(void)
   {
     vmVariables.target[0] = 0;
     vmVariables.target[1] = 0;
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, MAX_BRIGHTNESS);
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, MAX_BRIGHTNESS);
+    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, MAX_BRIGHTNESS);
+    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, MAX_BRIGHTNESS);
   }
   else
   {
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0u);
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0u);
+    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0u);
+    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0u);
   }
 }
 
@@ -572,7 +575,7 @@ static void RunAttentive(void)
 {
   int16_t p = GetBodyColorPulse();
 
-  Leds_SetTopBrightness(0u, 0u, p);
+  // FIXME Leds_SetTopBrightness(0u, 0u, p);
 }
 
 //_____________________________________________________________________________
@@ -586,7 +589,7 @@ static void RunLineTracker(void)
 
   int16_t p = GetBodyColorPulse();
 
-  Leds_SetTopBrightness(0u, p, p);
+  // FIXME Leds_SetTopBrightness(0u, p, p);
 
   if (!CalibrateLevelUsingButtons(&bs_black_level, &bs_white_level))
   {
@@ -736,9 +739,9 @@ static void RunFollower(void)
 
     GetRainbow(rgb);
 
-    Leds_SetTopBrightness(rgb[0], rgb[1], rgb[2]);
-    Leds_SetBottomLeftBrightness(rgb[2], rgb[0], rgb[1]);
-    Leds_SetBottomRightBrightness(rgb[1], rgb[2], rgb[0]);
+    // FIXME Leds_SetTopBrightness(rgb[0], rgb[1], rgb[2]);
+    // FIXME Leds_SetBottomLeftBrightness(rgb[2], rgb[0], rgb[1]);
+    // FIXME Leds_SetBottomRightBrightness(rgb[1], rgb[2], rgb[0]);
   }
   else
   {
@@ -793,13 +796,13 @@ static void RunFollower(void)
   {
     vmVariables.target[0] = 0;
     vmVariables.target[1] = 0;
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, MAX_BRIGHTNESS);
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, MAX_BRIGHTNESS);
+    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, MAX_BRIGHTNESS);
+    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, MAX_BRIGHTNESS);
   }
   else
   {
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0u);
-    Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0u);
+    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0u);
+    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0u);
   }
 
   if (does_see_friend)
@@ -852,7 +855,7 @@ static void RunFollower(void)
 static void RunObedient(void)
 {
   int16_t p = GetBodyColorPulse();
-  Leds_SetTopBrightness(p, 0u, p);
+  // FIXME Leds_SetTopBrightness(p, 0u, p);
 
   if (!RecordSequenceIsFinished)
   {
@@ -1126,7 +1129,7 @@ static void SetSpeedUsingButtons(int16_t* speed)
 {
   uint8_t* buttonState;
 
-  buttonState = STM32_GetButtonStatus();
+  buttonState = Buttons_GetStatus();
 
   when(buttonState[E_Button_Forward])
   {
@@ -1156,7 +1159,7 @@ static bool CalibrateLevelUsingButtons(uint16_t* blackLevel, uint16_t* whiteLeve
   uint8_t* buttonState;
   bool calibrationIsInProgress = false;
 
-  buttonState = STM32_GetButtonStatus();
+  buttonState = Buttons_GetStatus();
 
   //ESP_LOGI(Tag, "left = %d, right = %d", vmVariables.ground_delta[0], vmVariables.ground_delta[1]);
 
@@ -1308,7 +1311,7 @@ static void RecordButtonsSequence(void)
 
   RunCircleLedCross();
 
-  buttonState = STM32_GetButtonStatus();
+  buttonState = Buttons_GetStatus();
 
   when(buttonState[E_Button_Backward])
   {
