@@ -185,4 +185,10 @@ extern void STM32_ReadBatteryVoltage(void);
 //! \return    The battery voltage
 extern int16_t STM32_GetBatteryVoltage(void);
 
+//! \brief     Read the prox IR value
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void STM32_ReadProxIRValue(void);
+
 #endif // STM32_H_

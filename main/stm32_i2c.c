@@ -23,6 +23,7 @@
 #include "stm32_i2c.h"
 
 #include "aseba_esp32.h"
+#include "board.h"
 #include "i2c.h"
 
 //-----------------------------------------------------------------------------
@@ -41,6 +42,7 @@
 #define MOTOR_CURRENT_REG_ADDRESS          0x14u  //!< Motor current register address      (Read only)
 #define PWM_DUTY_CYCLE_REG_ADDRESS         0x15u  //!< PWM duty cycle register address     (Read only)
 #define BATTERY_VOLTAGE_REG_ADDRESS        0x16u  //!< Battery voltage register address    (Read only)
+#define PROX_IR_VALUE_REG_ADDRESS          0x17u  //!< ProxIR value register address       (Read only)
 
 #define STM32_ID                           0xBCu  //!< ID of the STM32
 
@@ -58,8 +60,6 @@
 #define READY_TO_SWITCH_OFF_BIT_POS        3u  // This bit is set by the STM32
 #define OK_TO_SWITCH_OFF_BIT_POS           4u  // This bit is set by the ESP32
 
-#define MOTORS_NUM                         2u  //!< Number of motors
-
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -70,6 +70,17 @@ typedef enum
   E_Motor_Left,  //!< Left motor
   E_Motor_Right  //!< Right motor
 } T_Motor;
+
+enum
+{
+  E_ProxIR_FrontLeft,
+  E_ProxIR_FrontLeftCenter,
+  E_ProxIR_FrontCenter,
+  E_ProxIR_FrontRightCenter,
+  E_ProxIR_FrontRight,
+  E_ProxIR_BackLeft,
+  E_ProxIR_BackRight
+};
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -87,6 +98,8 @@ static int16_t VbatMotor[MOTORS_NUM] = {0, 0};
 static int16_t Vind[MOTORS_NUM]      = {0, 0};
 static int16_t DutyCycle[MOTORS_NUM] = {0, 0};
 static int16_t Current[MOTORS_NUM]   = {0, 0};
+
+static int16_t ProxIRValue[PROX_IR_SENSORS_NUM] = {0, 0, 0, 0, 0, 0, 0};
 
 static int16_t Vbat = 0;
 
@@ -372,6 +385,31 @@ void STM32_ReadBatteryVoltage(void)
 int16_t STM32_GetBatteryVoltage(void)
 {
   return Vbat;
+}
+
+//_____________________________________________________________________________
+
+void STM32_ReadProxIRValue(void)
+{
+  uint8_t data[14];
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, PROX_IR_VALUE_REG_ADDRESS, data, 14u);
+
+  ProxIRValue[E_ProxIR_FrontLeft]        =  ((data[1] << 8) | data[0]);
+  ProxIRValue[E_ProxIR_FrontLeftCenter]  =  ((data[3] << 8) | data[2]);
+  ProxIRValue[E_ProxIR_FrontCenter]      =  ((data[5] << 8) | data[4]);
+  ProxIRValue[E_ProxIR_FrontRightCenter] =  ((data[7] << 8) | data[6]);
+  ProxIRValue[E_ProxIR_FrontRight]       =  ((data[9] << 8) | data[8]);
+  ProxIRValue[E_ProxIR_BackLeft]         = ((data[11] << 8) | data[10]);
+  ProxIRValue[E_ProxIR_BackRight]        = ((data[13] << 8) | data[12]);
+
+  vmVariables.prox[E_ProxIR_FrontLeft]        = ProxIRValue[E_ProxIR_FrontLeft];
+  vmVariables.prox[E_ProxIR_FrontLeftCenter]  = ProxIRValue[E_ProxIR_FrontLeftCenter];
+  vmVariables.prox[E_ProxIR_FrontCenter]      = ProxIRValue[E_ProxIR_FrontCenter];
+  vmVariables.prox[E_ProxIR_FrontRightCenter] = ProxIRValue[E_ProxIR_FrontRightCenter];
+  vmVariables.prox[E_ProxIR_FrontRight]       = ProxIRValue[E_ProxIR_FrontRight];
+  vmVariables.prox[E_ProxIR_BackLeft]         = ProxIRValue[E_ProxIR_BackLeft];
+  vmVariables.prox[E_ProxIR_BackRight]        = ProxIRValue[E_ProxIR_BackRight];
 }
 
 //_____________________________________________________________________________

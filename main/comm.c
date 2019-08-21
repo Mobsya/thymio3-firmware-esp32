@@ -32,6 +32,8 @@
 #include "stm32_i2c.h"
 #include "uart.h"
 
+#include "leds.h"  // FIXME Only for debug
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -121,21 +123,27 @@ static void RunCommTask(void* arg)
     BusIsAvailable = false;
 
     //STM32_Communicate();
-
-    //STM32_CheckId();
-    //STM32_ReadBatteryVoltage();
+#if 0
+    if ((counter % 2u) == 0u)
+    {
+      Leds_SetSingleBrightness(E_Led_Lego_Front_7, MAX_BRIGHTNESS);
+    }
+    else
+    {
+      Leds_SetSingleBrightness(E_Led_Lego_Front_7, 0);
+    }
+#endif
+    STM32_CheckId();
+    STM32_ReadBatteryVoltage();
     STM32_ReadStatus();
+    STM32_ReadProxIRValue();
 
 #if 0
     STM32_ReadInducedVoltage();
-    STM32_ReadButtonStatus();
     STM32_ReadStatus();
     STM32_ReadMotorCurrent();
     STM32_ReadBatteryVoltage();
     STM32_ReadPwmDutyCycle();
-    STM32_ReadButtonRawData();
-    STM32_ReadButtonMean();
-    STM32_ReadButtonNoise();
 #endif
     //Spi_WriteVSPI(Microcontroller, tx, 5);
 

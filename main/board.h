@@ -85,6 +85,8 @@
 
 #define GROUND_IR_SENSORS_NUM         2u  //!< Number of ground IR sensors
 
+#define MOTORS_NUM                    2u  //!< Number of motors
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
