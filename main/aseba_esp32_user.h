@@ -99,6 +99,7 @@ struct _vmVariables
   int16_t led_front_right[3];
   int16_t led_back_left[3];
   int16_t led_back_right[3];
+  int16_t leds_ground[2];
   int16_t freeSpace[VM_VARIABLES_FREE_SPACE];
 };
 

@@ -49,4 +49,6 @@
 //! \return    None
 extern void Aseba_Init(void);
 
+extern void Aseba_UpdateGroundIRLedsBrightness(uint16_t l0, uint16_t l1);
+
 #endif // ASEBA_H_

@@ -133,10 +133,11 @@ static void RunCommTask(void* arg)
       Leds_SetSingleBrightness(E_Led_Lego_Front_7, 0);
     }
 #endif
-    STM32_CheckId();
+    //STM32_CheckId();
     STM32_ReadBatteryVoltage();
     STM32_ReadStatus();
     STM32_ReadProxIRValue();
+    STM32_ReadGroundIRValue();
 
 #if 0
     STM32_ReadInducedVoltage();

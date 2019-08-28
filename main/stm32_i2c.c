@@ -30,28 +30,32 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define SLAVE_ADDRESS                      0x04u  //!< Slave address
+#define SLAVE_ADDRESS                       0x04u  //!< Slave address
 
-#define SETTINGS_REG_ADDRESS               0x0Du  //!< Settings register address           (Read/Write)
-#define STATUS_REG_ADDRESS                 0x0Eu  //!< Status register address             (Read/Write)
-#define WHO_AM_I_REG_ADDRESS               0x0Fu  //!< WHO_AM_I register address           (Read only)
-#define LEFT_MOTOR_TARGET_REG_ADDRESS      0x10u  //!< Left motor target register address  (Read/Write)
-#define RIGHT_MOTOR_TARGET_REG_ADDRESS     0x11u  //!< Right motor target register address (Read/Write)
-#define BATTERY_MOTOR_VOLTAGE_REG_ADDRESS  0x12u  //!< Battery voltage register address    (Read only)
-#define INDUCED_VOLTAGE_REG_ADDRESS        0x13u  //!< Induced voltage register address    (Read only)
-#define MOTOR_CURRENT_REG_ADDRESS          0x14u  //!< Motor current register address      (Read only)
-#define PWM_DUTY_CYCLE_REG_ADDRESS         0x15u  //!< PWM duty cycle register address     (Read only)
-#define BATTERY_VOLTAGE_REG_ADDRESS        0x16u  //!< Battery voltage register address    (Read only)
-#define PROX_IR_VALUE_REG_ADDRESS          0x17u  //!< ProxIR value register address       (Read only)
+#define SETTINGS_REG_ADDRESS                0x01u  //!< Settings register address           (Read/Write)
+#define STATUS_REG_ADDRESS                  0x02u  //!< Status register address             (Read/Write)
+#define WHO_AM_I_REG_ADDRESS                0x03u  //!< WHO_AM_I register address           (Read only)
+#define LEFT_MOTOR_TARGET_REG_ADDRESS       0x04u  //!< Left motor target register address  (Read/Write)
+#define RIGHT_MOTOR_TARGET_REG_ADDRESS      0x05u  //!< Right motor target register address (Read/Write)
+#define BATTERY_MOTOR_VOLTAGE_REG_ADDRESS   0x06u  //!< Battery voltage register address    (Read only)
+#define INDUCED_VOLTAGE_REG_ADDRESS         0x07u  //!< Induced voltage register address    (Read only)
+#define MOTOR_CURRENT_REG_ADDRESS           0x08u  //!< Motor current register address      (Read only)
+#define PWM_DUTY_CYCLE_REG_ADDRESS          0x09u  //!< PWM duty cycle register address     (Read only)
+#define BATTERY_VOLTAGE_REG_ADDRESS         0x0Au  //!< Battery voltage register address    (Read only)
+#define PROX_IR_VALUE_REG_ADDRESS           0x0Bu  //!< Prox IR value register address      (Read only)
+#define GROUND_IR_VALUE_REG_ADDRESS         0x0Cu  //!< Ground IR value register address    (Read only)
+#define GROUND_IR_LEDS_REG_ADDRESS          0x0Du  //!< Ground IR LEDs register address     (Read/Write)
+#define LEFT_GROUND_IR_LED_REG_ADDRESS      0x0Eu  //!< Left Ground IR LED register address (Read/Write)
+#define RIGHT_GROUND_IR_LED_REG_ADDRESS     0x0Fu  //!< Right Ground IR LED register address (Read/Write)
 
-#define STM32_ID                           0xBCu  //!< ID of the STM32
+#define STM32_ID                            0xBCu  //!< ID of the STM32
 
 // Status register bit mask
-#define USB_CABLE_IS_PRESENT_BIT_MASK      0x01u
-#define USB_PORT_IS_OPEN_BIT_MASK          0x02u
-#define MODE_UPDATE_BIT_MASK               0x04u
-#define READY_TO_SWITCH_OFF_BIT_MASK       0x08u
-#define OK_TO_SWITCH_OFF_BIT_MASK          0x10u
+#define USB_CABLE_IS_PRESENT_BIT_MASK       0x01u
+#define USB_PORT_IS_OPEN_BIT_MASK           0x02u
+#define MODE_UPDATE_BIT_MASK                0x04u
+#define READY_TO_SWITCH_OFF_BIT_MASK        0x08u
+#define OK_TO_SWITCH_OFF_BIT_MASK           0x10u
 
 // Status register bit position
 #define USB_CABLE_IS_PRESENT_BIT_POS       0u  // This bit is set by the STM32
@@ -59,6 +63,22 @@
 #define MODE_UPDATE_BIT_POS                2u  // This bit is set by the STM32
 #define READY_TO_SWITCH_OFF_BIT_POS        3u  // This bit is set by the STM32
 #define OK_TO_SWITCH_OFF_BIT_POS           4u  // This bit is set by the ESP32
+
+#define SETTINGS_MESSAGE_LENGTH                4u  //!< Settings message length in bytes
+#define STATUS_MESSAGE_LENGTH                  1u  //!< Status message length in bytes
+#define WHO_AM_I_MESSAGE_LENGTH                1u  //!< WHO_AM_I message length in bytes
+#define LEFT_MOTOR_TARGET_MESSAGE_LENGTH       2u  //!< Left motor target message length in bytes
+#define RIGHT_MOTOR_TARGET_MESSAGE_LENGTH      2u  //!< Right motor target message length in bytes
+#define BATTERY_MOTOR_VOLTAGE_MESSAGE_LENGTH   4u  //!< Battery motor voltage message length in bytes
+#define INDUCED_VOLTAGE_MESSAGE_LENGTH         4u  //!< Induced voltage message length in bytes
+#define MOTOR_CURRENT_MESSAGE_LENGTH           4u  //!< Motor current message length in bytes
+#define PWM_DUTY_CYCLE_MESSAGE_LENGTH          4u  //!< PWM duty cycle message length in bytes
+#define BATTERY_VOLTAGE_MESSAGE_LENGTH         2u  //!< Battery voltage message length in bytes
+#define PROX_IR_VALUE_MESSAGE_LENGTH          14u  //!< Prox IR value message length in bytes
+#define GROUND_IR_VALUE_MESSAGE_LENGTH        12u  //!< Ground IR value message length in bytes
+#define GROUND_IR_LEDS_MESSAGE_LENGTH          4u  //!< Ground IR LEDs message length in bytes
+#define LEFT_GROUND_IR_LED_MESSAGE_LENGTH      2u
+#define RIGHT_GROUND_IR_LED_MESSAGE_LENGTH     2u
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -82,6 +102,12 @@ enum
   E_ProxIR_BackRight
 };
 
+enum
+{
+  E_GroundIR_Left,
+  E_GroundIR_Right
+};
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -100,6 +126,10 @@ static int16_t DutyCycle[MOTORS_NUM] = {0, 0};
 static int16_t Current[MOTORS_NUM]   = {0, 0};
 
 static int16_t ProxIRValue[PROX_IR_SENSORS_NUM] = {0, 0, 0, 0, 0, 0, 0};
+
+static int16_t GroundIRAmbient[GROUND_IR_SENSORS_NUM]   =  {0, 0};
+static int16_t GroundIRReflected[GROUND_IR_SENSORS_NUM] =  {0, 0};
+static int16_t GroundIRDelta[GROUND_IR_SENSORS_NUM]     =  {0, 0};
 
 static int16_t Vbat = 0;
 
@@ -136,11 +166,20 @@ void STM32_UpdateProxIRLedsBrightness(uint16_t l0, uint16_t l1, uint16_t l2, uin
 }
 
 //_____________________________________________________________________________
-
-void STM32_UpdateGroundIRLedsBrightness(uint16_t l0, uint16_t l1)
+#if 0
+//void STM32_UpdateGroundIRLedsBrightness(uint16_t l0, uint16_t l1)
+void STM32_UpdateGroundIRLedsBrightness(int16_t* value)
 {
+  uint8_t data[GROUND_IR_LEDS_MESSAGE_LENGTH];
 
+  data[0] = (uint8_t)(value[0]);
+  data[1] = (uint8_t)(value[0] >> 8);
+  data[2] = (uint8_t)(value[1]);
+  data[3] = (uint8_t)(value[1] >> 8);
+
+  I2C_WriteToAddress(SLAVE_ADDRESS, GROUND_IR_LEDS_REG_ADDRESS, data, GROUND_IR_LEDS_MESSAGE_LENGTH);
 }
+#endif
 
 //_____________________________________________________________________________
 
@@ -153,14 +192,14 @@ void STM32_UpdateMicrophoneLedBrightness(uint16_t brightness)
 
 void STM32_UpdateSettings(T_Settings settings)
 {
-  uint8_t data[4];
+  uint8_t data[SETTINGS_MESSAGE_LENGTH];
 
   data[0] = (uint8_t)(settings.LeftMotor);
   data[1] = (uint8_t)((settings.LeftMotor) >> 8);
   data[2] = (uint8_t)(settings.RightMotor);
   data[3] = (uint8_t)((settings.RightMotor) >> 8);
 
-  I2C_WriteToAddress(SLAVE_ADDRESS, SETTINGS_REG_ADDRESS, data, 4u);
+  I2C_WriteToAddress(SLAVE_ADDRESS, SETTINGS_REG_ADDRESS, data, SETTINGS_MESSAGE_LENGTH);
 }
 
 //_____________________________________________________________________________
@@ -171,7 +210,7 @@ void STM32_ReadStatus(void)
 
   static uint8_t oldStatus = 0x00;
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, STATUS_REG_ADDRESS, &data, 1u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, STATUS_REG_ADDRESS, &data, STATUS_MESSAGE_LENGTH);
 
   Status = data;
 
@@ -193,7 +232,7 @@ bool STM32_IsUSBCablePresent(void)
 bool STM32_IsUSBPortOpen(void)
 {
   return ((Status & (1 << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
-  //return true;  FIXME temporary used to run Aseba with UART
+  //return true;  // FIXME temporary used to run Aseba with UART
 }
 
 //_____________________________________________________________________________
@@ -246,35 +285,59 @@ T_Error STM32_CheckId(void)
 
 //_____________________________________________________________________________
 
+void STM32_UpdateLeftGroundIRLedBrightness(int16_t* brightness)
+{
+  uint8_t data[LEFT_GROUND_IR_LED_MESSAGE_LENGTH];
+
+  data[0] = (uint8_t)(brightness[0]);
+  data[1] = (uint8_t)((brightness[0]) >> 8);
+
+  I2C_WriteToAddress(SLAVE_ADDRESS, LEFT_GROUND_IR_LED_REG_ADDRESS, data, LEFT_GROUND_IR_LED_MESSAGE_LENGTH);
+}
+
+//_____________________________________________________________________________
+
+void STM32_UpdateRightGroundIRLedBrightness(int16_t* brightness)
+{
+  uint8_t data[RIGHT_GROUND_IR_LED_MESSAGE_LENGTH];
+
+  data[0] = (uint8_t)(brightness[1]);
+  data[1] = (uint8_t)((brightness[1]) >> 8);
+
+  I2C_WriteToAddress(SLAVE_ADDRESS, RIGHT_GROUND_IR_LED_REG_ADDRESS, data, RIGHT_GROUND_IR_LED_MESSAGE_LENGTH);
+}
+
+//_____________________________________________________________________________
+
 void STM32_UpdateLeftMotorTarget(int16_t* target)
 {
-  uint8_t data[2];
+  uint8_t data[LEFT_MOTOR_TARGET_MESSAGE_LENGTH];
 
   data[0] = (uint8_t)(target[E_Motor_Left]);
   data[1] = (uint8_t)((target[E_Motor_Left]) >> 8);
 
-  I2C_WriteToAddress(SLAVE_ADDRESS, LEFT_MOTOR_TARGET_REG_ADDRESS, data, 2u);
+  I2C_WriteToAddress(SLAVE_ADDRESS, LEFT_MOTOR_TARGET_REG_ADDRESS, data, LEFT_MOTOR_TARGET_MESSAGE_LENGTH);
 }
 
 //_____________________________________________________________________________
 
 void STM32_UpdateRightMotorTarget(int16_t* target)
 {
-  uint8_t data[2];
+  uint8_t data[RIGHT_MOTOR_TARGET_MESSAGE_LENGTH];
 
   data[0] = (uint8_t)(target[E_Motor_Right]);
   data[1] = (uint8_t)((target[E_Motor_Right]) >> 8);
 
-  I2C_WriteToAddress(SLAVE_ADDRESS, RIGHT_MOTOR_TARGET_REG_ADDRESS, data, 2u);
+  I2C_WriteToAddress(SLAVE_ADDRESS, RIGHT_MOTOR_TARGET_REG_ADDRESS, data, RIGHT_MOTOR_TARGET_MESSAGE_LENGTH);
 }
 
 //_____________________________________________________________________________
 
 void STM32_GetLeftMotorTarget(int16_t* target)
 {
-  uint8_t data[2];
+  uint8_t data[LEFT_MOTOR_TARGET_MESSAGE_LENGTH];
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, LEFT_MOTOR_TARGET_REG_ADDRESS, data, 2u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, LEFT_MOTOR_TARGET_REG_ADDRESS, data, LEFT_MOTOR_TARGET_MESSAGE_LENGTH);
 
   target[E_Motor_Left] = ((data[1] << 8) | data[0]);
 
@@ -287,9 +350,9 @@ void STM32_GetLeftMotorTarget(int16_t* target)
 
 void STM32_GetRightMotorTarget(int16_t* target)
 {
-  uint8_t data[2];
+  uint8_t data[RIGHT_MOTOR_TARGET_MESSAGE_LENGTH];
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, RIGHT_MOTOR_TARGET_REG_ADDRESS, data, 2u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, RIGHT_MOTOR_TARGET_REG_ADDRESS, data, RIGHT_MOTOR_TARGET_MESSAGE_LENGTH);
 
   target[E_Motor_Right] = ((data[1] << 8) | data[0]);
 
@@ -302,9 +365,9 @@ void STM32_GetRightMotorTarget(int16_t* target)
 
 void STM32_ReadPwmDutyCycle(void)
 {
-  uint8_t data[4];
+  uint8_t data[PWM_DUTY_CYCLE_MESSAGE_LENGTH];
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, PWM_DUTY_CYCLE_REG_ADDRESS, data, 4u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, PWM_DUTY_CYCLE_REG_ADDRESS, data, PWM_DUTY_CYCLE_MESSAGE_LENGTH);
 
   DutyCycle[E_Motor_Left]  = ((data[1] << 8) | data[0]);
   DutyCycle[E_Motor_Right] = ((data[3] << 8) | data[2]);
@@ -317,9 +380,9 @@ void STM32_ReadPwmDutyCycle(void)
 
 void STM32_ReadBatteryMotorVoltage(void)
 {
-  uint8_t data[4];
+  uint8_t data[BATTERY_MOTOR_VOLTAGE_MESSAGE_LENGTH];
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, BATTERY_MOTOR_VOLTAGE_REG_ADDRESS, data, 4u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, BATTERY_MOTOR_VOLTAGE_REG_ADDRESS, data, BATTERY_MOTOR_VOLTAGE_MESSAGE_LENGTH);
 
   VbatMotor[E_Motor_Left]  = ((data[1] << 8) | data[0]);
   VbatMotor[E_Motor_Right] = ((data[3] << 8) | data[2]);
@@ -339,9 +402,9 @@ int16_t STM32_GetBatteryMotorVoltage(void)
 
 void STM32_ReadInducedVoltage(void)
 {
-  uint8_t data[4];
+  uint8_t data[INDUCED_VOLTAGE_MESSAGE_LENGTH];
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, INDUCED_VOLTAGE_REG_ADDRESS, data, 4u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, INDUCED_VOLTAGE_REG_ADDRESS, data, INDUCED_VOLTAGE_MESSAGE_LENGTH);
 
   Vind[E_Motor_Left]  = ((data[1] << 8) | data[0]);
   Vind[E_Motor_Right] = ((data[3] << 8) | data[2]);
@@ -356,9 +419,9 @@ void STM32_ReadInducedVoltage(void)
 
 void STM32_ReadMotorCurrent(void)
 {
-  uint8_t data[4];
+  uint8_t data[MOTOR_CURRENT_MESSAGE_LENGTH];
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, MOTOR_CURRENT_REG_ADDRESS, data, 4u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, MOTOR_CURRENT_REG_ADDRESS, data, MOTOR_CURRENT_MESSAGE_LENGTH);
 
   Current[E_Motor_Left]  = ((data[1] << 8) | data[0]);
   Current[E_Motor_Right] = ((data[3] << 8) | data[2]);
@@ -371,9 +434,9 @@ void STM32_ReadMotorCurrent(void)
 
 void STM32_ReadBatteryVoltage(void)
 {
-  uint8_t data[4];
+  uint8_t data[BATTERY_VOLTAGE_MESSAGE_LENGTH];
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, BATTERY_VOLTAGE_REG_ADDRESS, data, 2u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, BATTERY_VOLTAGE_REG_ADDRESS, data, BATTERY_VOLTAGE_MESSAGE_LENGTH);
 
   Vbat = ((data[1] << 8) | data[0]);
 
@@ -391,9 +454,9 @@ int16_t STM32_GetBatteryVoltage(void)
 
 void STM32_ReadProxIRValue(void)
 {
-  uint8_t data[14];
+  uint8_t data[PROX_IR_VALUE_MESSAGE_LENGTH];
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, PROX_IR_VALUE_REG_ADDRESS, data, 14u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, PROX_IR_VALUE_REG_ADDRESS, data, PROX_IR_VALUE_MESSAGE_LENGTH);
 
   ProxIRValue[E_ProxIR_FrontLeft]        =  ((data[1] << 8) | data[0]);
   ProxIRValue[E_ProxIR_FrontLeftCenter]  =  ((data[3] << 8) | data[2]);
@@ -410,6 +473,29 @@ void STM32_ReadProxIRValue(void)
   vmVariables.prox[E_ProxIR_FrontRight]       = ProxIRValue[E_ProxIR_FrontRight];
   vmVariables.prox[E_ProxIR_BackLeft]         = ProxIRValue[E_ProxIR_BackLeft];
   vmVariables.prox[E_ProxIR_BackRight]        = ProxIRValue[E_ProxIR_BackRight];
+}
+
+//_____________________________________________________________________________
+
+void STM32_ReadGroundIRValue(void)
+{
+  uint8_t data[GROUND_IR_VALUE_MESSAGE_LENGTH];
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, GROUND_IR_VALUE_REG_ADDRESS, data, GROUND_IR_VALUE_MESSAGE_LENGTH);
+
+  GroundIRAmbient[E_GroundIR_Right]   =  ((data[1] << 8) | data[0]);
+  GroundIRAmbient[E_GroundIR_Left]    =  ((data[3] << 8) | data[2]);
+  GroundIRReflected[E_GroundIR_Right] =  ((data[5] << 8) | data[4]);
+  GroundIRReflected[E_GroundIR_Left]  =  ((data[7] << 8) | data[6]);
+  GroundIRDelta[E_GroundIR_Right]     =  ((data[9] << 8) | data[8]);
+  GroundIRDelta[E_GroundIR_Left]      =  ((data[11] << 8) | data[10]);
+
+  vmVariables.ground_ambiant[E_GroundIR_Right]   = GroundIRAmbient[E_GroundIR_Right];
+  vmVariables.ground_ambiant[E_GroundIR_Left]    = GroundIRAmbient[E_GroundIR_Left];
+  vmVariables.ground_reflected[E_GroundIR_Right] = GroundIRReflected[E_GroundIR_Right];
+  vmVariables.ground_reflected[E_GroundIR_Left]  = GroundIRReflected[E_GroundIR_Left];
+  vmVariables.ground_delta[E_GroundIR_Right]     = GroundIRDelta[E_GroundIR_Right];
+  vmVariables.ground_delta[E_GroundIR_Left]      = GroundIRDelta[E_GroundIR_Left];
 }
 
 //_____________________________________________________________________________
@@ -502,5 +588,5 @@ void STM32_ReadButtonNoise(void)
 
 static void ReadId(uint8_t* id)
 {
-  I2C_ReadFromAddress(SLAVE_ADDRESS, WHO_AM_I_REG_ADDRESS, id, 1u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, WHO_AM_I_REG_ADDRESS, id, WHO_AM_I_MESSAGE_LENGTH);
 }

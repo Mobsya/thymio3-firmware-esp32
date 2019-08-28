@@ -59,7 +59,10 @@ extern void STM32_UpdateBehaviorStatus(uint16_t status);
 extern void STM32_UpdateProxIRLedsBrightness(uint16_t l0, uint16_t l1, uint16_t l2, uint16_t l3,
                                          uint16_t l4, uint16_t l5, uint16_t l6, uint16_t l7);
 
-extern void STM32_UpdateGroundIRLedsBrightness(uint16_t l0, uint16_t l1);
+//extern void STM32_UpdateGroundIRLedsBrightness(uint16_t l0, uint16_t l1);
+//extern void STM32_UpdateGroundIRLedsBrightness(int16_t* value);
+
+
 
 extern void STM32_UpdateMicrophoneLedBrightness(uint16_t brightness);
 //! \brief     Update the settings
@@ -115,6 +118,10 @@ extern bool STM32_IsAllowedToSwitchOff(void);
 //! \param     None
 //! \return    E_Error_None if no error, otherwise E_Error_STM32_InvalidID
 extern T_Error STM32_CheckId(void);
+
+extern void STM32_UpdateLeftGroundIRLedBrightness(int16_t* brightness);
+
+extern void STM32_UpdateRightGroundIRLedBrightness(int16_t* brightness);
 
 //! \brief     Update the left motor target
 //! \pre       None
@@ -190,5 +197,11 @@ extern int16_t STM32_GetBatteryVoltage(void);
 //! \param     None
 //! \return    None
 extern void STM32_ReadProxIRValue(void);
+
+//! \brief     Read the ground IR value
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void STM32_ReadGroundIRValue(void);
 
 #endif // STM32_H_

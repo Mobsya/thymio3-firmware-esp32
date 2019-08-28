@@ -54,6 +54,8 @@
 
 static const char* Tag = "sensors";
 
+static bool BusIsAvailable = false;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -78,11 +80,13 @@ void Sensors_Init(void)
   // Else, it must be done in the main.c
   //I2C_Init();
 
+  BusIsAvailable = false;
+
   Codec_Init();
 
-  //ColorSensor_Init();
-  //Accelerometer_Init();
-  //Gyroscope_Init();
+  ColorSensor_Init();
+  Accelerometer_Init();
+  Gyroscope_Init();
 }
 
 //_____________________________________________________________________________
@@ -101,19 +105,30 @@ void Sensors_Start(void)
 
 //_____________________________________________________________________________
 
+bool Sensors_IsBusAvailable(void)
+{
+  return BusIsAvailable;
+}
+
+//_____________________________________________________________________________
+
 static void RunSensorsTask(void* arg)
 {
   ESP_LOGI(Tag, "Start Sensors Task");
 
   while (1)
   {
+	BusIsAvailable = false;
+
     // Every 20 [ms], 50 [Hz] (vTaskDelay = 20 [ms])
-    //Accelerometer_ReadTapSource();
-    //Accelerometer_GetAcceleration();
-    //Gyroscope_GetAngularPosition();
-    //ColorSensor_ReadColor();
+    Accelerometer_ReadTapSource();
+    Accelerometer_GetAcceleration();
+    Gyroscope_GetAngularPosition();
+    ColorSensor_ReadColor();
 
 //    Buttons_UpdateStatus();
+
+    BusIsAvailable = true;
 
     vTaskDelay(20 / portTICK_PERIOD_MS);
   }

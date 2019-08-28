@@ -71,6 +71,9 @@ static int16_t OldTarget[2] = {0, 0};
 static int16_t TimerDuration[2] = {0, 0};
 static int16_t OldTimerDuration[2] = {0, 0};
 
+static int16_t GroundIRLed[2] = {0, 0};
+static int16_t OldGroundIRLed[2] = {0, 0};
+
 static T_Settings Settings;
 static T_Settings OldSettings;
 
@@ -97,6 +100,8 @@ static void UpdateLedFrontRight(void);
 static void UpdateLedBackLeft(void);
 
 static void UpdateLedBackRight(void);
+
+static void UpdateLedsGroundIR(void);
 
 static void Callback_AsebaTimer0(void* arg);
 
@@ -126,16 +131,28 @@ void Aseba_Init(void)
 
 //_____________________________________________________________________________
 
+void Aseba_UpdateGroundIRLedsBrightness(uint16_t l0, uint16_t l1)
+{
+  //GroundIRLed[0] = l0;
+  //GroundIRLed[1] = l1;
+}
+
+//_____________________________________________________________________________
+
 void update_aseba_variables_write(void)
 {
-  if (Comm_IsBusAvailable())
+  if (Comm_IsBusAvailable()) // && Sensors_IsBusAvailable())
   {
+	UpdateLedsGroundIR();
+
     UpdateMotorTargets();
 
     UpdateSettings();
 
-    UpdateTimers();
+    //UpdateTimers();
   }
+
+  UpdateTimers();
 
   UpdateLedsCircle();
 
@@ -506,6 +523,68 @@ static void UpdateLedBackRight(void)
       Leds_SetSingleBrightness((E_Led_R_Back_Right + index), brightness[index]);
     }
   }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateLedsGroundIR(void)
+{
+#if 0
+  //static int16_t brightness[2] = {0, 0};
+  //static int16_t oldBrightness[2] = {0, 0};
+
+  GroundIRLed[0] = vmVariables.leds_ground[0];
+  GroundIRLed[1] = vmVariables.leds_ground[1];
+
+  if ((GroundIRLed[0] != OldGroundIRLed[0]) || (GroundIRLed[1] != OldGroundIRLed[1]))
+  {
+	STM32_UpdateGroundIRLedsBrightness(GroundIRLed);
+	OldGroundIRLed[0] = GroundIRLed[0];
+	OldGroundIRLed[1] = GroundIRLed[1];
+  }
+#endif
+
+  GroundIRLed[0] = vmVariables.leds_ground[0];
+  GroundIRLed[1] = vmVariables.leds_ground[1];
+
+  if (GroundIRLed[0] != OldGroundIRLed[0])
+  {
+    STM32_UpdateLeftGroundIRLedBrightness(GroundIRLed);
+    OldGroundIRLed[0] = GroundIRLed[0];
+  }
+
+  if (GroundIRLed[1] != OldGroundIRLed[1])
+  {
+    STM32_UpdateRightGroundIRLedBrightness(GroundIRLed);
+    OldGroundIRLed[1] = GroundIRLed[1];
+  }
+
+
+
+#if 0
+  static int16_t brightness[2] = {0, 0};
+
+  if ((brightness[0] != vmVariables.leds_ground[0]) || (brightness[1] != vmVariables.leds_ground[1]))
+  {
+    brightness[0] = vmVariables.leds_ground[0];
+    brightness[1] = vmVariables.leds_ground[1];
+
+    Behavior_Disable(B_LEDS_PROX);
+    STM32_UpdateGroundIRLedsBrightness(brightness);
+  }
+#endif
+
+#if 0
+  if ((GroundIRLed[0] != OldGroundIRLed[0]) ||
+      (GroundIRLed[1] != OldGroundIRLed[1]))
+  {
+    //STM32_UpdateGroundIRLedsBrightness(GroundIRLed[0], GroundIRLed[1]);
+	STM32_UpdateGroundIRLedsBrightness(GroundIRLed);
+
+    OldGroundIRLed[0] = GroundIRLed[0];
+    OldGroundIRLed[1] = GroundIRLed[1];
+  }
+#endif
 }
 
 //_____________________________________________________________________________

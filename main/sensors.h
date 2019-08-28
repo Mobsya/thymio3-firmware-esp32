@@ -53,4 +53,10 @@ extern void Sensors_Init(void);
 //! \return    None
 extern void Sensors_Start(void);
 
+//! \brief     Check that the I2C bus is available
+//! \pre       First initialize the communication
+//! \param     None
+//! \return    True if the I2C bus is available, false otherwise
+extern bool Sensors_IsBusAvailable(void);
+
 #endif // SENSORS_H_
