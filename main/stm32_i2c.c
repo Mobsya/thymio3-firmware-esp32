@@ -45,8 +45,7 @@
 #define PROX_IR_VALUE_REG_ADDRESS           0x0Bu  //!< Prox IR value register address      (Read only)
 #define GROUND_IR_VALUE_REG_ADDRESS         0x0Cu  //!< Ground IR value register address    (Read only)
 #define GROUND_IR_LEDS_REG_ADDRESS          0x0Du  //!< Ground IR LEDs register address     (Read/Write)
-#define LEFT_GROUND_IR_LED_REG_ADDRESS      0x0Eu  //!< Left Ground IR LED register address (Read/Write)
-#define RIGHT_GROUND_IR_LED_REG_ADDRESS     0x0Fu  //!< Right Ground IR LED register address (Read/Write)
+#define MICROPHONE_REG_ADDRESS              0x0Eu  //!< Microphone register address         (Read only)
 
 #define STM32_ID                            0xBCu  //!< ID of the STM32
 
@@ -77,8 +76,6 @@
 #define PROX_IR_VALUE_MESSAGE_LENGTH          14u  //!< Prox IR value message length in bytes
 #define GROUND_IR_VALUE_MESSAGE_LENGTH        12u  //!< Ground IR value message length in bytes
 #define GROUND_IR_LEDS_MESSAGE_LENGTH          4u  //!< Ground IR LEDs message length in bytes
-#define LEFT_GROUND_IR_LED_MESSAGE_LENGTH      2u
-#define RIGHT_GROUND_IR_LED_MESSAGE_LENGTH     2u
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -160,26 +157,10 @@ void STM32_UpdateBehaviorStatus(uint16_t status)
 //_____________________________________________________________________________
 
 void STM32_UpdateProxIRLedsBrightness(uint16_t l0, uint16_t l1, uint16_t l2, uint16_t l3,
-		                              uint16_t l4, uint16_t l5, uint16_t l6, uint16_t l7)
+                                      uint16_t l4, uint16_t l5, uint16_t l6, uint16_t l7)
 {
 
 }
-
-//_____________________________________________________________________________
-#if 0
-//void STM32_UpdateGroundIRLedsBrightness(uint16_t l0, uint16_t l1)
-void STM32_UpdateGroundIRLedsBrightness(int16_t* value)
-{
-  uint8_t data[GROUND_IR_LEDS_MESSAGE_LENGTH];
-
-  data[0] = (uint8_t)(value[0]);
-  data[1] = (uint8_t)(value[0] >> 8);
-  data[2] = (uint8_t)(value[1]);
-  data[3] = (uint8_t)(value[1] >> 8);
-
-  I2C_WriteToAddress(SLAVE_ADDRESS, GROUND_IR_LEDS_REG_ADDRESS, data, GROUND_IR_LEDS_MESSAGE_LENGTH);
-}
-#endif
 
 //_____________________________________________________________________________
 
@@ -231,8 +212,8 @@ bool STM32_IsUSBCablePresent(void)
 
 bool STM32_IsUSBPortOpen(void)
 {
-  return ((Status & (1 << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
-  //return true;  // FIXME temporary used to run Aseba with UART
+  //return ((Status & (1 << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
+  return true;  // FIXME temporary used to run Aseba with UART
 }
 
 //_____________________________________________________________________________
@@ -285,30 +266,6 @@ T_Error STM32_CheckId(void)
 
 //_____________________________________________________________________________
 
-void STM32_UpdateLeftGroundIRLedBrightness(int16_t* brightness)
-{
-  uint8_t data[LEFT_GROUND_IR_LED_MESSAGE_LENGTH];
-
-  data[0] = (uint8_t)(brightness[0]);
-  data[1] = (uint8_t)((brightness[0]) >> 8);
-
-  I2C_WriteToAddress(SLAVE_ADDRESS, LEFT_GROUND_IR_LED_REG_ADDRESS, data, LEFT_GROUND_IR_LED_MESSAGE_LENGTH);
-}
-
-//_____________________________________________________________________________
-
-void STM32_UpdateRightGroundIRLedBrightness(int16_t* brightness)
-{
-  uint8_t data[RIGHT_GROUND_IR_LED_MESSAGE_LENGTH];
-
-  data[0] = (uint8_t)(brightness[1]);
-  data[1] = (uint8_t)((brightness[1]) >> 8);
-
-  I2C_WriteToAddress(SLAVE_ADDRESS, RIGHT_GROUND_IR_LED_REG_ADDRESS, data, RIGHT_GROUND_IR_LED_MESSAGE_LENGTH);
-}
-
-//_____________________________________________________________________________
-
 void STM32_UpdateLeftMotorTarget(int16_t* target)
 {
   uint8_t data[LEFT_MOTOR_TARGET_MESSAGE_LENGTH];
@@ -329,6 +286,20 @@ void STM32_UpdateRightMotorTarget(int16_t* target)
   data[1] = (uint8_t)((target[E_Motor_Right]) >> 8);
 
   I2C_WriteToAddress(SLAVE_ADDRESS, RIGHT_MOTOR_TARGET_REG_ADDRESS, data, RIGHT_MOTOR_TARGET_MESSAGE_LENGTH);
+}
+
+//_____________________________________________________________________________
+
+void STM32_UpdateGroundIRLedsBrightness(int16_t* brightness)
+{
+  uint8_t data[GROUND_IR_LEDS_MESSAGE_LENGTH];
+
+  data[0] = (uint8_t)(brightness[0]);
+  data[1] = (uint8_t)(brightness[0] >> 8);
+  data[2] = (uint8_t)(brightness[1]);
+  data[3] = (uint8_t)(brightness[1] >> 8);
+
+  I2C_WriteToAddress(SLAVE_ADDRESS, GROUND_IR_LEDS_REG_ADDRESS, data, GROUND_IR_LEDS_MESSAGE_LENGTH);
 }
 
 //_____________________________________________________________________________

@@ -59,11 +59,6 @@ extern void STM32_UpdateBehaviorStatus(uint16_t status);
 extern void STM32_UpdateProxIRLedsBrightness(uint16_t l0, uint16_t l1, uint16_t l2, uint16_t l3,
                                          uint16_t l4, uint16_t l5, uint16_t l6, uint16_t l7);
 
-//extern void STM32_UpdateGroundIRLedsBrightness(uint16_t l0, uint16_t l1);
-//extern void STM32_UpdateGroundIRLedsBrightness(int16_t* value);
-
-
-
 extern void STM32_UpdateMicrophoneLedBrightness(uint16_t brightness);
 //! \brief     Update the settings
 //! \pre       None
@@ -119,10 +114,6 @@ extern bool STM32_IsAllowedToSwitchOff(void);
 //! \return    E_Error_None if no error, otherwise E_Error_STM32_InvalidID
 extern T_Error STM32_CheckId(void);
 
-extern void STM32_UpdateLeftGroundIRLedBrightness(int16_t* brightness);
-
-extern void STM32_UpdateRightGroundIRLedBrightness(int16_t* brightness);
-
 //! \brief     Update the left motor target
 //! \pre       None
 //! \param     target - Target applied to the left motor
@@ -136,6 +127,12 @@ extern void STM32_UpdateLeftMotorTarget(int16_t* target);
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\stm32\UpdateRightMotorTarget.svg
 extern void STM32_UpdateRightMotorTarget(int16_t* target);
+
+//! \brief     Update the ground IR LEDs brightness
+//! \pre       None
+//! \param     brightness - Brightness applied to the LEDs
+//! \return    None
+extern void STM32_UpdateGroundIRLedsBrightness(int16_t* brightness);
 
 //! \brief     Get the left motor target
 //! \pre       None

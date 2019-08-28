@@ -28,6 +28,7 @@
 #include "behavior.h"
 #include "comm.h"
 #include "leds.h"
+#include "sensors.h"
 #include "stm32_i2c.h"
 #include "timer_sw.h"
 
@@ -70,9 +71,6 @@ static int16_t OldTarget[2] = {0, 0};
 
 static int16_t TimerDuration[2] = {0, 0};
 static int16_t OldTimerDuration[2] = {0, 0};
-
-static int16_t GroundIRLed[2] = {0, 0};
-static int16_t OldGroundIRLed[2] = {0, 0};
 
 static T_Settings Settings;
 static T_Settings OldSettings;
@@ -141,15 +139,13 @@ void Aseba_UpdateGroundIRLedsBrightness(uint16_t l0, uint16_t l1)
 
 void update_aseba_variables_write(void)
 {
-  if (Comm_IsBusAvailable()) // && Sensors_IsBusAvailable())
+  if (Comm_IsBusAvailable() && Sensors_IsBusAvailable())
   {
 	UpdateLedsGroundIR();
 
     UpdateMotorTargets();
 
     UpdateSettings();
-
-    //UpdateTimers();
   }
 
   UpdateTimers();
@@ -529,39 +525,6 @@ static void UpdateLedBackRight(void)
 
 static void UpdateLedsGroundIR(void)
 {
-#if 0
-  //static int16_t brightness[2] = {0, 0};
-  //static int16_t oldBrightness[2] = {0, 0};
-
-  GroundIRLed[0] = vmVariables.leds_ground[0];
-  GroundIRLed[1] = vmVariables.leds_ground[1];
-
-  if ((GroundIRLed[0] != OldGroundIRLed[0]) || (GroundIRLed[1] != OldGroundIRLed[1]))
-  {
-	STM32_UpdateGroundIRLedsBrightness(GroundIRLed);
-	OldGroundIRLed[0] = GroundIRLed[0];
-	OldGroundIRLed[1] = GroundIRLed[1];
-  }
-#endif
-
-  GroundIRLed[0] = vmVariables.leds_ground[0];
-  GroundIRLed[1] = vmVariables.leds_ground[1];
-
-  if (GroundIRLed[0] != OldGroundIRLed[0])
-  {
-    STM32_UpdateLeftGroundIRLedBrightness(GroundIRLed);
-    OldGroundIRLed[0] = GroundIRLed[0];
-  }
-
-  if (GroundIRLed[1] != OldGroundIRLed[1])
-  {
-    STM32_UpdateRightGroundIRLedBrightness(GroundIRLed);
-    OldGroundIRLed[1] = GroundIRLed[1];
-  }
-
-
-
-#if 0
   static int16_t brightness[2] = {0, 0};
 
   if ((brightness[0] != vmVariables.leds_ground[0]) || (brightness[1] != vmVariables.leds_ground[1]))
@@ -569,22 +532,9 @@ static void UpdateLedsGroundIR(void)
     brightness[0] = vmVariables.leds_ground[0];
     brightness[1] = vmVariables.leds_ground[1];
 
-    Behavior_Disable(B_LEDS_PROX);
+    // TODO Behavior_Disable(B_LEDS_PROX);
     STM32_UpdateGroundIRLedsBrightness(brightness);
   }
-#endif
-
-#if 0
-  if ((GroundIRLed[0] != OldGroundIRLed[0]) ||
-      (GroundIRLed[1] != OldGroundIRLed[1]))
-  {
-    //STM32_UpdateGroundIRLedsBrightness(GroundIRLed[0], GroundIRLed[1]);
-	STM32_UpdateGroundIRLedsBrightness(GroundIRLed);
-
-    OldGroundIRLed[0] = GroundIRLed[0];
-    OldGroundIRLed[1] = GroundIRLed[1];
-  }
-#endif
 }
 
 //_____________________________________________________________________________
