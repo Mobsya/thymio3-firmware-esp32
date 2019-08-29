@@ -53,4 +53,16 @@ extern void Codec_Init(void);
 //! \return    None
 extern void Codec_StartMP3Player(int number);
 
+//! \brief     Start the WAV recorder task
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void Codec_StartWAVRecorder(int number);
+
+//! \brief     Start the WAV player task
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void Codec_StartWAVPlayer(int number);
+
 #endif // CODEC_H_

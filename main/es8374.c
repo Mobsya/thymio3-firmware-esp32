@@ -1128,7 +1128,7 @@ static esp_err_t ConfigureADCInput(void)
   uint8_t data = 0x00u;
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
-  data = (data & 0xCFu) | 0x14u;
+  data = (data & 0xCFu) | 0x24u;
   I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
 
   return result;
@@ -1482,13 +1482,33 @@ static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T
   result |= ConfigureI2SFormat(E_Mode_ADC, format);
   result |= ConfigureI2SFormat(E_Mode_DAC, format);
 
-  constant = 0x50;
+  // PGA Register
+  // --------------------------------------------------------------------
+  // PDN_ALINL  = 0... ....  Enable analog PGA circuits
+  // PDN_MODE   = .1.. ....  Power down analog ADC modulator
+  // LINSEL     = ..10 ....  Lin2-Rin2
+  // LDCM       = .... 0...  Disable DC measurement
+  // DF2SE_15DB = .... .0..  0dB gain for input diff circuits
+  //              ---------
+  //              0110 0000 = 0x60
+  // --------------------------------------------------------------------
+  constant = 0x60;
   I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &constant, 1u);
 
-  constant = 0xFF;
+  constant = 0x0F;  // PGA gain = -3.5 [dB]
   I2C_WriteToAddress(SLAVE_ADDRESS, PGA_GAIN_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x10; //0x14;
+  // PGA Register
+  // --------------------------------------------------------------------
+  // PDN_ALINL  = 0... ....  Enable analog PGA circuits
+  // PDN_MODE   = .1.. ....  Enable analog ADC modulator
+  // LINSEL     = ..10 ....  Lin2-Rin2
+  // LDCM       = .... 0...  Disable DC measurement
+  // DF2SE_15DB = .... .0..  0dB gain for input diff circuits
+  //              ---------
+  //              0010 0000 = 0x20
+  // --------------------------------------------------------------------
+  constant = 0x20; //0x14;
   I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &constant, 1u);
 
   //constant = 0x55;

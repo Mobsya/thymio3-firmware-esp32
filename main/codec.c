@@ -31,9 +31,15 @@
 #include "audio_event_iface.h"
 #include "audio_mem.h"
 #include "audio_common.h"
+#include "fatfs_stream.h"
 #include "i2s_stream.h"
 #include "mp3_decoder.h"
 #include "audio_hal.h"
+#include "wav_encoder.h"
+#include "wav_decoder.h"
+#include "esp_peripherals.h"
+#include "spiffs_stream.h"
+#include "periph_spiffs.h"
 
 #include "driver/ledc.h"
 
@@ -46,6 +52,8 @@
 //-----------------------------------------------------------------------------
 
 #define MCLK_FREQUENCY_Hz   20000000
+
+#define RECORD_TIME_SECONDS       20
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -68,8 +76,8 @@ extern const uint8_t adf_music_mp3_end[] asm("_binary_adf_music_mp3_end");
 extern const uint8_t chicken_mp3_start[] asm("_binary_chicken_mp3_start");
 extern const uint8_t chicken_mp3_end[] asm("_binary_chicken_mp3_end");
 
-extern const uint8_t dixie_horn_mp3_start[] asm("_binary_dixie_horn_mp3_start");
-extern const uint8_t dixie_horn_mp3_end[] asm("_binary_dixie_horn_mp3_end");
+extern const uint8_t harry_mp3_start[] asm("_binary_harry_mp3_start");
+extern const uint8_t harry_mp3_end[] asm("_binary_harry_mp3_end");
 
 //-----------------------------------------------------------------------------
 // Private Data
@@ -77,28 +85,56 @@ extern const uint8_t dixie_horn_mp3_end[] asm("_binary_dixie_horn_mp3_end");
 
 static const char* Tag = "codec";
 
-static TaskHandle_t PlayerTask = NULL;
+static TaskHandle_t MP3PlayerTask = NULL;
+static TaskHandle_t WAVRecorderTask = NULL;
+static TaskHandle_t WAVPlayerTask = NULL;
 
-static audio_pipeline_handle_t pipeline;
-static audio_element_handle_t i2s_stream_writer;
+static audio_pipeline_handle_t MP3PlayerPipeline;
+static audio_element_handle_t MP3PlayerI2SStream;
 static audio_element_handle_t mp3_decoder;
-static audio_event_iface_handle_t evt;
+static audio_event_iface_handle_t MP3PlayerEvt;
+
+static audio_pipeline_handle_t WAVRecorderPipeline;
+static audio_element_handle_t WAVRecorderI2SStream;
+static audio_element_handle_t wav_encoder;
+static audio_element_handle_t WAVRecorderSPIFFSStream;
+static audio_event_iface_handle_t WAVRecorderEvt;
+
+static audio_pipeline_handle_t WAVPlayerPipeline;
+static audio_element_handle_t WAVPlayerI2SStream;
+static audio_element_handle_t wav_decoder;
+static audio_element_handle_t WAVPlayerSPIFFSStream;
+static audio_event_iface_handle_t WAVPlayerEvt;
+
+static bool MP3PlayerIsBusy   = false;
+static bool WAVRecorderIsBusy = false;
+static bool WAVPlayerIsBusy   = false;
 
 static T_File File;
 
 static int16_t Number = -1;
 
-static bool PlayerIsBusy = false;
-
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
+
+static void GenerateMasterClock(void);
+
+static void InitSPIFFS(void);
 
 static void RunMP3PlayerTask(void* arg);
 
 static void SelectFile(int16_t index);
 
 static void StopMP3Player(void);
+
+static void RunWAVRecorderTask(void* arg);
+
+static void StopWAVRecorder(void);
+
+static void RunWAVPlayerTask(void* arg);
+
+static void StopWAVPlayer(void);
 
 int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t wait_time, void* ctx);
 
@@ -112,12 +148,92 @@ int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t 
 
 void Codec_Init(void)
 {
+  GenerateMasterClock();
+
+  InitSPIFFS();
+}
+
+//_____________________________________________________________________________
+
+void Codec_StartMP3Player(int number)
+{
+  Number = number;
+
+  if (MP3PlayerIsBusy)
+  {
+    StopMP3Player();
+  }
+
+  MP3PlayerIsBusy = true;
+
+  //vTaskDelete(TxProxIRTask);
+
+  xTaskCreatePinnedToCore(
+    RunMP3PlayerTask,  // Function to implement the task
+    "player",          // Name of the task
+    4096,              // Stack size in words
+    NULL,              // Task input parameter
+    1,                 // Priority of the task
+    &MP3PlayerTask,    // Task handle
+    1);                // Core where the task should run
+}
+
+//_____________________________________________________________________________
+
+void Codec_StartWAVRecorder(int number)
+{
+  // FIXME Number = number;
+
+  if (WAVRecorderIsBusy)
+  {
+    StopWAVRecorder();
+  }
+
+  WAVRecorderIsBusy = true;
+
+  xTaskCreatePinnedToCore(
+    RunWAVRecorderTask,  // Function to implement the task
+    "recorder",          // Name of the task
+    4096,                // Stack size in words
+    NULL,                // Task input parameter
+    1,                   // Priority of the task
+    &WAVRecorderTask,       // Task handle
+    1);                  // Core where the task should run
+}
+
+//_____________________________________________________________________________
+
+void Codec_StartWAVPlayer(int number)
+{
+  Number = number;
+
+  if (WAVPlayerIsBusy)
+  {
+    StopWAVPlayer();
+  }
+
+  WAVPlayerIsBusy = true;
+
+  xTaskCreatePinnedToCore(
+    RunWAVPlayerTask,  // Function to implement the task
+    "player",          // Name of the task
+    4096,              // Stack size in words
+    NULL,              // Task input parameter
+    1,                 // Priority of the task
+    &WAVPlayerTask,    // Task handle
+    1);                // Core where the task should run
+}
+
+//_____________________________________________________________________________
+
+static void GenerateMasterClock(void)
+{
   ledc_timer_config_t ledc_timer =
   {
-	.speed_mode = LEDC_HIGH_SPEED_MODE,
-	.timer_num  = LEDC_TIMER_0,
-	.bit_num    = 2,
-	.freq_hz    = MCLK_FREQUENCY_Hz
+    .speed_mode = LEDC_HIGH_SPEED_MODE,
+    .timer_num  = LEDC_TIMER_0,
+    .bit_num    = 2,
+    .freq_hz    = MCLK_FREQUENCY_Hz
   };
 
   ledc_timer_config(&ledc_timer);
@@ -136,27 +252,31 @@ void Codec_Init(void)
 
 //_____________________________________________________________________________
 
-void Codec_StartMP3Player(int number)
+static void InitSPIFFS(void)
 {
-  Number = number;
+  // Initialize peripherals management
+  esp_periph_config_t periph_cfg = { 0 };
+  esp_periph_init(&periph_cfg);
 
-  if (PlayerIsBusy)
+  // Initialize Spiffs peripheral
+  periph_spiffs_cfg_t spiffs_cfg =
   {
-    StopMP3Player();
+    .root = "/spiffs",
+    .partition_label = NULL,
+    .max_files = 5,
+    .format_if_mount_failed = true
+  };
+
+  esp_periph_handle_t spiffs_handle = periph_spiffs_init(&spiffs_cfg);
+
+  // Start spiffs peripheral
+  esp_periph_start(spiffs_handle);
+
+  // Wait until spiffs was mounted
+  while (!periph_spiffs_is_mounted(spiffs_handle))
+  {
+    vTaskDelay(100 / portTICK_PERIOD_MS);
   }
-
-  PlayerIsBusy = true;
-
-  //vTaskDelete(TxProxIRTask);
-
-  xTaskCreatePinnedToCore(
-    RunMP3PlayerTask,  // Function to implement the task
-    "player",          // Name of the task
-    4096,              // Stack size in words
-    NULL,              // Task input parameter
-    1,                 // Priority of the task
-    &PlayerTask,       // Task handle
-    1);                // Core where the task should run
 }
 
 //_____________________________________________________________________________
@@ -173,8 +293,8 @@ static void RunMP3PlayerTask(void* arg)
 
   ESP_LOGI(Tag, "[ 2 ] Create audio pipeline, add all elements to pipeline, and subscribe pipeline event");
   audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
-  pipeline = audio_pipeline_init(&pipeline_cfg);
-  mem_assert(pipeline);
+  MP3PlayerPipeline = audio_pipeline_init(&pipeline_cfg);
+  mem_assert(MP3PlayerPipeline);
 
   ESP_LOGI(Tag, "[2.1] Create mp3 decoder to decode mp3 file and set custom read callback");
   mp3_decoder_cfg_t mp3_cfg = DEFAULT_MP3_DECODER_CONFIG();
@@ -190,30 +310,29 @@ static void RunMP3PlayerTask(void* arg)
   i2s_cfg.i2s_pin_config.data_out_num = I2S_DSIN_PIN;
   i2s_cfg.i2s_pin_config.data_in_num = I2S_DOUT_PIN;
   i2s_cfg.i2s_config.sample_rate = 48000;
-  i2s_stream_writer = i2s_stream_init(&i2s_cfg);
+  MP3PlayerI2SStream = i2s_stream_init(&i2s_cfg);
 
   ESP_LOGI(Tag, "[2.3] Register all elements to audio pipeline");
-  audio_pipeline_register(pipeline, mp3_decoder, "mp3");
-  audio_pipeline_register(pipeline, i2s_stream_writer, "i2s");
+  audio_pipeline_register(MP3PlayerPipeline, mp3_decoder, "mp3");
+  audio_pipeline_register(MP3PlayerPipeline, MP3PlayerI2SStream, "i2s");
 
   ESP_LOGI(Tag, "[2.4] Link it together [mp3_music_read_cb]-->mp3_decoder-->i2s_stream-->[codec_chip]");
-  audio_pipeline_link(pipeline, (const char* []){"mp3", "i2s"}, 2);
+  audio_pipeline_link(MP3PlayerPipeline, (const char* []){"mp3", "i2s"}, 2);
 
   ESP_LOGI(Tag, "[ 3 ] Set up  event listener");
   audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
-  //audio_event_iface_handle_t evt = audio_event_iface_init(&evt_cfg);
-  evt = audio_event_iface_init(&evt_cfg);
+  MP3PlayerEvt = audio_event_iface_init(&evt_cfg);
 
   ESP_LOGI(Tag, "[3.1] Listening event from all elements of pipeline");
-  audio_pipeline_set_listener(pipeline, evt);
+  audio_pipeline_set_listener(MP3PlayerPipeline, MP3PlayerEvt);
 
   ESP_LOGI(Tag, "[ 4 ] Start audio_pipeline");
-  audio_pipeline_run(pipeline);
+  audio_pipeline_run(MP3PlayerPipeline);
 
   while (1)
   {
     audio_event_iface_msg_t msg;
-    esp_err_t ret = audio_event_iface_listen(evt, &msg, portMAX_DELAY);
+    esp_err_t ret = audio_event_iface_listen(MP3PlayerEvt, &msg, portMAX_DELAY);
 
     if (ret != ESP_OK)
     {
@@ -230,13 +349,13 @@ static void RunMP3PlayerTask(void* arg)
       ESP_LOGI(Tag, "[ * ] Receive music info from mp3 decoder, sample_rates=%d, bits=%d, ch=%d",
                music_info.sample_rates, music_info.bits, music_info.channels);
 
-      audio_element_setinfo(i2s_stream_writer, &music_info);
-      i2s_stream_set_clk(i2s_stream_writer, music_info.sample_rates, music_info.bits, music_info.channels);
+      audio_element_setinfo(MP3PlayerI2SStream, &music_info);
+      i2s_stream_set_clk(MP3PlayerI2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
       continue;
     }
 
-    /* Stop when the last pipeline element (i2s_stream_writer in this case) receives stop event */
-    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*) i2s_stream_writer
+    /* Stop when the last pipeline element (MP3PlayerI2SStream in this case) receives stop event */
+    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*) MP3PlayerI2SStream
         && msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (int) msg.data == AEL_STATUS_STATE_STOPPED)
     {
       break;
@@ -270,8 +389,8 @@ static void SelectFile(int16_t index)
       break;
 
     case 2:
-      File.Start = dixie_horn_mp3_start;
-      File.End   = dixie_horn_mp3_end;
+      File.Start = harry_mp3_start;
+      File.End   = harry_mp3_end;
       break;
 
     default:
@@ -286,25 +405,283 @@ static void SelectFile(int16_t index)
 
 static void StopMP3Player(void)
 {
-  audio_pipeline_terminate(pipeline);
-  audio_pipeline_unregister(pipeline, mp3_decoder);
-  audio_pipeline_unregister(pipeline, i2s_stream_writer);
+  audio_pipeline_terminate(MP3PlayerPipeline);
+  audio_pipeline_unregister(MP3PlayerPipeline, mp3_decoder);
+  audio_pipeline_unregister(MP3PlayerPipeline, MP3PlayerI2SStream);
 
   // Terminate the pipeline before removing the listener
-  audio_pipeline_remove_listener(pipeline);
+  audio_pipeline_remove_listener(MP3PlayerPipeline);
 
   // Make sure audio_pipeline_remove_listener is called before destroying event_iface
-  audio_event_iface_destroy(evt);
+  audio_event_iface_destroy(MP3PlayerEvt);
 
   // Release all resources
-  audio_pipeline_unregister(pipeline, i2s_stream_writer);
-  audio_pipeline_unregister(pipeline, mp3_decoder);
-  audio_pipeline_deinit(pipeline);
-  audio_element_deinit(i2s_stream_writer);
+  audio_pipeline_unregister(MP3PlayerPipeline, MP3PlayerI2SStream);
+  audio_pipeline_unregister(MP3PlayerPipeline, mp3_decoder);
+  audio_pipeline_deinit(MP3PlayerPipeline);
+  audio_element_deinit(MP3PlayerI2SStream);
   audio_element_deinit(mp3_decoder);
 
-  PlayerIsBusy = false;
-  vTaskDelete(PlayerTask);
+  MP3PlayerIsBusy = false;
+  vTaskDelete(MP3PlayerTask);
+}
+
+//_____________________________________________________________________________
+
+static void RunWAVRecorderTask(void* arg)
+{
+  ESP_LOGI(Tag, "[ 1 ] Start audio codec chip");
+  audio_hal_codec_config_t audio_hal_codec_cfg = AUDIO_HAL_ES8374_DEFAULT();
+  audio_hal_handle_t hal = audio_hal_init(&audio_hal_codec_cfg, 1);  // 1 is selected to use the ES8374 codec
+  audio_hal_ctrl_codec(hal, AUDIO_HAL_CODEC_MODE_ENCODE, AUDIO_HAL_CTRL_START);
+
+  ESP_LOGI(Tag, "[ 2 ] Create audio pipeline for recording");
+  audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
+  WAVRecorderPipeline = audio_pipeline_init(&pipeline_cfg);
+  mem_assert(WAVRecorderPipeline);
+
+  ESP_LOGI(Tag, "[3.1] Create spiffs stream to write data to spi flash");
+  spiffs_stream_cfg_t spiffs_cfg = SPIFFS_STREAM_CFG_DEFAULT();
+  spiffs_cfg.type = AUDIO_STREAM_WRITER;
+  WAVRecorderSPIFFSStream = spiffs_stream_init(&spiffs_cfg);
+
+  ESP_LOGI(Tag, "[3.2] Create i2s stream to read audio data from codec chip");
+  i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
+  i2s_cfg.type = AUDIO_STREAM_READER;
+  i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ALL_RIGHT; //I2S_CHANNEL_FMT_RIGHT_LEFT; //I2S_CHANNEL_FMT_ALL_RIGHT;
+  i2s_cfg.i2s_pin_config.bck_io_num = I2S_SCLK_PIN;
+  i2s_cfg.i2s_pin_config.ws_io_num  = I2S_LCLK_PIN;
+  i2s_cfg.i2s_pin_config.data_out_num = I2S_DSIN_PIN;
+  i2s_cfg.i2s_pin_config.data_in_num = I2S_DOUT_PIN;
+  //i2s_cfg.i2s_config.sample_rate = 48000;
+  WAVRecorderI2SStream = i2s_stream_init(&i2s_cfg);
+
+  ESP_LOGI(Tag, "[3.3] Create wav encoder to encode wav format");
+  wav_encoder_cfg_t wav_cfg = DEFAULT_WAV_ENCODER_CONFIG();
+  wav_encoder = wav_encoder_init(&wav_cfg);
+
+  ESP_LOGI(Tag, "[3.4] Register all elements to audio pipeline");
+  audio_pipeline_register(WAVRecorderPipeline, WAVRecorderI2SStream, "i2s_reader");
+
+  // Wav encoder actually passes data without doing anything, which makes the pipeline structure easy to understand.
+  // Because WAV is raw data and audio information is stored in the header,
+  // I2S Stream will write the WAV header after ending the record with enough the information
+  audio_pipeline_register(WAVRecorderPipeline, wav_encoder, "wav_encoder");
+  audio_pipeline_register(WAVRecorderPipeline, WAVRecorderSPIFFSStream, "file_writer");
+
+  ESP_LOGI(Tag, "[3.5] Link it together [codec_chip]-->i2s_stream-->wav_encoder-->spiffs_stream-->[flash]");
+  audio_pipeline_link(WAVRecorderPipeline, (const char *[]) {"i2s_reader", "wav_encoder", "file_writer"}, 3);
+
+  ESP_LOGI(Tag, "[3.6] Setup uri (file_writer as spiffs_stream, wav_encoder as wav encoder)");
+  audio_element_set_uri(WAVRecorderSPIFFSStream, "/spiffs/rec.wav");
+
+  ESP_LOGI(Tag, "[ 4 ] Setup event listener");
+  audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
+  WAVRecorderEvt = audio_event_iface_init(&evt_cfg);
+
+  ESP_LOGI(Tag, "[4.1] Listening event from pipeline");
+  audio_pipeline_set_listener(WAVRecorderPipeline, WAVRecorderEvt);
+
+  ESP_LOGI(Tag, "[4.2] Listening event from peripherals");
+  audio_event_iface_set_listener(esp_periph_get_event_iface(), WAVRecorderEvt);
+
+  ESP_LOGI(Tag, "[ 5 ] Start audio_pipeline");
+  audio_pipeline_run(WAVRecorderPipeline);
+
+  ESP_LOGI(Tag, "[ 6 ] Listen for all pipeline events, record for %d Seconds", RECORD_TIME_SECONDS);
+  int second_recorded = 0;
+
+  while (1)
+  {
+    audio_event_iface_msg_t msg;
+
+    if (audio_event_iface_listen(WAVRecorderEvt, &msg, 1000/portTICK_RATE_MS) != ESP_OK)
+    {
+      second_recorded ++;
+
+      ESP_LOGI(Tag, "[ * ] Recording ... %d", second_recorded);
+
+      if (second_recorded >= RECORD_TIME_SECONDS)
+      {
+        break;
+      }
+
+      continue;
+    }
+
+    /* Stop when the last pipeline element (WAVRecorderI2SStream in this case) receives stop event */
+    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *) WAVRecorderI2SStream
+        && msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (int) msg.data == AEL_STATUS_STATE_STOPPED)
+    {
+      ESP_LOGW(Tag, "[ * ] Stop event received");
+      break;
+    }
+  }
+
+  ESP_LOGI(Tag, "[ 7 ] Stop audio_pipeline");
+  StopWAVRecorder();
+}
+
+//_____________________________________________________________________________
+
+static void StopWAVRecorder(void)
+{
+  audio_pipeline_terminate(WAVRecorderPipeline);
+
+  // Terminal the pipeline before removing the listener
+  audio_pipeline_remove_listener(WAVRecorderPipeline);
+
+  // Stop all periph before removing the listener
+  esp_periph_stop_all();
+  audio_event_iface_remove_listener(esp_periph_get_event_iface(), WAVRecorderEvt);
+
+  // Make sure audio_pipeline_remove_listener & audio_event_iface_remove_listener are called before destroying event_iface
+  audio_event_iface_destroy(WAVRecorderEvt);
+
+  // Release all resources
+  audio_pipeline_unregister(WAVRecorderPipeline, wav_encoder);
+  audio_pipeline_unregister(WAVRecorderPipeline, WAVRecorderI2SStream);
+  audio_pipeline_unregister(WAVRecorderPipeline, WAVRecorderSPIFFSStream);
+
+  audio_pipeline_deinit(WAVRecorderPipeline);
+  audio_element_deinit(WAVRecorderSPIFFSStream);
+  audio_element_deinit(WAVRecorderI2SStream);
+  audio_element_deinit(wav_encoder);
+
+  esp_periph_destroy();
+
+  WAVRecorderIsBusy = false;
+  vTaskDelete(WAVRecorderTask);
+}
+
+//_____________________________________________________________________________
+
+static void RunWAVPlayerTask(void* arg)
+{
+  ESP_LOGI(Tag, "[ 1 ] Start audio codec chip");
+  audio_hal_codec_config_t audio_hal_codec_cfg = AUDIO_HAL_ES8374_DEFAULT();
+  audio_hal_handle_t hal = audio_hal_init(&audio_hal_codec_cfg, 1);  // 1 is selected to use the ES8374 codec
+  audio_hal_ctrl_codec(hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
+
+  ESP_LOGI(Tag, "[ 2 ] Create audio pipeline for replay");
+  audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
+  WAVPlayerPipeline = audio_pipeline_init(&pipeline_cfg);
+  mem_assert(WAVPlayerPipeline);
+
+  ESP_LOGI(Tag, "[3.1] Create spiffs stream to read data from spi flash");
+  spiffs_stream_cfg_t spiffs_cfg = SPIFFS_STREAM_CFG_DEFAULT();
+  spiffs_cfg.type = AUDIO_STREAM_READER;
+  WAVPlayerSPIFFSStream = spiffs_stream_init(&spiffs_cfg);
+
+  ESP_LOGI(Tag, "[3.2] Create i2s stream to write audio data to codec chip");
+  i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
+  i2s_cfg.type = AUDIO_STREAM_WRITER;
+  i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ALL_RIGHT; //I2S_CHANNEL_FMT_RIGHT_LEFT; //I2S_CHANNEL_FMT_ALL_RIGHT;
+  i2s_cfg.i2s_pin_config.bck_io_num = I2S_SCLK_PIN;
+  i2s_cfg.i2s_pin_config.ws_io_num  = I2S_LCLK_PIN;
+  i2s_cfg.i2s_pin_config.data_out_num = I2S_DSIN_PIN;
+  i2s_cfg.i2s_pin_config.data_in_num = I2S_DOUT_PIN;
+  i2s_cfg.i2s_config.sample_rate = 48000;
+  WAVPlayerI2SStream = i2s_stream_init(&i2s_cfg);
+
+  ESP_LOGI(Tag, "[3.3] Create wav decoder to decode wav format");
+  wav_decoder_cfg_t wav_cfg = DEFAULT_WAV_DECODER_CONFIG();
+  wav_decoder = wav_decoder_init(&wav_cfg);
+
+  ESP_LOGI(Tag, "[3.4] Register all elements to audio pipeline");
+  audio_pipeline_register(WAVPlayerPipeline, WAVPlayerSPIFFSStream, "file_reader");
+  audio_pipeline_register(WAVPlayerPipeline, wav_decoder, "wav_decoder");
+  audio_pipeline_register(WAVPlayerPipeline, WAVPlayerI2SStream, "i2s_writer");
+
+  ESP_LOGI(Tag, "[3.5] Link it together [flash]-->spiffs_stream-->wav_decoder-->i2s_stream-->[codec_chip]");
+  audio_pipeline_link(WAVPlayerPipeline, (const char *[]) {"file_reader", "wav_decoder", "i2s_writer"}, 3);
+
+  ESP_LOGI(Tag, "[3.6] Setup uri (file_reader as spiffs_stream, wav_decoder as wav decoder)");
+  audio_element_set_uri(WAVPlayerSPIFFSStream, "/spiffs/rec.wav");
+
+  ESP_LOGI(Tag, "[ 4 ] Setup event listener");
+  audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
+  WAVPlayerEvt = audio_event_iface_init(&evt_cfg);
+
+  ESP_LOGI(Tag, "[4.1] Listening event from pipeline");
+  audio_pipeline_set_listener(WAVPlayerPipeline, WAVPlayerEvt);
+
+  ESP_LOGI(Tag, "[4.2] Listening event from peripherals");
+  audio_event_iface_set_listener(esp_periph_get_event_iface(), WAVPlayerEvt);
+
+  ESP_LOGI(Tag, "[ 5 ] Start audio_pipeline");
+  audio_pipeline_run(WAVPlayerPipeline);
+
+  while (1)
+  {
+    audio_event_iface_msg_t msg;
+    esp_err_t ret = audio_event_iface_listen(WAVPlayerEvt, &msg, portMAX_DELAY);
+
+    if (ret != ESP_OK)
+    {
+      ESP_LOGE(Tag, "[ * ] Event interface error : %d", ret);
+      continue;
+    }
+
+    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*) wav_decoder
+        && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
+    {
+      ESP_LOGI(Tag, "[ 5.1 ]");
+      audio_element_info_t music_info = {0};
+      ESP_LOGI(Tag, "[ 5.2 ]");
+      audio_element_getinfo(wav_decoder, &music_info);
+      ESP_LOGI(Tag, "[ 5.3 ]");
+
+      ESP_LOGI(Tag, "[ * ] Receive music info from wav decoder, sample_rates=%d, bits=%d, ch=%d",
+               music_info.sample_rates, music_info.bits, music_info.channels);
+
+      audio_element_setinfo(WAVPlayerI2SStream, &music_info);
+      i2s_stream_set_clk(WAVPlayerI2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
+      continue;
+    }
+
+    /* Stop when the last pipeline element (WAVPlayerI2SStream in this case) receives stop event */
+    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*) WAVPlayerI2SStream
+        && msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (int) msg.data == AEL_STATUS_STATE_STOPPED)
+    {
+      break;
+    }
+  }
+
+  ESP_LOGI(Tag, "[ 6 ] Stop audio_pipeline");
+  StopWAVPlayer();
+}
+
+//_____________________________________________________________________________
+
+static void StopWAVPlayer(void)
+{
+  audio_pipeline_terminate(WAVPlayerPipeline);
+
+  // Terminal the pipeline before removing the listener
+  audio_pipeline_remove_listener(WAVPlayerPipeline);
+
+  // Stop all periph before removing the listener
+  esp_periph_stop_all();
+  audio_event_iface_remove_listener(esp_periph_get_event_iface(), WAVPlayerEvt);
+
+  // Make sure audio_pipeline_remove_listener & audio_event_iface_remove_listener are called before destroying event_iface
+  audio_event_iface_destroy(WAVPlayerEvt);
+
+  // Release all resources
+  audio_pipeline_unregister(WAVPlayerPipeline, wav_decoder);
+  audio_pipeline_unregister(WAVPlayerPipeline, WAVPlayerI2SStream);
+  audio_pipeline_unregister(WAVPlayerPipeline, WAVPlayerSPIFFSStream);
+
+  audio_pipeline_deinit(WAVPlayerPipeline);
+  audio_element_deinit(WAVPlayerSPIFFSStream);
+  audio_element_deinit(WAVPlayerI2SStream);
+  audio_element_deinit(wav_decoder);
+
+  esp_periph_destroy();
+
+  WAVPlayerIsBusy = false;
+  vTaskDelete(WAVPlayerTask);
 }
 
 //_____________________________________________________________________________

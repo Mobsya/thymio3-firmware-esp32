@@ -7,7 +7,7 @@
 # please read the ESP-IDF documents if you need to do this.
 #
 
-COMPONENT_EMBED_TXTFILES := adf_music.mp3 chicken.mp3 dixie_horn.mp3
+COMPONENT_EMBED_TXTFILES := adf_music.mp3 chicken.mp3 harry.mp3
 
 COMPONENT_ADD_INCLUDEDIRS := ${PROJECT_PATH}/main/aseba
 
