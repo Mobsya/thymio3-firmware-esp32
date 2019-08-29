@@ -118,23 +118,23 @@ static int16_t Number = -1;
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
-static void GenerateMasterClock(void);
-
 static void InitSPIFFS(void);
 
 static void RunMP3PlayerTask(void* arg);
 
-static void SelectFile(int16_t index);
-
-static void StopMP3Player(void);
-
 static void RunWAVRecorderTask(void* arg);
-
-static void StopWAVRecorder(void);
 
 static void RunWAVPlayerTask(void* arg);
 
+static void StopMP3Player(void);
+
+static void StopWAVRecorder(void);
+
 static void StopWAVPlayer(void);
+
+static void GenerateMasterClock(void);
+
+static void SelectFile(int16_t index);
 
 int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t wait_time, void* ctx);
 
@@ -222,32 +222,6 @@ void Codec_StartWAVPlayer(int number)
     1,                 // Priority of the task
     &WAVPlayerTask,    // Task handle
     1);                // Core where the task should run
-}
-
-//_____________________________________________________________________________
-
-static void GenerateMasterClock(void)
-{
-  ledc_timer_config_t ledc_timer =
-  {
-    .speed_mode = LEDC_HIGH_SPEED_MODE,
-    .timer_num  = LEDC_TIMER_0,
-    .bit_num    = 2,
-    .freq_hz    = MCLK_FREQUENCY_Hz
-  };
-
-  ledc_timer_config(&ledc_timer);
-
-  ledc_channel_config_t ledc_channel =
-  {
-    .channel    = LEDC_CHANNEL_0,
-    .gpio_num   = I2S_MCLK_PIN,
-    .speed_mode = LEDC_HIGH_SPEED_MODE,
-    .timer_sel  = LEDC_TIMER_0,
-    .duty       = 2
-  };
-
-  ledc_channel_config(&ledc_channel);
 }
 
 //_____________________________________________________________________________
@@ -368,66 +342,6 @@ static void RunMP3PlayerTask(void* arg)
 
 //_____________________________________________________________________________
 
-static void SelectFile(int16_t index)
-{
-  //uint8_t idx = *index;
-
-  ESP_LOGE(Tag, "Index = %d", index);
-
-  File.Position = 0;
-
-  switch (index)
-  {
-    case 0:
-      File.Start = adf_music_mp3_start;
-      File.End   = adf_music_mp3_end;
-      break;
-
-    case 1:
-      File.Start = chicken_mp3_start;
-      File.End   = chicken_mp3_end;
-      break;
-
-    case 2:
-      File.Start = harry_mp3_start;
-      File.End   = harry_mp3_end;
-      break;
-
-    default:
-      ESP_LOGW(Tag, "Not supported index = %d", index);
-      break;
-  }
-
-  File.Position = 0;
-}
-
-//_____________________________________________________________________________
-
-static void StopMP3Player(void)
-{
-  audio_pipeline_terminate(MP3PlayerPipeline);
-  audio_pipeline_unregister(MP3PlayerPipeline, mp3_decoder);
-  audio_pipeline_unregister(MP3PlayerPipeline, MP3PlayerI2SStream);
-
-  // Terminate the pipeline before removing the listener
-  audio_pipeline_remove_listener(MP3PlayerPipeline);
-
-  // Make sure audio_pipeline_remove_listener is called before destroying event_iface
-  audio_event_iface_destroy(MP3PlayerEvt);
-
-  // Release all resources
-  audio_pipeline_unregister(MP3PlayerPipeline, MP3PlayerI2SStream);
-  audio_pipeline_unregister(MP3PlayerPipeline, mp3_decoder);
-  audio_pipeline_deinit(MP3PlayerPipeline);
-  audio_element_deinit(MP3PlayerI2SStream);
-  audio_element_deinit(mp3_decoder);
-
-  MP3PlayerIsBusy = false;
-  vTaskDelete(MP3PlayerTask);
-}
-
-//_____________________________________________________________________________
-
 static void RunWAVRecorderTask(void* arg)
 {
   ESP_LOGI(Tag, "[ 1 ] Start audio codec chip");
@@ -520,38 +434,6 @@ static void RunWAVRecorderTask(void* arg)
 
   ESP_LOGI(Tag, "[ 7 ] Stop audio_pipeline");
   StopWAVRecorder();
-}
-
-//_____________________________________________________________________________
-
-static void StopWAVRecorder(void)
-{
-  audio_pipeline_terminate(WAVRecorderPipeline);
-
-  // Terminal the pipeline before removing the listener
-  audio_pipeline_remove_listener(WAVRecorderPipeline);
-
-  // Stop all periph before removing the listener
-  esp_periph_stop_all();
-  audio_event_iface_remove_listener(esp_periph_get_event_iface(), WAVRecorderEvt);
-
-  // Make sure audio_pipeline_remove_listener & audio_event_iface_remove_listener are called before destroying event_iface
-  audio_event_iface_destroy(WAVRecorderEvt);
-
-  // Release all resources
-  audio_pipeline_unregister(WAVRecorderPipeline, wav_encoder);
-  audio_pipeline_unregister(WAVRecorderPipeline, WAVRecorderI2SStream);
-  audio_pipeline_unregister(WAVRecorderPipeline, WAVRecorderSPIFFSStream);
-
-  audio_pipeline_deinit(WAVRecorderPipeline);
-  audio_element_deinit(WAVRecorderSPIFFSStream);
-  audio_element_deinit(WAVRecorderI2SStream);
-  audio_element_deinit(wav_encoder);
-
-  esp_periph_destroy();
-
-  WAVRecorderIsBusy = false;
-  vTaskDelete(WAVRecorderTask);
 }
 
 //_____________________________________________________________________________
@@ -654,6 +536,63 @@ static void RunWAVPlayerTask(void* arg)
 
 //_____________________________________________________________________________
 
+static void StopMP3Player(void)
+{
+  audio_pipeline_terminate(MP3PlayerPipeline);
+  audio_pipeline_unregister(MP3PlayerPipeline, mp3_decoder);
+  audio_pipeline_unregister(MP3PlayerPipeline, MP3PlayerI2SStream);
+
+  // Terminate the pipeline before removing the listener
+  audio_pipeline_remove_listener(MP3PlayerPipeline);
+
+  // Make sure audio_pipeline_remove_listener is called before destroying event_iface
+  audio_event_iface_destroy(MP3PlayerEvt);
+
+  // Release all resources
+  audio_pipeline_unregister(MP3PlayerPipeline, MP3PlayerI2SStream);
+  audio_pipeline_unregister(MP3PlayerPipeline, mp3_decoder);
+  audio_pipeline_deinit(MP3PlayerPipeline);
+  audio_element_deinit(MP3PlayerI2SStream);
+  audio_element_deinit(mp3_decoder);
+
+  MP3PlayerIsBusy = false;
+  vTaskDelete(MP3PlayerTask);
+}
+
+//_____________________________________________________________________________
+
+static void StopWAVRecorder(void)
+{
+  audio_pipeline_terminate(WAVRecorderPipeline);
+
+  // Terminal the pipeline before removing the listener
+  audio_pipeline_remove_listener(WAVRecorderPipeline);
+
+  // Stop all periph before removing the listener
+  esp_periph_stop_all();
+  audio_event_iface_remove_listener(esp_periph_get_event_iface(), WAVRecorderEvt);
+
+  // Make sure audio_pipeline_remove_listener & audio_event_iface_remove_listener are called before destroying event_iface
+  audio_event_iface_destroy(WAVRecorderEvt);
+
+  // Release all resources
+  audio_pipeline_unregister(WAVRecorderPipeline, wav_encoder);
+  audio_pipeline_unregister(WAVRecorderPipeline, WAVRecorderI2SStream);
+  audio_pipeline_unregister(WAVRecorderPipeline, WAVRecorderSPIFFSStream);
+
+  audio_pipeline_deinit(WAVRecorderPipeline);
+  audio_element_deinit(WAVRecorderSPIFFSStream);
+  audio_element_deinit(WAVRecorderI2SStream);
+  audio_element_deinit(wav_encoder);
+
+  esp_periph_destroy();
+
+  WAVRecorderIsBusy = false;
+  vTaskDelete(WAVRecorderTask);
+}
+
+//_____________________________________________________________________________
+
 static void StopWAVPlayer(void)
 {
   audio_pipeline_terminate(WAVPlayerPipeline);
@@ -682,6 +621,67 @@ static void StopWAVPlayer(void)
 
   WAVPlayerIsBusy = false;
   vTaskDelete(WAVPlayerTask);
+}
+
+//_____________________________________________________________________________
+
+static void GenerateMasterClock(void)
+{
+  ledc_timer_config_t ledc_timer =
+  {
+    .speed_mode = LEDC_HIGH_SPEED_MODE,
+    .timer_num  = LEDC_TIMER_0,
+    .bit_num    = 2,
+    .freq_hz    = MCLK_FREQUENCY_Hz
+  };
+
+  ledc_timer_config(&ledc_timer);
+
+  ledc_channel_config_t ledc_channel =
+  {
+    .channel    = LEDC_CHANNEL_0,
+    .gpio_num   = I2S_MCLK_PIN,
+    .speed_mode = LEDC_HIGH_SPEED_MODE,
+    .timer_sel  = LEDC_TIMER_0,
+    .duty       = 2
+  };
+
+  ledc_channel_config(&ledc_channel);
+}
+
+//_____________________________________________________________________________
+
+static void SelectFile(int16_t index)
+{
+  //uint8_t idx = *index;
+
+  ESP_LOGE(Tag, "Index = %d", index);
+
+  File.Position = 0;
+
+  switch (index)
+  {
+    case 0:
+      File.Start = adf_music_mp3_start;
+      File.End   = adf_music_mp3_end;
+      break;
+
+    case 1:
+      File.Start = chicken_mp3_start;
+      File.End   = chicken_mp3_end;
+      break;
+
+    case 2:
+      File.Start = harry_mp3_start;
+      File.End   = harry_mp3_end;
+      break;
+
+    default:
+      ESP_LOGW(Tag, "Not supported index = %d", index);
+      break;
+  }
+
+  File.Position = 0;
 }
 
 //_____________________________________________________________________________
