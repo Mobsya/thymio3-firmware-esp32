@@ -45,7 +45,7 @@
 #define PROX_IR_VALUE_REG_ADDRESS           0x0Bu  //!< Prox IR value register address      (Read only)
 #define GROUND_IR_VALUE_REG_ADDRESS         0x0Cu  //!< Ground IR value register address    (Read only)
 #define GROUND_IR_LEDS_REG_ADDRESS          0x0Du  //!< Ground IR LEDs register address     (Read/Write)
-#define MICROPHONE_REG_ADDRESS              0x0Eu  //!< Microphone register address         (Read only)
+#define MICROPHONE_VOLTAGE_REG_ADDRESS      0x0Eu  //!< Microphone voltage register address (Read only)
 
 #define STM32_ID                            0xBCu  //!< ID of the STM32
 
@@ -76,6 +76,7 @@
 #define PROX_IR_VALUE_MESSAGE_LENGTH          14u  //!< Prox IR value message length in bytes
 #define GROUND_IR_VALUE_MESSAGE_LENGTH        12u  //!< Ground IR value message length in bytes
 #define GROUND_IR_LEDS_MESSAGE_LENGTH          4u  //!< Ground IR LEDs message length in bytes
+#define MICROPHONE_VOLTAGE_MESSAGE_LENGTH      2u  //!< Battery voltage message length in bytes
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -129,6 +130,8 @@ static int16_t GroundIRReflected[GROUND_IR_SENSORS_NUM] =  {0, 0};
 static int16_t GroundIRDelta[GROUND_IR_SENSORS_NUM]     =  {0, 0};
 
 static int16_t Vbat = 0;
+
+static int16_t Microphone = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -212,8 +215,8 @@ bool STM32_IsUSBCablePresent(void)
 
 bool STM32_IsUSBPortOpen(void)
 {
-  //return ((Status & (1 << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
-  return true;  // FIXME temporary used to run Aseba with UART
+  return ((Status & (1 << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
+  //return true;  // FIXME temporary used to run Aseba with UART
 }
 
 //_____________________________________________________________________________
@@ -419,6 +422,19 @@ void STM32_ReadBatteryVoltage(void)
 int16_t STM32_GetBatteryVoltage(void)
 {
   return Vbat;
+}
+
+//_____________________________________________________________________________
+
+void STM32_ReadMicrophoneVoltage(void)
+{
+  uint8_t data[MICROPHONE_VOLTAGE_MESSAGE_LENGTH];
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, MICROPHONE_VOLTAGE_REG_ADDRESS, data, MICROPHONE_VOLTAGE_MESSAGE_LENGTH);
+
+  Microphone = ((data[1] << 8) | data[0]);
+
+  vmVariables.microphone = Microphone;
 }
 
 //_____________________________________________________________________________

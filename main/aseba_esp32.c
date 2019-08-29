@@ -329,6 +329,7 @@ const AsebaVMDescription vmDescription =
     {3, "led_back_left"},
     {3, "led_back_right"},
     {2, "leds_ground"},
+    {1, "microphone"},
     {0, NULL} // Null terminated
   }
 };
