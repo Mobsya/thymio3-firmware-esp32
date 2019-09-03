@@ -57,12 +57,7 @@ RC5X command 7 bits
 
 #define RC5_BITS_NUM              14  //!< 2 start + 1 toggle + 5 address + 6 data
 
-//#define RC5_BIT_US                1680
-//#define RC5_BIT_HALF_US            840
-
-//#define RC5_DATA_ITEM_NUM       14  /*!< RC5 code item number: 2 start + 1 toggle + 5 addr + 6 data + (rmt end) */
-//#define RC5_BIT_MARGIN          90
-
+#define RC5_MIN_SHORT_DURATION   500
 #define RC5_MAX_SHORT_DURATION  1000
 
 //-----------------------------------------------------------------------------
@@ -81,31 +76,19 @@ static const char* Tag = "rc5";
 
 static rmt_config_t rmt_rx;
 
+static bool FrameIsValid = false;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
 static void RunRXTask(void* arg);
 
-//static int rc5_parse_items(rmt_item16_t* item, int item_num, uint32_t* cmd_data);
-
 static inline void ParseItems(rmt_item16_t* item);
-
-//static bool rc5_detect_bit(rmt_item16_t* item);
-
-//static bool rc5_header_if(rmt_item16_t* item);
-
-//static bool rc5_bit_one_if(rmt_item16_t* item);
-
-//static bool rc5_bit_zero_if(rmt_item16_t* item);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
-
-//static inline void rmt_dump_items(rmt_item16_t* item, int item_num);
-
-//inline bool rmt_check_in_range(int duration_ticks, int target_us, int margin_us);
 
 //-----------------------------------------------------------------------------
 // Functions Implementation
@@ -113,14 +96,13 @@ static inline void ParseItems(rmt_item16_t* item);
 
 void RC5_Init(void)
 {
-  //rmt_config_t rmt_rx;
   rmt_rx.channel                       = RMT_RX_CHANNEL;
   rmt_rx.gpio_num                      = IR_RECEIVER_PIN;
   rmt_rx.clk_div                       = RMT_CLK_DIV;
   rmt_rx.mem_block_num                 = 1;
   rmt_rx.rmt_mode                      = RMT_MODE_RX;
   rmt_rx.rx_config.filter_en           = true;
-  rmt_rx.rx_config.filter_ticks_thresh = 100;
+  rmt_rx.rx_config.filter_ticks_thresh = 255;
   rmt_rx.rx_config.idle_threshold      = RMT_ITEM32_TIMEOUT_us / 10 * (RMT_TICK_10_US);
 
   rmt_config(&rmt_rx);
@@ -144,6 +126,20 @@ void RC5_Start(void)
 
 //_____________________________________________________________________________
 
+bool RC5_IsFrameValid(void)
+{
+  return FrameIsValid;
+}
+
+//_____________________________________________________________________________
+
+void RC5_ClearFrameValidity(void)
+{
+  FrameIsValid = false;
+}
+
+//_____________________________________________________________________________
+
 static void RunRXTask(void* arg)
 {
   while (1)
@@ -154,16 +150,16 @@ static void RunRXTask(void* arg)
     rmt_driver_install(rmt_rx.channel, 1000, 0);
 
     //get RMT RX ringbuffer
-    RingbufHandle_t rb = NULL;
-    rmt_get_ringbuf_handle(RMT_RX_CHANNEL, &rb);
+    RingbufHandle_t buffer = NULL;
+    rmt_get_ringbuf_handle(RMT_RX_CHANNEL, &buffer);
 
     // rmt_rx_start(channel, rx_idx_rst) - Set true to reset memory index for receiver
     rmt_rx_start(RMT_RX_CHANNEL, true);
 
-    while (rb)
+    while (buffer)
     {
       size_t rx_size = 0;
-      rmt_item16_t* item = (rmt_item16_t*) xRingbufferReceive(rb, &rx_size, 1000);
+      rmt_item16_t* item = (rmt_item16_t*) xRingbufferReceive(buffer, &rx_size, 1000);
 
       if (item)
       {
@@ -174,21 +170,14 @@ static void RunRXTask(void* arg)
 
         ParseItems(item);
 
-        //uint32_t rmt_data = 0;
-        //int res = rc5_parse_items(item, rx_size / 2, &rmt_data);
-        //int res = rc5_parse_items(item, 20, &rmt_data);
-        //ESP_LOGI(Tag, "IR CODE: 0x%08x", rmt_data);
-
-        vRingbufferReturnItem(rb, (void*) item);
+        vRingbufferReturnItem(buffer, (void*) item);
       }
       else
       {
-//        ESP_LOGI(Tag, "ELSE (ITEM)");
         break;
       }
     }
 
-//    ESP_LOGI(Tag, "END");
     rmt_driver_uninstall(RMT_RX_CHANNEL);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -196,214 +185,83 @@ static void RunRXTask(void* arg)
 }
 
 //_____________________________________________________________________________
-#if 0
-static inline void rmt_dump_items(rmt_item16_t* item, int item_num)
-{
-  ESP_LOGI(Tag, "Dump %d items", item_num);
-
-  for (int i = 0; i < item_num; i++)
-  {
-    ESP_LOGI(Tag, "Item %d: (%d) %dms", i, item->level, item->duration);
-    item++;
-  }
-}
-#endif
-//_____________________________________________________________________________
-#if 0
-static int rc5_parse_items(rmt_item16_t* item, int item_num, uint32_t* cmd_data)
-{
-    // decoding is different from sending as low-high is normally 1
-    // however, when receiving, rmt will start with a high value
-    if(item_num < RC5_DATA_ITEM_NUM) {
-        //ESP_LOGE(Tag, "item_num = %d", item_num);
-        ESP_LOGE(Tag, "ITEM NUMBER ERROR");
-        return -1;
-    }
-
-    int i = 0;
-
-    if(!rc5_header_if(item++)) {
-        ESP_LOGE(Tag, "HEADER ERROR");
-        return -1;
-    } else {
-        i++;
-    }
-
-    uint32_t decoded = 0;
-
-    // parse from left to right 11 bits (0x400)
-    uint32_t mask = 0x01;
-    mask <<= 11 - 1;
-
-    for (int j = 0; j < 11; j++) {
-
-        if (rc5_bit_one_if(item)) {
-            decoded |= (mask >> j);
-        } else if (rc5_bit_zero_if(item)) {
-            decoded |= 0 & (mask >> j);
-        } else {
-            ESP_LOGE(Tag, "BIT ERROR");
-            return -1;
-        }
-        item++;
-        i++;
-    }
-
-    *cmd_data = decoded;
-
-    return i;
-}
-#endif
-//_____________________________________________________________________________
 
 static inline void ParseItems(rmt_item16_t* item)
 {
-  int16_t value = 0x2000;  // binary = 10000000000000 -> MSB is the first start bit
-  int16_t toggle = 0;   // 1 bit
-  int16_t address = 0;  // 5 bits
-  int16_t command = 0;  // 6 bits
+  // Bit  13    -> First Start bit (S1)
+  // Bit  12    -> Second Start bit (S2)
+  // Bit  11    -> Toggle bit
+  // Bits 10..6 -> Address bits
+  // Bits  5..0 -> Command bits
+
+  int16_t value = 0x2000;  // binary = 10000000000000 -> MSB is S1
+  int16_t toggle = 0;      // 1 bit
+  int16_t address = 0;     // 5 bits
+  int16_t command = 0;     // 6 bits
   int16_t mask = 0x2000;
 
-  for (int16_t pos = 0; pos < (RC5_BITS_NUM - 1); pos++) // Only 13 bits are decoded because the first start bit is already done
-  {
-    //ESP_LOGE(Tag, "item = %d", i);
+  static int16_t oldToggle = 0;
 
-    if (item->level == RMT_RX_ACTIVE_LEVEL)
+  if ((item->level == RMT_RX_ACTIVE_LEVEL) && (item->duration > RC5_MIN_SHORT_DURATION))  // Is S1 valid ?
+  {
+    for (int16_t pos = 0; pos < (RC5_BITS_NUM - 1); pos++) // Only 13 bits are decoded because S1 is already done
     {
-      if (item->duration < RC5_MAX_SHORT_DURATION)
+      //ESP_LOGE(Tag, "item = %d", i);
+
+      if (item->level == RMT_RX_ACTIVE_LEVEL)
       {
-        //ESP_LOGE(Tag, "Bit = 1");
-        value |= (mask >> (pos + 1));
-        item += 2;
+        if ((item->duration > RC5_MIN_SHORT_DURATION) && (item->duration < RC5_MAX_SHORT_DURATION))
+        {
+          //ESP_LOGE(Tag, "Bit = 1");
+          value |= (mask >> (pos + 1));
+          item += 2;
+        }
+        else
+        {
+           //ESP_LOGE(Tag, "Bit = 0");
+           item++;
+        }
       }
       else
       {
-         //ESP_LOGE(Tag, "Bit = 0");
-         item++;
-     }
-    }
-    else
-    {
-      if (item->duration < RC5_MAX_SHORT_DURATION)
-      {
-        //ESP_LOGE(Tag, "Bit = 0");
-        item += 2;
-      }
-      else
-      {
-        //ESP_LOGE(Tag, "Bit = 1");
-        value |= (mask >> (pos + 1));
-        item++;
+        if ((item->duration > RC5_MIN_SHORT_DURATION) && (item->duration < RC5_MAX_SHORT_DURATION))
+        {
+          //ESP_LOGE(Tag, "Bit = 0");
+          item += 2;
+        }
+        else
+        {
+          //ESP_LOGE(Tag, "Bit = 1");
+          value |= (mask >> (pos + 1));
+          item++;
+        }
       }
     }
-  }
 
-  toggle = (value >> 11) & 0x01;
+	FrameIsValid = true;
 
-  address = (value >> 6) & 0x1F;
+    toggle = (value >> 11) & 0x01;
 
-  // 2nd start bit (inverted) | command
-  command = (~(value >> 6) & 0x40) | (value & 0x3F);
-
-  vmVariables.rc5_address = address;
-  vmVariables.rc5_command = command;
-
-  ESP_LOGI(Tag, "IR CODE: 0x%04x", value);
-  //ESP_LOGI(Tag, "Address: 0x%04x", address);
-  //ESP_LOGI(Tag, "Data: 0x%04x", data);
-
-  ESP_LOGI(Tag, "Address: %d", address);
-  ESP_LOGI(Tag, "Data: %d", command);
-}
-
-//_____________________________________________________________________________
-#if 0
-static bool rc5_detect_bit(rmt_item16_t* item)
-{
-    if(item->level == RMT_RX_ACTIVE_LEVEL)
+    if (toggle != oldToggle)
     {
-        return true;
+      address = (value >> 6) & 0x1F;
+
+      // S2 (inverted) | Command
+      command = (~(value >> 6) & 0x40) | (value & 0x3F);
+
+      vmVariables.rc5_address = address;
+      vmVariables.rc5_command = command;
+      //SET_EVENT(EVENT_RC5);
+
+    //ESP_LOGI(Tag, "IR CODE: 0x%04x", value);
+    //ESP_LOGI(Tag, "Address: 0x%04x", address);
+    //ESP_LOGI(Tag, "Data: 0x%04x", data);
+
+    //ESP_LOGI(Tag, "Toggle: %d", toggle);
+    //ESP_LOGI(Tag, "Address: %d", address);
+    //ESP_LOGI(Tag, "Command: %d", command);
+
+      oldToggle = toggle;
     }
-    return false;
-}
-#endif
-//_____________________________________________________________________________
-#if 0
-static bool rc5_header_if(rmt_item16_t* item)
-{
-  //if ((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL)
-  //   && rmt_check_in_range(item->duration0, RC5_BIT_HALF_US, RC5_BIT_MARGIN)
-  //   && rmt_check_in_range(item->duration1, RC5_BIT_HALF_US, RC5_BIT_MARGIN))
-
-  if ((item->level == RMT_RX_ACTIVE_LEVEL) &&
-      rmt_check_in_range(item->duration, RC5_BIT_HALF_US, RC5_BIT_MARGIN))
-  {
-    //ESP_LOGE(Tag, "HEADER OK");
-    return true;
-  }
-
-  //ESP_LOGE(Tag, "HEADER FALSE");
-  return false;
-}
-#endif
-//_____________________________________________________________________________
-#if 0
-static bool rc5_bit_one_if(rmt_item16_t* item)
-{
-  //ESP_LOGI(Tag, "CHECK BIT ONE");
-
-  //if ((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL)
-  //   && rmt_check_in_range(item->duration0, RC5_BIT_HALF_US, RC5_BIT_MARGIN)
-  //   && rmt_check_in_range(item->duration1, RC5_BIT_HALF_US, RC5_BIT_MARGIN))
-
-  if ((item->level == RMT_RX_ACTIVE_LEVEL) &&
-      rmt_check_in_range(item->duration, RC5_BIT_HALF_US, RC5_BIT_MARGIN))
-  {
-    //ESP_LOGE(Tag, "BIT ONE OK");
-    return true;
-  }
-
-  //ESP_LOGE(Tag, "BIT ONE FALSE");
-  return false;
-}
-#endif
-//_____________________________________________________________________________
-#if 0
-static bool rc5_bit_zero_if(rmt_item16_t* item)
-{
-  //ESP_LOGI(Tag, "CHECK BIT ZERO");
-
-  //if ((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL) &&
-  //    rmt_check_in_range(item->duration0, RC5_BIT_HALF_US, RC5_BIT_MARGIN) &&
-  //    rmt_check_in_range(item->duration1, RC5_BIT_HALF_US, RC5_BIT_MARGIN))
-
-  if ((item->level == RMT_RX_ACTIVE_LEVEL) &&
-      rmt_check_in_range(item->duration, RC5_BIT_HALF_US, RC5_BIT_MARGIN))
-  {
-    //ESP_LOGE(Tag, "BIT ZERO OK");
-    return true;
-  }
-
-  //ESP_LOGE(Tag, "BIT ZERO FALSE");
-  return false;
-}
-#endif
-//_____________________________________________________________________________
-#if 0
-inline bool rmt_check_in_range(int duration_ticks, int target_us, int margin_us)
-{
-  //ESP_LOGI(Tag, "duration_ticks = %d", duration_ticks);
-
-  if ((RMT_ITEM_DURATION(duration_ticks) < (target_us + margin_us)) &&
-      (RMT_ITEM_DURATION(duration_ticks) > (target_us - margin_us)))
-  {
-    //ESP_LOGI(Tag, "RANGE OK");
-    return true;
-  }
-  else
-  {
-    //ESP_LOGE(Tag, "RANGE FALSE");
-    return false;
   }
 }
-#endif

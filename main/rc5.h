@@ -51,4 +51,8 @@ extern void RC5_Init(void);
 
 extern void RC5_Start(void);
 
+extern bool RC5_IsFrameValid(void);
+
+extern void RC5_ClearFrameValidity(void);
+
 #endif // RC5_RECEIVER_H_

@@ -33,6 +33,7 @@
 #include "buttons.h"
 #include "leds.h"
 #include "mode.h"
+#include "rc5.h"
 #include "sound.h"
 #include "stm32_i2c.h"
 
@@ -91,6 +92,12 @@ static void RunBehaviorTask(void* arg);
 //! \param     None
 //! \return    None
 static void RunBehaviors(void);
+
+//! \brief     Set the RC5 LED
+//! \pre       None
+//! \param     None
+//! \return    None
+static void SetRC5Led(void);
 
 //! \brief     Set the buttons LEDs
 //! \pre       None
@@ -193,22 +200,18 @@ static void RunBehaviorTask(void* arg)
 
 static void RunBehaviors(void)
 {
-  //Leds_SetSingleBrightness(E_Led_G_Debug, 0);
-  //Leds_SetSingleBrightness(E_Led_B_Debug, MAX_BRIGHTNESS);
-  //Leds_SetSingleBrightness(E_Led_B_Back_Left, MAX_BRIGHTNESS);
-  //Leds_SetSingleBrightness(E_Led_Lego_Back_3, MAX_BRIGHTNESS);
-  //Leds_SetSingleBrightness(E_Led_Lego_Back_4, MAX_BRIGHTNESS);
-  //Leds_SetSingleBrightness(E_Led_Lego_Back_5, MAX_BRIGHTNESS);
-  //Leds_SetSingleBrightness(E_Led_Lego_Back_6, MAX_BRIGHTNESS);
-  //Leds_SetSingleBrightness(E_Led_Lego_Back_7, MAX_BRIGHTNESS);
-
   if (ENABLED(B_LEDS_LEGO))
   {
     //Leds_SetLegoBackBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 1, 1, 1, 1);
-    Leds_SetLegoBackBrightness(MAX_BRIGHTNESS, 0, 0, 0, 0, 0, 0, 0);
+    Leds_SetLegoBackBrightness(MAX_BRIGHTNESS, 0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS);
   }
 
-#if 0
+  if (ENABLED(B_LED_RC5))
+  {
+    SetRC5Led();
+  }
+
+
   if (ENABLED(B_LEDS_BUTTON))
   {
     SetButtonsLeds();
@@ -238,7 +241,33 @@ static void RunBehaviors(void)
     UpdateSettings();
   }
 //#endif
-#endif
+
+}
+
+//_____________________________________________________________________________
+
+static void SetRC5Led(void)
+{
+//#if 0
+  // Switch on for a short time when we have a valid rc5 code ..
+  //when (rc5_valid_flag == 0)
+  //when (!RC5_IsFrameValid())
+  {
+    //Leds_SetSingleBrightness(E_Led_RC5, 0);
+  }
+
+  //if (rc5_valid_flag)
+  if (RC5_IsFrameValid())
+  {
+    //rc5_valid_flag = 0;
+	RC5_ClearFrameValidity();
+    Leds_SetSingleBrightness(E_Led_RC5, MAX_BRIGHTNESS);
+  }
+  else
+  {
+	Leds_SetSingleBrightness(E_Led_RC5, 0);
+  }
+//#endif
 }
 
 //_____________________________________________________________________________
