@@ -253,13 +253,13 @@ static inline void ParseItems(rmt_item16_t* item)
       vmVariables.rc5_command = command;
       //SET_EVENT(EVENT_RC5);
 
-    //ESP_LOGI(Tag, "IR CODE: 0x%04x", value);
-    //ESP_LOGI(Tag, "Address: 0x%04x", address);
-    //ESP_LOGI(Tag, "Data: 0x%04x", data);
+      //ESP_LOGI(Tag, "IR CODE: 0x%04x", value);
+      //ESP_LOGI(Tag, "Address: 0x%04x", address);
+      //ESP_LOGI(Tag, "Data: 0x%04x", data);
 
-    //ESP_LOGI(Tag, "Toggle: %d", toggle);
-    //ESP_LOGI(Tag, "Address: %d", address);
-    //ESP_LOGI(Tag, "Command: %d", command);
+      //ESP_LOGI(Tag, "Toggle: %d", toggle);
+      //ESP_LOGI(Tag, "Address: %d", address);
+      //ESP_LOGI(Tag, "Command: %d", command);
 
       oldToggle = toggle;
     }

@@ -58,15 +58,16 @@ typedef enum
 //! \return    None
 extern void Buttons_Init(void);
 
-extern void Buttons_Start(void);
-
 //! \brief     Get the button status
 //! \pre       None
 //! \param     None
 //! \return    The status of the buttons
 extern uint8_t* Buttons_GetStatus(void);
 
-
+//! \brief     Update the button status
+//! \pre       None
+//! \param     None
+//! \return    None
 extern void Buttons_UpdateStatus(void);
 
 #endif // BUTTONS_H_
