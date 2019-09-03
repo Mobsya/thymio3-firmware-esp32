@@ -129,6 +129,7 @@ static void PlaySoundButtons(void);
 
 void Behavior_Init(void)
 {
+#if 0
   MelodyButton.Melody = ButtonSound;
   MelodyButton.Tempo  = E_Tempo_Allegro;
   MelodyButton.Loop   = 1;
@@ -138,6 +139,7 @@ void Behavior_Init(void)
   MelodyCenterButton.Tempo  = E_Tempo_Allegro;
   MelodyCenterButton.Loop   = 1;
   MelodyCenterButton.Size   = 3;
+#endif
 }
 
 //_____________________________________________________________________________
@@ -202,8 +204,8 @@ static void RunBehaviors(void)
 {
   if (ENABLED(B_LEDS_LEGO))
   {
-    //Leds_SetLegoBackBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 1, 1, 1, 1);
-    Leds_SetLegoBackBrightness(MAX_BRIGHTNESS, 0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS);
+    Leds_SetLegoBackBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
+    Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
   }
 
   if (ENABLED(B_LED_RC5))

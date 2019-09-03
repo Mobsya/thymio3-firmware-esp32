@@ -185,6 +185,7 @@ void Mode_Init(void)
   }
 #endif
 
+#if 0
   MelodyInvestigator.Melody = LeLionEstMort;
   MelodyInvestigator.Tempo  = E_Tempo_Allegro;
   MelodyInvestigator.Loop   = 1;
@@ -194,6 +195,7 @@ void Mode_Init(void)
   MelodyObedient.Tempo  = E_Tempo_Vivace;
   MelodyObedient.Loop   = 1;
   MelodyObedient.Size   = 21;
+#endif
 
   Behavior_Enable(B_ALWAYS | B_MODE);
 
@@ -502,27 +504,45 @@ static void SetModeColor(T_Mode mode)
   switch (mode)
   {
     case E_Mode_Menu:
-      // FIXME Leds_SetTopBrightness(0u, 0u, 0u);
+      Leds_SetFrontLeftBrightness(0u, 0u, 0u);
+      Leds_SetFrontRightBrightness(0u, 0u, 0u);
+      Leds_SetBackLeftBrightness(0u, 0u, 0u);
+      Leds_SetBackRightBrightness(0u, 0u, 0u);
       break;
 
     case E_Mode_Follower:  // Green
-      // FIXME Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, 0u);
+      Leds_SetFrontLeftBrightness(0u, MAX_BRIGHTNESS, 0u);
+      Leds_SetFrontRightBrightness(0u, MAX_BRIGHTNESS, 0u);
+      Leds_SetBackLeftBrightness(0u, MAX_BRIGHTNESS, 0u);
+      Leds_SetBackRightBrightness(0u, MAX_BRIGHTNESS, 0u);
       break;
 
     case E_Mode_Explorer:  // Yellow
-      // FIXME Leds_SetTopBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
+      Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
+      Leds_SetFrontRightBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
+      Leds_SetBackLeftBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
+      Leds_SetBackRightBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
       break;
 
     case E_Mode_Attentive:  // Dark blue
-      // FIXME Leds_SetTopBrightness(0u, 0u, MAX_BRIGHTNESS);
+      Leds_SetFrontLeftBrightness(0u, 0u, MAX_BRIGHTNESS);
+      Leds_SetFrontRightBrightness(0u, 0u, MAX_BRIGHTNESS);
+      Leds_SetBackLeftBrightness(0u, 0u, MAX_BRIGHTNESS);
+      Leds_SetBackRightBrightness(0u, 0u, MAX_BRIGHTNESS);
       break;
 
     case E_Mode_LineTracker:  // Cyan
-      // FIXME Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetFrontLeftBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetFrontRightBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetBackLeftBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetBackRightBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
       break;
 
     case E_Mode_Obedient:  // Magenta
-      // FIXME Leds_SetTopBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
+      Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
+      Leds_SetFrontRightBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
+      Leds_SetBackLeftBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
+      Leds_SetBackRightBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
       break;
 
     default:
@@ -537,9 +557,13 @@ static void RunExplorer(void)
 {
   static int16_t speed = 150;
 
-  int16_t p = GetBodyColorPulse();
+  int16_t brightness = GetBodyColorPulse();
 
-  // FIXME Leds_SetTopBrightness(p, p, 0u);
+  // Yellow pulse
+  Leds_SetFrontLeftBrightness(brightness, brightness, 0u);
+  Leds_SetFrontRightBrightness(brightness, brightness, 0u);
+  Leds_SetBackLeftBrightness(brightness, brightness, 0u);
+  Leds_SetBackRightBrightness(brightness, brightness, 0u);
 
   RunCircleLedRotation();
 
@@ -573,9 +597,13 @@ static void RunExplorer(void)
 
 static void RunAttentive(void)
 {
-  int16_t p = GetBodyColorPulse();
+  int16_t brightness = GetBodyColorPulse();
 
-  // FIXME Leds_SetTopBrightness(0u, 0u, p);
+  // Dark blue pulse
+  Leds_SetFrontLeftBrightness(0u, 0u, brightness);
+  Leds_SetFrontRightBrightness(0u, 0u, brightness);
+  Leds_SetBackLeftBrightness(0u, 0u, brightness);
+  Leds_SetBackRightBrightness(0u, 0u, brightness);
 }
 
 //_____________________________________________________________________________
@@ -587,9 +615,13 @@ static void RunLineTracker(void)
   static uint16_t bs_black_level = 650; //400;
   static uint16_t bs_white_level = 700; //450;
 
-  int16_t p = GetBodyColorPulse();
+  int16_t brightness = GetBodyColorPulse();
 
-  // FIXME Leds_SetTopBrightness(0u, p, p);
+  // Cyan pulse
+  Leds_SetFrontLeftBrightness(0u, brightness, brightness);
+  Leds_SetFrontRightBrightness(0u, brightness, brightness);
+  Leds_SetBackLeftBrightness(0u, brightness, brightness);
+  Leds_SetBackRightBrightness(0u, brightness, brightness);
 
   if (!CalibrateLevelUsingButtons(&bs_black_level, &bs_white_level))
   {
@@ -854,8 +886,13 @@ static void RunFollower(void)
 
 static void RunObedient(void)
 {
-  int16_t p = GetBodyColorPulse();
-  // FIXME Leds_SetTopBrightness(p, 0u, p);
+  int16_t brightness = GetBodyColorPulse();
+
+  // Magenta pulse
+  Leds_SetFrontLeftBrightness(brightness, 0u, brightness);
+  Leds_SetFrontRightBrightness(brightness, 0u, brightness);
+  Leds_SetBackLeftBrightness(brightness, 0u, brightness);
+  Leds_SetBackRightBrightness(brightness, 0u, brightness);
 
   if (!RecordSequenceIsFinished)
   {
