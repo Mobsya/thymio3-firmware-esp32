@@ -284,11 +284,10 @@ void Leds_SetDebugBrightness(uint8_t green, uint8_t blue)
 
 void Leds_SetBodyBrightness(uint8_t red, uint8_t green, uint8_t blue)
 {
-#if 0
-  Leds_SetTopBrightness(red, green, blue);
-  Leds_SetBottomLeftBrightness(red, green, blue);
-  Leds_SetBottomRightBrightness(red, green, blue);
-#endif
+  Leds_SetFrontLeftBrightness(red, green, blue);
+  Leds_SetFrontRightBrightness(red, green, blue);
+  Leds_SetBackLeftBrightness(red, green, blue);
+  Leds_SetBackRightBrightness(red, green, blue);
 }
 
 //_____________________________________________________________________________
