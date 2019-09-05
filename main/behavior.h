@@ -38,7 +38,7 @@
 #define B_LED_MIC       (1 << 8)
 #define B_LED_RC5       (1 << 9)
 #define B_MODE          (1 << 10)
-#define B_SETTING       (1 << 12)
+#define B_SETTING       (1 << 11)
 
 #define B_ALWAYS    (B_LEDS_BATTERY | B_LEDS_BUTTON | B_SOUND_BUTTON | B_LEDS_LEGO | B_LEDS_CIRCLE | B_LEDS_RGB | B_LED_RC5)  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_SOUND_BUTTON | B_LEDS_BUTTON)
 

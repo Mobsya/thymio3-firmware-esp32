@@ -75,6 +75,8 @@ static int16_t OldTimerDuration[2] = {0, 0};
 static T_Settings Settings;
 static T_Settings OldSettings;
 
+static uint16_t OldBehavior = 0u;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -84,6 +86,8 @@ static void UpdateMotorTargets(void);
 static void UpdateTimers(void);
 
 static void UpdateSettings(void);
+
+static void UpdateBehaviors(void);
 
 static void UpdateLedsCircle(void);
 
@@ -141,13 +145,17 @@ void update_aseba_variables_write(void)
 {
   if (Comm_IsBusAvailable() && Sensors_IsBusAvailable())
   {
-	UpdateLedsGroundIR();
+    //UpdateLedsGroundIR();
 
     UpdateMotorTargets();
 
     UpdateSettings();
-  }
 
+    UpdateBehaviors();
+
+    //UpdateTimers();
+  }
+//#if 0
   UpdateTimers();
 
   UpdateLedsCircle();
@@ -163,6 +171,7 @@ void update_aseba_variables_write(void)
   UpdateLedBackLeft();
 
   UpdateLedBackRight();
+//#endif
 }
 
 //_____________________________________________________________________________
@@ -183,20 +192,13 @@ void update_aseba_variables_read(void)
 
 void AsebaVMResetCB(AsebaVMState* vm)
 {
-  Leds_SetFrontLeftBrightness(0u, 0u, 0u);
-  Leds_SetFrontRightBrightness(0u, 0u, 0u);
-
-  Leds_SetBackLeftBrightness(0u, 0u, 0u);
-  Leds_SetBackRightBrightness(0u, 0u, 0u);
-
+  Leds_SetBodyBrightness(0u, 0u, 0u);
+  Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
   Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
   Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
 
-  Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-
-
   //Leds_SetSingleBrightness(E_Led_Battery_1, MAX_BRIGHTNESS);
-  //Leds_SetBodyBrightness(0u, 0u, 0u);
+
 #if 0 // FIXME
   leds_set(LED_SOUND, 0);
   leds_set(LED_RC, 0);
@@ -204,13 +206,13 @@ void AsebaVMResetCB(AsebaVMState* vm)
   Behavior_Enable(B_LEDS_ACC);
 #if 0 // FIXME
   Behavior_Enable(B_LEDS_TEMPERATURE);
-  Behavior_Enable(B_LEDS_MIC);
+  Behavior_Enable(B_LED_MIC);
 #endif
   Behavior_Enable(B_LEDS_PROX);
   Behavior_Enable(B_SOUND_BUTTON);
 #if 0 // FIXME
-  Behavior_Enable(B_LEDS_MIC);
-  Behavior_Enable(B_LEDS_RC5);
+  Behavior_Enable(B_LED_MIC);
+  Behavior_Enable(B_LED_RC5);
   prox_disable_network();
   events_flags[0] = 0;
   events_flags[1] = 0;
@@ -356,6 +358,19 @@ static void UpdateSettings(void)
     STM32_UpdateSettings(Settings);
     OldSettings.LeftMotor  = Settings.LeftMotor;
     OldSettings.RightMotor = Settings.RightMotor;
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateBehaviors(void)
+{
+  uint16_t behavior = Behavior_GetStatus();
+
+  if (behavior != OldBehavior)
+  {
+    STM32_UpdateBehaviorStatus(behavior);
+    OldBehavior = behavior;
   }
 }
 

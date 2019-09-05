@@ -140,6 +140,8 @@ void Behavior_Init(void)
   MelodyCenterButton.Loop   = 1;
   MelodyCenterButton.Size   = 3;
 #endif
+
+  Behavior = 0u;
 }
 
 //_____________________________________________________________________________
@@ -204,8 +206,8 @@ static void RunBehaviors(void)
 {
   if (ENABLED(B_LEDS_LEGO))
   {
-    Leds_SetLegoBackBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
-    Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
+    //Leds_SetLegoBackBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
+    //Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
   }
 
   if (ENABLED(B_LED_RC5))

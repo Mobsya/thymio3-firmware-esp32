@@ -46,6 +46,7 @@
 #define GROUND_IR_VALUE_REG_ADDRESS         0x0Cu  //!< Ground IR value register address    (Read only)
 #define GROUND_IR_LEDS_REG_ADDRESS          0x0Du  //!< Ground IR LEDs register address     (Read/Write)
 #define MICROPHONE_VOLTAGE_REG_ADDRESS      0x0Eu  //!< Microphone voltage register address (Read only)
+#define BEHAVIOR_STATUS_REG_ADDRESS         0x0Fu  //!< Behavior status register address    (Write only)
 
 #define STM32_ID                            0xBCu  //!< ID of the STM32
 
@@ -77,6 +78,7 @@
 #define GROUND_IR_VALUE_MESSAGE_LENGTH        12u  //!< Ground IR value message length in bytes
 #define GROUND_IR_LEDS_MESSAGE_LENGTH          4u  //!< Ground IR LEDs message length in bytes
 #define MICROPHONE_VOLTAGE_MESSAGE_LENGTH      2u  //!< Battery voltage message length in bytes
+#define BEHAVIOR_STATUS_MESSAGE_LENGTH         2u  //!< Behavior status message length in bytes
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -151,13 +153,6 @@ static void ReadId(uint8_t* id);
 //-----------------------------------------------------------------------------
 // Functions Implementation
 //-----------------------------------------------------------------------------
-
-void STM32_UpdateBehaviorStatus(uint16_t status)
-{
-
-}
-
-//_____________________________________________________________________________
 
 void STM32_UpdateProxIRLedsBrightness(uint16_t l0, uint16_t l1, uint16_t l2, uint16_t l3,
                                       uint16_t l4, uint16_t l5, uint16_t l6, uint16_t l7)
@@ -307,6 +302,18 @@ void STM32_UpdateGroundIRLedsBrightness(int16_t* brightness)
 
 //_____________________________________________________________________________
 
+void STM32_UpdateBehaviorStatus(uint16_t status)
+{
+  uint8_t data[BEHAVIOR_STATUS_MESSAGE_LENGTH];
+
+  data[0] = (uint8_t)(status);
+  data[1] = (uint8_t)(status >> 8);
+
+  I2C_WriteToAddress(SLAVE_ADDRESS, BEHAVIOR_STATUS_REG_ADDRESS, data, BEHAVIOR_STATUS_MESSAGE_LENGTH);
+}
+
+//_____________________________________________________________________________
+
 void STM32_GetLeftMotorTarget(int16_t* target)
 {
   uint8_t data[LEFT_MOTOR_TARGET_MESSAGE_LENGTH];
@@ -415,6 +422,8 @@ void STM32_ReadBatteryVoltage(void)
   Vbat = ((data[1] << 8) | data[0]);
 
   vmVariables.vbat = Vbat;
+
+  //ESP_LOGW(Tag, "Vbat = %d", Vbat);
 }
 
 //_____________________________________________________________________________
@@ -435,6 +444,8 @@ void STM32_ReadMicrophoneVoltage(void)
   Microphone = ((data[1] << 8) | data[0]);
 
   vmVariables.microphone = Microphone;
+
+  //ESP_LOGW(Tag, "Micro = %d", Microphone);
 }
 
 //_____________________________________________________________________________
@@ -485,92 +496,6 @@ void STM32_ReadGroundIRValue(void)
   vmVariables.ground_delta[E_GroundIR_Left]      = GroundIRDelta[E_GroundIR_Left];
 }
 
-//_____________________________________________________________________________
-#if 0
-void STM32_ReadButtonStatus(void)
-{
-  uint8_t data;
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, BUTTON_STATUS_REG_ADDRESS, &data, 1u);
-
-  for (int16_t button = 0; button < BUTTONS_NUM; button++)
-  {
-    ButtonStatus[button] = ((data & (1 << button)) >> button);
-
-    if (ButtonStatus[button] != vmVariables.buttons_state[button])
-    {
-      SET_EVENT(button);
-    }
-
-    vmVariables.buttons_state[button] = (int16_t)ButtonStatus[button];
-  }
-
-  SET_EVENT(EVENT_BUTTONS);
-}
-
-//_____________________________________________________________________________
-
-void STM32_ReadButtonRawData(void)
-{
-  uint8_t data[10];
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, BUTTON_RAW_DATA_REG_ADDRESS, data, 10u);
-
-  ButtonRaw[E_Button_Backward] = ((data[1] << 8) | data[0]);
-  ButtonRaw[E_Button_Left]     = ((data[3] << 8) | data[2]);
-  ButtonRaw[E_Button_Center]   = ((data[5] << 8) | data[4]);
-  ButtonRaw[E_Button_Forward]  = ((data[7] << 8) | data[6]);
-  ButtonRaw[E_Button_Right]    = ((data[9] << 8) | data[8]);
-
-  vmVariables.buttons[E_Button_Backward] = ButtonRaw[E_Button_Backward];
-  vmVariables.buttons[E_Button_Left]     = ButtonRaw[E_Button_Left];
-  vmVariables.buttons[E_Button_Center]   = ButtonRaw[E_Button_Center];
-  vmVariables.buttons[E_Button_Forward]  = ButtonRaw[E_Button_Forward];
-  vmVariables.buttons[E_Button_Right]    = ButtonRaw[E_Button_Right];
-}
-
-//_____________________________________________________________________________
-
-void STM32_ReadButtonMean(void)
-{
-  uint8_t data[10];
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, BUTTON_MEAN_REG_ADDRESS, data, 10u);
-
-  ButtonMean[E_Button_Backward] = ((data[1] << 8) | data[0]);
-  ButtonMean[E_Button_Left]     = ((data[3] << 8) | data[2]);
-  ButtonMean[E_Button_Center]   = ((data[5] << 8) | data[4]);
-  ButtonMean[E_Button_Forward]  = ((data[7] << 8) | data[6]);
-  ButtonMean[E_Button_Right]    = ((data[9] << 8) | data[8]);
-
-  vmVariables.buttons_mean[E_Button_Backward] = ButtonMean[E_Button_Backward];
-  vmVariables.buttons_mean[E_Button_Left]     = ButtonMean[E_Button_Left];
-  vmVariables.buttons_mean[E_Button_Center]   = ButtonMean[E_Button_Center];
-  vmVariables.buttons_mean[E_Button_Forward]  = ButtonMean[E_Button_Forward];
-  vmVariables.buttons_mean[E_Button_Right]    = ButtonMean[E_Button_Right];
-}
-
-//_____________________________________________________________________________
-
-void STM32_ReadButtonNoise(void)
-{
-  uint8_t data[10];
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, BUTTON_NOISE_REG_ADDRESS, data, 10u);
-
-  ButtonNoise[E_Button_Backward] = ((data[1] << 8) | data[0]);
-  ButtonNoise[E_Button_Left]     = ((data[3] << 8) | data[2]);
-  ButtonNoise[E_Button_Center]   = ((data[5] << 8) | data[4]);
-  ButtonNoise[E_Button_Forward]  = ((data[7] << 8) | data[6]);
-  ButtonNoise[E_Button_Right]    = ((data[9] << 8) | data[8]);
-
-  vmVariables.buttons_noise[E_Button_Backward] = ButtonNoise[E_Button_Backward];
-  vmVariables.buttons_noise[E_Button_Left]     = ButtonNoise[E_Button_Left];
-  vmVariables.buttons_noise[E_Button_Center]   = ButtonNoise[E_Button_Center];
-  vmVariables.buttons_noise[E_Button_Forward]  = ButtonNoise[E_Button_Forward];
-  vmVariables.buttons_noise[E_Button_Right]    = ButtonNoise[E_Button_Right];
-}
-#endif
 //_____________________________________________________________________________
 
 static void ReadId(uint8_t* id)

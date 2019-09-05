@@ -54,8 +54,6 @@ typedef struct
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-extern void STM32_UpdateBehaviorStatus(uint16_t status);
-
 extern void STM32_UpdateProxIRLedsBrightness(uint16_t l0, uint16_t l1, uint16_t l2, uint16_t l3,
                                          uint16_t l4, uint16_t l5, uint16_t l6, uint16_t l7);
 
@@ -133,6 +131,12 @@ extern void STM32_UpdateRightMotorTarget(int16_t* target);
 //! \param     brightness - Brightness applied to the LEDs
 //! \return    None
 extern void STM32_UpdateGroundIRLedsBrightness(int16_t* brightness);
+
+//! \brief     Update the behavior status
+//! \pre       None
+//! \param     status - Behavior status
+//! \return    None
+extern void STM32_UpdateBehaviorStatus(uint16_t status);
 
 //! \brief     Get the left motor target
 //! \pre       None
