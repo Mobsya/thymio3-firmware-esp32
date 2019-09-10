@@ -360,7 +360,7 @@ static esp_err_t ConfigureI2SFormat(T_Mode mode, uint8_t format);
 
 static esp_err_t UpdateBitsPerSample(T_Mode mode, T_BitsPerSample number);
 
-static esp_err_t SetADCDACVolume(T_Mode mode, int volume, int dot);
+static esp_err_t SetADCDACVolume(T_Mode mode, int16_t volume_dB, int16_t dot);
 
 // TODO static esp_err_t ConfigureDACOutput(es_dac_output_t output);
 static esp_err_t ConfigureDACOutput(void);
@@ -399,7 +399,7 @@ esp_err_t ES8374_Init(audio_hal_codec_config_t* cfg)
   //result |= InitRegisters(cfg->i2s_iface.mode, ((E_BitsPerSample_16bits << 4) | cfg->i2s_iface.fmt), clkdiv,
   //                        cfg->dac_output, cfg->adc_input);
   result |= InitRegisters(cfg->i2s_iface.mode, ((E_BitsPerSample_16bits << 4) | cfg->i2s_iface.fmt), clkdiv);
-  result |= SetMicrophoneGain(E_MicroGain_15dB);
+  result |= SetMicrophoneGain(E_MicroGain_21dB);
   result |= ConfigurePGAGain(E_PGAGain_Enable);
   result |= ConfigureI2SFormat(cfg->codec_mode, cfg->i2s_iface.fmt);
   result |= ES8374_ConfigureI2S(cfg->codec_mode, &(cfg->i2s_iface));
@@ -1044,17 +1044,17 @@ static esp_err_t UpdateBitsPerSample(T_Mode mode, T_BitsPerSample number)
 
 //_____________________________________________________________________________
 
-static esp_err_t SetADCDACVolume(T_Mode mode, int volume, int dot)
+static esp_err_t SetADCDACVolume(T_Mode mode, int16_t volume_dB, int16_t dot)
 {
   esp_err_t result = ESP_OK;
   uint8_t data[2] = {0u, 0u};
-  int vol = volume;
+  int16_t vol = volume_dB;
 
-  if ((volume < -96) || (volume > 0))
+  if ((volume_dB < -96) || (volume_dB > 0))
   {
-    ESP_LOGW(Tag, "Volume < -96! or > 0: %d", volume);
+    ESP_LOGW(Tag, "Volume < -96! or > 0: %d", volume_dB);
 
-    if (volume < -96)
+    if (volume_dB < -96)
     {
       vol = -96;
     }
@@ -1074,6 +1074,7 @@ static esp_err_t SetADCDACVolume(T_Mode mode, int volume, int dot)
 
     if ((mode == E_Mode_ADC) || (mode == E_Mode_ADC_DAC))
     {
+      ESP_LOGE(Tag, "Volume_dB = %d, data = %d %d", vol, data[0], data[1]);
       I2C_WriteToAddress(SLAVE_ADDRESS, ADC_CONTROL_B_REG_ADDRESS, data, 2u);
     }
 
@@ -1501,7 +1502,7 @@ static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T
   // PGA Register
   // --------------------------------------------------------------------
   // PDN_ALINL  = 0... ....  Enable analog PGA circuits
-  // PDN_MODE   = .1.. ....  Enable analog ADC modulator
+  // PDN_MODE   = .0.. ....  Enable analog ADC modulator
   // LINSEL     = ..10 ....  Lin2-Rin2
   // LDCM       = .... 0...  Disable DC measurement
   // DF2SE_15DB = .... .0..  0dB gain for input diff circuits
