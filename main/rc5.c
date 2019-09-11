@@ -34,16 +34,6 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-/*
-14 bits
-3 bit preamble (2x start, 1x toggle)
-5 bit address + 6 bit command length
-Carrier frequency of 36kHz
-Bi-phase coding (aka Manchester coding)
-Constant bit time of 1.778ms (64 cycles of 36 kHz)
-RC5X command 7 bits
-*/
-
 #define RMT_RX_CHANNEL             0  //!< RMT channel for receiver
 
 #define RMT_CLK_DIV               80  //!< RMT counter clock divider
@@ -51,7 +41,7 @@ RC5X command 7 bits
 
 #define RMT_ITEM32_TIMEOUT_us   9500  //!< RMT receiver timeout value(us)
 
-#define RMT_ITEM_DURATION(d)    ((d & 0x7fff)*10/RMT_TICK_10_US)  /*!< Parse duration time from memory register value */
+//#define RMT_ITEM_DURATION(d)    ((d & 0x7fff)*10/RMT_TICK_10_US)  /*!< Parse duration time from memory register value */
 
 #define RMT_RX_ACTIVE_LEVEL        0  //!< If we connect with a IR receiver, the data is active low
 
@@ -60,9 +50,21 @@ RC5X command 7 bits
 #define RC5_MIN_SHORT_DURATION   500
 #define RC5_MAX_SHORT_DURATION  1000
 
+#define VALID_ADDRESS              0
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
+
+typedef struct {
+    union {
+        struct {
+            uint16_t duration :15;
+            uint16_t level :1;
+        };
+        uint16_t val;
+    };
+} rmt_item16_t;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -78,13 +80,19 @@ static rmt_config_t rmt_rx;
 
 static bool FrameIsValid = false;
 
+static int16_t Toggle = 0;   // 1 bit
+static int16_t OldToggle = 0;
+
+static int16_t Address = 0;  // 5 bits
+static int16_t Command = 0;  // 6 bits + 1 start bit (S2)
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
 static void RunRXTask(void* arg);
 
-static inline void ParseItems(rmt_item16_t* item);
+static inline bool ParseItems(rmt_item16_t* item);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -126,6 +134,29 @@ void RC5_Start(void)
 
 //_____________________________________________________________________________
 
+int16_t RC5_GetCommand(void)
+{
+  return Command;
+}
+
+//_____________________________________________________________________________
+
+bool RC5_IsNewMessageReceived(int16_t* last)
+{
+  bool result = false;
+
+  if (*last != Toggle)
+  {
+    result = true;
+  }
+
+  *last = Toggle;
+
+  return result;
+}
+
+//_____________________________________________________________________________
+
 bool RC5_IsFrameValid(void)
 {
   return FrameIsValid;
@@ -142,18 +173,16 @@ void RC5_ClearFrameValidity(void)
 
 static void RunRXTask(void* arg)
 {
+  ESP_LOGI(Tag, "Start IR receiver Task");
+
   while (1)
   {
-    //vTaskDelay(10);
-//    ESP_LOGI(Tag, "Start IR receiver Task");
-    //IRReceiver_Init();
     rmt_driver_install(rmt_rx.channel, 1000, 0);
 
-    //get RMT RX ringbuffer
+    //get RMT RX ring buffer
     RingbufHandle_t buffer = NULL;
     rmt_get_ringbuf_handle(RMT_RX_CHANNEL, &buffer);
 
-    // rmt_rx_start(channel, rx_idx_rst) - Set true to reset memory index for receiver
     rmt_rx_start(RMT_RX_CHANNEL, true);
 
     while (buffer)
@@ -168,7 +197,22 @@ static void RunRXTask(void* arg)
 
         //rmt_dump_items(item, rx_size / 2);
 
-        ParseItems(item);
+        if (ParseItems(item))
+        {
+          if (Address == VALID_ADDRESS)
+          {
+            FrameIsValid = true;
+
+            if (Toggle != OldToggle)
+            {
+              vmVariables.rc5_address = Address;
+              vmVariables.rc5_command = Command;
+              //SET_EVENT(EVENT_RC5);
+
+              OldToggle = Toggle;
+            }
+          }
+        }
 
         vRingbufferReturnItem(buffer, (void*) item);
       }
@@ -186,21 +230,12 @@ static void RunRXTask(void* arg)
 
 //_____________________________________________________________________________
 
-static inline void ParseItems(rmt_item16_t* item)
+static inline bool ParseItems(rmt_item16_t* item)
 {
-  // Bit  13    -> First Start bit (S1)
-  // Bit  12    -> Second Start bit (S2)
-  // Bit  11    -> Toggle bit
-  // Bits 10..6 -> Address bits
-  // Bits  5..0 -> Command bits
-
   int16_t value = 0x2000;  // binary = 10000000000000 -> MSB is S1
-  int16_t toggle = 0;      // 1 bit
-  int16_t address = 0;     // 5 bits
-  int16_t command = 0;     // 6 bits
   int16_t mask = 0x2000;
 
-  static int16_t oldToggle = 0;
+  bool frameIsReceived = false;
 
   if ((item->level == RMT_RX_ACTIVE_LEVEL) && (item->duration > RC5_MIN_SHORT_DURATION))  // Is S1 valid ?
   {
@@ -238,30 +273,25 @@ static inline void ParseItems(rmt_item16_t* item)
       }
     }
 
-	FrameIsValid = true;
+    frameIsReceived = true;
 
-    toggle = (value >> 11) & 0x01;
+    // Bit  13    -> First Start bit (S1)
+    // Bit  12    -> Second Start bit (S2)
+    // Bit  11    -> Toggle bit
+    // Bits 10..6 -> Address bits
+    // Bits  5..0 -> Command bits
+    Toggle = (value >> 11) & 0x01;
+    Address = (value >> 6) & 0x1F;
+    // S2 (inverted) | Command
+    Command = (~(value >> 6) & 0x40) | (value & 0x3F);
 
-    if (toggle != oldToggle)
-    {
-      address = (value >> 6) & 0x1F;
-
-      // S2 (inverted) | Command
-      command = (~(value >> 6) & 0x40) | (value & 0x3F);
-
-      vmVariables.rc5_address = address;
-      vmVariables.rc5_command = command;
-      //SET_EVENT(EVENT_RC5);
-
-      //ESP_LOGI(Tag, "IR CODE: 0x%04x", value);
-      //ESP_LOGI(Tag, "Address: 0x%04x", address);
-      //ESP_LOGI(Tag, "Data: 0x%04x", data);
-
-      //ESP_LOGI(Tag, "Toggle: %d", toggle);
-      //ESP_LOGI(Tag, "Address: %d", address);
-      //ESP_LOGI(Tag, "Command: %d", command);
-
-      oldToggle = toggle;
-    }
+    //ESP_LOGI(Tag, "IR CODE: 0x%04x", value);
+    //ESP_LOGI(Tag, "Address: 0x%04x", address);
+    //ESP_LOGI(Tag, "Data: 0x%04x", data);
+    //ESP_LOGI(Tag, "Toggle: %d", toggle);
+    //ESP_LOGI(Tag, "Address: %d", address);
+    //ESP_LOGI(Tag, "Command: %d", command);
   }
+
+  return frameIsReceived;
 }
