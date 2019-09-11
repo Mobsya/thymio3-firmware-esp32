@@ -31,6 +31,14 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
+//! \details The status of the I2C bus
+enum
+{
+  E_I2CBus_Busy,
+  E_I2CBus_Available
+};
+typedef uint8_t T_I2CBus;
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -80,5 +88,17 @@ extern void I2C_WriteToAddress(uint8_t slaveAddress, uint8_t registerAddress, ui
 //! \param     size - Size of the data
 //! \return    None
 extern void I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t registerAddress, uint8_t* data, uint16_t size);
+
+//! \brief     Get the bus status
+//! \pre       First initialize the I2C protocol
+//! \param     None
+//! \return    Bus status
+extern T_I2CBus I2C_GetBusStatus(void);
+
+//! \brief     Update the bus status
+//! \pre       First initialize the I2C protocol
+//! \param     status - Status of the bus
+//! \return    None
+extern void I2C_UpdateBusStatus(T_I2CBus status);
 
 #endif // I2C_H_

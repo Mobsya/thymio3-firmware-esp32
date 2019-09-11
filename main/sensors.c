@@ -118,17 +118,27 @@ static void RunSensorsTask(void* arg)
 
   while (1)
   {
-	BusIsAvailable = false;
+    Buttons_UpdateStatus();
 
-    // Every 20 [ms], 50 [Hz] (vTaskDelay = 20 [ms])
-    Accelerometer_ReadTapSource();
-    Accelerometer_GetAcceleration();
-    Gyroscope_GetAngularPosition();
-    ColorSensor_ReadColor();
+//#if 0
+    if (I2C_GetBusStatus() == E_I2CBus_Available)
+    {
+      I2C_UpdateBusStatus(E_I2CBus_Busy);
 
-//    Buttons_UpdateStatus();
+      BusIsAvailable = false;
 
-    BusIsAvailable = true;
+      // Every 20 [ms], 50 [Hz] (vTaskDelay = 20 [ms])
+      Accelerometer_ReadTapSource();
+      Accelerometer_GetAcceleration();
+      Gyroscope_GetAngularPosition();
+      ColorSensor_ReadColor();
+
+      BusIsAvailable = true;
+
+      I2C_UpdateBusStatus(E_I2CBus_Available);
+      portYIELD();
+    }
+//#endif
 
     vTaskDelay(20 / portTICK_PERIOD_MS);
   }

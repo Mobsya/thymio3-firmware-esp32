@@ -28,6 +28,7 @@
 
 #include "behavior.h"
 #include "board.h"
+#include "i2c.h"
 #include "power.h"
 #include "stm32_i2c.h"
 #include "uart.h"
@@ -118,24 +119,24 @@ static void RunCommTask(void* arg)
 
   while (1)
   {
-    BusIsAvailable = false;
+    if (I2C_GetBusStatus() == E_I2CBus_Available)
+    {
+      I2C_UpdateBusStatus(E_I2CBus_Busy);
+      BusIsAvailable = false;
 
-    //STM32_Communicate();
+      //STM32_Communicate();
 
-    //STM32_CheckId();
-    STM32_ReadBatteryVoltage();
-    STM32_ReadStatus();
-    STM32_ReadProxIRValue();
-    STM32_ReadGroundIRValue();
-    STM32_ReadMicrophoneVoltage();
+      //STM32_CheckId();
+      STM32_ReadStatus();
+      STM32_ReadBatteryVoltage();
+      STM32_ReadProxIRValue();
+      STM32_ReadGroundIRValue();
+      STM32_ReadMicrophoneVoltage();
+      STM32_ReadInducedVoltage();
+      STM32_ReadBatteryMotorVoltage();
+      STM32_ReadMotorCurrent();
+      STM32_ReadPwmDutyCycle();
 
-#if 0
-    STM32_ReadInducedVoltage();
-    STM32_ReadStatus();
-    STM32_ReadMotorCurrent();
-    STM32_ReadBatteryVoltage();
-    STM32_ReadPwmDutyCycle();
-#endif
     //Spi_WriteVSPI(Microcontroller, tx, 5);
 
 //    Spi_ReadVSPI(Microcontroller, rx, 13);
@@ -160,14 +161,18 @@ static void RunCommTask(void* arg)
     //ESP_LOGI(Tag, "%d, %d, %d, %d, %d", rx[0], rx[1], rx[2], rx[3], rx[4]);
     //Spi_ReadVSPI();
 //#if 0
-    if ((counter % 5u) == 0u)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 20 [ms])
-    {
-      Power_HandlePowerModeRequest();
-    }
+      if ((counter % 5u) == 0u)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 20 [ms])
+      {
+        Power_HandlePowerModeRequest();
+      }
 //#endif
-    counter++;
+      counter++;
 
-    BusIsAvailable = true;
+      BusIsAvailable = true;
+
+      I2C_UpdateBusStatus(E_I2CBus_Available);
+      portYIELD();
+    }
 
     vTaskDelay(20 / portTICK_PERIOD_MS);
   }
