@@ -31,6 +31,7 @@
 #include "aseba_esp32.h"
 #include "board.h"
 #include "buttons.h"
+#include "codec.h"
 #include "leds.h"
 #include "mode.h"
 #include "rc5.h"
@@ -232,12 +233,12 @@ static void RunBehaviors(void)
     Mode_Run();
   }
 
-#if 0  // FIXME
+//#if 0  // FIXME
   if (ENABLED(B_SOUND_BUTTON))
   {
     PlaySoundButtons();
   }
-#endif
+//#endif
 
 //#if 0
   if (ENABLED(B_SETTING))
@@ -474,26 +475,28 @@ static void PlaySoundButtons(void)
 
   when(buttonState[E_Button_Backward] != 0u)
   {
-    Sound_StartPlayer(&MelodyButton);
+    //Sound_StartPlayer(&MelodyButton);
+    //Codec_StartMP3Player(2);
   }
 
   when(buttonState[E_Button_Left] != 0u)
   {
-    Sound_StartPlayer(&MelodyButton);
+    //Sound_StartPlayer(&MelodyButton);
   }
 
   when(buttonState[E_Button_Center] != 0u)
   {
-    Sound_StartPlayer(&MelodyCenterButton);
+    //Sound_StartPlayer(&MelodyCenterButton);
   }
 
   when(buttonState[E_Button_Forward] != 0u)
   {
-    Sound_StartPlayer(&MelodyButton);
+    //Sound_StartPlayer(&MelodyButton);
   }
 
   when(buttonState[E_Button_Right] != 0u)
   {
-    Sound_StartPlayer(&MelodyButton);
+    //Sound_StartPlayer(&MelodyButton);
+    //Codec_StartMP3Player(1);
   }
 }
