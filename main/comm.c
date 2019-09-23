@@ -51,6 +51,10 @@
 
 static const char* Tag = "comm";
 
+static TaskHandle_t CommTask = NULL;
+
+static bool TaskIsStarted = false;
+
 static bool BusIsAvailable = false;
 
 //static spi_device_handle_t Microcontroller;
@@ -79,6 +83,8 @@ void Comm_Init(void)
 
   //STM32_Init();
 
+  TaskIsStarted = false;
+
   BusIsAvailable = false;
 
   ESP_LOGI(Tag, "Communication is initialized");
@@ -94,8 +100,23 @@ void Comm_Start(void)
     2048,         // Stack size in words
     NULL,         // Task input parameter
     3,            // Priority of the task
-    NULL,         // Task handle
+    &CommTask,    // Task handle
     0);           // Core where the task should run
+
+  TaskIsStarted = true;
+}
+
+//_____________________________________________________________________________
+
+void Comm_Stop(void)
+{
+  if (TaskIsStarted)
+  {
+    ESP_LOGW(Tag, "Comm task is stopped");
+
+    TaskIsStarted = false;
+    vTaskDelete(CommTask);
+  }
 }
 
 //_____________________________________________________________________________
@@ -128,14 +149,14 @@ static void RunCommTask(void* arg)
 
       //STM32_CheckId();
       STM32_ReadStatus();
-      STM32_ReadBatteryVoltage();
-      STM32_ReadProxIRValue();
-      STM32_ReadGroundIRValue();
-      STM32_ReadMicrophoneVoltage();
-      STM32_ReadInducedVoltage();
-      STM32_ReadBatteryMotorVoltage();
-      STM32_ReadMotorCurrent();
-      STM32_ReadPwmDutyCycle();
+      //STM32_ReadBatteryVoltage();
+      //STM32_ReadProxIRValue();
+      //STM32_ReadGroundIRValue();
+      //STM32_ReadMicrophoneVoltage();
+      //STM32_ReadInducedVoltage();
+      //STM32_ReadBatteryMotorVoltage();
+      //STM32_ReadMotorCurrent();
+      //STM32_ReadPwmDutyCycle();
 
     //Spi_WriteVSPI(Microcontroller, tx, 5);
 

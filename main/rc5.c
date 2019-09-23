@@ -18,10 +18,10 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include "esp_log.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
-#include "esp_log.h"
 
 #include "driver/rmt.h"
 
@@ -76,6 +76,10 @@ typedef struct {
 
 static const char* Tag = "rc5";
 
+static TaskHandle_t RC5Task = NULL;
+
+static bool TaskIsStarted = false;
+
 static rmt_config_t rmt_rx;
 
 static bool FrameIsValid = false;
@@ -115,6 +119,8 @@ void RC5_Init(void)
 
   rmt_config(&rmt_rx);
 
+  TaskIsStarted = false;
+
   ESP_LOGI(Tag, "IR receiver is initialized");
 }
 
@@ -128,8 +134,24 @@ void RC5_Start(void)
     2048,       // Stack size in words
     NULL,       // Task input parameter
     3,          // Priority of the task
-    NULL,       // Task handle
+    &RC5Task,   // Task handle
     0);         // Core where the task should run
+
+  TaskIsStarted = true;
+}
+
+//_____________________________________________________________________________
+
+void RC5_Stop(void)
+{
+  if (TaskIsStarted)
+  {
+    ESP_LOGW(Tag, "RC5 task is stopped");
+
+    rmt_driver_uninstall(rmt_rx.channel);
+    TaskIsStarted = false;
+    vTaskDelete(RC5Task);
+  }
 }
 
 //_____________________________________________________________________________

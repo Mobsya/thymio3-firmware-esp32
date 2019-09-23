@@ -53,6 +53,12 @@ extern void Comm_Init(void);
 //! \return    None
 extern void Comm_Start(void);
 
+//! \brief     Stop the communication task
+//! \pre       First initialize the communication
+//! \param     None
+//! \return    None
+extern void Comm_Stop(void);
+
 //! \brief     Check that the I2C bus is available
 //! \pre       First initialize the communication
 //! \param     None

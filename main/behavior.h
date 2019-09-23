@@ -70,15 +70,21 @@ extern void Behavior_Init(void);
 //! \return    None
 extern void Behavior_Start(void);
 
+//! \brief     Stop the behavior task
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void Behavior_Stop(void);
+
 //! \brief     Enable the behavior
 //! \pre       None
-//! \param     b The behavior to start
+//! \param     b - Behavior to start
 //! \return    None
 extern void Behavior_Enable(uint16_t b);
 
 //! \brief     Disable the behavior
 //! \pre       None
-//! \param     b The behavior to stop
+//! \param     b - Behavior to stop
 //! \return    None
 extern void Behavior_Disable(uint16_t b);
 

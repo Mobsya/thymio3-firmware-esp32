@@ -66,6 +66,10 @@ typedef enum
 
 static const char* Tag = "behavior";
 
+static TaskHandle_t BehaviorTask = NULL;
+
+static bool TaskIsStarted = false;
+
 static uint16_t Behavior = 0u;
 
 #define ENABLED(b)     (Behavior & b)    // ({behavior & b;})
@@ -130,6 +134,7 @@ static void PlaySoundButtons(void);
 
 void Behavior_Init(void)
 {
+  TaskIsStarted = false;
 #if 0
   MelodyButton.Melody = ButtonSound;
   MelodyButton.Tempo  = E_Tempo_Allegro;
@@ -155,8 +160,23 @@ void Behavior_Start(void)
     4096,             // Stack size in words
     NULL,             // Task input parameter
     2,                // Priority of the task
-    NULL,             // Task handle
+    &BehaviorTask,    // Task handle
     0);               // Core where the task should run
+
+  TaskIsStarted = true;
+}
+
+//_____________________________________________________________________________
+
+void Behavior_Stop(void)
+{
+  if (TaskIsStarted)
+  {
+    ESP_LOGW(Tag, "Behavior task is stopped");
+
+    TaskIsStarted = false;
+    vTaskDelete(BehaviorTask);
+  }
 }
 
 //_____________________________________________________________________________
@@ -216,7 +236,6 @@ static void RunBehaviors(void)
     SetRC5Led();
   }
 
-
   if (ENABLED(B_LEDS_BUTTON))
   {
     SetButtonsLeds();
@@ -233,12 +252,12 @@ static void RunBehaviors(void)
     Mode_Run();
   }
 
-//#if 0  // FIXME
+#if 0  // FIXME
   if (ENABLED(B_SOUND_BUTTON))
   {
     PlaySoundButtons();
   }
-//#endif
+#endif
 
 //#if 0
   if (ENABLED(B_SETTING))
@@ -247,6 +266,7 @@ static void RunBehaviors(void)
   }
 //#endif
 
+  Buttons_ClearStatus();
 }
 
 //_____________________________________________________________________________
@@ -476,27 +496,36 @@ static void PlaySoundButtons(void)
   when(buttonState[E_Button_Backward] != 0u)
   {
     //Sound_StartPlayer(&MelodyButton);
-    //Codec_StartMP3Player(2);
+    Codec_StartMP3Player(4);
+    //Codec_SetMP3PlayerInfo(4);
   }
 
   when(buttonState[E_Button_Left] != 0u)
   {
     //Sound_StartPlayer(&MelodyButton);
+    Codec_StartMP3Player(4);
+    //Codec_SetMP3PlayerInfo(4);
   }
 
   when(buttonState[E_Button_Center] != 0u)
   {
     //Sound_StartPlayer(&MelodyCenterButton);
+    Codec_StartMP3Player(3);
+    //Codec_SetMP3PlayerInfo(3);
   }
 
   when(buttonState[E_Button_Forward] != 0u)
   {
     //Sound_StartPlayer(&MelodyButton);
+    Codec_StartMP3Player(4);
+    //Codec_SetMP3PlayerInfo(4);
   }
 
   when(buttonState[E_Button_Right] != 0u)
   {
     //Sound_StartPlayer(&MelodyButton);
-    //Codec_StartMP3Player(1);
+    Codec_StartMP3Player(4);
+    //Codec_SetMP3PlayerInfo(4);
+    //Codec_StartWAVPlayer(0);
   }
 }

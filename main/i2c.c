@@ -183,3 +183,10 @@ void I2C_UpdateBusStatus(T_I2CBus status)
 {
   BusIsAvailable = status;
 }
+
+//_____________________________________________________________________________
+
+void I2C_DeleteDriver(void)
+{
+  ESP_ERROR_CHECK(i2c_driver_delete(I2C_NUM_0));
+}

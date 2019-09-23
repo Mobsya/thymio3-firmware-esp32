@@ -101,4 +101,6 @@ extern T_I2CBus I2C_GetBusStatus(void);
 //! \return    None
 extern void I2C_UpdateBusStatus(T_I2CBus status);
 
+extern void I2C_DeleteDriver(void);
+
 #endif // I2C_H_

@@ -21,6 +21,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include <stdbool.h>
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -41,20 +43,26 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the communication
+//! \brief     Initialize the sensors
 //! \pre       None
 //! \param     None
 //! \return    None
 extern void Sensors_Init(void);
 
-//! \brief     Start the communication task
-//! \pre       First initialize the communication
+//! \brief     Start the sensors task
+//! \pre       First initialize the sensors
 //! \param     None
 //! \return    None
 extern void Sensors_Start(void);
 
+//! \brief     Stop the sensors task
+//! \pre       First initialize the sensors
+//! \param     None
+//! \return    None
+extern void Sensors_Stop(void);
+
 //! \brief     Check that the I2C bus is available
-//! \pre       First initialize the communication
+//! \pre       First initialize the sensors
 //! \param     None
 //! \return    True if the I2C bus is available, false otherwise
 extern bool Sensors_IsBusAvailable(void);

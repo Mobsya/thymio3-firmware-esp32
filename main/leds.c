@@ -20,7 +20,6 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/queue.h"
 
 #include "esp_log.h"
 
@@ -66,6 +65,10 @@ const uint32_t LEDS_TASK_PERIOD_us = (uint32_t)((double)(1.0 / LEDS_TASK_PERIOD_
 
 static const char* Tag = "leds";
 
+static TaskHandle_t LedsTask = NULL;        //!< Used to notified the Leds task
+
+static bool TaskIsStarted = false;
+
 //                       Rows            Columns
 static uint8_t LedsTable[MAX_BRIGHTNESS][REGISTERS_NUM];
 
@@ -78,8 +81,6 @@ static const uint8_t LedsOff[REGISTERS_NUM] = {LED_OFF_BANK_0,
                                               };
 
 static T_TimerSw* LedsTaskTimer = NULL;  //!< Used to schedule the Leds task
-
-static TaskHandle_t TaskToNotify;        //!< Used to notified the Leds task
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -107,6 +108,8 @@ static void Callback_TimerLedsTask(void* arg);
 
 void Leds_Init(void)
 {
+  TaskIsStarted = false;
+
   ShiftRegisters_Init();
 
   for (uint8_t row = 0u; row < MAX_BRIGHTNESS; row++)
@@ -129,13 +132,39 @@ void Leds_Init(void)
 void Leds_Start(void)
 {
   xTaskCreatePinnedToCore(
-    RunLedsTask,    // Function to implement the task
-    "sensor",       // Name of the task
-    4096,           // Stack size in words
-    NULL,           // Task input parameter
-    6,              // Priority of the task
-    &TaskToNotify,  // Task handle
-    0);             // Core where the task should run
+    RunLedsTask,  // Function to implement the task
+    "leds",       // Name of the task
+    4096,         // Stack size in words
+    NULL,         // Task input parameter
+    6,            // Priority of the task
+    &LedsTask,    // Task handle
+    0);           // Core where the task should run
+
+  TaskIsStarted = true;
+}
+
+//_____________________________________________________________________________
+
+void Leds_Stop(void)
+{
+  if (TaskIsStarted)
+  {
+	ESP_LOGW(Tag, "LEDs task is stopped");
+
+	for (uint8_t row = 0u; row < MAX_BRIGHTNESS; row++)
+	{
+	  for (uint8_t column = 0u; column < REGISTERS_NUM; column++)
+	  {
+	    LedsTable[row][column] = LedsOff[column];
+	  }
+	}
+
+	ShiftRegisters_Fill(&LedsTable[0][0], REGISTERS_NUM);
+
+	TimerSw_StopTimer(LedsTaskTimer);
+	TaskIsStarted = false;
+    vTaskDelete(LedsTask);
+  }
 }
 
 //_____________________________________________________________________________
@@ -326,7 +355,7 @@ static void Callback_TimerLedsTask(void* arg)
 {
   BaseType_t higherPriorityTaskWoken = pdFALSE;
 
-  vTaskNotifyGiveFromISR(TaskToNotify, &higherPriorityTaskWoken);
+  vTaskNotifyGiveFromISR(LedsTask, &higherPriorityTaskWoken);
 
   if (higherPriorityTaskWoken != pdFALSE)
   {

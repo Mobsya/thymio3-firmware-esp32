@@ -340,6 +340,8 @@ typedef uint8_t T_PGAGain;  // PGA gain configuration
 
 static const char* Tag = "es8374";
 
+static bool InitFlag = false;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -390,21 +392,30 @@ esp_err_t ES8374_Init(audio_hal_codec_config_t* cfg)
 
   T_I2SClock clkdiv;
 
-  clkdiv.lclk_div = LCLK_DIV_256;
-  clkdiv.sclk_div = MCLK_DIV_4;
+  if (!InitFlag)
+  {
+    clkdiv.lclk_div = LCLK_DIV_256;
+    clkdiv.sclk_div = MCLK_DIV_4;
 
-  // I2C shall be initialized in master mode
+    // I2C shall be initialized in master mode
 
-  result |= Stop(cfg->codec_mode);
-  //result |= InitRegisters(cfg->i2s_iface.mode, ((E_BitsPerSample_16bits << 4) | cfg->i2s_iface.fmt), clkdiv,
-  //                        cfg->dac_output, cfg->adc_input);
-  result |= InitRegisters(cfg->i2s_iface.mode, ((E_BitsPerSample_16bits << 4) | cfg->i2s_iface.fmt), clkdiv);
-  result |= SetMicrophoneGain(E_MicroGain_21dB);
-  result |= ConfigurePGAGain(E_PGAGain_Enable);
-  result |= ConfigureI2SFormat(cfg->codec_mode, cfg->i2s_iface.fmt);
-  result |= ES8374_ConfigureI2S(cfg->codec_mode, &(cfg->i2s_iface));
+    result |= Stop(cfg->codec_mode);
+    //result |= InitRegisters(cfg->i2s_iface.mode, ((E_BitsPerSample_16bits << 4) | cfg->i2s_iface.fmt), clkdiv,
+    //                        cfg->dac_output, cfg->adc_input);
+    result |= InitRegisters(cfg->i2s_iface.mode, ((E_BitsPerSample_16bits << 4) | cfg->i2s_iface.fmt), clkdiv);
+    result |= SetMicrophoneGain(E_MicroGain_21dB);
+    result |= ConfigurePGAGain(E_PGAGain_Enable);
+    result |= ConfigureI2SFormat(cfg->codec_mode, cfg->i2s_iface.fmt);
+    result |= ES8374_ConfigureI2S(cfg->codec_mode, &(cfg->i2s_iface));
 
-  ESP_LOGI(Tag, "ES8374 is initialized");
+    InitFlag = true;
+
+    ESP_LOGI(Tag, "ES8374 is initialized");
+  }
+  else
+  {
+    result = ESP_FAIL;
+  }
 
   return result;
 }
@@ -415,6 +426,8 @@ esp_err_t ES8374_Deinit(void)
 {
   uint8_t data = 0x7Fu;
   I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &data, 1u);
+
+  InitFlag = false;
 
   return ESP_OK;
 }

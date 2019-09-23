@@ -54,6 +54,10 @@
 
 static const char* Tag = "sensors";
 
+static TaskHandle_t SensorsTask = NULL;
+
+static bool TaskIsStarted = false;
+
 static bool BusIsAvailable = false;
 
 //-----------------------------------------------------------------------------
@@ -76,6 +80,8 @@ static void RunSensorsTask(void* arg);
 
 void Sensors_Init(void)
 {
+  TaskIsStarted = false;
+
   // FIXME If the I2C is only used by the sensors, the initialization can be done here.
   // Else, it must be done in the main.c
   //I2C_Init();
@@ -99,8 +105,24 @@ void Sensors_Start(void)
     2048,            // Stack size in words
     NULL,            // Task input parameter
     3,               // Priority of the task
-    NULL,            // Task handle
+    &SensorsTask,    // Task handle
     0);              // Core where the task should run
+
+  TaskIsStarted = true;
+}
+
+//_____________________________________________________________________________
+
+void Sensors_Stop(void)
+{
+  if (TaskIsStarted)
+  {
+	ESP_LOGW(Tag, "Sensors task is stopped");
+
+	I2C_DeleteDriver();
+	TaskIsStarted = false;
+    vTaskDelete(SensorsTask);
+  }
 }
 
 //_____________________________________________________________________________
@@ -120,11 +142,11 @@ static void RunSensorsTask(void* arg)
   {
     Buttons_UpdateStatus();
 
-//#if 0
+
     if (I2C_GetBusStatus() == E_I2CBus_Available)
     {
       I2C_UpdateBusStatus(E_I2CBus_Busy);
-
+//#if 0
       BusIsAvailable = false;
 
       // Every 20 [ms], 50 [Hz] (vTaskDelay = 20 [ms])
@@ -132,13 +154,13 @@ static void RunSensorsTask(void* arg)
       Accelerometer_GetAcceleration();
       Gyroscope_GetAngularPosition();
       ColorSensor_ReadColor();
-
+//#endif
       BusIsAvailable = true;
 
       I2C_UpdateBusStatus(E_I2CBus_Available);
       portYIELD();
     }
-//#endif
+
 
     vTaskDelay(20 / portTICK_PERIOD_MS);
   }
