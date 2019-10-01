@@ -47,6 +47,7 @@ static const char* Tag = "gyroscope";
 
 static T_Axis AngularPosition;
 static T_Axis Angle;
+static T_Axis Angle_deg;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -82,7 +83,7 @@ void Gyroscope_GetAngularPosition(void)
 
 //_____________________________________________________________________________
 
-void Gyroscope_GetAngle(void)
+void Gyroscope_ReadAngle(void)
 {
   LSM6DS3US_GetAngle(&Angle);
 
@@ -90,9 +91,13 @@ void Gyroscope_GetAngle(void)
   vmVariables.angle[1] = Angle.Y;
   vmVariables.angle[2] = Angle.Z;
 
-  vmVariables.angle_deg[0] = ((Angle.X * 90) / 16384);
-  vmVariables.angle_deg[1] = ((Angle.Y * 90) / 16384);
-  vmVariables.angle_deg[2] = ((Angle.Z * 90) / 16384);
+  Angle_deg.X = ((Angle.X * 90) / 16384);
+  Angle_deg.Y = ((Angle.Y * 90) / 16384);
+  Angle_deg.Z = ((Angle.Z * 90) / 16384);
+
+  vmVariables.angle_deg[0] = Angle_deg.X;
+  vmVariables.angle_deg[1] = Angle_deg.Y;
+  vmVariables.angle_deg[2] = Angle_deg.Z;
 
   //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", vmVariables.angle_deg[0], vmVariables.angle_deg[1], vmVariables.angle_deg[2]);
 
@@ -101,17 +106,24 @@ void Gyroscope_GetAngle(void)
 
 //_____________________________________________________________________________
 
+T_Axis Gyroscope_GetAngle(void)
+{
+  return Angle_deg;
+}
+
+//_____________________________________________________________________________
+
 void Gyroscope_ResetAngle(void)
 {
   LSM6DS3US_ResetAngle();
 
-  Angle.X = 0;
-  Angle.Y = 0;
-  Angle.Z = 0;
+  vmVariables.angle[0] = 0;
+  vmVariables.angle[1] = 0;
+  vmVariables.angle[2] = 0;
 
-  vmVariables.angle[0] = Angle.X;
-  vmVariables.angle[1] = Angle.Y;
-  vmVariables.angle[2] = Angle.Z;
+  vmVariables.angle_deg[0] = 0;
+  vmVariables.angle_deg[1] = 0;
+  vmVariables.angle_deg[2] = 0;
 }
 
 //_____________________________________________________________________________

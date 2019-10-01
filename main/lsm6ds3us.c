@@ -274,7 +274,6 @@ static int16_t ZeroGyro[3] = {0, 0, 0};
 static int16_t GyroCorr[3] = {0, 0, 0};
 
 static int16_t teta[3] = {0, 0, 0};
-static int16_t AngleDeg[3] = {0, 0, 0};
 
 static int32_t Mul = 0;
 static int32_t Div = 0;
@@ -326,7 +325,7 @@ static void ReadAngularPosition(T_Axis* angularPosition);
 //! \param     None
 //! \return    None
 //! \image     html ReadAngle.svg
-static void ReadBufferedAngularPosition(T_Axis* angle);
+static uint16_t ReadBufferedAngularPosition(void);
 
 //! \brief     Set the integrator factors used to calculate the angle
 //! \pre       None
@@ -553,32 +552,43 @@ void LSM6DS3US_InitGyroscope(void)
 void LSM6DS3US_GetAngularPosition(T_Axis* angularPosition)
 {
   ReadAngularPosition(angularPosition);
-
-  // TODO Calculate angular position
 }
 
 //_____________________________________________________________________________
 
 void LSM6DS3US_GetAngle(T_Axis* angle)
 {
-  ReadBufferedAngularPosition(angle);
+  uint16_t numSamples = ReadBufferedAngularPosition();
 
-  // TODO Calculate angular position
+  if (!IsCalibrated)
+  {
+    CalibrateZeroGyro(numSamples);
+  }
+  else
+  {
+    CalculateAngle(angle, numSamples);
+  }
 }
 
 //_____________________________________________________________________________
 
 void LSM6DS3US_ResetAngle(void)
 {
-  memset(teta, 0, 3);
-  memset(AngleDeg, 0, 3);
+  for (uint8_t i = 0u; i < 3u; i++)
+  {
+    teta[i] = 0;
+  }
 }
 
 //_____________________________________________________________________________
 
 void LSM6DS3US_ResetCalibration(void)
 {
-  memset(ZeroGyro, 0, 3);
+  for (uint8_t i = 0u; i < 3u; i++)
+  {
+    ZeroGyro[i] = 0;
+  }
+
   IsCalibrated = false;
 }
 
@@ -761,21 +771,19 @@ static void ReadAngularPosition(T_Axis* angularPosition)
 
 //_____________________________________________________________________________
 
-static void ReadBufferedAngularPosition(T_Axis* angle)
+static uint16_t ReadBufferedAngularPosition(void)
 {
-  //uint8_t status[4];
   uint8_t position[2u] = {0u, 0u};
   uint16_t length = 0x00u;
   uint16_t pattern = 0x00u;
-  uint8_t isFull = 0u;
+  //uint8_t isFull = 0u;
   //uint8_t isComplete = 0u;
 
   uint8_t i = 0u;
   uint8_t j = 0u;
   uint8_t k = 0u;
 
-  uint16_t counter = 0u;
-  static uint16_t count = 0u;
+  uint16_t numSamples = 0u;
 
   uint8_t len[2] = {0u, 0u};
   uint8_t pat[2] = {0u, 0u};
@@ -784,7 +792,7 @@ static void ReadBufferedAngularPosition(T_Axis* angle)
 
   if (!first)
   {
-	UpdateFifoMode(E_FifoMode_Fifo);  //E_FifoMode_Fifo
+	UpdateFifoMode(E_FifoMode_Continuous);
 	first = true;
   }
 
@@ -792,55 +800,31 @@ static void ReadBufferedAngularPosition(T_Axis* angle)
 
   length = (uint16_t)((uint16_t)(len[1] & 0x0F) << 8) | len[0];
 
-  isFull = ((len[1] & 0x20) >> 5);
+  //isFull = ((len[1] & 0x20) >> 5);
 
   //isComplete = ((len[1] & 0x80) >> 7);
 
-  if (isFull == 1)
+  //if (isFull == 1)
   {
-    //ESP_LOGI(Tag, "FULL");
-    UpdateFifoMode(E_FifoMode_Bypass);
-    UpdateFifoMode(E_FifoMode_Fifo);
+    //UpdateFifoMode(E_FifoMode_Bypass);
+    //UpdateFifoMode(E_FifoMode_Fifo);
   }
-
-  //if (isComplete == 1)
-  {
-    //ESP_LOGI(Tag, "COMPLETE");
-  }
-
-  //ESP_LOGI(Tag, "length: %d", length);
 
   if (length > 0u)
   {
-    counter = ((length / 3) * 3);
+	numSamples = ((length / 3) * 3);  // Get a multiple of 3 (entire part) for the XYZ samples
 
-    //ESP_LOGE(Tag, "SALUT counter: %d, length: %d", counter, length);
-
-    for (uint16_t index = 0u; index < counter; index++)
+    for (uint16_t index = 0u; index < numSamples; index++)
     {
-#if 0
-      if (index == 0u)
-      {
-        // Read the pattern to know which data is read
-        I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_STATUS3_REG_ADDRESS, pat, 2u);
-        pattern = (uint16_t)((uint16_t)(pat[1] & 0x03) << 8) | pat[0];
-
-        //ESP_LOGE(Tag, "pattern: %d, counter: %d", pattern, counter);
-      }
-#endif
-
       I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_STATUS3_REG_ADDRESS, pat, 2u);
       pattern = (uint16_t)((uint16_t)(pat[1] & 0x03) << 8) | pat[0];
 
       I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_DATA_OUT_L_REG_ADDRESS, position, 2u);
 
-      //ESP_LOGE(Tag, "pattern: %d, pos: %d", pattern, position[pattern]);
-
       if (pattern == 0)
       {
         Buffer[0][i] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
         i++;
-        //ESP_LOGE(Tag, "dataX: %d", Buffer[0][i]);
       }
       else if (pattern == 1)
       {
@@ -853,26 +837,9 @@ static void ReadBufferedAngularPosition(T_Axis* angle)
     	k++;
       }
     }
-
-    count++;
-
-//#if 0
-    if (count > 10)
-    {
-      if (!IsCalibrated)
-      {
-        CalibrateZeroGyro(counter / 3);
-      }
-      //else if ((counter / 3) <= 3)
-      else
-      {
-        CalculateAngle(angle, (counter / 3));
-      }
-    }
-//#endif
-
-    //ESP_LOGI(Tag, "length: %d, pattern: %d, X: %d, Y: %d, Z: %d", length, pattern, angularPosition->X, angularPosition->Y, angularPosition->Z);
   }
+
+  return (numSamples / 3);  // Number of XYZ samples
 }
 
 //_____________________________________________________________________________
@@ -954,7 +921,7 @@ static void CalibrateZeroGyro(uint16_t number)
     for (uint8_t i = 0u; i < 3u; i++)
     {
       ZeroGyro[i] /= num;
-      ESP_LOGE(Tag, "Index : %d, ZeroGyro: %d", i, ZeroGyro[i]);
+      //ESP_LOGI(Tag, "Index : %d, ZeroGyro: %d", i, ZeroGyro[i]);
     }
 
     num = 0u;
@@ -966,7 +933,6 @@ static void CalibrateZeroGyro(uint16_t number)
 
 static void CalculateAngle(T_Axis* angle, uint16_t number)
 {
-  //static int16_t tmp[3] = {0, 0, 0};
   int16_t sum[3] = {0, 0, 0};
 
   for (uint8_t i = 0u; i < 3u; i++)
@@ -974,38 +940,15 @@ static void CalculateAngle(T_Axis* angle, uint16_t number)
     for (uint8_t j = 0u; j < number; j++)
     {
       sum[i] += Buffer[i][j];
-
-      if (i == 2)
-      {
-        //ESP_LOGE(Tag, "sum: %d, Buffer: %d", sum[i], Buffer[i][j]);
-      }
     }
 
     GyroCorr[i] = (sum[i] - (number * ZeroGyro[i]));
-
-    //if (i == 2)
-    {
-      //ESP_LOGW(Tag, "sum: %d, number: %d, ZeroGyro: %d, GyroCorr: %d", sum[i], number, ZeroGyro[i], GyroCorr[i]);
-    }
-
-    //tmp[i] = (int16_t)((Mul * (int32_t)GyroCorr[i]) / Div);
-    //tmp[i] = ((Mul * GyroCorr[i]) / Div);
-    //tmp[i] = ((Mul * GyroCorr[i]) / Div);
-    //teta[i] += tmp[i];
     teta[i] += ((Mul * GyroCorr[i]) / Div);
-    AngleDeg[i] = (teta[i] * 90) / 16384;
-
-    if (i == 2)
-    {
-      ESP_LOGW(Tag, "teta: %d, AngleDeg: %d, GyroCorr: %d", teta[i], AngleDeg[i], GyroCorr[i]);
-    }
   }
 
   angle->X = teta[0];
   angle->Y = teta[1];
   angle->Z = teta[2];
-
-  //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", AngleDeg[0], AngleDeg[1], AngleDeg[2]);
 }
 
 //-----------------------------------------------------------------------------
