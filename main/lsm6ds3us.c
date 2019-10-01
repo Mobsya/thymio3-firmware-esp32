@@ -19,6 +19,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include <string.h>
+
 #include "esp_log.h"
 
 #include "lsm6ds3us.h"
@@ -77,6 +79,13 @@
 #define OUTY_H_XL_REG_ADDRESS                0x2Bu  //!< High byte of linear acceleration sensor Y-axis output register address (Read only)
 #define OUTZ_L_XL_REG_ADDRESS                0x2Cu  //!< Low byte of linear acceleration sensor Z-axis output register address  (Read only)
 #define OUTZ_H_XL_REG_ADDRESS                0x2Du  //!< High byte of linear acceleration sensor Z-axis output register address (Read only)
+#define FIFO_STATUS1_REG_ADDRESS             0x3Au  //!< FIFO status control register 1 address                                 (Read only)
+#define FIFO_STATUS2_REG_ADDRESS             0x3Bu  //!< FIFO status control register 2 address                                 (Read only)
+#define FIFO_STATUS3_REG_ADDRESS             0x3Cu  //!< FIFO status control register 3 address                                 (Read only)
+#define FIFO_STATUS4_REG_ADDRESS             0x3Du  //!< FIFO status control register 4 address                                 (Read only)
+#define FIFO_DATA_OUT_L_REG_ADDRESS          0x3Eu  //!< Low byte of FIFO data output register address                          (Read only)
+#define FIFO_DATA_OUT_H_REG_ADDRESS          0x3Fu  //!< High byte of FIFO data output register address                         (Read only)
+
 // TODO last registers
 #define TAP_CFG_REG_ADDRESS                  0x58u  //!< Tap recognition configuration register address                         (Read/Write)
 #define TAP_THS_6D_REG_ADDRESS               0x59u  //!< Portrait/landscape position and tap threshold register address         (Read/Write)
@@ -100,6 +109,13 @@
 // TAP_THS_6D bits mask
 #define TAP_THS_BIT_MASK                     0xE0u  //!< Mask of bit TAP_THS
 
+// FIFO_CTRL3 bits mask
+#define DEC_FIFO_GYRO_BIT_MASK               0x07u  //!< Mask of bit DEC_FIFO_GYRO
+
+// FIFO_CTRL5 bits mask
+#define FIFO_MODE_BIT_MASK                   0x78u  //!< Mask of bit FIFO_MODE
+#define ODR_FIFO_BIT_MASK                    0x07u  //!< Mask of bit ODR_FIFO
+
 // Register bits position
 // CTRL1_XL bits position
 #define ACC_ODR_XL_BIT_POS                      4u  //!< Position of LSB bit ODR_XL
@@ -112,6 +128,12 @@
 
 // TAP_CFG bits position
 #define ACC_TAP_EN_BIT_POS                      1u  //!< Position of LSB bit TAP_x_EN
+
+// FIFO_CTRL3 bits position
+#define DEC_FIFO_GYRO_BIT_POS                   3u  //!< Position of LSB bit DEC_FIFO_GYRO
+
+// FIFO_CTRL5 bits position
+#define ODR_FIFO_BIT_POS                        3u  //!< Position of LSB bit ODR_FIFO
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -183,6 +205,52 @@ enum
 };
 typedef uint8_t T_Gyro_EnableAxis;  //!< Gyroscope enable/disable axis
 
+enum
+{
+  E_Decimation_None,
+  E_Decimation_1,
+  E_Decimation_2,
+  E_Decimation_3,
+  E_Decimation_4,
+  E_Decimation_8,
+  E_Decimation_16,
+  E_Decimation_32
+};
+typedef uint8_t T_Decimation;  //!< FIFO decimation setting
+
+enum
+{
+  E_FifoMode_Bypass             = 0x00,  // FIFO disabled
+  E_FifoMode_Fifo               = 0x01,  // Stops collecting data when FIFO is full
+  E_FifoMode_ContinuousToFifo   = 0x03,  // Continuous mode until trigger is deasserted, then FIFO mode
+  E_FifoMode_BypassToContinuous = 0x04,  // Bypass mode until trigger is deasserted, then Continuous mode
+  E_FifoMode_Continuous         = 0x06   // If the FIFO is full, the new sample overwrites the older one
+};
+typedef uint8_t T_FifoMode;  //!< FIFO mode selection
+
+enum
+{
+  E_Fifo_OutputDataRate_Disable,
+  E_Fifo_OutputDataRate_12_5Hz,
+  E_Fifo_OutputDataRate_26Hz,
+  E_Fifo_OutputDataRate_52Hz,
+  E_Fifo_OutputDataRate_104Hz,
+  E_Fifo_OutputDataRate_208Hz,
+  E_Fifo_OutputDataRate_416Hz,
+  E_Fifo_OutputDataRate_833Hz,
+  E_Fifo_OutputDataRate_1660Hz,
+  E_Fifo_OutputDataRate_3330Hz,
+  E_Fifo_OutputDataRate_6660Hz
+};
+typedef uint8_t T_Fifo_OutputDataRate;  //!< FIFO output data rate
+
+enum
+{
+  E_Interrupt_INT1,
+  E_Interrupt_INT2
+};
+typedef uint8_t T_Interrupt;
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -198,6 +266,19 @@ static const T_GpioPinConfig PinConfig[2] =
   {ACC_INT1_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
   {ACC_INT2_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable}
 };
+
+static int16_t Buffer[3][10];
+
+static bool IsCalibrated = false;
+static int16_t ZeroGyro[3] = {0, 0, 0};
+static int16_t GyroCorr[3] = {0, 0, 0};
+
+static int16_t tmp[3]  = {0, 0, 0};
+static int16_t teta[3] = {0, 0, 0};
+static int16_t AngleDeg[3] = {0, 0, 0};
+
+static int32_t Mul = 0;
+static int32_t Div = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -241,11 +322,54 @@ static void ReadTapSource(uint8_t* source);
 //! \image     html ReadAngle.svg
 static void ReadAngularPosition(T_Axis* angularPosition);
 
+//! \brief     Read the buffered angular position
+//! \pre       None
+//! \param     None
+//! \return    None
+//! \image     html ReadAngle.svg
+static void ReadBufferedAngularPosition(T_Axis* angle);
+
+//! \brief     Set the integrator factors used to calculate the angle
+//! \pre       None
+//! \param     None
+//! \return    None
+static void SetIntegratorFactors(T_Fifo_OutputDataRate rate);
+
 //! \brief     Update the gyroscope output data rate
 //! \pre       None
 //! \param     None
 //! \return    None
 static void UpdateGyroOutputDataRate(T_Gyro_OutputDataRate rate);
+
+//! \brief     Update the FIFO mode
+//! \pre       None
+//! \param     None
+//! \return    None
+static void UpdateFifoMode(T_FifoMode mode);
+
+//! \brief     Get the FIFO mode
+//! \pre       None
+//! \param     None
+//! \return    None
+static T_FifoMode GetFifoMode(void);
+
+//! \brief     Update the FIFO threshold
+//! \pre       None
+//! \param     None
+//! \return    None
+static void UpdateFifoThreshold(uint16_t threshold);
+
+//! \brief     Update the FIFO output data rate
+//! \pre       None
+//! \param     None
+//! \return    None
+static void UpdateFifoOutputDataRate(T_Fifo_OutputDataRate rate);
+
+//! \brief     Update the gyroscope FIFO decimation setting
+//! \pre       None
+//! \param     None
+//! \return    None
+static void UpdateGyroFifoDecimationSetting(T_Decimation setting);
 
 //! \brief     Enable/disable the gyroscope axis
 //! \pre       None
@@ -253,12 +377,18 @@ static void UpdateGyroOutputDataRate(T_Gyro_OutputDataRate rate);
 //! \return    None
 static void EnableGyroAxis(T_Gyro_EnableAxis config);
 
+static void EnableGyroDataReadyInterrupt(T_Interrupt interrupt);
+
 //! \brief     Read the manufacturer ID
 //! \pre       None
 //! \param     None
 //! \return    None
 //! \image     html ReadAccManufacturerId.svg
 static void ReadManufacturerId(uint8_t* data);
+
+static void CalibrateZeroGyro(uint16_t number);
+
+static void CalculateAngle(T_Axis* angle, uint16_t number);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -409,6 +539,13 @@ void LSM6DS3US_InitGyroscope(void)
   EnableGyroAxis(E_Gyro_Enable_All);
   UpdateGyroOutputDataRate(E_Gyro_OutputDataRate_104Hz);
 
+  UpdateFifoMode(E_FifoMode_Bypass);
+  UpdateFifoOutputDataRate(E_Fifo_OutputDataRate_104Hz);
+  UpdateGyroFifoDecimationSetting(E_Decimation_1);
+  //UpdateFifoThreshold(1500);
+
+  EnableGyroDataReadyInterrupt(E_Interrupt_INT2);
+
   ESP_LOGI(Tag, "LSM6DS3US gyroscope is initialized");
 }
 
@@ -419,6 +556,32 @@ void LSM6DS3US_GetAngularPosition(T_Axis* angularPosition)
   ReadAngularPosition(angularPosition);
 
   // TODO Calculate angular position
+}
+
+//_____________________________________________________________________________
+
+void LSM6DS3US_GetAngle(T_Axis* angle)
+{
+  ReadBufferedAngularPosition(angle);
+
+  // TODO Calculate angular position
+}
+
+//_____________________________________________________________________________
+
+void LSM6DS3US_ResetAngle(void)
+{
+  memset(tmp, 0, 3);
+  memset(teta, 0, 3);
+  memset(AngleDeg, 0, 3);
+}
+
+//_____________________________________________________________________________
+
+void LSM6DS3US_ResetCalibration(void)
+{
+  memset(ZeroGyro, 0, 3);
+  IsCalibrated = false;
 }
 
 //_____________________________________________________________________________
@@ -439,6 +602,104 @@ static void UpdateGyroOutputDataRate(T_Gyro_OutputDataRate rate)
   else
   {
     ESP_LOGE(Tag, "Invalid gyroscope output data rate: %d", rate);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateFifoMode(T_FifoMode mode)
+{
+  uint8_t data = 0x00u;
+
+  if (mode <= E_FifoMode_Continuous)
+  {
+    I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_CTRL5_REG_ADDRESS, &data, 1u);
+
+    data &= FIFO_MODE_BIT_MASK;
+    data |= mode;
+
+    ESP_LOGE(Tag, "SET FIFO mode: %d", data);
+
+    I2C_WriteToAddress(SLAVE_ADDRESS, FIFO_CTRL5_REG_ADDRESS, &data, 1u);
+  }
+  else
+  {
+    ESP_LOGE(Tag, "Invalid FIFO mode: %d", mode);
+  }
+}
+
+//_____________________________________________________________________________
+
+static T_FifoMode GetFifoMode(void)
+{
+  uint8_t data = 0x00u;
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_CTRL5_REG_ADDRESS, &data, 1u);
+
+  return (T_FifoMode)(data & 0x07);
+}
+
+//_____________________________________________________________________________
+
+static void UpdateFifoThreshold(uint16_t threshold)
+{
+  uint8_t data = 0x00u;
+  uint8_t limit[2];
+
+  if (threshold < 4095)
+  {
+    I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_CTRL2_REG_ADDRESS, &data, 1u);
+    data &= 0xC0;
+    data |= ((threshold & 0x0F00) >> 8);
+
+    limit[0] = (threshold & 0x00FF);
+    limit[1] = data;
+
+    I2C_WriteToAddress(SLAVE_ADDRESS, FIFO_CTRL1_REG_ADDRESS, limit, 2u);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateFifoOutputDataRate(T_Fifo_OutputDataRate rate)
+{
+  uint8_t data = 0x00u;
+
+  if (rate <= E_Fifo_OutputDataRate_6660Hz)
+  {
+    I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_CTRL5_REG_ADDRESS, &data, 1u);
+
+    data &= ODR_FIFO_BIT_MASK;
+    data |= (rate << ODR_FIFO_BIT_POS);
+
+    I2C_WriteToAddress(SLAVE_ADDRESS, FIFO_CTRL5_REG_ADDRESS, &data, 1u);
+
+    SetIntegratorFactors(rate);
+  }
+  else
+  {
+    ESP_LOGE(Tag, "Invalid gyroscope output data rate: %d", rate);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateGyroFifoDecimationSetting(T_Decimation setting)
+{
+  uint8_t data = 0x00u;
+
+  if (setting <= E_Decimation_32)
+  {
+    I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_CTRL3_REG_ADDRESS, &data, 1u);
+
+    data &= DEC_FIFO_GYRO_BIT_MASK;
+    data |= (setting << DEC_FIFO_GYRO_BIT_POS);
+
+    I2C_WriteToAddress(SLAVE_ADDRESS, FIFO_CTRL3_REG_ADDRESS, &data, 1u);
+  }
+  else
+  {
+    ESP_LOGE(Tag, "Invalid gyroscope FIFO decimation setting: %d", setting);
   }
 }
 
@@ -465,6 +726,28 @@ static void EnableGyroAxis(T_Gyro_EnableAxis config)
 
 //_____________________________________________________________________________
 
+static void EnableGyroDataReadyInterrupt(T_Interrupt interrupt)
+{
+  uint8_t data = 0x02u;
+
+  switch (interrupt)
+  {
+    case E_Interrupt_INT1:
+      I2C_WriteToAddress(SLAVE_ADDRESS, INT1_CTRL_REG_ADDRESS, &data, 1u);
+      break;
+
+    case E_Interrupt_INT2:
+      I2C_WriteToAddress(SLAVE_ADDRESS, INT2_CTRL_REG_ADDRESS, &data, 1u);
+      break;
+
+    default:
+      // Do nothing
+      break;
+  }
+}
+
+//_____________________________________________________________________________
+
 static void ReadAngularPosition(T_Axis* angularPosition)
 {
   uint8_t position[6u];
@@ -476,6 +759,262 @@ static void ReadAngularPosition(T_Axis* angularPosition)
   angularPosition->Z = (int16_t)((uint16_t)position[5u] << 8u) | position[4u];
 
   //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", angularPosition->X, angularPosition->Y, angularPosition->Z);
+}
+
+//_____________________________________________________________________________
+
+static void ReadBufferedAngularPosition(T_Axis* angle)
+{
+  //uint8_t status[4];
+  uint8_t position[2u] = {0u, 0u};
+  uint16_t length = 0x00u;
+  uint16_t pattern = 0x00u;
+  uint8_t isFull = 0u;
+  //uint8_t isComplete = 0u;
+
+  uint8_t i = 0u;
+  uint8_t j = 0u;
+  uint8_t k = 0u;
+
+  uint16_t counter = 0u;
+  static uint16_t count = 0u;
+
+  uint8_t len[2] = {0u, 0u};
+  uint8_t pat[2] = {0u, 0u};
+
+  static bool first = false;
+
+  if (!first)
+  {
+	UpdateFifoMode(E_FifoMode_Fifo);  //E_FifoMode_Fifo
+	first = true;
+  }
+
+  I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_STATUS1_REG_ADDRESS, len, 2u);
+
+  length = (uint16_t)((uint16_t)(len[1] & 0x0F) << 8) | len[0];
+
+  isFull = ((len[1] & 0x20) >> 5);
+
+  //isComplete = ((len[1] & 0x80) >> 7);
+
+  if (isFull == 1)
+  {
+    //ESP_LOGI(Tag, "FULL");
+    UpdateFifoMode(E_FifoMode_Bypass);
+    UpdateFifoMode(E_FifoMode_Fifo);
+  }
+
+  //if (isComplete == 1)
+  {
+    //ESP_LOGI(Tag, "COMPLETE");
+  }
+
+  //ESP_LOGI(Tag, "length: %d", length);
+
+  if (length > 0u)
+  {
+    counter = ((length / 3) * 3);
+
+    //ESP_LOGE(Tag, "SALUT counter: %d, length: %d", counter, length);
+
+    for (uint16_t index = 0u; index < counter; index++)
+    {
+#if 0
+      if (index == 0u)
+      {
+        // Read the pattern to know which data is read
+        I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_STATUS3_REG_ADDRESS, pat, 2u);
+        pattern = (uint16_t)((uint16_t)(pat[1] & 0x03) << 8) | pat[0];
+
+        //ESP_LOGE(Tag, "pattern: %d, counter: %d", pattern, counter);
+      }
+#endif
+
+      I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_STATUS3_REG_ADDRESS, pat, 2u);
+      pattern = (uint16_t)((uint16_t)(pat[1] & 0x03) << 8) | pat[0];
+
+      I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_DATA_OUT_L_REG_ADDRESS, position, 2u);
+
+      //ESP_LOGE(Tag, "pattern: %d, pos: %d", pattern, position[pattern]);
+
+      if (pattern == 0)
+      {
+        Buffer[0][i] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
+        i++;
+        //ESP_LOGE(Tag, "dataX: %d", Buffer[0][i]);
+      }
+      else if (pattern == 1)
+      {
+        Buffer[1][j] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
+        j++;
+      }
+      else
+      {
+    	Buffer[2][k] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
+    	k++;
+      }
+    }
+
+    count++;
+
+//#if 0
+    if (count > 10)
+    {
+      if (!IsCalibrated)
+      {
+        CalibrateZeroGyro(counter / 3);
+      }
+      //else if ((counter / 3) <= 3)
+      else
+      {
+        CalculateAngle(angle, (counter / 3));
+      }
+    }
+//#endif
+
+    //ESP_LOGI(Tag, "length: %d, pattern: %d, X: %d, Y: %d, Z: %d", length, pattern, angularPosition->X, angularPosition->Y, angularPosition->Z);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void SetIntegratorFactors(T_Fifo_OutputDataRate rate)
+{
+  Mul = 35;
+
+  switch (rate)
+  {
+    case E_Fifo_OutputDataRate_Disable:
+      // Do nothing
+      break;
+
+    case E_Fifo_OutputDataRate_12_5Hz:
+      Div = 275;  // 22 * 12.5
+      break;
+
+    case E_Fifo_OutputDataRate_26Hz:
+      Div = 572;  // 22 * 26
+      break;
+
+    case E_Fifo_OutputDataRate_52Hz:
+      Div = 1144;  // 22 * 52
+      break;
+
+    case E_Fifo_OutputDataRate_104Hz:
+      Div = 2288;  // 22 * 104
+      break;
+
+    case E_Fifo_OutputDataRate_208Hz:
+      Div = 4576;  // 22 * 208
+      break;
+
+    case E_Fifo_OutputDataRate_416Hz:
+      Div = 9152;  // 22 * 416
+      break;
+
+    case E_Fifo_OutputDataRate_833Hz:
+      Div = 18326;  // 22 * 833
+      break;
+
+    case E_Fifo_OutputDataRate_1660Hz:
+      Div = 36520;  // 22 * 1660
+      break;
+
+    case E_Fifo_OutputDataRate_3330Hz:
+      Div = 73260;  // 22 * 3330
+      break;
+
+    case E_Fifo_OutputDataRate_6660Hz:
+      Div = 146520;  // 22 * 6660
+      break;
+
+    default:
+      // Do nothing
+      break;
+  }
+}
+
+//_____________________________________________________________________________
+
+static void CalibrateZeroGyro(uint16_t number)
+{
+  static uint16_t num = 0u;
+
+  num += number;
+
+  ESP_LOGE(Tag, "num : %d, number: %d", num, number);
+
+  for (uint8_t i = 0u; i < 3u; i++)
+  {
+    for (uint16_t j = 0u; j < number; j++)
+    {
+      ZeroGyro[i] += Buffer[i][j];
+
+      if (i == 0)
+      {
+        ESP_LOGE(Tag, "CIAO j: %d, ZeroGyro[0]: %d, Buffer[0][j]: %d", j, ZeroGyro[i], Buffer[i][j]);
+      }
+    }
+  }
+
+  if (num >= 16)
+  {
+    ESP_LOGE(Tag, "CONDITION OK");
+
+    for (uint8_t i = 0u; i < 3u; i++)
+    {
+      ZeroGyro[i] /= num;
+      ESP_LOGE(Tag, "Index : %d, ZeroGyro: %d", i, ZeroGyro[i]);
+    }
+
+    num = 0u;
+    IsCalibrated = true;
+  }
+}
+
+//_____________________________________________________________________________
+
+static void CalculateAngle(T_Axis* angle, uint16_t number)
+{
+  int16_t sum[3] = {0, 0, 0};
+
+  for (uint8_t i = 0u; i < 3u; i++)
+  {
+    for (uint8_t j = 0u; j < number; j++)
+    {
+      sum[i] += Buffer[i][j];
+
+      if (i == 0)
+      {
+        //ESP_LOGE(Tag, "sum: %d, Buffer: %d", sum[i], Buffer[i][j]);
+      }
+    }
+
+    GyroCorr[i] = (sum[i] - (number * ZeroGyro[i]));
+
+    //if (i == 2)
+    {
+      //ESP_LOGW(Tag, "sum: %d, number: %d, ZeroGyro: %d, GyroCorr: %d", sum[i], number, ZeroGyro[i], GyroCorr[i]);
+    }
+
+    //tmp[i] = (int16_t)((Mul * (int32_t)GyroCorr[i]) / Div);
+    //tmp[i] = ((Mul * GyroCorr[i]) / Div);
+    tmp[i] = ((Mul * GyroCorr[i]) / Div);
+    teta[i] += tmp[i];
+    AngleDeg[i] = (teta[i] * 90) / 16384;
+
+    //if (i == 2)
+    {
+      //ESP_LOGW(Tag, "tmp: %d, teta: %d, AngleDeg: %d, GyroCorr: %d", tmp[i], teta[i], AngleDeg[i], GyroCorr[i]);
+    }
+  }
+
+  angle->X = teta[0];
+  angle->Y = teta[1];
+  angle->Z = teta[2];
+
+  //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", AngleDeg[0], AngleDeg[1], AngleDeg[2]);
 }
 
 //-----------------------------------------------------------------------------

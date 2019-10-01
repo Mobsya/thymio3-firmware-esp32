@@ -115,6 +115,12 @@ void thymio_native_sd_seek(AsebaVMState* vm);
 extern AsebaNativeFunctionDescription AsebaNativeDescription_rf_nodeid;
 void set_rf_nodeid(AsebaVMState* vm);
 
+extern AsebaNativeFunctionDescription AsebaNativeDescription_gyro_reset_angle;
+void gyro_reset_angle(AsebaVMState* vm);
+
+extern AsebaNativeFunctionDescription AsebaNativeDescription_gyro_reset_calib_angle;
+void gyro_reset_calib_angle(AsebaVMState* vm);
+
 extern AsebaNativeFunctionDescription AsebaNativeDescription_duration;
 void sound_duration(AsebaVMState* vm);
 
@@ -143,6 +149,8 @@ void sound_duration(AsebaVMState* vm);
         &AsebaNativeDescription_sd_read, \
         &AsebaNativeDescription_sd_seek, \
   &AsebaNativeDescription_rf_nodeid, \
+  &AsebaNativeDescription_gyro_reset_angle, \
+  &AsebaNativeDescription_gyro_reset_calib_angle, \
   &AsebaNativeDescription_duration
 
 #define THYMIO_NATIVES_FUNCTIONS \
@@ -170,6 +178,8 @@ void sound_duration(AsebaVMState* vm);
         thymio_native_sd_read, \
         thymio_native_sd_seek, \
   set_rf_nodeid, \
+  gyro_reset_angle, \
+  gyro_reset_calib_angle, \
   sound_duration
 
 #endif // THYMIO_NATIVES_H_

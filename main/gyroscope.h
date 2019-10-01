@@ -53,4 +53,10 @@ extern void Gyroscope_Init(void);
 //! \return    None
 extern void Gyroscope_GetAngularPosition(void);
 
+extern void Gyroscope_GetAngle(void);
+
+extern void Gyroscope_ResetAngle(void);
+
+extern void Gyroscope_ResetCalibration(void);
+
 #endif // GYROSCOPE_H_

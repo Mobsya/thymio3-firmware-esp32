@@ -35,10 +35,13 @@
 #include "behavior.h"
 //#include "tone.h"
 //#include "ir_prox.h"
+#include "gyroscope.h"
 #include "sound.h"
 #include "mp3.h"
 #include "i2s.h"
 #include "stm32_i2c.h"
+
+#include "aseba.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -193,6 +196,7 @@ void sound_record(AsebaVMState* vm)
   //I2S_Record();
 
   //MP3_StartRecorder();
+  Codec_StartWAVRecorder(number);
 }
 
 //_____________________________________________________________________________
@@ -227,7 +231,8 @@ void sound_replay(AsebaVMState* vm)
 #endif
 
   //Sound_StartReplaying();
-  Sound_Replay();
+  //Sound_Replay();
+  Codec_StartWAVPlayer(number);
 }
 
 //_____________________________________________________________________________
@@ -503,6 +508,7 @@ void set_vprox_leds(AsebaVMState* vm)
 #endif
 
   // FIXME STM32_UpdateGroundIRLedsBrightness(l1, l2);
+  Aseba_UpdateGroundIRLedsBrightness(l1, l2);
 }
 
 //_____________________________________________________________________________
@@ -521,7 +527,7 @@ void set_rc_leds(AsebaVMState* vm)
 {
   int l1 = vm->variables[AsebaNativePopArg(vm)];
 #if 0 // FIXME
-  Behavior_Disable(B_LEDS_RC5);
+  Behavior_Disable(B_LED_RC5);
 #endif
   Leds_SetSingleBrightness(E_Led_RC5, l1);
 }
@@ -542,7 +548,7 @@ void set_sound_leds(AsebaVMState* vm)
 {
   int l1 = vm->variables[AsebaNativePopArg(vm)];
 
-  Behavior_Disable(B_LEDS_MIC);
+  Behavior_Disable(B_LED_MIC);
 
 #if 0 // TODO Send to STM32
   Leds_SetSingleBrightness(E_Led_Sound, l1);
@@ -792,6 +798,38 @@ void set_rf_nodeid(AsebaVMState* vm)
   rf_set_node_id(nodeid);
   rf_flash_setting();
 #endif
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_gyro_reset_angle =
+{
+  "gyro.reset_angle",
+  "Reset the angle",
+  {
+    {0,0}
+  }
+};
+
+void gyro_reset_angle(AsebaVMState* vm)
+{
+  Gyroscope_ResetAngle();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_gyro_reset_calib_angle =
+{
+  "gyro.reset_calib_angle",
+  "Reset the calibration of the angle",
+  {
+    {0,0}
+  }
+};
+
+void gyro_reset_calib_angle(AsebaVMState* vm)
+{
+  Gyroscope_ResetCalibration();
 }
 
 //_____________________________________________________________________________
