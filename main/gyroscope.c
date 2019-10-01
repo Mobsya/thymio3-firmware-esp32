@@ -94,7 +94,7 @@ void Gyroscope_GetAngle(void)
   vmVariables.angle_deg[1] = ((Angle.Y * 90) / 16384);
   vmVariables.angle_deg[2] = ((Angle.Z * 90) / 16384);
 
-  ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", vmVariables.angle_deg[0], vmVariables.angle_deg[1], vmVariables.angle_deg[2]);
+  //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", vmVariables.angle_deg[0], vmVariables.angle_deg[1], vmVariables.angle_deg[2]);
 
   SET_EVENT(EVENT_GYRO);
 }

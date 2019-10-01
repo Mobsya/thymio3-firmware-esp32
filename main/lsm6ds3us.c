@@ -273,7 +273,6 @@ static bool IsCalibrated = false;
 static int16_t ZeroGyro[3] = {0, 0, 0};
 static int16_t GyroCorr[3] = {0, 0, 0};
 
-static int16_t tmp[3]  = {0, 0, 0};
 static int16_t teta[3] = {0, 0, 0};
 static int16_t AngleDeg[3] = {0, 0, 0};
 
@@ -571,7 +570,6 @@ void LSM6DS3US_GetAngle(T_Axis* angle)
 
 void LSM6DS3US_ResetAngle(void)
 {
-  memset(tmp, 0, 3);
   memset(teta, 0, 3);
   memset(AngleDeg, 0, 3);
 }
@@ -943,25 +941,16 @@ static void CalibrateZeroGyro(uint16_t number)
 
   num += number;
 
-  ESP_LOGE(Tag, "num : %d, number: %d", num, number);
-
   for (uint8_t i = 0u; i < 3u; i++)
   {
     for (uint16_t j = 0u; j < number; j++)
     {
       ZeroGyro[i] += Buffer[i][j];
-
-      if (i == 0)
-      {
-        ESP_LOGE(Tag, "CIAO j: %d, ZeroGyro[0]: %d, Buffer[0][j]: %d", j, ZeroGyro[i], Buffer[i][j]);
-      }
     }
   }
 
   if (num >= 16)
   {
-    ESP_LOGE(Tag, "CONDITION OK");
-
     for (uint8_t i = 0u; i < 3u; i++)
     {
       ZeroGyro[i] /= num;
@@ -977,6 +966,7 @@ static void CalibrateZeroGyro(uint16_t number)
 
 static void CalculateAngle(T_Axis* angle, uint16_t number)
 {
+  //static int16_t tmp[3] = {0, 0, 0};
   int16_t sum[3] = {0, 0, 0};
 
   for (uint8_t i = 0u; i < 3u; i++)
@@ -985,7 +975,7 @@ static void CalculateAngle(T_Axis* angle, uint16_t number)
     {
       sum[i] += Buffer[i][j];
 
-      if (i == 0)
+      if (i == 2)
       {
         //ESP_LOGE(Tag, "sum: %d, Buffer: %d", sum[i], Buffer[i][j]);
       }
@@ -1000,13 +990,14 @@ static void CalculateAngle(T_Axis* angle, uint16_t number)
 
     //tmp[i] = (int16_t)((Mul * (int32_t)GyroCorr[i]) / Div);
     //tmp[i] = ((Mul * GyroCorr[i]) / Div);
-    tmp[i] = ((Mul * GyroCorr[i]) / Div);
-    teta[i] += tmp[i];
+    //tmp[i] = ((Mul * GyroCorr[i]) / Div);
+    //teta[i] += tmp[i];
+    teta[i] += ((Mul * GyroCorr[i]) / Div);
     AngleDeg[i] = (teta[i] * 90) / 16384;
 
-    //if (i == 2)
+    if (i == 2)
     {
-      //ESP_LOGW(Tag, "tmp: %d, teta: %d, AngleDeg: %d, GyroCorr: %d", tmp[i], teta[i], AngleDeg[i], GyroCorr[i]);
+      ESP_LOGW(Tag, "teta: %d, AngleDeg: %d, GyroCorr: %d", teta[i], AngleDeg[i], GyroCorr[i]);
     }
   }
 
