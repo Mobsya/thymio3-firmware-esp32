@@ -210,7 +210,8 @@ bool STM32_IsUSBCablePresent(void)
 
 bool STM32_IsUSBPortOpen(void)
 {
-  return ((Status & (1 << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
+  //return ((Status & (1 << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
+  return false;  // FIXME temporary used to run Aseba with WIFI
   //return true;  // FIXME temporary used to run Aseba with UART
 }
 
