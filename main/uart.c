@@ -36,8 +36,8 @@
 
 #define UART_BAUDRATE        115200u
 
-#define RX_BUFFER_SIZE         1024u
-#define TX_BUFFER_SIZE         1024u
+#define RX_BUFFER_SIZE         2048u
+#define TX_BUFFER_SIZE         2048u
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -84,9 +84,20 @@ void UART_Init(void)
   uart_driver_install(UART_NUM, RX_BUFFER_SIZE, TX_BUFFER_SIZE, 0, NULL, 0);
   //uart_driver_install(UART_NUM, RX_BUFFER_SIZE * 2, TX_BUFFER_SIZE * 2, 20, &UartQueue, 0);
 
-  //uart_flush(UART_NUM);  // FIXME In conflict with I2S
+  uart_flush(UART_NUM);  // FIXME In conflict with I2S
 
   ESP_LOGI(Tag, "UART is initialized");
+}
+
+//_____________________________________________________________________________
+
+void UART_Flush(void)
+{
+  //ESP_LOGI(Tag, "UART is flushed");
+  uart_flush(UART_NUM);
+  //uart_driver_delete(UART_NUM);
+  //uart_driver_install(UART_NUM, RX_BUFFER_SIZE, TX_BUFFER_SIZE, 0, NULL, 0);
+  //UART_Init();
 }
 
 //_____________________________________________________________________________
@@ -125,13 +136,24 @@ int UART_ReadByte(uint8_t* data)
 
 //_____________________________________________________________________________
 
-bool UART_IsReceptionBufferEmpty(void)
+bool UART_IsRxBufferEmpty(void)
 {
-  int length = 0;
+  int16_t length = 0;
 
   ESP_ERROR_CHECK(uart_get_buffered_data_len(UART_NUM, (size_t*)&length));
 
   return (length == 0);
+}
+
+//_____________________________________________________________________________
+
+int16_t UART_GetRxBufferDataLength(void)
+{
+  int16_t length = 0;
+
+  ESP_ERROR_CHECK(uart_get_buffered_data_len(UART_NUM, (size_t*)&length));
+
+  return (int16_t)length;
 }
 
 //_____________________________________________________________________________

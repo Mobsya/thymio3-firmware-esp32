@@ -49,6 +49,8 @@
 //! \return    None
 extern void UART_Init(void);
 
+extern void UART_Flush(void);
+
 //! \brief     Write data to the UART line
 //! \pre       First initialize the UART protocol
 //! \param     None
@@ -71,7 +73,13 @@ int UART_ReadByte(uint8_t* data);
 //! \pre       First initialize the UART protocol
 //! \param     None
 //! \return    None
-bool UART_IsReceptionBufferEmpty(void);
+bool UART_IsRxBufferEmpty(void);
+
+//! \brief     Get the data length of the reception buffer
+//! \pre       First initialize the UART protocol
+//! \param     None
+//! \return    Data length of the reception buffer
+int16_t UART_GetRxBufferDataLength(void);
 
 //! \brief     Wait until TX FIFO is empty
 //! \pre       First initialize the UART protocol
