@@ -35,8 +35,6 @@
 
 #include "tcp_server.h"
 
-#include "aseba_esp32_user.h"
-
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -206,6 +204,7 @@ bool TCPServer_IsSocketAccepted(void)
 void TCPServer_ShutDownSocket(void)
 {
   ESP_LOGE(Tag, "Shutting down socket");
+  SocketIsAccepted = false;
   shutdown(sock, 0);
   close(sock);
 }
@@ -214,12 +213,16 @@ void TCPServer_ShutDownSocket(void)
 
 void TCPServer_Send(const uint8_t* data, uint16_t size)
 {
-  int err = send(sock, data, size, 0);
+  int numberBytes = send(sock, data, size, 0);
+  int oldNumberBytes = 0;
 
-  if (err < 0)
+  if ((numberBytes < 0) && (oldNumberBytes >= 0))
   {
-    //ESP_LOGE(Tag, "Error occured during sending: errno %d", errno);  // TODO Send this message only once
+    // Send this message only once when consecutive errors occured
+    ESP_LOGE(Tag, "Error occured during sending: errno %d", errno);
   }
+
+  oldNumberBytes = numberBytes;
 }
 
 //_____________________________________________________________________________
