@@ -29,11 +29,14 @@
 #include "mode.h"
 
 #include "accelerometer.h"
+#include "angle_controller.h"
 #include "aseba_esp32.h"
 #include "behavior.h"
 #include "buttons.h"
+#include "codec.h"
 #include "fifo.h"
 #include "leds.h"
+#include "rc5.h"
 #include "tcp_server.h"
 #include "timer_sw.h"
 
@@ -85,6 +88,7 @@ static uint8_t ButtonsSeqBuffer[BUTTONS_SEQ_BUFFER_SIZE];
 static bool RecordSequenceIsFinished = false;
 static bool MovementIsStarted = false;
 static bool MovementIsInProgress = false;
+static bool RotationIsInProgress = false;
 static bool MovementTimerIsRunning = false;
 static bool StopTimerIsRunning = false;
 static uint16_t Position = 0u;
@@ -139,6 +143,8 @@ static void RunCircleLedRotation(void);
 
 static void RunCircleLedCross(void);
 
+static void RunLegoLedAnimation(void);
+
 static void SetSpeedUsingButtons(int16_t* speed);
 
 static bool CalibrateLevelUsingButtons(uint16_t* blackLevel, uint16_t* whiteLevel);
@@ -149,7 +155,7 @@ static void GetLineDirection(uint8_t* state, int16_t* direction);
 
 static void SetTargetAccordingToDirection(int16_t* direction);
 
-static void RecordButtonsSequence(void);
+static void RecordButtonsSequence(uint8_t choice);
 
 static void PlayMovementSequence(void);
 
@@ -203,6 +209,7 @@ void Mode_Init(void)
   RecordSequenceIsFinished = false;
   MovementIsStarted = false;
   MovementIsInProgress = false;
+  RotationIsInProgress = false;
   MovementTimerIsRunning = false;
   StopTimerIsRunning = false;
   MovementTimer = TimerSw_Create(MOVEMENT_DURATION_us, Callback_TimerMovement);
@@ -334,7 +341,6 @@ static void StartMode(T_Mode mode)
   switch (mode)
   {
     case E_Mode_Menu:
-      ESP_LOGE(Tag, "Mode MENU");
       Behavior_Enable(B_SETTING);
       break;
 
@@ -392,18 +398,8 @@ static void ExitMode(T_Mode mode)
 {
   Leds_SetBodyBrightness(0u, 0u, 0u);
   Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-#if 0  // FIXME
-  Leds_SetSingleBrightness(E_Led_Front_IR_0, 0u);
-  Leds_SetSingleBrightness(E_Led_Front_IR_1, 0u);
-  Leds_SetSingleBrightness(E_Led_Front_IR_2A, 0u);
-  Leds_SetSingleBrightness(E_Led_Front_IR_2B, 0u);
-  Leds_SetSingleBrightness(E_Led_Front_IR_3, 0u);
-  Leds_SetSingleBrightness(E_Led_Front_IR_4, 0u);
-  Leds_SetSingleBrightness(E_Led_Ground_IR_0, 0u);
-  Leds_SetSingleBrightness(E_Led_Ground_IR_1, 0u);
-  Leds_SetSingleBrightness(E_Led_IR_Back_Left, 0u);
-  Leds_SetSingleBrightness(E_Led_IR_Back_Right, 0u);
-#endif
+  Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
 
   switch (mode)
   {
@@ -504,45 +500,27 @@ static void SetModeColor(T_Mode mode)
   switch (mode)
   {
     case E_Mode_Menu:
-      Leds_SetFrontLeftBrightness(0u, 0u, 0u);
-      Leds_SetFrontRightBrightness(0u, 0u, 0u);
-      Leds_SetBackLeftBrightness(0u, 0u, 0u);
-      Leds_SetBackRightBrightness(0u, 0u, 0u);
+      Leds_SetBodyBrightness(0u, 0u, 0u);
       break;
 
     case E_Mode_Follower:  // Green
-      Leds_SetFrontLeftBrightness(0u, MAX_BRIGHTNESS, 0u);
-      Leds_SetFrontRightBrightness(0u, MAX_BRIGHTNESS, 0u);
-      Leds_SetBackLeftBrightness(0u, MAX_BRIGHTNESS, 0u);
-      Leds_SetBackRightBrightness(0u, MAX_BRIGHTNESS, 0u);
+      Leds_SetBodyBrightness(0u, MAX_BRIGHTNESS, 0u);
       break;
 
     case E_Mode_Explorer:  // Yellow
-      Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
-      Leds_SetFrontRightBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
-      Leds_SetBackLeftBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
-      Leds_SetBackRightBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
+      Leds_SetBodyBrightness(MAX_BRIGHTNESS, 12, 0u);
       break;
 
     case E_Mode_Attentive:  // Dark blue
-      Leds_SetFrontLeftBrightness(0u, 0u, MAX_BRIGHTNESS);
-      Leds_SetFrontRightBrightness(0u, 0u, MAX_BRIGHTNESS);
-      Leds_SetBackLeftBrightness(0u, 0u, MAX_BRIGHTNESS);
-      Leds_SetBackRightBrightness(0u, 0u, MAX_BRIGHTNESS);
+      Leds_SetBodyBrightness(0u, 0u, MAX_BRIGHTNESS);
       break;
 
     case E_Mode_LineTracker:  // Cyan
-      Leds_SetFrontLeftBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetFrontRightBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetBackLeftBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetBackRightBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetBodyBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
       break;
 
     case E_Mode_Obedient:  // Magenta
-      Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
-      Leds_SetFrontRightBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
-      Leds_SetBackLeftBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
-      Leds_SetBackRightBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
+      Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
       break;
 
     default:
@@ -560,11 +538,9 @@ static void RunExplorer(void)
   int16_t brightness = GetBodyColorPulse();
 
   // Yellow pulse
-  Leds_SetFrontLeftBrightness(brightness, brightness, 0u);
-  Leds_SetFrontRightBrightness(brightness, brightness, 0u);
-  Leds_SetBackLeftBrightness(brightness, brightness, 0u);
-  Leds_SetBackRightBrightness(brightness, brightness, 0u);
+  Leds_SetBodyBrightness(brightness, brightness, 0u);
 
+#if 0
   RunCircleLedRotation();
 
   // Buttons management
@@ -581,8 +557,8 @@ static void RunExplorer(void)
 
   if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
   {
-    vmVariables.target[0] = 0;
-    vmVariables.target[1] = 0;
+// FIXME    vmVariables.target[0] = 0;
+// FIXME    vmVariables.target[1] = 0;
     // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, MAX_BRIGHTNESS);
     // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, MAX_BRIGHTNESS);
   }
@@ -591,6 +567,7 @@ static void RunExplorer(void)
     // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0u);
     // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0u);
   }
+#endif
 }
 
 //_____________________________________________________________________________
@@ -600,10 +577,9 @@ static void RunAttentive(void)
   int16_t brightness = GetBodyColorPulse();
 
   // Dark blue pulse
-  Leds_SetFrontLeftBrightness(0u, 0u, brightness);
-  Leds_SetFrontRightBrightness(0u, 0u, brightness);
-  Leds_SetBackLeftBrightness(0u, 0u, brightness);
-  Leds_SetBackRightBrightness(0u, 0u, brightness);
+  Leds_SetBodyBrightness(0u, 0u, brightness);
+
+  AngleController_Update(-90);
 }
 
 //_____________________________________________________________________________
@@ -618,11 +594,9 @@ static void RunLineTracker(void)
   int16_t brightness = GetBodyColorPulse();
 
   // Cyan pulse
-  Leds_SetFrontLeftBrightness(0u, brightness, brightness);
-  Leds_SetFrontRightBrightness(0u, brightness, brightness);
-  Leds_SetBackLeftBrightness(0u, brightness, brightness);
-  Leds_SetBackRightBrightness(0u, brightness, brightness);
+  Leds_SetBodyBrightness(0u, brightness, brightness);
 
+#if 0
   if (!CalibrateLevelUsingButtons(&bs_black_level, &bs_white_level))
   {
     // Calibration is not in progress
@@ -679,12 +653,19 @@ static void RunLineTracker(void)
 
     SetTargetAccordingToDirection(&dir);
   }
+#endif
 }
 
 //_____________________________________________________________________________
 
 static void RunFollower(void)
 {
+  int16_t brightness = GetBodyColorPulse();
+
+  // Dark blue pulse
+  Leds_SetBodyBrightness(0u, brightness, 0u);
+
+#if 0
   static char sound_done;
   static char does_see_friend = 1;  // FIXME
   static unsigned char led_state;
@@ -880,6 +861,7 @@ static void RunFollower(void)
     }
   }
 #endif
+#endif
 }
 
 //_____________________________________________________________________________
@@ -889,14 +871,11 @@ static void RunObedient(void)
   int16_t brightness = GetBodyColorPulse();
 
   // Magenta pulse
-  Leds_SetFrontLeftBrightness(brightness, 0u, brightness);
-  Leds_SetFrontRightBrightness(brightness, 0u, brightness);
-  Leds_SetBackLeftBrightness(brightness, 0u, brightness);
-  Leds_SetBackRightBrightness(brightness, 0u, brightness);
+  Leds_SetBodyBrightness(brightness, 0u, brightness);
 
   if (!RecordSequenceIsFinished)
   {
-    RecordButtonsSequence();
+    RecordButtonsSequence(0);
   }
   else
   {
@@ -971,8 +950,8 @@ static void HandlePositiveSpeed(int16_t speed)
 
   //printf("speed = %d, temp1 = %d, temp2 = %d\n", speed, temp1, temp2);
 
-  vmVariables.target[0] = speed - (((temp1 + temp2) * speed) / 2000); //2000);
-  vmVariables.target[1] = speed - (((temp1 - temp2) * speed) / 2000); //2000);
+  vmVariables.target[0] = speed - (((temp1 + temp2) * speed) / 200); //2000);
+  vmVariables.target[1] = speed - (((temp1 - temp2) * speed) / 200); //2000);
 
   //printf("target = %d\n", vmVariables.target[0]);
 
@@ -1162,6 +1141,130 @@ static void RunCircleLedCross(void)
 
 //_____________________________________________________________________________
 
+static void RunLegoLedAnimation(void)
+{
+  static uint8_t led_state;
+  uint8_t l[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  uint8_t fixed;
+
+  led_state += 2;
+  fixed = (led_state / MAX_BRIGHTNESS);
+
+  l[fixed & 0x7] = MAX_BRIGHTNESS;
+  l[(fixed - 2) & 0x7] = (MAX_BRIGHTNESS - (led_state & (MAX_BRIGHTNESS - 1)));
+  l[(fixed + 2) & 0x7] = (led_state & (MAX_BRIGHTNESS - 1));
+  l[(fixed + 4) & 0x7] = (led_state & (MAX_BRIGHTNESS - 1));
+
+  Leds_SetLegoFrontBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
+  Leds_SetLegoBackBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
+
+#if 0
+  uint8_t l[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  static uint8_t count = 0u;
+
+  if ((count == 0u) || (count == 14u))
+  {
+	l[0] = MAX_BRIGHTNESS;
+	l[1] = 0u;
+	l[2] = 0u;
+	l[3] = 0u;
+	l[4] = 0u;
+	l[5] = 0u;
+	l[6] = 0u;
+	l[7] = 0u;
+  }
+  else if ((count == 1u) || (count == 13u))
+  {
+	l[0] = MAX_BRIGHTNESS;
+	l[1] = MAX_BRIGHTNESS;
+	l[2] = 0u;
+	l[3] = 0u;
+	l[4] = 0u;
+	l[5] = 0u;
+	l[6] = 0u;
+	l[7] = 0u;
+  }
+  else if ((count == 2u) || (count == 12u))
+  {
+	l[0] = MAX_BRIGHTNESS;
+	l[1] = MAX_BRIGHTNESS;
+	l[2] = MAX_BRIGHTNESS;
+	l[3] = 0u;
+	l[4] = 0u;
+	l[5] = 0u;
+	l[6] = 0u;
+	l[7] = 0u;
+  }
+  else if ((count == 3u) || (count == 11u))
+  {
+	l[0] = MAX_BRIGHTNESS;
+	l[1] = MAX_BRIGHTNESS;
+	l[2] = MAX_BRIGHTNESS;
+	l[3] = MAX_BRIGHTNESS;
+	l[4] = 0u;
+	l[5] = 0u;
+	l[6] = 0u;
+	l[7] = 0u;
+  }
+  else if ((count == 4u) || (count == 10u))
+  {
+	l[0] = MAX_BRIGHTNESS;
+	l[1] = MAX_BRIGHTNESS;
+	l[2] = MAX_BRIGHTNESS;
+	l[3] = MAX_BRIGHTNESS;
+	l[4] = MAX_BRIGHTNESS;
+	l[5] = 0u;
+	l[6] = 0u;
+	l[7] = 0u;
+  }
+  else if ((count == 5u) || (count == 9u))
+  {
+	l[0] = MAX_BRIGHTNESS;
+	l[1] = MAX_BRIGHTNESS;
+	l[2] = MAX_BRIGHTNESS;
+	l[3] = MAX_BRIGHTNESS;
+	l[4] = MAX_BRIGHTNESS;
+	l[5] = MAX_BRIGHTNESS;
+	l[6] = 0u;
+	l[7] = 0u;
+  }
+  else if ((count == 6u) || (count == 8u))
+  {
+	l[0] = MAX_BRIGHTNESS;
+	l[1] = MAX_BRIGHTNESS;
+	l[2] = MAX_BRIGHTNESS;
+	l[3] = MAX_BRIGHTNESS;
+	l[4] = MAX_BRIGHTNESS;
+	l[5] = MAX_BRIGHTNESS;
+	l[6] = MAX_BRIGHTNESS;
+	l[7] = 0u;
+  }
+  else if (count == 7u)
+  {
+	l[0] = MAX_BRIGHTNESS;
+	l[1] = MAX_BRIGHTNESS;
+	l[2] = MAX_BRIGHTNESS;
+	l[3] = MAX_BRIGHTNESS;
+	l[4] = MAX_BRIGHTNESS;
+	l[5] = MAX_BRIGHTNESS;
+	l[6] = MAX_BRIGHTNESS;
+	l[7] = MAX_BRIGHTNESS;
+  }
+
+  count++;
+
+  if (count == 15u)
+  {
+	count = 0u;
+  }
+
+  Leds_SetLegoFrontBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
+  Leds_SetLegoBackBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
+#endif
+}
+
+//_____________________________________________________________________________
+
 static void SetSpeedUsingButtons(int16_t* speed)
 {
   uint8_t* buttonState;
@@ -1340,38 +1443,77 @@ static void SetTargetAccordingToDirection(int16_t* direction)
 
 //_____________________________________________________________________________
 
-static void RecordButtonsSequence(void)
+static void RecordButtonsSequence(uint8_t choice)
 {
   uint8_t* buttonState;
   uint8_t  tap = Accelerometer_GetTapSource();
   uint8_t  data = 0u;
+  int16_t command = 0;
 
-  RunCircleLedCross();
+  static int16_t toggle = 0;
 
-  buttonState = Buttons_GetStatus();
+  //RunCircleLedCross();
+  RunLegoLedAnimation();
 
-  when(buttonState[E_Button_Backward])
+  if (choice == 0)
   {
-    data |= (1 << E_Button_Backward);
-    Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+    buttonState = Buttons_GetStatus();
+
+    when(buttonState[E_Button_Backward])
+    {
+      data |= (1 << E_Button_Backward);
+      Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+    }
+
+    when(buttonState[E_Button_Left])
+    {
+      data |= (1 << E_Button_Left);
+      Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+    }
+
+    when(buttonState[E_Button_Forward])
+    {
+      data |= (1 << E_Button_Forward);
+      Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+    }
+
+    when(buttonState[E_Button_Right])
+    {
+      data |= (1 << E_Button_Right);
+      Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+    }
   }
-
-  when(buttonState[E_Button_Left])
+  else
   {
-    data |= (1 << E_Button_Left);
-    Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-  }
+    if (RC5_IsNewMessageReceived(&toggle))
+    {
+      command = RC5_GetCommand();
 
-  when(buttonState[E_Button_Forward])
-  {
-    data |= (1 << E_Button_Forward);
-    Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-  }
-
-  when(buttonState[E_Button_Right])
-  {
-    data |= (1 << E_Button_Right);
-    Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+      if (command == E_Command_UpArrow)
+      {
+        Leds_SetSingleBrightness(E_Led_Button_Forward, MAX_BRIGHTNESS);
+        data |= (1 << E_Button_Forward);
+        Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+      }
+      else if (command == E_Command_DownArrow)
+      {
+        Leds_SetSingleBrightness(E_Led_Button_Backward, MAX_BRIGHTNESS);
+        data |= (1 << E_Button_Backward);
+        Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+      }
+      else if (command == E_Command_RightArrow)
+      {
+        Leds_SetSingleBrightness(E_Led_Button_Right, MAX_BRIGHTNESS);
+        data |= (1 << E_Button_Right);
+        Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+      }
+      else if (command == E_Command_LeftArrow)
+      {
+        Leds_SetSingleBrightness(E_Led_Button_Left, MAX_BRIGHTNESS);
+        data |= (1 << E_Button_Left);
+        Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+      }
+	}
   }
 
   when(tap)
@@ -1399,9 +1541,12 @@ static void PlayMovementSequence(void)
   uint8_t  data = 0u;
   uint8_t  next = 0u;
 
+  int16_t target[3] = {0, 0, 0};
+  int16_t error[3] = {0, 0, 0};
+
   if (!Fifo8bits_IsEmpty(ButtonsSeqFifo))
   {
-    if (!MovementIsInProgress && !MovementTimerIsRunning && !StopTimerIsRunning)
+    if (!MovementIsInProgress && !MovementTimerIsRunning && !StopTimerIsRunning && !RotationIsInProgress)
     {
       if (!MovementIsStarted)
       {
@@ -1432,6 +1577,11 @@ static void PlayMovementSequence(void)
         vmVariables.target[1] = 240;
       }
 
+      if (data == (1 << E_Button_Left))
+      {
+    	//RotationIsInProgress = true;
+      }
+
       if (next == 0)
       {
         Leds_SetCircleBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u);
@@ -1451,6 +1601,10 @@ static void PlayMovementSequence(void)
     {
       TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
       StopTimerIsRunning = true;
+    }
+    else if (RotationIsInProgress)
+    {
+
     }
   }
   else if (!MovementTimerIsRunning)  // Handle the last stop delay
