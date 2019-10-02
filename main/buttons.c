@@ -226,6 +226,6 @@ static void SetThresholds(void)
 //    s_pad_init_val[button] = value;
 //    ESP_LOGI(Tag, "test init: touch pad [%d] val is %d", button, touch_value);
     //set interrupt threshold.
-    ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 12 / 13));  // for proto 1 16 / 17                // 19 / 20
+    ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 13 / 14));  // for proto 1 16 / 17                // 19 / 20
   }
 }
