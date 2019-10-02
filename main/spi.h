@@ -79,4 +79,14 @@ extern void Spi_AddDeviceVSPI(spi_device_handle_t* device, int csPin);
 extern void Spi_Write(spi_device_handle_t device, uint8_t* data, uint16_t size);
 //extern void Spi_Write(uint8_t* data, uint16_t size);
 
+//extern void Spi_WriteVSPI(spi_device_handle_t device, uint16_t* txBuffer, uint16_t size);
+extern void Spi_WriteVSPI(spi_device_handle_t device, uint16_t* txBuffer, uint16_t size);
+//extern void Spi_WriteVSPI(spi_device_handle_t device, uint8_t* txBuffer, uint8_t* rxBuffer, uint16_t size);
+
+extern void Spi_ReadVSPI(spi_device_handle_t device, uint16_t* rxBuffer, uint16_t size);
+//extern void Spi_ReadVSPI(spi_device_handle_t device, uint8_t* rxBuffer, uint16_t size);
+
+//extern uint32_t lcd_get_id(spi_device_handle_t device, uint8_t* rxBuffer, uint16_t size);
+//extern uint8_t* lcd_get_id(spi_device_handle_t device, uint8_t* rxBuffer, uint16_t size);
+
 #endif // SPI_H_
