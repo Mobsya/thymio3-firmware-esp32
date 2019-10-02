@@ -386,7 +386,7 @@ static void ReadManufacturerId(uint8_t* data);
 
 static void CalibrateZeroGyro(uint16_t number);
 
-static void CalculateAngle(T_Axis* angle, uint16_t number);
+static void CalculateAngle(int16_t* angle, uint16_t number);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -556,7 +556,7 @@ void LSM6DS3US_GetAngularPosition(T_Axis* angularPosition)
 
 //_____________________________________________________________________________
 
-void LSM6DS3US_GetAngle(T_Axis* angle)
+void LSM6DS3US_GetAngle(int16_t* angle)
 {
   uint16_t numSamples = ReadBufferedAngularPosition();
 
@@ -625,8 +625,6 @@ static void UpdateFifoMode(T_FifoMode mode)
 
     data &= FIFO_MODE_BIT_MASK;
     data |= mode;
-
-    ESP_LOGE(Tag, "SET FIFO mode: %d", data);
 
     I2C_WriteToAddress(SLAVE_ADDRESS, FIFO_CTRL5_REG_ADDRESS, &data, 1u);
   }
@@ -931,7 +929,7 @@ static void CalibrateZeroGyro(uint16_t number)
 
 //_____________________________________________________________________________
 
-static void CalculateAngle(T_Axis* angle, uint16_t number)
+static void CalculateAngle(int16_t* angle, uint16_t number)
 {
   int16_t sum[3] = {0, 0, 0};
 
@@ -944,11 +942,8 @@ static void CalculateAngle(T_Axis* angle, uint16_t number)
 
     GyroCorr[i] = (sum[i] - (number * ZeroGyro[i]));
     teta[i] += ((Mul * GyroCorr[i]) / Div);
+    angle[i] = teta[i];
   }
-
-  angle->X = teta[0];
-  angle->Y = teta[1];
-  angle->Z = teta[2];
 }
 
 //-----------------------------------------------------------------------------

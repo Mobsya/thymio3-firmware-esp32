@@ -83,7 +83,7 @@ extern void LSM6DS3US_InitGyroscope(void);
 //! \return    None
 extern void LSM6DS3US_GetAngularPosition(T_Axis* angularPosition);
 
-extern void LSM6DS3US_GetAngle(T_Axis* angle);
+extern void LSM6DS3US_GetAngle(int16_t* angle);
 
 extern void LSM6DS3US_ResetAngle(void);
 

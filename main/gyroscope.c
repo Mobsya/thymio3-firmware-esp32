@@ -18,8 +18,6 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <string.h>
-
 #include "esp_log.h"
 
 #include "gyroscope.h"
@@ -46,8 +44,8 @@
 static const char* Tag = "gyroscope";
 
 static T_Axis AngularPosition;
-static T_Axis Angle;
-static T_Axis Angle_deg;
+static int16_t Angle[3];
+static int16_t Angle_deg[3];
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -85,19 +83,16 @@ void Gyroscope_GetAngularPosition(void)
 
 void Gyroscope_ReadAngle(void)
 {
-  LSM6DS3US_GetAngle(&Angle);
+  LSM6DS3US_GetAngle(Angle);
 
-  vmVariables.angle[0] = Angle.X;
-  vmVariables.angle[1] = Angle.Y;
-  vmVariables.angle[2] = Angle.Z;
+  for (uint8_t index = 0u; index < 3u; index++)
+  {
+    vmVariables.angle[index] = Angle[index];
 
-  Angle_deg.X = ((Angle.X * 90) / 16384);
-  Angle_deg.Y = ((Angle.Y * 90) / 16384);
-  Angle_deg.Z = ((Angle.Z * 90) / 16384);
+    Angle_deg[index] = ((Angle[index] * 90) / 16384);
 
-  vmVariables.angle_deg[0] = Angle_deg.X;
-  vmVariables.angle_deg[1] = Angle_deg.Y;
-  vmVariables.angle_deg[2] = Angle_deg.Z;
+    vmVariables.angle_deg[index] = Angle_deg[index];
+  }
 
   //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", vmVariables.angle_deg[0], vmVariables.angle_deg[1], vmVariables.angle_deg[2]);
 
@@ -106,9 +101,9 @@ void Gyroscope_ReadAngle(void)
 
 //_____________________________________________________________________________
 
-T_Axis Gyroscope_GetAngle(void)
+int16_t Gyroscope_GetAngleZ(void)
 {
-  return Angle_deg;
+  return Angle_deg[2];
 }
 
 //_____________________________________________________________________________

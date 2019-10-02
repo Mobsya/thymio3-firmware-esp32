@@ -53,12 +53,28 @@ extern void Gyroscope_Init(void);
 //! \return    None
 extern void Gyroscope_GetAngularPosition(void);
 
+//! \brief     Read the angle
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    None
 extern void Gyroscope_ReadAngle(void);
 
-extern T_Axis Gyroscope_GetAngle(void);
+//! \brief     Get the angle on Z-axis
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    Angle on the Z-axis
+extern int16_t Gyroscope_GetAngleZ(void);
 
+//! \brief     Reset the angle
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    None
 extern void Gyroscope_ResetAngle(void);
 
+//! \brief     Read the calibration
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    None
 extern void Gyroscope_ResetCalibration(void);
 
 #endif // GYROSCOPE_H_
