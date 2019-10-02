@@ -40,22 +40,26 @@
 #include "file_system.h"
 #include "gpio.h"
 #include "i2c.h"
-#include "ir_receiver.h"
 #include "leds.h"
 #include "mode.h"
 #include "mp3.h"
 #include "power.h"
+#include "rc5.h"
 #include "sensors.h"
 #include "sound.h"
 //#include "sound_data.h"
 #include "test.h"
 #include "timer_sw.h"
+#include "tracking.h"
 //#include "uart.h"
 #include "wifi.h"
 #include "wifi_update.h"
 
 #include "i2s.h"
 #include "stm32_i2c.h"
+
+#include "tcp_server.h"
+#include "uart.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -93,6 +97,8 @@ int app_main(void)
 // Initialization
 //*****************************************************************************
 
+  esp_log_level_set("*", ESP_LOG_INFO);
+
   ESP_LOGI(Tag, "*********************");
   ESP_LOGI(Tag, "** Initializations **");
   ESP_LOGI(Tag, "*********************");
@@ -118,40 +124,39 @@ int app_main(void)
 
   Leds_Init();
 
-//  Buttons_Init();
+  Buttons_Init();
 
   //I2S_Init();
-//  Sound_Init();
+  //Sound_Init();
   //Sound_Process();
   //I2S_Process();
-
   //I2S_Record();
   //Sound_Replay();
 
-  //IRReceiver_Init();
+  RC5_Init();
 
   I2C_Init();
   Sensors_Init();
   Comm_Init();
 
   Fifo8bits_Init();
-  Fifo16bits_Init();
-  FifoFloat_Init();
+  //Fifo16bits_Init();
+  //FifoFloat_Init();
 
   //Test_Run();
 
   Behavior_Init();
 
-  Behavior_Enable(B_ALWAYS);  // FIXME Replace by Mode_Init()
+  //Behavior_Enable(B_ALWAYS);  // FIXME Replace by Mode_Init()
 
-//  Mode_Init();
-//  Mode_InitVM();
+  Mode_Init();
+  Mode_InitVM();
 
   WIFI_Init();
+  //AsebaESP32_Init();
 
   while (!WIFI_IsConnected())
   {}
-
 
 //*****************************************************************************
 // Start the tasks
@@ -163,27 +168,45 @@ int app_main(void)
 
   ESP_LOGI(Tag, "OTA");
 
+  //Create semaphores to synchronize
+  //sync_spin_task = xSemaphoreCreateCounting(1, 0);
+  //sync_stats_task = xSemaphoreCreateBinary();
+
+  //Tracking_Start();
+
   WIFI_Start();
   AsebaESP32_Start();
 
   //Test_StartDebugging();
   //I2S_StartReading();
-
-  //Codec_StartMP3Player(0);
-
-
   //Sound_StartProcessing();
+  //Sound_StartAcquisition();
+  //Codec_StartMP3Player(2);
+
+  //Codec_StartMP3Player(2);
+  //Codec_StartWAVRecorder(0);
+  //Codec_StartWAVPlayer(0);
 
   Behavior_Start();
 
-//  IRReceiver_Start();
+  RC5_Start();
 
-  //Sensors_Start();
+  Sensors_Start();
   Comm_Start();
 
-  //Buttons_Start();
   Leds_Start();
-  //Sound_StartAcquisition();
+
+  //while (!TCPServer_IsTestFlagOk())
+  //{}
+
+  //ESP_LOGI(Tag, "All tasks are started");
+  //UART_Flush();
+
+  //Codec_StartMP3Player(2);
+  //Codec_StartWAVRecorder(0);
+  //Codec_StartWAVPlayer(0);
+  //Codec_StartWAVRecorder(0);
+  //Codec_StartWAVPlayer(0);
 
   return 0;
 }
