@@ -35,6 +35,7 @@
 #include "buttons.h"
 #include "codec.h"
 #include "fifo.h"
+#include "gyroscope.h"
 #include "leds.h"
 #include "rc5.h"
 #include "tcp_server.h"
@@ -1541,8 +1542,8 @@ static void PlayMovementSequence(void)
   uint8_t  data = 0u;
   uint8_t  next = 0u;
 
-  int16_t target[3] = {0, 0, 0};
-  int16_t error[3] = {0, 0, 0};
+  static int16_t angleTarget = 0;
+  int16_t output = 0;
 
   if (!Fifo8bits_IsEmpty(ButtonsSeqFifo))
   {
@@ -1579,7 +1580,17 @@ static void PlayMovementSequence(void)
 
       if (data == (1 << E_Button_Left))
       {
-    	//RotationIsInProgress = true;
+        ESP_LOGI(Tag, "LEFT");
+        RotationIsInProgress = true;
+        angleTarget = 90;
+        Gyroscope_ResetAngle();
+      }
+
+      if (data == (1 << E_Button_Right))
+      {
+        RotationIsInProgress = true;
+        angleTarget = -90;
+        Gyroscope_ResetAngle();
       }
 
       if (next == 0)
@@ -1596,6 +1607,16 @@ static void PlayMovementSequence(void)
       {
         Leds_SetCircleBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
       }
+
+      if (next == (1 << E_Button_Left))
+      {
+        Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u);
+      }
+
+      if (next == (1 << E_Button_Right))
+      {
+        Leds_SetCircleBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u);
+      }
     }
     else if (MovementIsInProgress && !MovementTimerIsRunning && !StopTimerIsRunning)
     {
@@ -1604,11 +1625,19 @@ static void PlayMovementSequence(void)
     }
     else if (RotationIsInProgress)
     {
+      output = AngleController_Update(angleTarget);
 
+      if (output == 0)
+      {
+        RotationIsInProgress = false;
+
+        ESP_LOGI(Tag, "ROTATION FINISHED");
+      }
     }
   }
-  else if (!MovementTimerIsRunning)  // Handle the last stop delay
+  else if (!MovementTimerIsRunning || !RotationIsInProgress)  // Handle the last stop delay
   {
+    ESP_LOGI(Tag, "FINISHED");
     TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
     StopTimerIsRunning = true;
 

@@ -64,7 +64,7 @@ void AngleController_Init(void)
 
 //_____________________________________________________________________________
 
-void AngleController_Update(int16_t target)
+int16_t AngleController_Update(int16_t target)
 {
   int16_t measure = Gyroscope_GetAngleZ();
   int16_t error = (target - measure);
@@ -83,4 +83,6 @@ void AngleController_Update(int16_t target)
   vmVariables.target[1] = output;
 
   //ESP_LOGI(Tag, "error: %d, measure: %d, output: %d", error, measure, output);
+
+  return output;
 }
