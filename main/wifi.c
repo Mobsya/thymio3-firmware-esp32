@@ -18,6 +18,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
+#include <string.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 
@@ -34,9 +36,15 @@
 
 #include "ota_update.h"
 #include "tcp_server.h"
-#include "wifi_update.h"
+//#include "wifi_update.h"
 
 #include "aseba_esp32.h"
+
+#include "behavior.h"
+#include "comm.h"
+#include "leds.h"
+#include "rc5.h"
+#include "sensors.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -127,6 +135,8 @@ static void RunWifiTask(void* arg);
 
 static void RunUpdateTask(void* arg);
 
+static void RunDebugTask(void* arg);
+
 static esp_err_t EventHandler(void* ctx, system_event_t* event);
 
 static int NetworkReceive(int s, char* buf, int maxLen, int* actualLen);
@@ -195,9 +205,7 @@ void WIFI_Init(void)
   //WIFI_WaitForIP();
 //#endif
 
-  //xTaskCreate(&RunUpdateTask, "NetworkTask", 32768, NULL, 5, NULL);
-
-  OtaUpdate_Init();
+  //OtaUpdate_Init();
 
   ESP_LOGI(Tag, "WIFI is initialized");
 }
@@ -232,7 +240,7 @@ void WIFI_Start(void)
     1);           // Core where the task should run
 //#endif
 
-//#if 0
+#if 0
   xTaskCreatePinnedToCore(
     RunUpdateTask,  // Function to implement the task
     "update",       // Name of the task
@@ -241,7 +249,18 @@ void WIFI_Start(void)
     1,              // Priority of the task
     NULL,           // Task handle
     1);             // Core where the task should run
-//#endif
+#endif
+
+#if 0
+  xTaskCreatePinnedToCore(
+    RunDebugTask,  // Function to implement the task
+    "wifi",       // Name of the task
+    4096,         // Stack size in words
+    NULL,         // Task input parameter
+    1,            // Priority of the task
+    NULL,         // Task handle
+    1);           // Core where the task should run
+#endif
 }
 
 //_____________________________________________________________________________
@@ -466,10 +485,42 @@ static void RunUpdateTask(void* arg)
 
 //_____________________________________________________________________________
 
+static void RunDebugTask(void* arg)
+{
+  ESP_LOGI(Tag, "DebugTask");
+
+  wifi_ap_record_t wifiAPdata;
+  //wifi_sta_info_t wifiSTAdata;
+  wifi_sta_list_t wifiSTAdata;
+
+  while (1)
+  {
+    esp_wifi_sta_get_ap_info(&wifiAPdata);
+    esp_wifi_ap_get_sta_list(&wifiSTAdata);
+    //if ((esp_wifi_sta_get_ap_info(&wifiAPdata) == ESP_OK) && (esp_wifi_ap_get_sta_list(&wifiSTAdata) == ESP_OK))
+    {
+      //ESP_LOGI(Tag, "RSSI AP = %d, RSSI STA = %d", wifiAPdata.rssi, wifiSTAdata.sta.rssi);
+      ESP_LOGI(Tag, "RSSI AP = %d", wifiAPdata.rssi);
+      ESP_LOGI(Tag, "RSSI STA = %d", wifiSTAdata.sta[0].rssi);
+      ESP_LOGI(Tag, "RSSI STA = %d", wifiSTAdata.sta[1].rssi);
+      ESP_LOGI(Tag, "RSSI STA = %d", wifiSTAdata.sta[2].rssi);
+      ESP_LOGI(Tag, "RSSI STA = %d", wifiSTAdata.sta[3].rssi);
+      ESP_LOGI(Tag, "RSSI STA = %d", wifiSTAdata.sta[4].rssi);
+      ESP_LOGI(Tag, "RSSI STA = %d", wifiSTAdata.sta[5].rssi);
+      ESP_LOGI(Tag, "RSSI STA = %d", wifiSTAdata.sta[6].rssi);
+      ESP_LOGI(Tag, "RSSI STA = %d", wifiSTAdata.sta[7].rssi);
+      ESP_LOGI(Tag, "RSSI STA = %d", wifiSTAdata.sta[8].rssi);
+      ESP_LOGI(Tag, "RSSI STA = %d", wifiSTAdata.sta[9].rssi);
+    }
+
+    vTaskDelay(1000 / portTICK_RATE_MS);
+  }
+}
+
+//_____________________________________________________________________________
+
 static esp_err_t EventHandler(void* ctx, system_event_t* event)
 {
-  uint16_t apCount = 0;
-
   switch (event->event_id)
   {
     case SYSTEM_EVENT_STA_START:
@@ -621,6 +672,15 @@ static void ProcessMessage(const char* message, int messageLen, char* responseBu
     if (message[1] == '[')
     {
       ESP_LOGI(Tag, "ProcessMessage: OTA start");
+
+      // Delete useless FreeRTOS tasks
+      Leds_Stop();
+      RC5_Stop();
+      Behavior_Stop();
+      Sensors_Stop();
+      Comm_Stop();
+      ESP_LOGI(Tag, "Delete the tasks");
+
       result = OtaUpdate_Start();
     }
     else if (message[1] == ']')
