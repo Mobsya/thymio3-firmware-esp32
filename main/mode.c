@@ -1623,7 +1623,7 @@ static void PlayMovementSequence(void)
       TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
       StopTimerIsRunning = true;
     }
-    else if (RotationIsInProgress)
+    else if (!MovementIsInProgress && !MovementTimerIsRunning && !StopTimerIsRunning && RotationIsInProgress)
     {
       output = AngleController_Update(angleTarget);
 
@@ -1635,7 +1635,7 @@ static void PlayMovementSequence(void)
       }
     }
   }
-  else if (!MovementTimerIsRunning || !RotationIsInProgress)  // Handle the last stop delay
+  else if (!MovementTimerIsRunning && !RotationIsInProgress)  // Handle the last stop delay
   {
     ESP_LOGI(Tag, "FINISHED");
     TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
