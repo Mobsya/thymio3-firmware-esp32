@@ -26,6 +26,7 @@
 #include "aseba.h"
 
 #include "behavior.h"
+#include "board.h"
 #include "comm.h"
 #include "leds.h"
 #include "sensors.h"
@@ -56,6 +57,8 @@
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
+
+xSemaphoreHandle I2CMutex;
 
 //-----------------------------------------------------------------------------
 // Private Data
@@ -143,7 +146,9 @@ void Aseba_UpdateGroundIRLedsBrightness(uint16_t l0, uint16_t l1)
 
 void update_aseba_variables_write(void)
 {
-  if (Comm_IsBusAvailable() && Sensors_IsBusAvailable())
+  xSemaphoreTake(I2CMutex, portMAX_DELAY);
+
+  //if (Comm_IsBusAvailable() && Sensors_IsBusAvailable())
   {
     //UpdateLedsGroundIR();
 
@@ -155,9 +160,11 @@ void update_aseba_variables_write(void)
 
     //UpdateTimers();
   }
+
+  xSemaphoreGive(I2CMutex);
 //#if 0
   UpdateTimers();
-
+#if 0
   UpdateLedsCircle();
 
   UpdateLedsLegoFront();
@@ -171,7 +178,7 @@ void update_aseba_variables_write(void)
   UpdateLedBackLeft();
 
   UpdateLedBackRight();
-//#endif
+#endif
 }
 
 //_____________________________________________________________________________

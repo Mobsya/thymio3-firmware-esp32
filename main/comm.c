@@ -45,6 +45,8 @@
 // Exported Global Data
 //-----------------------------------------------------------------------------
 
+xSemaphoreHandle I2CMutex;
+
 //-----------------------------------------------------------------------------
 // Private Data
 //-----------------------------------------------------------------------------
@@ -54,8 +56,6 @@ static const char* Tag = "comm";
 static TaskHandle_t CommTask = NULL;
 
 static bool TaskIsStarted = false;
-
-static bool BusIsAvailable = false;
 
 //static spi_device_handle_t Microcontroller;
 
@@ -85,8 +85,6 @@ void Comm_Init(void)
 
   TaskIsStarted = false;
 
-  BusIsAvailable = false;
-
   ESP_LOGI(Tag, "Communication is initialized");
 }
 
@@ -99,7 +97,7 @@ void Comm_Start(void)
     "comm",       // Name of the task
     2048,         // Stack size in words
     NULL,         // Task input parameter
-    3,            // Priority of the task
+    4,            // Priority of the task
     &CommTask,    // Task handle
     0);           // Core where the task should run
 
@@ -121,13 +119,6 @@ void Comm_Stop(void)
 
 //_____________________________________________________________________________
 
-bool Comm_IsBusAvailable(void)
-{
-  return BusIsAvailable;
-}
-
-//_____________________________________________________________________________
-
 static void RunCommTask(void* arg)
 {
   static uint8_t counter = 0;
@@ -140,23 +131,22 @@ static void RunCommTask(void* arg)
 
   while (1)
   {
-    if (I2C_GetBusStatus() == E_I2CBus_Available)
-    {
-      I2C_UpdateBusStatus(E_I2CBus_Busy);
-      BusIsAvailable = false;
+    xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
-      //STM32_Communicate();
+    //STM32_Communicate();
 
-      //STM32_CheckId();
-      STM32_ReadStatus();
-      //STM32_ReadBatteryVoltage();
-      //STM32_ReadProxIRValue();
-      //STM32_ReadGroundIRValue();
-      //STM32_ReadMicrophoneVoltage();
-      //STM32_ReadInducedVoltage();
-      //STM32_ReadBatteryMotorVoltage();
-      //STM32_ReadMotorCurrent();
-      //STM32_ReadPwmDutyCycle();
+    //STM32_CheckId();
+    STM32_ReadStatus();
+//#if 0
+    STM32_ReadBatteryVoltage();
+    STM32_ReadProxIRValue();
+    STM32_ReadGroundIRValue();
+    //STM32_ReadMicrophoneVoltage();
+    STM32_ReadInducedVoltage();
+    STM32_ReadBatteryMotorVoltage();
+    STM32_ReadMotorCurrent();
+    STM32_ReadPwmDutyCycle();
+//#endif
 
     //Spi_WriteVSPI(Microcontroller, tx, 5);
 
@@ -182,18 +172,14 @@ static void RunCommTask(void* arg)
     //ESP_LOGI(Tag, "%d, %d, %d, %d, %d", rx[0], rx[1], rx[2], rx[3], rx[4]);
     //Spi_ReadVSPI();
 //#if 0
-      if ((counter % 5u) == 0u)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 20 [ms])
-      {
-        Power_HandlePowerModeRequest();
-      }
-//#endif
-      counter++;
-
-      BusIsAvailable = true;
-
-      I2C_UpdateBusStatus(E_I2CBus_Available);
-      portYIELD();
+    if ((counter % 5u) == 0u)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 20 [ms])
+    {
+      Power_HandlePowerModeRequest();
     }
+//#endif
+    counter++;
+
+    xSemaphoreGive(I2CMutex);
 
     vTaskDelay(20 / portTICK_PERIOD_MS);
   }

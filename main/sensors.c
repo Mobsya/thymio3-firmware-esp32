@@ -48,6 +48,8 @@
 // Exported Global Data
 //-----------------------------------------------------------------------------
 
+xSemaphoreHandle I2CMutex;
+
 //-----------------------------------------------------------------------------
 // Private Data
 //-----------------------------------------------------------------------------
@@ -57,8 +59,6 @@ static const char* Tag = "sensors";
 static TaskHandle_t SensorsTask = NULL;
 
 static bool TaskIsStarted = false;
-
-static bool BusIsAvailable = false;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -86,9 +86,9 @@ void Sensors_Init(void)
   // Else, it must be done in the main.c
   //I2C_Init();
 
-  BusIsAvailable = false;
+  I2CMutex = xSemaphoreCreateMutex();
 
-  Codec_Init();
+  //Codec_Init();
 
   ColorSensor_Init();
   Accelerometer_Init();
@@ -127,13 +127,6 @@ void Sensors_Stop(void)
 
 //_____________________________________________________________________________
 
-bool Sensors_IsBusAvailable(void)
-{
-  return BusIsAvailable;
-}
-
-//_____________________________________________________________________________
-
 static void RunSensorsTask(void* arg)
 {
   ESP_LOGI(Tag, "Start Sensors Task");
@@ -142,25 +135,16 @@ static void RunSensorsTask(void* arg)
   {
     Buttons_UpdateStatus();
 
+    xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
-    if (I2C_GetBusStatus() == E_I2CBus_Available)
-    {
-      I2C_UpdateBusStatus(E_I2CBus_Busy);
-//#if 0
-      BusIsAvailable = false;
+    // Every 20 [ms], 50 [Hz] (vTaskDelay = 20 [ms])
+    Accelerometer_ReadTapSource();
+    Accelerometer_GetAcceleration();
+    //Gyroscope_GetAngularPosition();
+    Gyroscope_ReadAngle();
+    ColorSensor_ReadColor();
 
-      // Every 20 [ms], 50 [Hz] (vTaskDelay = 20 [ms])
-      Accelerometer_ReadTapSource();
-      Accelerometer_GetAcceleration();
-      Gyroscope_GetAngularPosition();
-      ColorSensor_ReadColor();
-//#endif
-      BusIsAvailable = true;
-
-      I2C_UpdateBusStatus(E_I2CBus_Available);
-      portYIELD();
-    }
-
+    xSemaphoreGive(I2CMutex);
 
     vTaskDelay(20 / portTICK_PERIOD_MS);
   }
