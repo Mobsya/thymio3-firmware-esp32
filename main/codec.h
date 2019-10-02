@@ -47,6 +47,8 @@
 //! \return    None
 extern void Codec_Init(void);
 
+extern void Codec_SetMP3PlayerInfo(int number);
+
 //! \brief     Start the MP3 player task
 //! \pre       None
 //! \param     None

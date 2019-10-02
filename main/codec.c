@@ -124,6 +124,12 @@ extern const uint8_t chicken_mp3_end[]     asm("_binary_chicken_mp3_end");
 extern const uint8_t harry_mp3_start[]     asm("_binary_harry_mp3_start");
 extern const uint8_t harry_mp3_end[]       asm("_binary_harry_mp3_end");
 
+extern const uint8_t blop_mp3_start[]     asm("_binary_blop_mp3_start");
+extern const uint8_t blop_mp3_end[]       asm("_binary_blop_mp3_end");
+
+extern const uint8_t tick_mp3_start[]     asm("_binary_tick_mp3_start");
+extern const uint8_t tick_mp3_end[]       asm("_binary_tick_mp3_end");
+
 //-----------------------------------------------------------------------------
 // Private Data
 //-----------------------------------------------------------------------------
@@ -217,7 +223,7 @@ int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t 
 
 void Codec_Init(void)
 {
-  GenerateMasterClock();
+  //GenerateMasterClock();
 
   InitSPIFFS();
 
@@ -243,10 +249,29 @@ void Codec_Init(void)
 void Codec_StartMP3Player(int number)
 {
   Number = number;
+#if 0
+  if (!MP3PlayerIsBusy)
+  {
+    MP3PlayerIsBusy = true;
 
+    xTaskCreatePinnedToCore(
+      RunMP3PlayerTask,  // Function to implement the task
+      "player",          // Name of the task
+      4096,              // Stack size in words
+      NULL,              // Task input parameter
+      0,                 // Priority of the task
+      &MP3PlayerTask,    // Task handle
+      1);                // Core where the task should run
+  }
+#endif
+
+//#if 0
   if (MP3PlayerIsBusy)
   {
     StopMP3Player();
+    //audio_pipeline_stop(MP3PlayerPipeline);
+    //audio_pipeline_wait_for_stop(MP3PlayerPipeline);
+    //MP3PlayerIsBusy = false;
   }
 
   MP3PlayerIsBusy = true;
@@ -261,6 +286,7 @@ void Codec_StartMP3Player(int number)
     1,                 // Priority of the task
     &MP3PlayerTask,    // Task handle
     0);                // Core where the task should run
+//#endif
 }
 
 //_____________________________________________________________________________
@@ -681,13 +707,14 @@ static void RunWAVPlayerTask(void* arg)
         msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (((int) msg.data == AEL_STATUS_STATE_STOPPED) ||
         ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
     {
+      StopWAVPlayer();
       break;
     }
 
   }
 
-  ESP_LOGI(Tag, "[ 6 ] Stop audio_pipeline");
-  StopWAVPlayer();
+  //ESP_LOGI(Tag, "[ 6 ] Stop audio_pipeline");
+  //StopWAVPlayer();
 }
 
 //_____________________________________________________________________________
@@ -714,7 +741,7 @@ static void StopMP3Player(void)
   audio_element_deinit(mp3_decoder);
 
   MP3PlayerIsBusy = false;
-//  portYIELD();
+  //portYIELD();
   vTaskDelete(MP3PlayerTask);
 }
 
@@ -837,6 +864,16 @@ static void SelectFile(int16_t index)
     case 2:
       File.Start = harry_mp3_start;
       File.End   = harry_mp3_end;
+      break;
+
+    case 3:
+      File.Start = blop_mp3_start;
+      File.End   = blop_mp3_end;
+      break;
+
+    case 4:
+      File.Start = tick_mp3_start;
+      File.End   = tick_mp3_end;
       break;
 
     default:
