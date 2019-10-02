@@ -228,6 +228,16 @@ void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
 
 //_____________________________________________________________________________
 
+void Leds_SetButtonsBrightness(uint8_t forward, uint8_t right, uint8_t backward, uint8_t left)
+{
+  Leds_SetSingleBrightness(E_Led_Button_Forward, forward);
+  Leds_SetSingleBrightness(E_Led_Button_Right, right);
+  Leds_SetSingleBrightness(E_Led_Button_Backward, backward);
+  Leds_SetSingleBrightness(E_Led_Button_Left, left);
+}
+
+//_____________________________________________________________________________
+
 void Leds_SetLegoFrontBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
 		                         uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
 {

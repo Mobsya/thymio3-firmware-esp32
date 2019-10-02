@@ -438,10 +438,7 @@ void set_buttons_leds(AsebaVMState* vm)
 
   Behavior_Disable(B_LEDS_BUTTON);
 
-  Leds_SetSingleBrightness(E_Led_Button_Forward, l1);
-  Leds_SetSingleBrightness(E_Led_Button_Right, l2);
-  Leds_SetSingleBrightness(E_Led_Button_Backward, l3);
-  Leds_SetSingleBrightness(E_Led_Button_Left, l4);
+  Leds_SetButtonsBrightness(l1, l2, l3, l4);
 }
 
 //_____________________________________________________________________________

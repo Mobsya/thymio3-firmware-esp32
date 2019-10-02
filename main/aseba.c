@@ -203,6 +203,7 @@ void AsebaVMResetCB(AsebaVMState* vm)
   Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
   Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
   Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  Leds_SetButtonsBrightness(0u, 0u, 0u, 0u);
 
   //Leds_SetSingleBrightness(E_Led_Battery_1, MAX_BRIGHTNESS);
 

@@ -142,10 +142,19 @@ extern void Leds_SetSingleBrightness(T_Led led, uint8_t brightness);
 
 //! \brief     Set the brightness of each circle LED
 //! \pre       First initialize the LEDs
-//! \param     l0 to l7 - LEDs associated with the circle
+//! \param     l0 to l7 - Brightness of the LEDs associated with the circle
 //! \return    None
 extern void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
 		                             uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7);
+
+//! \brief     Set the brightness of each buttons LED
+//! \pre       First initialize the LEDs
+//! \param     forward - Brightness of the LED associated with the forward button
+//! \param     right - Brightness of the LED associated with the right button
+//! \param     backward - Brightness of the LED associated with the backward button
+//! \param     left - Brightness of the LED associated with the left button
+//! \return    None
+extern void Leds_SetButtonsBrightness(uint8_t forward, uint8_t right, uint8_t backward, uint8_t left);
 
 //! \brief     Set the brightness of each front Lego LED
 //! \pre       First initialize the LEDs
