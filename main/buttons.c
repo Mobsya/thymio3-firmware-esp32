@@ -58,6 +58,7 @@ static const char* Tag = "buttons";
 static touch_pad_t Buttons_Table[BUTTONS_NUM];
 
 static uint8_t ButtonStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
+static uint16_t ButtonRaw[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
 //static uint32_t s_pad_init_val[BUTTONS_NUM];
 
 static uint8_t ButtonBehaviorStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
@@ -90,7 +91,7 @@ void Buttons_Init(void)
 
   // Set reference voltage for charging/discharging
   // For most usage scenarios, we recommend using the following combination:
-  // the high reference valtage will be 2.7V - 1V = 1.7V, The low reference voltage will be 0.5V.
+  // the high reference voltage will be 2.7V - 1V = 1.7V, The low reference voltage will be 0.5V.
   touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
 
   // Init touch pad IO
@@ -120,33 +121,57 @@ uint8_t* Buttons_GetStatus(void)
 
 //_____________________________________________________________________________
 
+void Buttons_ClearStatus(void)
+{
+  for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
+  {
+    ButtonBehaviorStatus[button] = 0;
+  }
+}
+
+//_____________________________________________________________________________
+
 void Buttons_UpdateStatus(void)
 {
-  static uint8_t oldButtonStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
+  //static uint8_t oldButtonStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
 
   for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
   {
+    //touch_pad_read_raw_data(Buttons_Table[button], &ButtonRaw[button]);
+    touch_pad_read_filtered(Buttons_Table[button], &ButtonRaw[button]);
+
+    //if (button == 1)
+    {
+      //ESP_LOGI(Tag, "COUCOU Raw%d %d", button, ButtonRaw[button]);
+    }
+
     if (ButtonStatus[button] != 0u)
     {
+      if (button == 0)  // Backward
+      {
+        ESP_LOGI(Tag, "SALUT Raw%d %d", button, ButtonRaw[button]);
+      }
+      //ESP_LOGI(Tag, "COUCOU Raw%d %d", button, ButtonRaw[button]);
       //ESP_LOGI(Tag, "COUCOU T%d activated!", Buttons_Table[index]);
 
       // Wait a while for the pad being released
 //      vTaskDelay(200 / portTICK_PERIOD_MS);
       ButtonBehaviorStatus[button] = 1;
       ButtonStatus[button] = 0u;
-      oldButtonStatus[button] = 1u;
+      //oldButtonStatus[button] = 1u;
     }
-    else if (oldButtonStatus[button] == 0)
+    //else if (oldButtonStatus[button] == 0)
     {
-      ButtonBehaviorStatus[button] = 0;
-      oldButtonStatus[button] = 0u;
+      //ButtonBehaviorStatus[button] = 0;
+      //oldButtonStatus[button] = 0u;
     }
-    else
+    //else
     {
-      oldButtonStatus[button] = 0u;
+      //oldButtonStatus[button] = 0u;
     }
 
     vmVariables.buttons_state[button] = (int16_t)ButtonBehaviorStatus[button];
+    vmVariables.buttons[button] = (int16_t)ButtonRaw[button];
   }
 }
 
@@ -201,6 +226,6 @@ static void SetThresholds(void)
 //    s_pad_init_val[button] = value;
 //    ESP_LOGI(Tag, "test init: touch pad [%d] val is %d", button, touch_value);
     //set interrupt threshold.
-    ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 2 / 3));
+    ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 12 / 13));  // for proto 1 16 / 17                // 19 / 20
   }
 }
