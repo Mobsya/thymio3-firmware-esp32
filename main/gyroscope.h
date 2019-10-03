@@ -47,11 +47,11 @@
 //! \return    None
 extern void Gyroscope_Init(void);
 
-//! \brief     Get the angular position
+//! \brief     Get the angular velocity
 //! \pre       First initialize the gyroscope
 //! \param     None
 //! \return    None
-extern void Gyroscope_GetAngularPosition(void);
+extern void Gyroscope_GetAngularVelocity(void);
 
 //! \brief     Read the angle
 //! \pre       First initialize the gyroscope

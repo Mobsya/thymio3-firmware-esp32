@@ -43,7 +43,7 @@
 
 static const char* Tag = "gyroscope";
 
-static T_Axis AngularPosition;
+static T_Axis AngularVelocity;
 static int16_t Angle[3];
 static int16_t Angle_deg[3];
 
@@ -68,13 +68,13 @@ void Gyroscope_Init(void)
 
 //_____________________________________________________________________________
 
-void Gyroscope_GetAngularPosition(void)
+void Gyroscope_GetAngularVelocity(void)
 {
-  LSM6DS3US_GetAngularPosition(&AngularPosition);
+  LSM6DS3US_GetAngularVelocity(&AngularVelocity);
 
-  vmVariables.gyro[0] = AngularPosition.X;
-  vmVariables.gyro[1] = AngularPosition.Y;
-  vmVariables.gyro[2] = AngularPosition.Z;
+  vmVariables.gyro[0] = AngularVelocity.X;
+  vmVariables.gyro[1] = AngularVelocity.Y;
+  vmVariables.gyro[2] = AngularVelocity.Z;
 
   //SET_EVENT(EVENT_GYRO);
 }

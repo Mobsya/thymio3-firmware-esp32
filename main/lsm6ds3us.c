@@ -313,12 +313,12 @@ static void ReadAcceleration(T_Axis* acceleration);
 //! \return    None
 static void ReadTapSource(uint8_t* source);
 
-//! \brief     Read the angular position
+//! \brief     Read the angular velocity
 //! \pre       None
 //! \param     None
 //! \return    None
 //! \image     html ReadAngle.svg
-static void ReadAngularPosition(T_Axis* angularPosition);
+static void ReadAngularVelocity(T_Axis* angularVelocity);
 
 //! \brief     Read the buffered angular position
 //! \pre       None
@@ -549,9 +549,9 @@ void LSM6DS3US_InitGyroscope(void)
 
 //_____________________________________________________________________________
 
-void LSM6DS3US_GetAngularPosition(T_Axis* angularPosition)
+void LSM6DS3US_GetAngularVelocity(T_Axis* angularVelocity)
 {
-  ReadAngularPosition(angularPosition);
+  ReadAngularVelocity(angularVelocity);
 }
 
 //_____________________________________________________________________________
@@ -754,17 +754,17 @@ static void EnableGyroDataReadyInterrupt(T_Interrupt interrupt)
 
 //_____________________________________________________________________________
 
-static void ReadAngularPosition(T_Axis* angularPosition)
+static void ReadAngularVelocity(T_Axis* angularVelocity)
 {
-  uint8_t position[6u];
+  uint8_t velocity[6u];
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, OUTX_L_G_REG_ADDRESS, position, 6u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, OUTX_L_G_REG_ADDRESS, velocity, 6u);
 
-  angularPosition->X = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
-  angularPosition->Y = (int16_t)((uint16_t)position[3u] << 8u) | position[2u];
-  angularPosition->Z = (int16_t)((uint16_t)position[5u] << 8u) | position[4u];
+  angularVelocity->X = (int16_t)((uint16_t)velocity[1u] << 8u) | velocity[0u];
+  angularVelocity->Y = (int16_t)((uint16_t)velocity[3u] << 8u) | velocity[2u];
+  angularVelocity->Z = (int16_t)((uint16_t)velocity[5u] << 8u) | velocity[4u];
 
-  //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", angularPosition->X, angularPosition->Y, angularPosition->Z);
+  //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", angularVelocity->X, angularVelocity->Y, angularVelocity->Z);
 }
 
 //_____________________________________________________________________________
