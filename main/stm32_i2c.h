@@ -55,7 +55,7 @@ typedef struct
 //-----------------------------------------------------------------------------
 
 extern void STM32_UpdateProxIRLedsBrightness(uint16_t l0, uint16_t l1, uint16_t l2, uint16_t l3,
-                                         uint16_t l4, uint16_t l5, uint16_t l6, uint16_t l7);
+    uint16_t l4, uint16_t l5, uint16_t l6, uint16_t l7);
 
 extern void STM32_UpdateMicrophoneLedBrightness(uint16_t brightness);
 //! \brief     Update the settings

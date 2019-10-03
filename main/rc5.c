@@ -56,14 +56,17 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
-typedef struct {
-    union {
-        struct {
-            uint16_t duration :15;
-            uint16_t level :1;
-        };
-        uint16_t val;
+typedef struct
+{
+  union
+  {
+    struct
+    {
+      uint16_t duration : 15;
+      uint16_t level : 1;
     };
+    uint16_t val;
+  };
 } rmt_item16_t;
 
 //-----------------------------------------------------------------------------
@@ -275,8 +278,8 @@ static inline bool ParseItems(rmt_item16_t* item)
         }
         else
         {
-           //ESP_LOGE(Tag, "Bit = 0");
-           item++;
+          //ESP_LOGE(Tag, "Bit = 0");
+          item++;
         }
       }
       else

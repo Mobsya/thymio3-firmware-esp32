@@ -117,10 +117,10 @@ void Sensors_Stop(void)
 {
   if (TaskIsStarted)
   {
-	ESP_LOGW(Tag, "Sensors task is stopped");
+    ESP_LOGW(Tag, "Sensors task is stopped");
 
-	I2C_DeleteDriver();
-	TaskIsStarted = false;
+    I2C_DeleteDriver();
+    TaskIsStarted = false;
     vTaskDelete(SensorsTask);
   }
 }

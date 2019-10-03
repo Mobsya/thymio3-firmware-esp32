@@ -457,11 +457,11 @@ void STM32_ReadProxIRValue(void)
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, PROX_IR_VALUE_REG_ADDRESS, data, PROX_IR_VALUE_MESSAGE_LENGTH);
 
-  ProxIRValue[E_ProxIR_FrontLeft]        =  ((data[1] << 8) | data[0]);
-  ProxIRValue[E_ProxIR_FrontLeftCenter]  =  ((data[3] << 8) | data[2]);
-  ProxIRValue[E_ProxIR_FrontCenter]      =  ((data[5] << 8) | data[4]);
-  ProxIRValue[E_ProxIR_FrontRightCenter] =  ((data[7] << 8) | data[6]);
-  ProxIRValue[E_ProxIR_FrontRight]       =  ((data[9] << 8) | data[8]);
+  ProxIRValue[E_ProxIR_FrontLeft]        = ((data[1] << 8) | data[0]);
+  ProxIRValue[E_ProxIR_FrontLeftCenter]  = ((data[3] << 8) | data[2]);
+  ProxIRValue[E_ProxIR_FrontCenter]      = ((data[5] << 8) | data[4]);
+  ProxIRValue[E_ProxIR_FrontRightCenter] = ((data[7] << 8) | data[6]);
+  ProxIRValue[E_ProxIR_FrontRight]       = ((data[9] << 8) | data[8]);
   ProxIRValue[E_ProxIR_BackLeft]         = ((data[11] << 8) | data[10]);
   ProxIRValue[E_ProxIR_BackRight]        = ((data[13] << 8) | data[12]);
 
@@ -482,12 +482,12 @@ void STM32_ReadGroundIRValue(void)
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, GROUND_IR_VALUE_REG_ADDRESS, data, GROUND_IR_VALUE_MESSAGE_LENGTH);
 
-  GroundIRAmbient[E_GroundIR_Right]   =  ((data[1] << 8) | data[0]);
-  GroundIRAmbient[E_GroundIR_Left]    =  ((data[3] << 8) | data[2]);
-  GroundIRReflected[E_GroundIR_Right] =  ((data[5] << 8) | data[4]);
-  GroundIRReflected[E_GroundIR_Left]  =  ((data[7] << 8) | data[6]);
-  GroundIRDelta[E_GroundIR_Right]     =  ((data[9] << 8) | data[8]);
-  GroundIRDelta[E_GroundIR_Left]      =  ((data[11] << 8) | data[10]);
+  GroundIRAmbient[E_GroundIR_Right]   = ((data[1] << 8) | data[0]);
+  GroundIRAmbient[E_GroundIR_Left]    = ((data[3] << 8) | data[2]);
+  GroundIRReflected[E_GroundIR_Right] = ((data[5] << 8) | data[4]);
+  GroundIRReflected[E_GroundIR_Left]  = ((data[7] << 8) | data[6]);
+  GroundIRDelta[E_GroundIR_Right]     = ((data[9] << 8) | data[8]);
+  GroundIRDelta[E_GroundIR_Left]      = ((data[11] << 8) | data[10]);
 
   vmVariables.ground_ambiant[E_GroundIR_Right]   = GroundIRAmbient[E_GroundIR_Right];
   vmVariables.ground_ambiant[E_GroundIR_Left]    = GroundIRAmbient[E_GroundIR_Left];

@@ -1165,98 +1165,98 @@ static void RunLegoLedAnimation(void)
 
   if ((count == 0u) || (count == 14u))
   {
-	l[0] = MAX_BRIGHTNESS;
-	l[1] = 0u;
-	l[2] = 0u;
-	l[3] = 0u;
-	l[4] = 0u;
-	l[5] = 0u;
-	l[6] = 0u;
-	l[7] = 0u;
+    l[0] = MAX_BRIGHTNESS;
+    l[1] = 0u;
+    l[2] = 0u;
+    l[3] = 0u;
+    l[4] = 0u;
+    l[5] = 0u;
+    l[6] = 0u;
+    l[7] = 0u;
   }
   else if ((count == 1u) || (count == 13u))
   {
-	l[0] = MAX_BRIGHTNESS;
-	l[1] = MAX_BRIGHTNESS;
-	l[2] = 0u;
-	l[3] = 0u;
-	l[4] = 0u;
-	l[5] = 0u;
-	l[6] = 0u;
-	l[7] = 0u;
+    l[0] = MAX_BRIGHTNESS;
+    l[1] = MAX_BRIGHTNESS;
+    l[2] = 0u;
+    l[3] = 0u;
+    l[4] = 0u;
+    l[5] = 0u;
+    l[6] = 0u;
+    l[7] = 0u;
   }
   else if ((count == 2u) || (count == 12u))
   {
-	l[0] = MAX_BRIGHTNESS;
-	l[1] = MAX_BRIGHTNESS;
-	l[2] = MAX_BRIGHTNESS;
-	l[3] = 0u;
-	l[4] = 0u;
-	l[5] = 0u;
-	l[6] = 0u;
-	l[7] = 0u;
+    l[0] = MAX_BRIGHTNESS;
+    l[1] = MAX_BRIGHTNESS;
+    l[2] = MAX_BRIGHTNESS;
+    l[3] = 0u;
+    l[4] = 0u;
+    l[5] = 0u;
+    l[6] = 0u;
+    l[7] = 0u;
   }
   else if ((count == 3u) || (count == 11u))
   {
-	l[0] = MAX_BRIGHTNESS;
-	l[1] = MAX_BRIGHTNESS;
-	l[2] = MAX_BRIGHTNESS;
-	l[3] = MAX_BRIGHTNESS;
-	l[4] = 0u;
-	l[5] = 0u;
-	l[6] = 0u;
-	l[7] = 0u;
+    l[0] = MAX_BRIGHTNESS;
+    l[1] = MAX_BRIGHTNESS;
+    l[2] = MAX_BRIGHTNESS;
+    l[3] = MAX_BRIGHTNESS;
+    l[4] = 0u;
+    l[5] = 0u;
+    l[6] = 0u;
+    l[7] = 0u;
   }
   else if ((count == 4u) || (count == 10u))
   {
-	l[0] = MAX_BRIGHTNESS;
-	l[1] = MAX_BRIGHTNESS;
-	l[2] = MAX_BRIGHTNESS;
-	l[3] = MAX_BRIGHTNESS;
-	l[4] = MAX_BRIGHTNESS;
-	l[5] = 0u;
-	l[6] = 0u;
-	l[7] = 0u;
+    l[0] = MAX_BRIGHTNESS;
+    l[1] = MAX_BRIGHTNESS;
+    l[2] = MAX_BRIGHTNESS;
+    l[3] = MAX_BRIGHTNESS;
+    l[4] = MAX_BRIGHTNESS;
+    l[5] = 0u;
+    l[6] = 0u;
+    l[7] = 0u;
   }
   else if ((count == 5u) || (count == 9u))
   {
-	l[0] = MAX_BRIGHTNESS;
-	l[1] = MAX_BRIGHTNESS;
-	l[2] = MAX_BRIGHTNESS;
-	l[3] = MAX_BRIGHTNESS;
-	l[4] = MAX_BRIGHTNESS;
-	l[5] = MAX_BRIGHTNESS;
-	l[6] = 0u;
-	l[7] = 0u;
+    l[0] = MAX_BRIGHTNESS;
+    l[1] = MAX_BRIGHTNESS;
+    l[2] = MAX_BRIGHTNESS;
+    l[3] = MAX_BRIGHTNESS;
+    l[4] = MAX_BRIGHTNESS;
+    l[5] = MAX_BRIGHTNESS;
+    l[6] = 0u;
+    l[7] = 0u;
   }
   else if ((count == 6u) || (count == 8u))
   {
-	l[0] = MAX_BRIGHTNESS;
-	l[1] = MAX_BRIGHTNESS;
-	l[2] = MAX_BRIGHTNESS;
-	l[3] = MAX_BRIGHTNESS;
-	l[4] = MAX_BRIGHTNESS;
-	l[5] = MAX_BRIGHTNESS;
-	l[6] = MAX_BRIGHTNESS;
-	l[7] = 0u;
+    l[0] = MAX_BRIGHTNESS;
+    l[1] = MAX_BRIGHTNESS;
+    l[2] = MAX_BRIGHTNESS;
+    l[3] = MAX_BRIGHTNESS;
+    l[4] = MAX_BRIGHTNESS;
+    l[5] = MAX_BRIGHTNESS;
+    l[6] = MAX_BRIGHTNESS;
+    l[7] = 0u;
   }
   else if (count == 7u)
   {
-	l[0] = MAX_BRIGHTNESS;
-	l[1] = MAX_BRIGHTNESS;
-	l[2] = MAX_BRIGHTNESS;
-	l[3] = MAX_BRIGHTNESS;
-	l[4] = MAX_BRIGHTNESS;
-	l[5] = MAX_BRIGHTNESS;
-	l[6] = MAX_BRIGHTNESS;
-	l[7] = MAX_BRIGHTNESS;
+    l[0] = MAX_BRIGHTNESS;
+    l[1] = MAX_BRIGHTNESS;
+    l[2] = MAX_BRIGHTNESS;
+    l[3] = MAX_BRIGHTNESS;
+    l[4] = MAX_BRIGHTNESS;
+    l[5] = MAX_BRIGHTNESS;
+    l[6] = MAX_BRIGHTNESS;
+    l[7] = MAX_BRIGHTNESS;
   }
 
   count++;
 
   if (count == 15u)
   {
-	count = 0u;
+    count = 0u;
   }
 
   Leds_SetLegoFrontBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
@@ -1514,7 +1514,7 @@ static void RecordButtonsSequence(uint8_t choice)
         data |= (1 << E_Button_Left);
         Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
       }
-	}
+    }
   }
 
   when(tap)

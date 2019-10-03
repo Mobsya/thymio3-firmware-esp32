@@ -149,20 +149,20 @@ void Leds_Stop(void)
 {
   if (TaskIsStarted)
   {
-	ESP_LOGW(Tag, "LEDs task is stopped");
+    ESP_LOGW(Tag, "LEDs task is stopped");
 
-	for (uint8_t row = 0u; row < MAX_BRIGHTNESS; row++)
-	{
-	  for (uint8_t column = 0u; column < REGISTERS_NUM; column++)
-	  {
-	    LedsTable[row][column] = LedsOff[column];
-	  }
-	}
+    for (uint8_t row = 0u; row < MAX_BRIGHTNESS; row++)
+    {
+      for (uint8_t column = 0u; column < REGISTERS_NUM; column++)
+      {
+        LedsTable[row][column] = LedsOff[column];
+      }
+    }
 
-	ShiftRegisters_Fill(&LedsTable[0][0], REGISTERS_NUM);
+    ShiftRegisters_Fill(&LedsTable[0][0], REGISTERS_NUM);
 
-	TimerSw_StopTimer(LedsTaskTimer);
-	TaskIsStarted = false;
+    TimerSw_StopTimer(LedsTaskTimer);
+    TaskIsStarted = false;
     vTaskDelete(LedsTask);
   }
 }
@@ -214,7 +214,7 @@ void Leds_SetSingleBrightness(T_Led led, uint8_t brightness)
 //_____________________________________________________________________________
 
 void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
-		                      uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
+                              uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
 {
   Leds_SetSingleBrightness(E_Led_Circle_0, l0);
   Leds_SetSingleBrightness(E_Led_Circle_1, l1);
@@ -239,7 +239,7 @@ void Leds_SetButtonsBrightness(uint8_t forward, uint8_t right, uint8_t backward,
 //_____________________________________________________________________________
 
 void Leds_SetLegoFrontBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
-		                         uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
+                                 uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
 {
   Leds_SetSingleBrightness(E_Led_Lego_Front_0, l0);
   Leds_SetSingleBrightness(E_Led_Lego_Front_1, l1);
@@ -254,7 +254,7 @@ void Leds_SetLegoFrontBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
 //_____________________________________________________________________________
 
 void Leds_SetLegoBackBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
-		                        uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
+                                uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
 {
   Leds_SetSingleBrightness(E_Led_Lego_Back_0, l0);
   Leds_SetSingleBrightness(E_Led_Lego_Back_1, l1);

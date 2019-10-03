@@ -148,21 +148,18 @@ void update_aseba_variables_write(void)
 {
   xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
-  //if (Comm_IsBusAvailable() && Sensors_IsBusAvailable())
-  {
-    //UpdateLedsGroundIR();
+  //UpdateLedsGroundIR();
 
-    UpdateMotorTargets();
+  UpdateMotorTargets();
 
-    UpdateSettings();
+  UpdateSettings();
 
-    UpdateBehaviors();
+  UpdateBehaviors();
 
-    //UpdateTimers();
-  }
+  //UpdateTimers();
 
   xSemaphoreGive(I2CMutex);
-//#if 0
+
   UpdateTimers();
 #if 0
   UpdateLedsCircle();
@@ -394,7 +391,7 @@ static void UpdateLedsCircle(void)
   // brightness[5] is assigned to the LED D42
   // brightness[6] is assigned to the LED D45
   // brightness[7] is assigned to the LED D48
-  static int16_t brightness[8] = {0, 0, 0, 0, 0, 0, 0 ,0};
+  static int16_t brightness[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
   for (uint8_t index = 0u; index < 8u; index++)
   {
@@ -420,7 +417,7 @@ static void UpdateLedsLegoFront(void)
   // brightness[5] is assigned to the LED D43
   // brightness[6] is assigned to the LED D46
   // brightness[7] is assigned to the LED D49
-  static int16_t brightness[8] = {0, 0, 0, 0, 0, 0, 0 ,0};
+  static int16_t brightness[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
   for (uint8_t index = 0u; index < 8u; index++)
   {
@@ -446,7 +443,7 @@ static void UpdateLedsLegoBack(void)
   // brightness[5] is assigned to the LED D44
   // brightness[6] is assigned to the LED D47
   // brightness[7] is assigned to the LED D50
-  static int16_t brightness[8] = {0, 0, 0, 0, 0, 0, 0 ,0};
+  static int16_t brightness[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
   for (uint8_t index = 0u; index < 8u; index++)
   {

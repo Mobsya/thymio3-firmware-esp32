@@ -34,24 +34,24 @@
 
 enum
 {
- E_Command_0          = 0,
- E_Command_1          = 1,
- E_Command_2          = 2,
- E_Command_3          = 3,
- E_Command_4          = 4,
- E_Command_5          = 5,
- E_Command_6          = 6,
- E_Command_7          = 7,
- E_Command_8          = 8,
- E_Command_9          = 9,
- E_Command_Plus       = 16,
- E_Command_Minus      = 17,
- E_Command_Go         = 53,
- E_Command_UpArrow    = 80,
- E_Command_DownArrow  = 81,
- E_Command_LeftArrow  = 85,
- E_Command_RightArrow = 86,
- E_Command_Stop       = 87
+  E_Command_0          = 0,
+  E_Command_1          = 1,
+  E_Command_2          = 2,
+  E_Command_3          = 3,
+  E_Command_4          = 4,
+  E_Command_5          = 5,
+  E_Command_6          = 6,
+  E_Command_7          = 7,
+  E_Command_8          = 8,
+  E_Command_9          = 9,
+  E_Command_Plus       = 16,
+  E_Command_Minus      = 17,
+  E_Command_Go         = 53,
+  E_Command_UpArrow    = 80,
+  E_Command_DownArrow  = 81,
+  E_Command_LeftArrow  = 85,
+  E_Command_RightArrow = 86,
+  E_Command_Stop       = 87
 } typedef T_Command;  //!< The command received
 
 //-----------------------------------------------------------------------------

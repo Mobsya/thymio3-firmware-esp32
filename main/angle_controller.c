@@ -76,7 +76,7 @@ int16_t AngleController_Update(int16_t target)
   }
   else if (output < -250)
   {
-	output = -250;
+    output = -250;
   }
 
   vmVariables.target[0] = -output;

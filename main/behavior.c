@@ -285,12 +285,12 @@ static void SetRC5Led(void)
   if (RC5_IsFrameValid())
   {
     //rc5_valid_flag = 0;
-	RC5_ClearFrameValidity();
+    RC5_ClearFrameValidity();
     Leds_SetSingleBrightness(E_Led_RC5, MAX_BRIGHTNESS);
   }
   else
   {
-	Leds_SetSingleBrightness(E_Led_RC5, 0);
+    Leds_SetSingleBrightness(E_Led_RC5, 0);
   }
 //#endif
 }

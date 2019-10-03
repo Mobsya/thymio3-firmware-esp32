@@ -790,8 +790,8 @@ static uint16_t ReadBufferedAngularPosition(void)
 
   if (!first)
   {
-	UpdateFifoMode(E_FifoMode_Continuous);
-	first = true;
+    UpdateFifoMode(E_FifoMode_Continuous);
+    first = true;
   }
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_STATUS1_REG_ADDRESS, len, 2u);
@@ -810,7 +810,7 @@ static uint16_t ReadBufferedAngularPosition(void)
 
   if (length > 0u)
   {
-	numSamples = ((length / 3) * 3);  // Get a multiple of 3 (entire part) for the XYZ samples
+    numSamples = ((length / 3) * 3);  // Get a multiple of 3 (entire part) for the XYZ samples
 
     for (uint16_t index = 0u; index < numSamples; index++)
     {
@@ -831,8 +831,8 @@ static uint16_t ReadBufferedAngularPosition(void)
       }
       else
       {
-    	Buffer[2][k] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
-    	k++;
+        Buffer[2][k] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
+        k++;
       }
     }
   }
