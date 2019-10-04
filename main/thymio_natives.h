@@ -55,6 +55,9 @@ void sound_playback(AsebaVMState* vm);
 extern AsebaNativeFunctionDescription AsebaNativeDescription_replay;
 void sound_replay(AsebaVMState* vm);
 
+extern AsebaNativeFunctionDescription AsebaNativeDescription_volume;
+void sound_volume(AsebaVMState* vm);
+
 extern AsebaNativeFunctionDescription AsebaNativeDescription_sound_system;
 void sound_system(AsebaVMState* vm);
 
@@ -129,6 +132,7 @@ void sound_duration(AsebaVMState* vm);
   &AsebaNativeDescription_record, \
   &AsebaNativeDescription_play, \
   &AsebaNativeDescription_replay, \
+  &AsebaNativeDescription_volume, \
   &AsebaNativeDescription_sound_system, \
   &AsebaNativeDescription_set_led_circle, \
   &AsebaNativeDescription_set_led_rgb_fl, \
@@ -158,6 +162,7 @@ void sound_duration(AsebaVMState* vm);
   sound_record, \
   sound_playback, \
   sound_replay, \
+  sound_volume, \
   sound_system, \
   set_led_circle, \
   set_rgb_fl, \

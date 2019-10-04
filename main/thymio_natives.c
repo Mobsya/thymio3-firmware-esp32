@@ -237,6 +237,25 @@ void sound_replay(AsebaVMState* vm)
 
 //_____________________________________________________________________________
 
+AsebaNativeFunctionDescription AsebaNativeDescription_volume =
+{
+  "sound.volume",
+  "Set sound volume",
+  {
+    {1, "volume"},
+    {0, 0},
+  }
+};
+
+void sound_volume(AsebaVMState* vm)
+{
+  int volume = vm->variables[AsebaNativePopArg(vm)];
+
+  Codec_SetVolume(volume);
+}
+
+//_____________________________________________________________________________
+
 AsebaNativeFunctionDescription AsebaNativeDescription_duration =
 {
   "sound.duration",
@@ -804,7 +823,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_gyro_reset_angle =
   "gyro.reset_angle",
   "Reset the angle",
   {
-    {0,0}
+    {0, 0}
   }
 };
 
@@ -820,7 +839,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_gyro_reset_calib_angle =
   "gyro.reset_calib_angle",
   "Reset the calibration of the angle",
   {
-    {0,0}
+    {0, 0}
   }
 };
 

@@ -67,4 +67,10 @@ extern void Codec_StartWAVRecorder(int number);
 //! \return    None
 extern void Codec_StartWAVPlayer(int number);
 
+//! \brief     Set the sound volume
+//! \pre       None
+//! \param     volume - Volume
+//! \return    None
+extern void Codec_SetVolume(int16_t volume);
+
 #endif // CODEC_H_

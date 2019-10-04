@@ -171,12 +171,12 @@ static esp_periph_set_handle_t Set;
 
 audio_hal_func_t AUDIO_CODEC_ES8374_DEFAULT_HANDLE =
 {
-  .audio_codec_initialize = ES8374_Init,
+  .audio_codec_initialize   = ES8374_Init,
   .audio_codec_deinitialize = ES8374_Deinit,
-  .audio_codec_ctrl = ES8374_ControlState,
+  .audio_codec_ctrl         = ES8374_ControlState,
   .audio_codec_config_iface = ES8374_ConfigureI2S,
-  .audio_codec_set_volume = ES8374_SetVoiceVolume,
-  .audio_codec_get_volume = ES8374_GetVoiceVolume
+  .audio_codec_set_volume   = ES8374_SetVoiceVolume,
+  .audio_codec_get_volume   = ES8374_GetVoiceVolume
 };
 
 //-----------------------------------------------------------------------------
@@ -223,9 +223,9 @@ int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t 
 
 void Codec_Init(void)
 {
-  //GenerateMasterClock();
+  GenerateMasterClock();
 
-  InitSPIFFS();
+  //InitSPIFFS();
 
 #if 0  // Old
 //  ESP_LOGI(Tag, "[ 1 ] Start audio codec chip");
@@ -249,7 +249,7 @@ void Codec_Init(void)
 void Codec_StartMP3Player(int number)
 {
   Number = number;
-#if 0
+//#if 0
   if (!MP3PlayerIsBusy)
   {
     MP3PlayerIsBusy = true;
@@ -259,13 +259,13 @@ void Codec_StartMP3Player(int number)
       "player",          // Name of the task
       4096,              // Stack size in words
       NULL,              // Task input parameter
-      0,                 // Priority of the task
+      1,                 // Priority of the task
       &MP3PlayerTask,    // Task handle
-      1);                // Core where the task should run
+      0);                // Core where the task should run
   }
-#endif
+//#endif
 
-//#if 0
+#if 0
   if (MP3PlayerIsBusy)
   {
     StopMP3Player();
@@ -286,7 +286,7 @@ void Codec_StartMP3Player(int number)
     1,                 // Priority of the task
     &MP3PlayerTask,    // Task handle
     0);                // Core where the task should run
-//#endif
+#endif
 }
 
 //_____________________________________________________________________________
@@ -333,6 +333,13 @@ void Codec_StartWAVPlayer(int number)
     1,                 // Priority of the task
     &WAVPlayerTask,    // Task handle
     0);                // Core where the task should run
+}
+
+//_____________________________________________________________________________
+
+void Codec_SetVolume(int16_t volume)
+{
+  ES8374_SetVoiceVolume(volume);
 }
 
 //_____________________________________________________________________________
@@ -450,6 +457,13 @@ static void RunMP3PlayerTask(void* arg)
 
 #if 0
 //  ESP_LOGI(Tag, "[ 1 ] Start audio codec chip");
+  audio_hal_codec_config_t audio_hal_codec_cfg = AUDIO_HAL_ES8374_DEFAULT();
+  audio_hal_codec_cfg.i2s_iface.samples = AUDIO_HAL_44K_SAMPLES;
+  audio_hal_handle_t codec_hal = audio_hal_init(&audio_hal_codec_cfg, &AUDIO_CODEC_ES8374_DEFAULT_HANDLE);
+  audio_hal_ctrl_codec(codec_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
+#endif
+
+#if 0
   audio_hal_codec_config_t audio_hal_codec_cfg = AUDIO_HAL_ES8374_DEFAULT();
   audio_hal_codec_cfg.i2s_iface.samples = AUDIO_HAL_44K_SAMPLES;
   audio_hal_handle_t codec_hal = audio_hal_init(&audio_hal_codec_cfg, &AUDIO_CODEC_ES8374_DEFAULT_HANDLE);
@@ -741,7 +755,7 @@ static void StopMP3Player(void)
   audio_element_deinit(mp3_decoder);
 
   MP3PlayerIsBusy = false;
-  //portYIELD();
+
   vTaskDelete(MP3PlayerTask);
 }
 
