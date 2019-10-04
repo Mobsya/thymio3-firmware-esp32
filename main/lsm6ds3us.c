@@ -99,6 +99,7 @@
 
 // CTRL2_G bits mask
 #define GYR_ODR_G_BIT_MASK                   0x0Fu  //!< Mask of bit ODR_G
+#define GYR_FS_G_BIT_MASK                    0xF3u  //!< Mask of bit FS_G
 
 // CTRL10_C bits mask
 #define GYR_EN_G_BIT_MASK                    0x07u  //!< Mask of bit EN_G (+ 2bits MSB)
@@ -122,6 +123,7 @@
 
 // CTRL2_G bits position
 #define GYR_ODR_G_BIT_POS                       4u  //!< Position of LSB bit ODR_G
+#define GYR_FS_G_BIT_POS						2u  //!< Position of LSB bit FS_G
 
 // CTRL10_C bits position
 #define GYR_EN_G_BIT_POS                        3u  //!< Position of LSB bit of EN_G
@@ -191,6 +193,15 @@ enum
   E_Gyro_OutputDataRate_1660Hz
 };
 typedef uint8_t T_Gyro_OutputDataRate;  //!< Gyroscope output data rate
+
+enum
+{
+  E_Gyro_FullScale_250dps,
+  E_Gyro_FullScale_500dps,
+  E_Gyro_FullScale_1000dps,
+  E_Gyro_FullScale_2000dps
+};
+typedef uint8_t T_Gyro_FullScale;  //!< Gyroscope output full-scale
 
 enum
 {
@@ -271,7 +282,7 @@ static int16_t Buffer[3][10];
 
 static bool IsCalibrated = false;
 static int16_t ZeroGyro[3] = {0, 0, 0};
-static int16_t GyroCorr[3] = {0, 0, 0};
+
 
 static int16_t teta[3] = {0, 0, 0};
 
@@ -338,6 +349,12 @@ static void SetIntegratorFactors(T_Fifo_OutputDataRate rate);
 //! \param     None
 //! \return    None
 static void UpdateGyroOutputDataRate(T_Gyro_OutputDataRate rate);
+
+//! \brief     Update the gyroscope full-scale
+//! \pre       None
+//! \param     None
+//! \return    None
+static void UpdateGyroFullScale(T_Gyro_FullScale scale);
 
 //! \brief     Update the FIFO mode
 //! \pre       None
@@ -536,6 +553,7 @@ void LSM6DS3US_InitGyroscope(void)
 {
   EnableGyroAxis(E_Gyro_Enable_All);
   UpdateGyroOutputDataRate(E_Gyro_OutputDataRate_104Hz);
+  UpdateGyroFullScale(E_Gyro_FullScale_500dps);
 
   UpdateFifoMode(E_FifoMode_Bypass);
   UpdateFifoOutputDataRate(E_Fifo_OutputDataRate_104Hz);
@@ -612,6 +630,28 @@ static void UpdateGyroOutputDataRate(T_Gyro_OutputDataRate rate)
     ESP_LOGE(Tag, "Invalid gyroscope output data rate: %d", rate);
   }
 }
+
+//_____________________________________________________________________________
+
+static void UpdateGyroFullScale(T_Gyro_FullScale scale)
+{
+  uint8_t data = 0x00u;
+
+  if (scale <= E_Gyro_FullScale_2000dps)
+  {
+    I2C_ReadFromAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
+
+    data &= GYR_FS_G_BIT_MASK;
+    data |= (scale << GYR_FS_G_BIT_POS);
+
+    I2C_WriteToAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
+  }
+  else
+  {
+    ESP_LOGE(Tag, "Invalid gyroscope full scale: %d", scale);
+  }
+}
+
 
 //_____________________________________________________________________________
 
@@ -931,8 +971,9 @@ static void CalibrateZeroGyro(uint16_t number)
 
 static void CalculateAngle(int16_t* angle, uint16_t number)
 {
-  int16_t sum[3] = {0, 0, 0};
-
+  int32_t sum[3] = {0, 0, 0};
+  int32_t GyroCorr[3] = {0, 0, 0};
+  
   for (uint8_t i = 0u; i < 3u; i++)
   {
     for (uint8_t j = 0u; j < number; j++)
