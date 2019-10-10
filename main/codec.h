@@ -47,25 +47,29 @@
 //! \return    None
 extern void Codec_Init(void);
 
-extern void Codec_SetMP3PlayerInfo(int number);
-
-//! \brief     Start the MP3 player task
-//! \pre       None
+//! \brief     Play a MP3 file
+//! \pre       First initialize the codec
 //! \param     None
 //! \return    None
-extern void Codec_StartMP3Player(int number);
+extern void Codec_PlayMP3(int number);
 
-//! \brief     Start the WAV recorder task
-//! \pre       None
+//! \brief     Play a MP3 file from the file system
+//! \pre       First initialize the codec
 //! \param     None
 //! \return    None
-extern void Codec_StartWAVRecorder(int number);
+extern void Codec_PlayMP3FromFileSystem(int number);
 
-//! \brief     Start the WAV player task
-//! \pre       None
+//! \brief     Record a WAV file
+//! \pre       First initialize the codec
 //! \param     None
 //! \return    None
-extern void Codec_StartWAVPlayer(int number);
+extern void Codec_RecordWAV(int number);
+
+//! \brief     Play a WAV file from the file system
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
+extern void Codec_PlayWAV(int number);
 
 //! \brief     Set the sound volume
 //! \pre       None

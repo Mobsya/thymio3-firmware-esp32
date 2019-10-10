@@ -37,8 +37,8 @@
 //#include "ir_prox.h"
 #include "gyroscope.h"
 #include "sound.h"
-#include "mp3.h"
-#include "i2s.h"
+//#include "mp3.h"
+//#include "i2s.h"
 #include "stm32_i2c.h"
 
 #include "aseba.h"
@@ -142,7 +142,8 @@ void sound_playback(AsebaVMState* vm)
   }
 #endif
 
-  Codec_StartMP3Player(number);
+  //Codec_StartMP3Player(number);
+  Codec_PlayMP3(number);
 
 #if 0
   MelodyAseba.Melody = JamesBond;
@@ -196,7 +197,8 @@ void sound_record(AsebaVMState* vm)
   //I2S_Record();
 
   //MP3_StartRecorder();
-  Codec_StartWAVRecorder(number);
+  //Codec_StartWAVRecorder(number);
+  Codec_RecordWAV(number);
 }
 
 //_____________________________________________________________________________
@@ -232,7 +234,8 @@ void sound_replay(AsebaVMState* vm)
 
   //Sound_StartReplaying();
   //Sound_Replay();
-  Codec_StartWAVPlayer(number);
+  //Codec_StartWAVPlayer(number);
+  Codec_PlayWAV(number);
 }
 
 //_____________________________________________________________________________

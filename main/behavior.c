@@ -252,12 +252,12 @@ static void RunBehaviors(void)
     Mode_Run();
   }
 
-#if 0  // FIXME
+//#if 0  // FIXME
   if (ENABLED(B_SOUND_BUTTON))
   {
     PlaySoundButtons();
   }
-#endif
+//#endif
 
 //#if 0
   if (ENABLED(B_SETTING))
@@ -496,36 +496,41 @@ static void PlaySoundButtons(void)
   when(buttonState[E_Button_Backward] != 0u)
   {
     //Sound_StartPlayer(&MelodyButton);
-    Codec_StartMP3Player(4);
+    //Codec_StartMP3Player(4);
     //Codec_SetMP3PlayerInfo(4);
+    Codec_PlayMP3(4);
   }
 
   when(buttonState[E_Button_Left] != 0u)
   {
     //Sound_StartPlayer(&MelodyButton);
-    Codec_StartMP3Player(4);
+    //Codec_StartMP3Player(4);
     //Codec_SetMP3PlayerInfo(4);
+    Codec_PlayMP3(4);
   }
 
   when(buttonState[E_Button_Center] != 0u)
   {
     //Sound_StartPlayer(&MelodyCenterButton);
-    Codec_StartMP3Player(3);
+    //Codec_StartMP3Player(3);
     //Codec_SetMP3PlayerInfo(3);
+    Codec_PlayMP3(3);
   }
 
   when(buttonState[E_Button_Forward] != 0u)
   {
     //Sound_StartPlayer(&MelodyButton);
-    Codec_StartMP3Player(4);
+    //Codec_StartMP3Player(4);
     //Codec_SetMP3PlayerInfo(4);
+    Codec_PlayMP3(4);
   }
 
   when(buttonState[E_Button_Right] != 0u)
   {
     //Sound_StartPlayer(&MelodyButton);
-    Codec_StartMP3Player(4);
+    //Codec_StartMP3Player(4);
     //Codec_SetMP3PlayerInfo(4);
+    Codec_PlayMP3(4);
     //Codec_StartWAVPlayer(0);
   }
 }

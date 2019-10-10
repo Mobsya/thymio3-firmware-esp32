@@ -1529,7 +1529,9 @@ static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T
   // Reset DAC digital block, ADC digital block, master block, all registers, digital reset
   constant = 0x3Fu;
   I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &constant, 1u);
-  constant = 0x03u;                      // Reset DAC digital block, ADC digital block
+
+  // Reset DAC digital block, ADC digital block
+  constant = 0x03u;
   I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &constant, 1u);
 
   // CLOCK MANAGER Register
@@ -1615,7 +1617,7 @@ static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T
   constant = 0x60;
   I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x0F;  // PGA gain = -3.5 [dB]
+  constant = 0xFF;  // PGA gain = -3.5 [dB]
   I2C_WriteToAddress(SLAVE_ADDRESS, PGA_GAIN_REG_ADDRESS, &constant, 1u);
 
   // PGA Register
@@ -1646,6 +1648,18 @@ static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T
   constant = 0x8A;
   I2C_WriteToAddress(SLAVE_ADDRESS, ANALOG_REF_REG_ADDRESS, &constant, 1u);
 
+  // ANALOG POWER DOWN Register
+  // --------------------------------------------------------------------
+  // PDN_ANA        = 0... ....  Enable analog circuits
+  // ENREFR         = .1.. ....  Enable reference circuits
+  // PDN_DACL       = ..0. ....  Enable analog DAC circuits
+  // PDN_IBIASGEN   = ...0 ....  Enable analog bias circuits
+  // PDN_ADCBIASGEN = .... 0...  Enable analog ADC bias circuits
+  // PDN_ADCVERFGEN = .... .0..  Enable analog ADC reference circuits
+  // PDN_DACVREFGEN = .... ..0.  Enable analog DAC reference circuits
+  //                  ---------
+  //                  0100 0000 = 0x40
+  // --------------------------------------------------------------------
   constant = 0x40;
   I2C_WriteToAddress(SLAVE_ADDRESS, ANALOG_POWER_DOWN_REG_ADDRESS, &constant, 1u);
 
