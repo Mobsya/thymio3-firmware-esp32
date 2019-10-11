@@ -19,6 +19,7 @@
 //-----------------------------------------------------------------------------
 
 #include <string.h>
+#include <stdlib.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -123,6 +124,12 @@ typedef struct
   const uint8_t* End;
 } T_File;
 
+typedef enum
+{
+  E_Extension_MP3,
+  E_Extension_WAV
+} T_Extension;
+
 struct audio_board_handle {
     audio_hal_handle_t audio_hal; /*!< audio hardware abstract layer handle */
 };
@@ -224,9 +231,11 @@ static void StopWAVRecorder(void);
 
 static void StopWAVPlayer(void);
 
-static void GenerateMasterClock(void);
+static void GenerateMasterClock(uint32_t clock_Hz);
 
 static void SelectFile(int16_t index);
+
+static void SelectFileSystemFile(char** file, int16_t index, T_Extension extension);
 
 int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t wait_time, void* ctx);
 
@@ -240,7 +249,7 @@ int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t 
 
 void Codec_Init(void)
 {
-  GenerateMasterClock();
+  GenerateMasterClock(MCLK_FREQUENCY_Hz);
 
   InitSPIFFS();
 
@@ -255,80 +264,80 @@ void Codec_PlayMP3(int number)
 {
   if (!MP3PlayerIsBusy)
   {
-	  MP3PlayerIsBusy = true;
-  SelectFile(number);
+    MP3PlayerIsBusy = true;
+    SelectFile(number);
 
-  //ESP_LOGI(Tag, "[2] Start codec chip");
-  //board_handle = Init();
-  //audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
+    //ESP_LOGI(Tag, "[2] Start codec chip");
+    //board_handle = Init();
+    //audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
 
 //  ESP_LOGI(Tag, "[ 2 ] Create audio pipeline, add all elements to pipeline, and subscribe pipeline event");
-  audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
-  MP3PlayerPipeline = audio_pipeline_init(&pipeline_cfg);
-  mem_assert(MP3PlayerPipeline);
+    audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
+    MP3PlayerPipeline = audio_pipeline_init(&pipeline_cfg);
+    mem_assert(MP3PlayerPipeline);
 
 //  ESP_LOGI(Tag, "[2.1] Create mp3 decoder to decode mp3 file and set custom read callback");
-  mp3_decoder_cfg_t mp3_cfg = DEFAULT_MP3_DECODER_CONFIG();
-  MP3Decoder = mp3_decoder_init(&mp3_cfg);
-  audio_element_set_read_cb(MP3Decoder, mp3_music_read_cb, NULL);
+    mp3_decoder_cfg_t mp3_cfg = DEFAULT_MP3_DECODER_CONFIG();
+    MP3Decoder = mp3_decoder_init(&mp3_cfg);
+    audio_element_set_read_cb(MP3Decoder, mp3_music_read_cb, NULL);
 
 //  ESP_LOGI(Tag, "[2.2] Create i2s stream to write data to codec chip");
-  MP3PlayerI2SStream = CreateI2SStream(MP3_PLAYER_RATE, MP3_PLAYER_BITS, MP3_PLAYER_CHANNEL, AUDIO_STREAM_WRITER);
+    MP3PlayerI2SStream = CreateI2SStream(MP3_PLAYER_RATE, MP3_PLAYER_BITS, MP3_PLAYER_CHANNEL, AUDIO_STREAM_WRITER);
 
 //  ESP_LOGI(Tag, "[2.3] Register all elements to audio pipeline");
-  audio_pipeline_register(MP3PlayerPipeline, MP3Decoder, "mp3");
-  audio_pipeline_register(MP3PlayerPipeline, MP3PlayerI2SStream, "i2s");
+    audio_pipeline_register(MP3PlayerPipeline, MP3Decoder, "mp3");
+    audio_pipeline_register(MP3PlayerPipeline, MP3PlayerI2SStream, "i2s");
 
 //  ESP_LOGI(Tag, "[2.4] Link it together [mp3_music_read_cb]-->mp3_decoder-->i2s_stream-->[codec_chip]");
-  audio_pipeline_link(MP3PlayerPipeline, (const char* []){"mp3", "i2s"}, 2);
+    audio_pipeline_link(MP3PlayerPipeline, (const char* []){"mp3", "i2s"}, 2);
 
 //  ESP_LOGI(Tag, "[ 3 ] Set up event listener");
-  audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
-  MP3PlayerEvt = audio_event_iface_init(&evt_cfg);
+    audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
+    MP3PlayerEvt = audio_event_iface_init(&evt_cfg);
 
 //  ESP_LOGI(Tag, "[3.1] Listening event from all elements of pipeline");
-  audio_pipeline_set_listener(MP3PlayerPipeline, MP3PlayerEvt);
+    audio_pipeline_set_listener(MP3PlayerPipeline, MP3PlayerEvt);
 
 //  ESP_LOGI(Tag, "[ 4 ] Start audio_pipeline");
-  audio_pipeline_run(MP3PlayerPipeline);
+    audio_pipeline_run(MP3PlayerPipeline);
 
-  while (1)
-  {
-    audio_event_iface_msg_t msg;
-    esp_err_t ret = audio_event_iface_listen(MP3PlayerEvt, &msg, portMAX_DELAY);
-
-    if (ret != ESP_OK)
+    while (1)
     {
-      ESP_LOGE(Tag, "[ * ] Event interface error : %d", ret);
-      continue;
-    }
+      audio_event_iface_msg_t msg;
+      esp_err_t ret = audio_event_iface_listen(MP3PlayerEvt, &msg, portMAX_DELAY);
 
-    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*) MP3Decoder
-        && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
-    {
-      audio_element_info_t music_info = {0};
-      audio_element_getinfo(MP3Decoder, &music_info);
+      if (ret != ESP_OK)
+      {
+        ESP_LOGE(Tag, "[ * ] Event interface error : %d", ret);
+        continue;
+      }
+
+      if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*) MP3Decoder
+          && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
+      {
+        audio_element_info_t music_info = {0};
+        audio_element_getinfo(MP3Decoder, &music_info);
 
 //      ESP_LOGI(Tag, "[ * ] Receive music info from mp3 decoder, sample_rates=%d, bits=%d, ch=%d",
 //               music_info.sample_rates, music_info.bits, music_info.channels);
 
-      audio_element_setinfo(MP3PlayerI2SStream, &music_info);
-      i2s_stream_set_clk(MP3PlayerI2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
-      continue;
-    }
+        audio_element_setinfo(MP3PlayerI2SStream, &music_info);
+        i2s_stream_set_clk(MP3PlayerI2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
+        continue;
+      }
 
-    // Stop when the last pipeline element (MP3PlayerI2SStream in this case) receives stop event
-    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*) MP3PlayerI2SStream &&
-        msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (((int)msg.data == AEL_STATUS_STATE_STOPPED) ||
-        ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
-    {
-      //ESP_LOGW(Tag, "[ * ] Stop event received");
-      break;
+      // Stop when the last pipeline element (MP3PlayerI2SStream in this case) receives stop event
+      if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*) MP3PlayerI2SStream &&
+          msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (((int)msg.data == AEL_STATUS_STATE_STOPPED) ||
+          ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
+      {
+        //ESP_LOGW(Tag, "[ * ] Stop event received");
+        break;
+      }
     }
-  }
 
 //  ESP_LOGI(Tag, "[ 5 ] Stop audio_pipeline");
-  StopMP3Player();
+    StopMP3Player();
   }
 }
 
@@ -336,6 +345,10 @@ void Codec_PlayMP3(int number)
 
 void Codec_PlayMP3FromFileSystem(int number)
 {
+  char* file;
+
+  SelectFileSystemFile(&file, number, E_Extension_MP3);
+
   //InitSPIFFS();
 
   //ESP_LOGI(Tag, "[2] Start codec chip");
@@ -369,7 +382,7 @@ void Codec_PlayMP3FromFileSystem(int number)
   audio_pipeline_link(MP3PlayerPipeline, (const char* []){"spiffs", "mp3", "i2s"}, 3);
 
   ESP_LOGI(Tag, "[3.6] Set up  uri (file as spiffs, mp3 as mp3 decoder, and default output is i2s)");
-  audio_element_set_uri(MP3PlayerSPIFFSStream, "/spiffs/adf_music.mp3");
+  audio_element_set_uri(MP3PlayerSPIFFSStream, file);
 
   ESP_LOGI(Tag, "[4] Set up event listener");
   audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
@@ -420,6 +433,8 @@ void Codec_PlayMP3FromFileSystem(int number)
     }
   }
 
+  free(file);
+
   ESP_LOGI(Tag, "[7] Stop audio_pipeline");
   StopMP3PlayerFromFileSystem();
 }
@@ -431,6 +446,9 @@ void Codec_RecordWAV(int number)
   //ESP_LOGI(Tag, "[2] Start codec chip");
   //board_handle = Init();
   //audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_ENCODE, AUDIO_HAL_CTRL_START);
+  char* file;
+
+  SelectFileSystemFile(&file, number, E_Extension_WAV);
 
   ESP_LOGI(Tag, "[1.1] Create audio pipeline for recording");
   audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
@@ -468,7 +486,7 @@ void Codec_RecordWAV(int number)
   i2s_stream_set_clk(WAVRecorderI2SStream, RECORD_RATE, RECORD_BITS, RECORD_CHANNEL);
 
   ESP_LOGI(Tag, "[2.3] Setup uri (file_writer as spiffs_stream, wav_encoder as wav encoder)");
-  audio_element_set_uri(WAVRecorderSPIFFSStream, "/spiffs/rec.wav");
+  audio_element_set_uri(WAVRecorderSPIFFSStream, file);
 
   //ESP_LOGI(Tag, "[4.1] Listening event from pipeline");
   //audio_pipeline_set_listener(WAVRecorderPipeline, WAVRecorderEvt);
@@ -508,6 +526,8 @@ void Codec_RecordWAV(int number)
 #endif
   }
 
+  free(file);
+
   ESP_LOGI(Tag, "[ 7 ] Stop audio_pipeline");
   StopWAVRecorder();
 }
@@ -516,6 +536,10 @@ void Codec_RecordWAV(int number)
 
 void Codec_PlayWAV(int number)
 {
+  char* file;
+
+  SelectFileSystemFile(&file, number, E_Extension_WAV);
+
   //ESP_LOGI(Tag, "[2] Start codec chip");
   //board_handle = Init();
   //audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
@@ -556,7 +580,7 @@ void Codec_PlayWAV(int number)
   i2s_stream_set_clk(WAVPlayerI2SStream, WAV_PLAYER_RATE, WAV_PLAYER_BITS, WAV_PLAYER_CHANNEL);
 
   ESP_LOGI(Tag, "[2.3] Setup uri (file_reader as spiffs_stream, wav_decoder as wav decoder)");
-  audio_element_set_uri(WAVPlayerSPIFFSStream, "/spiffs/rec.wav");
+  audio_element_set_uri(WAVPlayerSPIFFSStream, file);
 
   //ESP_LOGI(Tag, "[4.1] Listening event from pipeline");
   audio_pipeline_set_listener(WAVPlayerPipeline, WAVPlayerEvt);
@@ -598,14 +622,15 @@ void Codec_PlayWAV(int number)
         msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (((int) msg.data == AEL_STATUS_STATE_STOPPED) ||
         ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
     {
-      StopWAVPlayer();
       break;
     }
 
   }
 
+  free(file);
+
   //ESP_LOGI(Tag, "[ 6 ] Stop audio_pipeline");
-  //StopWAVPlayer();
+  StopWAVPlayer();
 }
 
 //_____________________________________________________________________________
@@ -776,8 +801,6 @@ static void StopMP3Player(void)
   audio_element_deinit(MP3Decoder);
 
   MP3PlayerIsBusy = false;
-
-  //vTaskDelete(MP3PlayerTask);
 }
 
 //_____________________________________________________________________________
@@ -840,13 +863,11 @@ static void StopWAVRecorder(void)
   audio_element_deinit(WAVEncoder);
   audio_element_deinit(WAVRecorderSPIFFSStream);
 
-  esp_periph_set_destroy(Set);
+  //esp_periph_set_destroy(Set);
 
   WAVRecorderIsBusy = false;
 
   //Codec_StartWAVPlayer(0);
-
-  //vTaskDelete(WAVRecorderTask);
 }
 
 //_____________________________________________________________________________
@@ -877,22 +898,21 @@ static void StopWAVPlayer(void)
   audio_element_deinit(WAVPlayerFilter);
   audio_element_deinit(WAVPlayerI2SStream);
 
-  //esp_periph_set_destroy(Set);
+  esp_periph_set_destroy(Set);
 
   WAVPlayerIsBusy = false;
-  //vTaskDelete(WAVPlayerTask);
 }
 
 //_____________________________________________________________________________
 
-static void GenerateMasterClock(void)
+static void GenerateMasterClock(uint32_t clock_Hz)
 {
   ledc_timer_config_t ledc_timer =
   {
     .speed_mode = LEDC_HIGH_SPEED_MODE,
     .timer_num  = LEDC_TIMER_0,
     .bit_num    = 2,
-    .freq_hz    = MCLK_FREQUENCY_Hz
+    .freq_hz    = clock_Hz
   };
 
   ledc_timer_config(&ledc_timer);
@@ -948,6 +968,41 @@ static void SelectFile(int16_t index)
   }
 
   File.Position = 0;
+}
+
+//_____________________________________________________________________________
+
+static void SelectFileSystemFile(char** file, int16_t index, T_Extension extension)
+{
+  char path[18] = "/spiffs/";
+  char fileName[4];
+  char type[6];
+
+  switch (extension)
+  {
+    case E_Extension_MP3:
+      strcpy(type, ".mp3\0");
+      break;
+
+    case E_Extension_WAV:
+      strcpy(type, ".wav\0");
+      break;
+
+    default:
+      // Do nothing
+      break;
+  }
+
+  itoa(index, fileName, 10);  // Convert the index (in base 10) to a string
+
+  strcat(path, fileName);
+  strcat(path, type);
+
+  *file = malloc(sizeof(path));  // Allocated memory
+
+  strcpy(*file, path);
+
+  printf("Selected file: %s\n", *file);
 }
 
 //_____________________________________________________________________________
