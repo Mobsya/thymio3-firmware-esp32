@@ -141,7 +141,7 @@ static void RunCommTask(void* arg)
     STM32_ReadBatteryVoltage();
     STM32_ReadProxIRValue();
     STM32_ReadGroundIRValue();
-    //STM32_ReadMicrophoneVoltage();
+    STM32_ReadMicrophoneVoltage();
     STM32_ReadInducedVoltage();
     STM32_ReadBatteryMotorVoltage();
     STM32_ReadMotorCurrent();

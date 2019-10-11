@@ -183,6 +183,7 @@ void TCPServer_RunTask(void)
       if (sock != -1)
       {
         ESP_LOGE(Tag, "Shutting down socket and restarting...");
+        SocketIsAccepted = false;
         shutdown(sock, 0);
         close(sock);
       }
@@ -214,15 +215,11 @@ void TCPServer_ShutDownSocket(void)
 void TCPServer_Send(const uint8_t* data, uint16_t size)
 {
   int numberBytes = send(sock, data, size, 0);
-  int oldNumberBytes = 0;
 
-  if ((numberBytes < 0) && (oldNumberBytes >= 0))
+  if ((numberBytes < 0) && SocketIsAccepted)
   {
-    // Send this message only once when consecutive errors occured
     ESP_LOGE(Tag, "Error occured during sending: errno %d", errno);
   }
-
-  oldNumberBytes = numberBytes;
 }
 
 //_____________________________________________________________________________

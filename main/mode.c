@@ -580,7 +580,6 @@ static void RunAttentive(void)
   // Dark blue pulse
   Leds_SetBodyBrightness(0u, 0u, brightness);
 
-  AngleController_Update(-90);
 }
 
 //_____________________________________________________________________________
@@ -1157,7 +1156,7 @@ static void RunLegoLedAnimation(void)
   l[(fixed + 4) & 0x7] = (led_state & (MAX_BRIGHTNESS - 1));
 
   Leds_SetLegoFrontBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
-  Leds_SetLegoBackBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
+  //Leds_SetLegoBackBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
 
 #if 0
   uint8_t l[8] = {0, 0, 0, 0, 0, 0, 0, 0};

@@ -88,7 +88,9 @@ void Sensors_Init(void)
 
   I2CMutex = xSemaphoreCreateMutex();
 
-  //Codec_Init();
+  Codec_Init();
+
+  Buttons_Init();
 
   ColorSensor_Init();
   Accelerometer_Init();

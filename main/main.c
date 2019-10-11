@@ -124,7 +124,7 @@ int app_main(void)
 
   Leds_Init();
 
-  Buttons_Init();
+  //Buttons_Init();
 
   //I2S_Init();
   //Sound_Init();
@@ -147,7 +147,7 @@ int app_main(void)
 
   Behavior_Init();
 
-  //Behavior_Enable(B_ALWAYS);  // FIXME Replace by Mode_Init()
+  //Behavior_Enable(B_ALWAYS | B_LEDS_PROX);  // FIXME Replace by Mode_Init()
 
   Mode_Init();
   Mode_InitVM();
@@ -157,6 +157,16 @@ int app_main(void)
 
   while (!WIFI_IsConnected())
   {}
+
+  esp_log_level_set("*", ESP_LOG_ERROR);
+
+  Codec_SetVolume(100);
+  //Codec_PlayMP3FromFileSystem(0);
+  //Codec_PlayMP3(2);
+  //Codec_RecordWAV(0);
+  //Codec_PlayWAV(2);
+
+  //Codec_SetVolume(80);
 
 //*****************************************************************************
 // Start the tasks
@@ -178,14 +188,6 @@ int app_main(void)
   AsebaESP32_Start();
 
   //Test_StartDebugging();
-  //I2S_StartReading();
-  //Sound_StartProcessing();
-  //Sound_StartAcquisition();
-  //Codec_StartMP3Player(2);
-
-  //Codec_StartMP3Player(2);
-  //Codec_StartWAVRecorder(0);
-  //Codec_StartWAVPlayer(0);
 
   Behavior_Start();
 
@@ -201,12 +203,6 @@ int app_main(void)
 
   //ESP_LOGI(Tag, "All tasks are started");
   //UART_Flush();
-
-  //Codec_StartMP3Player(2);
-  //Codec_StartWAVRecorder(0);
-  //Codec_StartWAVPlayer(0);
-  //Codec_StartWAVRecorder(0);
-  //Codec_StartWAVPlayer(0);
 
   return 0;
 }

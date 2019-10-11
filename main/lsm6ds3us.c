@@ -123,7 +123,7 @@
 
 // CTRL2_G bits position
 #define GYR_ODR_G_BIT_POS                       4u  //!< Position of LSB bit ODR_G
-#define GYR_FS_G_BIT_POS						2u  //!< Position of LSB bit FS_G
+#define GYR_FS_G_BIT_POS                        2u  //!< Position of LSB bit FS_G
 
 // CTRL10_C bits position
 #define GYR_EN_G_BIT_POS                        3u  //!< Position of LSB bit of EN_G
@@ -283,8 +283,7 @@ static int16_t Buffer[3][10];
 static bool IsCalibrated = false;
 static int16_t ZeroGyro[3] = {0, 0, 0};
 
-
-static int16_t teta[3] = {0, 0, 0};
+static int16_t Teta[3] = {0, 0, 0};
 
 static int32_t Mul = 0;
 static int32_t Div = 0;
@@ -594,7 +593,7 @@ void LSM6DS3US_ResetAngle(void)
 {
   for (uint8_t i = 0u; i < 3u; i++)
   {
-    teta[i] = 0;
+    Teta[i] = 0;
   }
 }
 
@@ -624,7 +623,7 @@ static void UpdateGyroOutputDataRate(T_Gyro_OutputDataRate rate)
     data |= (rate << GYR_ODR_G_BIT_POS);
 
     I2C_WriteToAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
-	SetIntegratorFactors(rate);
+    SetIntegratorFactors(rate);
   }
   else
   {
@@ -890,45 +889,45 @@ static void SetIntegratorFactors(T_Gyro_OutputDataRate rate)
       break;
 
     case E_Gyro_OutputDataRate_12_5Hz:
-	  Mul = 7 * 512; //7 * 512
+      Mul = 7 * 512; //7 * 512
       Div = 1125 * 12.5;  // 1125 * 12.5
       break;
 
     case E_Gyro_OutputDataRate_26Hz:
-	  Mul = 7 * 256; //7 * 256
+      Mul = 7 * 256; //7 * 256
       Div = 1125 * 13;  // 1125 * 13
       break;
 
     case E_Gyro_OutputDataRate_52Hz:
-	  Mul = 7 * 128; //7 * 128
+      Mul = 7 * 128; //7 * 128
       Div = 1125 * 13;  // 1125 * 13
       break;
 
     case E_Gyro_OutputDataRate_104Hz:
-	  Mul = 7 * 64; //7 * 64
+      Mul = 7 * 64; //7 * 64
       Div = 1125 * 13;  // 1125 * 13
       break;
 
     case E_Gyro_OutputDataRate_208Hz:
-	   Mul = 7 * 32; //7 * 32
-       Div = 1125 * 13;  // 1125 * 13
+      Mul = 7 * 32; //7 * 32
+      Div = 1125 * 13;  // 1125 * 13
       break;
 
     case E_Gyro_OutputDataRate_416Hz:
-       Mul = 7 * 16; //7 * 16
-       Div = 1125 * 13;  // 1125 * 13
+      Mul = 7 * 16; //7 * 16
+      Div = 1125 * 13;  // 1125 * 13
       break;
 
     case E_Gyro_OutputDataRate_833Hz:
-	  Mul = 7 * 512; //7 * 512
+      Mul = 7 * 512; //7 * 512
       Div = 1125 * 833;  // 1125 * 833
       break;
 
     case E_Gyro_OutputDataRate_1660Hz:
-	  Mul = 7 * 128; //7 * 128
+      Mul = 7 * 128; //7 * 128
       Div =  1125 * 415;  // 1125 * 415
       break;
-	  
+
     default:
       // Do nothing
       break;
@@ -969,7 +968,7 @@ static void CalibrateZeroGyro(uint16_t number)
 static void CalculateAngle(int16_t* angle, uint16_t number)
 {
   int32_t sum[3] = {0, 0, 0};
-  int64_t GyroCorr[3] = {0, 0, 0};
+  int64_t gyroCorr[3] = {0, 0, 0};
   
   for (uint8_t i = 0u; i < 3u; i++)
   {
@@ -978,9 +977,9 @@ static void CalculateAngle(int16_t* angle, uint16_t number)
       sum[i] += Buffer[i][j];
     }
 
-    GyroCorr[i] = (sum[i] - (number * ZeroGyro[i]));
-    teta[i] += ((Mul * GyroCorr[i]) / Div);
-    angle[i] = teta[i];
+    gyroCorr[i] = (sum[i] - (number * ZeroGyro[i]));
+    Teta[i] += ((Mul * gyroCorr[i]) / Div);
+    angle[i] = Teta[i];
   }
 }
 
