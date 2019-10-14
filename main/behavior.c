@@ -159,7 +159,7 @@ void Behavior_Start(void)
     "behavior",       // Name of the task
     4096,             // Stack size in words
     NULL,             // Task input parameter
-    2,                // Priority of the task
+    4,                // Priority of the task
     &BehaviorTask,    // Task handle
     0);               // Core where the task should run
 

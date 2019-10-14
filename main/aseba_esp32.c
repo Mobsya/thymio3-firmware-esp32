@@ -103,7 +103,7 @@ void AsebaESP32_Start(void)
     "aseba",       // Name of the task
     4096,          // Stack size in words
     NULL,          // Task input parameter
-    2,             // Priority of the task
+    1,             // Priority of the task
     NULL,          // Task handle
     1);            // Core where the task should run
 }
@@ -329,7 +329,6 @@ const AsebaVMDescription vmDescription =
     {3, "led_back_left"},
     {3, "led_back_right"},
     {2, "leds_ground"},
-    {1, "microphone"},
     {0, NULL} // Null terminated
   }
 };

@@ -136,7 +136,7 @@ void Leds_Start(void)
     "leds",       // Name of the task
     4096,         // Stack size in words
     NULL,         // Task input parameter
-    6,            // Priority of the task
+    8,            // Priority of the task
     &LedsTask,    // Task handle
     0);           // Core where the task should run
 

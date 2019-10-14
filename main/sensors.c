@@ -106,7 +106,7 @@ void Sensors_Start(void)
     "sensors",       // Name of the task
     2048,            // Stack size in words
     NULL,            // Task input parameter
-    3,               // Priority of the task
+    6,               // Priority of the task
     &SensorsTask,    // Task handle
     0);              // Core where the task should run
 

@@ -235,7 +235,7 @@ void WIFI_Start(void)
     "wifi",       // Name of the task
     4096,         // Stack size in words
     NULL,         // Task input parameter
-    1,            // Priority of the task
+    2,            // Priority of the task
     NULL,         // Task handle
     1);           // Core where the task should run
 //#endif

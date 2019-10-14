@@ -97,7 +97,7 @@ void Comm_Start(void)
     "comm",       // Name of the task
     2048,         // Stack size in words
     NULL,         // Task input parameter
-    4,            // Priority of the task
+    7,            // Priority of the task
     &CommTask,    // Task handle
     0);           // Core where the task should run
 
@@ -141,7 +141,7 @@ static void RunCommTask(void* arg)
     STM32_ReadBatteryVoltage();
     STM32_ReadProxIRValue();
     STM32_ReadGroundIRValue();
-    STM32_ReadMicrophoneVoltage();
+    STM32_ReadSoundValue();
     STM32_ReadInducedVoltage();
     STM32_ReadBatteryMotorVoltage();
     STM32_ReadMotorCurrent();
