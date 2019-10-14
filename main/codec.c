@@ -20,6 +20,10 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+
+#include <sys/stat.h>
+#include <sys/unistd.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -237,6 +241,8 @@ static void SelectFile(int16_t index);
 
 static void SelectFileSystemFile(char** file, int16_t index, T_Extension extension);
 
+static void EraseFileSystemFile(char* file);
+
 int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t wait_time, void* ctx);
 
 //-----------------------------------------------------------------------------
@@ -450,6 +456,8 @@ void Codec_RecordWAV(int number)
 
   SelectFileSystemFile(&file, number, E_Extension_WAV);
 
+  //EraseFileSystemFile(file);
+
   ESP_LOGI(Tag, "[1.1] Create audio pipeline for recording");
   audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
   WAVRecorderPipeline = audio_pipeline_init(&pipeline_cfg);
@@ -537,100 +545,122 @@ void Codec_RecordWAV(int number)
 void Codec_PlayWAV(int number)
 {
   char* file;
+  struct stat st;
 
   SelectFileSystemFile(&file, number, E_Extension_WAV);
 
-  //ESP_LOGI(Tag, "[2] Start codec chip");
-  //board_handle = Init();
-  //audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
-
-  ESP_LOGI(Tag, "[1.1] Create audio pipeline for replay");
-  audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
-  WAVPlayerPipeline = audio_pipeline_init(&pipeline_cfg);
-  mem_assert(WAVPlayerPipeline);
-
-  ESP_LOGI(Tag, "[1.2] Create spiffs stream to read data from spi flash");
-  WAVPlayerSPIFFSStream = CreateSPIFFSStream(SAVE_FILE_RATE, SAVE_FILE_BITS, SAVE_FILE_CHANNEL, AUDIO_STREAM_READER);
-
-  ESP_LOGI(Tag, "[1.3] Create WAV decoder to decode WAV format");
-  WAVDecoder = CreateWAVDecoder();
-
-  ESP_LOGI(Tag, "[1.4] Create filter to convert to 48 [kHz]");
-  WAVPlayerFilter = CreateFilter(SAVE_FILE_RATE, SAVE_FILE_CHANNEL, WAV_PLAYER_RATE, WAV_PLAYER_CHANNEL, AUDIO_CODEC_TYPE_DECODER);
-
-  ESP_LOGI(Tag, "[1.5] Create i2s stream to write audio data to codec chip");
-  WAVPlayerI2SStream = CreateI2SStream(WAV_PLAYER_RATE, WAV_PLAYER_BITS, WAV_PLAYER_CHANNEL, AUDIO_STREAM_WRITER);
-
-  ESP_LOGI(Tag, "[1.6] Register all elements to audio pipeline");
-  audio_pipeline_register(WAVPlayerPipeline, WAVPlayerSPIFFSStream, "file_reader");
-  audio_pipeline_register(WAVPlayerPipeline, WAVDecoder, "wav_decoder");
-  audio_pipeline_register(WAVPlayerPipeline, WAVPlayerFilter, "filter_upsample");
-  audio_pipeline_register(WAVPlayerPipeline, WAVPlayerI2SStream, "i2s_writer");
-
-  ESP_LOGI(Tag, "[2] Setup event listener");
-  audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
-  WAVPlayerEvt = audio_event_iface_init(&evt_cfg);
-
-  ESP_LOGI(Tag, "[2.1] Listening event from peripherals");
-  audio_event_iface_set_listener(esp_periph_set_get_event_iface(Set), WAVPlayerEvt);
-
-  ESP_LOGI(Tag, "[2.2] Link it together [flash]-->spiffs_stream-->wav_decoder-->filter-->i2s_stream-->[codec_chip]");
-  audio_pipeline_link(WAVPlayerPipeline, (const char *[]) {"file_reader", "wav_decoder", "filter_upsample", "i2s_writer"}, 4);
-
-  i2s_stream_set_clk(WAVPlayerI2SStream, WAV_PLAYER_RATE, WAV_PLAYER_BITS, WAV_PLAYER_CHANNEL);
-
-  ESP_LOGI(Tag, "[2.3] Setup uri (file_reader as spiffs_stream, wav_decoder as wav decoder)");
-  audio_element_set_uri(WAVPlayerSPIFFSStream, file);
-
-  //ESP_LOGI(Tag, "[4.1] Listening event from pipeline");
-  audio_pipeline_set_listener(WAVPlayerPipeline, WAVPlayerEvt);
-
-  ESP_LOGI(Tag, "[3] Start audio_pipeline");
-  audio_pipeline_run(WAVPlayerPipeline);
-
-  while (1)
+  // Check that the file exists
+  if (stat(file, &st) == 0)
   {
-    audio_event_iface_msg_t msg;
-    esp_err_t ret = audio_event_iface_listen(WAVPlayerEvt, &msg, portMAX_DELAY);
 
-    if (ret != ESP_OK)
-    {
-      ESP_LOGE(Tag, "[ * ] Event interface error : %d", ret);
-      continue;
-    }
+
 #if 0
-    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*)WAVDecoder
-        && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
+  FILE* f = NULL;
+
+  SelectFileSystemFile(&file, number, E_Extension_WAV);
+
+  f = fopen(file, "r");
+
+  // Check that the file exists
+  if (f != NULL)
+  {
+    fclose(f);
+#endif
+    //ESP_LOGI(Tag, "[2] Start codec chip");
+    //board_handle = Init();
+    //audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
+
+    ESP_LOGI(Tag, "[1.1] Create audio pipeline for replay");
+    audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
+    WAVPlayerPipeline = audio_pipeline_init(&pipeline_cfg);
+    mem_assert(WAVPlayerPipeline);
+
+    ESP_LOGI(Tag, "[1.2] Create spiffs stream to read data from spi flash");
+    WAVPlayerSPIFFSStream = CreateSPIFFSStream(SAVE_FILE_RATE, SAVE_FILE_BITS, SAVE_FILE_CHANNEL, AUDIO_STREAM_READER);
+
+    ESP_LOGI(Tag, "[1.3] Create WAV decoder to decode WAV format");
+    WAVDecoder = CreateWAVDecoder();
+
+    ESP_LOGI(Tag, "[1.4] Create filter to convert to 48 [kHz]");
+    WAVPlayerFilter = CreateFilter(SAVE_FILE_RATE, SAVE_FILE_CHANNEL, WAV_PLAYER_RATE, WAV_PLAYER_CHANNEL, AUDIO_CODEC_TYPE_DECODER);
+
+    ESP_LOGI(Tag, "[1.5] Create i2s stream to write audio data to codec chip");
+    WAVPlayerI2SStream = CreateI2SStream(WAV_PLAYER_RATE, WAV_PLAYER_BITS, WAV_PLAYER_CHANNEL, AUDIO_STREAM_WRITER);
+
+    ESP_LOGI(Tag, "[1.6] Register all elements to audio pipeline");
+    audio_pipeline_register(WAVPlayerPipeline, WAVPlayerSPIFFSStream, "file_reader");
+    audio_pipeline_register(WAVPlayerPipeline, WAVDecoder, "wav_decoder");
+    audio_pipeline_register(WAVPlayerPipeline, WAVPlayerFilter, "filter_upsample");
+    audio_pipeline_register(WAVPlayerPipeline, WAVPlayerI2SStream, "i2s_writer");
+
+    ESP_LOGI(Tag, "[2] Setup event listener");
+    audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
+    WAVPlayerEvt = audio_event_iface_init(&evt_cfg);
+
+    ESP_LOGI(Tag, "[2.1] Listening event from peripherals");
+    audio_event_iface_set_listener(esp_periph_set_get_event_iface(Set), WAVPlayerEvt);
+
+    ESP_LOGI(Tag, "[2.2] Link it together [flash]-->spiffs_stream-->wav_decoder-->filter-->i2s_stream-->[codec_chip]");
+    audio_pipeline_link(WAVPlayerPipeline, (const char *[]) {"file_reader", "wav_decoder", "filter_upsample", "i2s_writer"}, 4);
+
+    i2s_stream_set_clk(WAVPlayerI2SStream, WAV_PLAYER_RATE, WAV_PLAYER_BITS, WAV_PLAYER_CHANNEL);
+
+    ESP_LOGI(Tag, "[2.3] Setup uri (file_reader as spiffs_stream, wav_decoder as wav decoder)");
+    audio_element_set_uri(WAVPlayerSPIFFSStream, file);
+
+    //ESP_LOGI(Tag, "[4.1] Listening event from pipeline");
+    audio_pipeline_set_listener(WAVPlayerPipeline, WAVPlayerEvt);
+
+    ESP_LOGI(Tag, "[3] Start audio_pipeline");
+    audio_pipeline_run(WAVPlayerPipeline);
+
+    while (1)
     {
-      ESP_LOGI(Tag, "[ 5.1 ]");
-      audio_element_info_t music_info = {0};
-      ESP_LOGI(Tag, "[ 5.2 ]");
-      audio_element_getinfo(WAVDecoder, &music_info);
-      ESP_LOGI(Tag, "[ 5.3 ]");
+      audio_event_iface_msg_t msg;
+      esp_err_t ret = audio_event_iface_listen(WAVPlayerEvt, &msg, portMAX_DELAY);
 
-      ESP_LOGI(Tag, "[ * ] Receive music info from WAV decoder, sample_rates=%d, bits=%d, ch=%d",
-               music_info.sample_rates, music_info.bits, music_info.channels);
+      if (ret != ESP_OK)
+      {
+        ESP_LOGE(Tag, "[ * ] Event interface error : %d", ret);
+        continue;
+      }
+#if 0
+        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*)WAVDecoder
+            && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
+        {
+          ESP_LOGI(Tag, "[ 5.1 ]");
+          audio_element_info_t music_info = {0};
+          ESP_LOGI(Tag, "[ 5.2 ]");
+          audio_element_getinfo(WAVDecoder, &music_info);
+          ESP_LOGI(Tag, "[ 5.3 ]");
 
-      audio_element_setinfo(WAVPlayerI2SStream, &music_info);
-      i2s_stream_set_clk(WAVPlayerI2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
-      continue;
-    }
+          ESP_LOGI(Tag, "[ * ] Receive music info from WAV decoder, sample_rates=%d, bits=%d, ch=%d",
+                   music_info.sample_rates, music_info.bits, music_info.channels);
+
+          audio_element_setinfo(WAVPlayerI2SStream, &music_info);
+          i2s_stream_set_clk(WAVPlayerI2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
+          continue;
+        }
 #endif
 
-    /* Stop when the last pipeline element (WAVPlayerI2SStream in this case) receives stop event */
-    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *) WAVPlayerI2SStream &&
-        msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (((int) msg.data == AEL_STATUS_STATE_STOPPED) ||
-        ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
-    {
-      break;
+      // Stop when the last pipeline element (WAVPlayerI2SStream in this case) receives stop event
+      if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *) WAVPlayerI2SStream &&
+          msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (((int) msg.data == AEL_STATUS_STATE_STOPPED) ||
+          ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
+      {
+        break;
+      }
     }
 
+    free(file);
+
+    //ESP_LOGI(Tag, "[ 6 ] Stop audio_pipeline");
+    StopWAVPlayer();
   }
-
-  free(file);
-
-  //ESP_LOGI(Tag, "[ 6 ] Stop audio_pipeline");
-  StopWAVPlayer();
+  else
+  {
+    ESP_LOGE(Tag, "Failed to open file");
+  }
 }
 
 //_____________________________________________________________________________
@@ -898,7 +928,7 @@ static void StopWAVPlayer(void)
   audio_element_deinit(WAVPlayerFilter);
   audio_element_deinit(WAVPlayerI2SStream);
 
-  esp_periph_set_destroy(Set);
+  //esp_periph_set_destroy(Set);
 
   WAVPlayerIsBusy = false;
 }
@@ -1002,7 +1032,20 @@ static void SelectFileSystemFile(char** file, int16_t index, T_Extension extensi
 
   strcpy(*file, path);
 
-  printf("Selected file: %s\n", *file);
+  //printf("Selected file: %s\n", *file);
+}
+
+//_____________________________________________________________________________
+
+static void EraseFileSystemFile(char* file)
+{
+  struct stat st;
+
+  // Check that the file exists
+  if (stat(file, &st) == 0)
+  {
+    unlink(file);
+  }
 }
 
 //_____________________________________________________________________________
