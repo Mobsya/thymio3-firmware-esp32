@@ -45,7 +45,7 @@
 #define PROX_IR_VALUE_REG_ADDRESS           0x0Bu  //!< Prox IR value register address      (Read only)
 #define GROUND_IR_VALUE_REG_ADDRESS         0x0Cu  //!< Ground IR value register address    (Read only)
 #define GROUND_IR_LEDS_REG_ADDRESS          0x0Du  //!< Ground IR LEDs register address     (Read/Write)
-#define MICROPHONE_VOLTAGE_REG_ADDRESS      0x0Eu  //!< Microphone voltage register address (Read only)
+#define SOUND_REG_ADDRESS                   0x0Eu  //!< Sound register address              (Read/Write)
 #define BEHAVIOR_STATUS_REG_ADDRESS         0x0Fu  //!< Behavior status register address    (Write only)
 
 #define STM32_ID                            0xBCu  //!< ID of the STM32
@@ -77,7 +77,7 @@
 #define PROX_IR_VALUE_MESSAGE_LENGTH          14u  //!< Prox IR value message length in bytes
 #define GROUND_IR_VALUE_MESSAGE_LENGTH        12u  //!< Ground IR value message length in bytes
 #define GROUND_IR_LEDS_MESSAGE_LENGTH          4u  //!< Ground IR LEDs message length in bytes
-#define MICROPHONE_VOLTAGE_MESSAGE_LENGTH      2u  //!< Battery voltage message length in bytes
+#define SOUND_MESSAGE_LENGTH                   6u  //!< Sound message length in bytes
 #define BEHAVIOR_STATUS_MESSAGE_LENGTH         2u  //!< Behavior status message length in bytes
 
 //-----------------------------------------------------------------------------
@@ -127,13 +127,7 @@ static int16_t Current[MOTORS_NUM]   = {0, 0};
 
 static int16_t ProxIRValue[PROX_IR_SENSORS_NUM] = {0, 0, 0, 0, 0, 0, 0};
 
-static int16_t GroundIRAmbient[GROUND_IR_SENSORS_NUM]   =  {0, 0};
-static int16_t GroundIRReflected[GROUND_IR_SENSORS_NUM] =  {0, 0};
-static int16_t GroundIRDelta[GROUND_IR_SENSORS_NUM]     =  {0, 0};
-
 static int16_t Vbat = 0;
-
-static int16_t Microphone = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -303,6 +297,22 @@ void STM32_UpdateGroundIRLedsBrightness(int16_t* brightness)
 
 //_____________________________________________________________________________
 
+void STM32_UpdateSoundThreshold(int16_t threshold)
+{
+  uint8_t data[SOUND_MESSAGE_LENGTH];
+
+  data[0] = 0u;
+  data[1] = 0u;
+  data[2] = (uint8_t)(threshold);
+  data[3] = (uint8_t)(threshold >> 8);
+  data[4] = 0u;
+  data[5] = 0u;
+
+  I2C_WriteToAddress(SLAVE_ADDRESS, SOUND_REG_ADDRESS, data, SOUND_MESSAGE_LENGTH);
+}
+
+//_____________________________________________________________________________
+
 void STM32_UpdateBehaviorStatus(uint16_t status)
 {
   uint8_t data[BEHAVIOR_STATUS_MESSAGE_LENGTH];
@@ -436,17 +446,22 @@ int16_t STM32_GetBatteryVoltage(void)
 
 //_____________________________________________________________________________
 
-void STM32_ReadMicrophoneVoltage(void)
+void STM32_ReadSoundValue(void)
 {
-  uint8_t data[MICROPHONE_VOLTAGE_MESSAGE_LENGTH];
+  uint8_t data[SOUND_MESSAGE_LENGTH];
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, MICROPHONE_VOLTAGE_REG_ADDRESS, data, MICROPHONE_VOLTAGE_MESSAGE_LENGTH);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, SOUND_REG_ADDRESS, data, SOUND_MESSAGE_LENGTH);
 
-  Microphone = ((data[1] << 8) | data[0]);
+  vmVariables.sound_level = ((data[1] << 8) | data[0]);
+  vmVariables.sound_tresh = ((data[3] << 8) | data[2]);
+  vmVariables.sound_mean  = ((data[5] << 8) | data[4]);
 
-  vmVariables.microphone = Microphone;
+  if ((vmVariables.sound_tresh > 0) && (vmVariables.sound_level > vmVariables.sound_tresh))
+  {
+    //SET_EVENT(EVENT_MIC);
+  }
 
-  //ESP_LOGW(Tag, "Micro = %d", Microphone);
+  //ESP_LOGE(Tag, "Volume = %d", vmVariables.sound_level);
 }
 
 //_____________________________________________________________________________
@@ -482,19 +497,12 @@ void STM32_ReadGroundIRValue(void)
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, GROUND_IR_VALUE_REG_ADDRESS, data, GROUND_IR_VALUE_MESSAGE_LENGTH);
 
-  GroundIRAmbient[E_GroundIR_Right]   = ((data[1] << 8) | data[0]);
-  GroundIRAmbient[E_GroundIR_Left]    = ((data[3] << 8) | data[2]);
-  GroundIRReflected[E_GroundIR_Right] = ((data[5] << 8) | data[4]);
-  GroundIRReflected[E_GroundIR_Left]  = ((data[7] << 8) | data[6]);
-  GroundIRDelta[E_GroundIR_Right]     = ((data[9] << 8) | data[8]);
-  GroundIRDelta[E_GroundIR_Left]      = ((data[11] << 8) | data[10]);
-
-  vmVariables.ground_ambiant[E_GroundIR_Right]   = GroundIRAmbient[E_GroundIR_Right];
-  vmVariables.ground_ambiant[E_GroundIR_Left]    = GroundIRAmbient[E_GroundIR_Left];
-  vmVariables.ground_reflected[E_GroundIR_Right] = GroundIRReflected[E_GroundIR_Right];
-  vmVariables.ground_reflected[E_GroundIR_Left]  = GroundIRReflected[E_GroundIR_Left];
-  vmVariables.ground_delta[E_GroundIR_Right]     = GroundIRDelta[E_GroundIR_Right];
-  vmVariables.ground_delta[E_GroundIR_Left]      = GroundIRDelta[E_GroundIR_Left];
+  vmVariables.ground_ambiant[E_GroundIR_Right]   = ((data[1] << 8) | data[0]);
+  vmVariables.ground_ambiant[E_GroundIR_Left]    = ((data[3] << 8) | data[2]);
+  vmVariables.ground_reflected[E_GroundIR_Right] = ((data[5] << 8) | data[4]);
+  vmVariables.ground_reflected[E_GroundIR_Left]  = ((data[7] << 8) | data[6]);
+  vmVariables.ground_delta[E_GroundIR_Right]     = ((data[9] << 8) | data[8]);
+  vmVariables.ground_delta[E_GroundIR_Left]      = ((data[11] << 8) | data[10]);
 }
 
 //_____________________________________________________________________________

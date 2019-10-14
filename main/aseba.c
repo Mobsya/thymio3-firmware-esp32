@@ -108,6 +108,8 @@ static void UpdateLedBackRight(void);
 
 static void UpdateLedsGroundIR(void);
 
+static void UpdateSoundThreshold(void);
+
 static void Callback_AsebaTimer0(void* arg);
 
 static void Callback_AsebaTimer1(void* arg);
@@ -155,6 +157,8 @@ void update_aseba_variables_write(void)
   UpdateSettings();
 
   UpdateBehaviors();
+
+  UpdateSoundThreshold();
 
   //UpdateTimers();
 
@@ -554,6 +558,20 @@ static void UpdateLedsGroundIR(void)
 
     // TODO Behavior_Disable(B_LEDS_PROX);
     STM32_UpdateGroundIRLedsBrightness(brightness);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateSoundThreshold(void)
+{
+  static int16_t threshold = 0;
+
+  if (threshold != vmVariables.sound_tresh)
+  {
+    threshold = vmVariables.sound_tresh;
+
+    STM32_UpdateSoundThreshold(threshold);
   }
 }
 

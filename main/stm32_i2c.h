@@ -132,6 +132,12 @@ extern void STM32_UpdateRightMotorTarget(int16_t* target);
 //! \return    None
 extern void STM32_UpdateGroundIRLedsBrightness(int16_t* brightness);
 
+//! \brief     Update the sound threshold
+//! \pre       None
+//! \param     threshold - Threshold of the sound detection
+//! \return    None
+extern void STM32_UpdateSoundThreshold(int16_t threshold);
+
 //! \brief     Update the behavior status
 //! \pre       None
 //! \param     status - Behavior status
@@ -193,11 +199,11 @@ extern void STM32_ReadBatteryVoltage(void);
 //! \return    The battery voltage
 extern int16_t STM32_GetBatteryVoltage(void);
 
-//! \brief     Read the microphone voltage
+//! \brief     Read the sound value
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void STM32_ReadMicrophoneVoltage(void);
+extern void STM32_ReadSoundValue(void);
 
 //! \brief     Read the prox IR value
 //! \pre       None
