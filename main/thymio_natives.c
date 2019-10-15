@@ -142,8 +142,8 @@ void sound_playback(AsebaVMState* vm)
   }
 #endif
 
-  //Codec_StartMP3Player(number);
-  Codec_PlayMP3(number);
+  Codec_StartMP3Player(number);
+  //Codec_PlayMP3(number);
 
 #if 0
   MelodyAseba.Melody = JamesBond;
@@ -173,6 +173,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_record =
   "Start recording of rN.wav",
   {
     {1, "N"},
+	{1, "duration"},
     {0, 0},
   }
 };
@@ -180,7 +181,8 @@ AsebaNativeFunctionDescription AsebaNativeDescription_record =
 void sound_record(AsebaVMState* vm)
 {
   char name[13] = {'r'};
-  int number = vm->variables[AsebaNativePopArg(vm)];
+  int index    = vm->variables[AsebaNativePopArg(vm)];
+  int duration = vm->variables[AsebaNativePopArg(vm)];
 #if 0 // FIXME
   if (number == -1)
   {
@@ -197,8 +199,8 @@ void sound_record(AsebaVMState* vm)
   //I2S_Record();
 
   //MP3_StartRecorder();
-  //Codec_StartWAVRecorder(number);
-  Codec_RecordWAV(number);
+  Codec_StartWAVRecorder(index, duration);
+  //Codec_RecordWAV(number);
 }
 
 //_____________________________________________________________________________
@@ -234,8 +236,8 @@ void sound_replay(AsebaVMState* vm)
 
   //Sound_StartReplaying();
   //Sound_Replay();
-  //Codec_StartWAVPlayer(number);
-  Codec_PlayWAV(number);
+  Codec_StartWAVPlayer(number);
+  //Codec_PlayWAV(number);
 }
 
 //_____________________________________________________________________________
