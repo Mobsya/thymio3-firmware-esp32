@@ -162,9 +162,9 @@ int app_main(void)
 
   Codec_SetVolume(100);
   //Codec_PlayMP3FromFileSystem(0);
-  //Codec_PlayMP3(2);
+  //Codec_PlayMP3File(2);
   //Codec_RecordWAV(0);
-  //Codec_PlayWAV(2);
+  //Codec_PlayWAVFile(2);
 
   //Codec_SetVolume(80);
 

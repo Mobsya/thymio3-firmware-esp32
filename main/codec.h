@@ -47,35 +47,41 @@
 //! \return    None
 extern void Codec_Init(void);
 
-extern void Codec_StartMP3Player(int16_t index);
-
-extern void Codec_StartWAVRecorder(int16_t index, uint16_t duration_s);
-
-extern void Codec_StartWAVPlayer(int16_t index);
-
 //! \brief     Play a MP3 file
 //! \pre       First initialize the codec
 //! \param     None
 //! \return    None
-extern void Codec_PlayMP3(int16_t index);
+extern void Codec_PlayMP3File(int16_t index);
 
 //! \brief     Play a MP3 file from the file system
 //! \pre       First initialize the codec
-//! \param     None
+//! \param     index - Index of the file to play
 //! \return    None
 extern void Codec_PlayMP3FromFileSystem(int16_t index);
+
+//! \brief     Play a WAV file from the file system
+//! \pre       First initialize the codec
+//! \param     index - Index of the file to play
+//! \return    None
+extern void Codec_PlayWAVFile(int16_t index);
+
+//! \brief     Pause a MP3 file
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
+extern void Codec_PauseMP3File(void);
+
+//! \brief     Resume a MP3 file
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
+extern void Codec_ResumeMP3File(void);
 
 //! \brief     Record a WAV file
 //! \pre       First initialize the codec
 //! \param     None
 //! \return    None
-extern void Codec_RecordWAV(int16_t index, uint16_t duration_s);
-
-//! \brief     Play a WAV file from the file system
-//! \pre       First initialize the codec
-//! \param     None
-//! \return    None
-extern void Codec_PlayWAV(int16_t index);
+extern void Codec_RecordWAVFile(int16_t index, uint16_t duration_s);
 
 //! \brief     Set the sound volume
 //! \pre       None

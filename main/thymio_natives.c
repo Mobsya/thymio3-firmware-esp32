@@ -106,17 +106,17 @@ void set_led(AsebaVMState* vm)
 
 //_____________________________________________________________________________
 
-AsebaNativeFunctionDescription AsebaNativeDescription_play =
+AsebaNativeFunctionDescription AsebaNativeDescription_play_mp3 =
 {
-  "sound.play",
-  "Start playback of pN.wav",
+  "mp3.play",
+  "Playback of pN.mp3",
   {
     {1, "N"},
     {0, 0},
   }
 };
 
-void sound_playback(AsebaVMState* vm)
+void mp3_playback(AsebaVMState* vm)
 {
   char name[13] = {'p'};
   //int number = vm->variables[AsebaNativePopArg(vm)];
@@ -142,8 +142,8 @@ void sound_playback(AsebaVMState* vm)
   }
 #endif
 
-  Codec_StartMP3Player(number);
-  //Codec_PlayMP3(number);
+  //Codec_StartMP3Player(number);
+  Codec_PlayMP3File(number);
 
 #if 0
   MelodyAseba.Melody = JamesBond;
@@ -167,10 +167,42 @@ void sound_playback(AsebaVMState* vm)
 
 //_____________________________________________________________________________
 
-AsebaNativeFunctionDescription AsebaNativeDescription_record =
+AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3 =
 {
-  "sound.record",
-  "Start recording of rN.wav",
+  "mp3.pause",
+  "Pause of pN.mp3",
+  {
+    {0, 0},
+  }
+};
+
+void mp3_pause(AsebaVMState* vm)
+{
+  Codec_PauseMP3File();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3 =
+{
+  "mp3.resume",
+  "Resume of pN.mp3",
+  {
+    {0, 0},
+  }
+};
+
+void mp3_resume(AsebaVMState* vm)
+{
+  Codec_ResumeMP3File();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_record_wav =
+{
+  "wav.record",
+  "Recording of rN.wav",
   {
     {1, "N"},
 	{1, "duration"},
@@ -178,7 +210,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_record =
   }
 };
 
-void sound_record(AsebaVMState* vm)
+void wav_record(AsebaVMState* vm)
 {
   char name[13] = {'r'};
   int index    = vm->variables[AsebaNativePopArg(vm)];
@@ -199,23 +231,23 @@ void sound_record(AsebaVMState* vm)
   //I2S_Record();
 
   //MP3_StartRecorder();
-  Codec_StartWAVRecorder(index, duration);
-  //Codec_RecordWAV(number);
+  //Codec_StartWAVRecorder(index, duration);
+  Codec_RecordWAVFile(index, duration);
 }
 
 //_____________________________________________________________________________
 
-AsebaNativeFunctionDescription AsebaNativeDescription_replay =
+AsebaNativeFunctionDescription AsebaNativeDescription_replay_wav =
 {
-  "sound.replay",
-  "Start playback of rN.wav",
+  "wav.replay",
+  "Playback of rN.wav",
   {
     {1, "N"},
     {0, 0},
   }
 };
 
-void sound_replay(AsebaVMState* vm)
+void wav_replay(AsebaVMState* vm)
 {
   char name[13] = {'r'};
   int number = vm->variables[AsebaNativePopArg(vm)];
@@ -236,8 +268,8 @@ void sound_replay(AsebaVMState* vm)
 
   //Sound_StartReplaying();
   //Sound_Replay();
-  Codec_StartWAVPlayer(number);
-  //Codec_PlayWAV(number);
+//  Codec_StartWAVPlayer(number);
+  Codec_PlayWAVFile(number);
 }
 
 //_____________________________________________________________________________
