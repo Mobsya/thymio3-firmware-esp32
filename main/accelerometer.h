@@ -49,11 +49,17 @@
 //! \return    None
 extern void Accelerometer_Init(void);
 
-//! \brief     Get the acceleration
+//! \brief     Read the acceleration
 //! \pre       First initialize the accelerometer
 //! \param     None
 //! \return    None
-extern void Accelerometer_GetAcceleration(void);
+extern void Accelerometer_ReadAcceleration(void);
+
+//! \brief     Get the acceleration on Y-axis
+//! \pre       First initialize the accelerometer
+//! \param     None
+//! \return    Acceleration on the Y-axis
+extern int16_t Accelerometer_GetAccelerationY(void);
 
 //! \brief     Read the acceleration tap source
 //! \pre       First initialize the accelerometer

@@ -68,7 +68,7 @@ void Accelerometer_Init(void)
 
 //_____________________________________________________________________________
 
-void Accelerometer_GetAcceleration(void)
+void Accelerometer_ReadAcceleration(void)
 {
   LSM6DS3US_GetAcceleration(&Acceleration);
 
@@ -77,6 +77,13 @@ void Accelerometer_GetAcceleration(void)
   vmVariables.acc[2] = Acceleration.Z;
 
   SET_EVENT(EVENT_ACC);
+}
+
+//_____________________________________________________________________________
+
+int16_t Accelerometer_GetAccelerationY(void)
+{
+  return Acceleration.Y;
 }
 
 //_____________________________________________________________________________

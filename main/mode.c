@@ -576,10 +576,20 @@ static void RunExplorer(void)
 static void RunAttentive(void)
 {
   int16_t brightness = GetBodyColorPulse();
+  int16_t acceleration = Accelerometer_GetAccelerationY();
 
   // Dark blue pulse
   Leds_SetBodyBrightness(0u, 0u, brightness);
 
+  when (acceleration >= 15000)
+  {
+    Codec_PlayMP3File(0);
+  }
+
+  when (acceleration <= -15000)
+  {
+    Codec_PlayMP3File(2);
+  }
 }
 
 //_____________________________________________________________________________
@@ -662,7 +672,7 @@ static void RunFollower(void)
 {
   int16_t brightness = GetBodyColorPulse();
 
-  // Dark blue pulse
+  // Green pulse
   Leds_SetBodyBrightness(0u, brightness, 0u);
 
 #if 0
