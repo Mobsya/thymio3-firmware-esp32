@@ -751,7 +751,7 @@ static esp_err_t ConfigureDACMute(T_DACMute config)
 
   if (config <= E_DACMute_Mute)
   {
-	//xSemaphoreTake(I2CMutex, portMAX_DELAY);
+    //xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
     I2C_ReadFromAddress(SLAVE_ADDRESS, DAC_CONTROL_A_REG_ADDRESS, &data, 1u);
 

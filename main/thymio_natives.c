@@ -205,7 +205,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_record_wav =
   "Recording of rN.wav",
   {
     {1, "N"},
-	{1, "duration"},
+    {1, "duration"},
     {0, 0},
   }
 };

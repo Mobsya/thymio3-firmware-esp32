@@ -581,12 +581,12 @@ static void RunAttentive(void)
   // Dark blue pulse
   Leds_SetBodyBrightness(0u, 0u, brightness);
 
-  when (acceleration >= 15000)
+  when(acceleration >= 15000)
   {
     Codec_PlayMP3File(0);
   }
 
-  when (acceleration <= -15000)
+  when(acceleration <= -15000)
   {
     Codec_PlayMP3File(2);
   }

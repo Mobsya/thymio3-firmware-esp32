@@ -969,7 +969,7 @@ static void CalculateAngle(int16_t* angle, uint16_t number)
 {
   int32_t sum[3] = {0, 0, 0};
   int64_t gyroCorr[3] = {0, 0, 0};
-  
+
   for (uint8_t i = 0u; i < 3u; i++)
   {
     for (uint8_t j = 0u; j < number; j++)
