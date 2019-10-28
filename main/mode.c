@@ -573,6 +573,8 @@ static void RunExplorer(void)
 
 //_____________________________________________________________________________
 
+// When the Thymio is placed on the left side, the WAV recorder is activated.
+// When the Thymio is placed on the right side, the WAV player is activated (replay).
 static void RunAttentive(void)
 {
   int16_t brightness = GetBodyColorPulse();
@@ -581,12 +583,12 @@ static void RunAttentive(void)
   // Dark blue pulse
   Leds_SetBodyBrightness(0u, 0u, brightness);
 
-  when(acceleration >= 15000)
+  when(acceleration >= 15000)  // Left side
   {
     Codec_PlayMP3File(0);
   }
 
-  when(acceleration <= -15000)
+  when(acceleration <= -15000)  // Right side
   {
     Codec_PlayMP3File(2);
   }

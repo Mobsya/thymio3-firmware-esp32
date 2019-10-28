@@ -142,7 +142,7 @@ static void RunSensorsTask(void* arg)
     // Every 20 [ms], 50 [Hz] (vTaskDelay = 20 [ms])
     Accelerometer_ReadTapSource();
     Accelerometer_ReadAcceleration();
-    Gyroscope_GetAngularVelocity();
+    Gyroscope_ReadAngularVelocity();
     Gyroscope_ReadAngle();
     ColorSensor_ReadColor();
 

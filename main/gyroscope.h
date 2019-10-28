@@ -47,11 +47,11 @@
 //! \return    None
 extern void Gyroscope_Init(void);
 
-//! \brief     Get the angular velocity
+//! \brief     Read the angular velocity
 //! \pre       First initialize the gyroscope
 //! \param     None
 //! \return    None
-extern void Gyroscope_GetAngularVelocity(void);
+extern void Gyroscope_ReadAngularVelocity(void);
 
 //! \brief     Read the angle
 //! \pre       First initialize the gyroscope
@@ -71,7 +71,7 @@ extern int16_t Gyroscope_GetAngleZ(void);
 //! \return    None
 extern void Gyroscope_ResetAngle(void);
 
-//! \brief     Read the calibration
+//! \brief     Reset the calibration
 //! \pre       First initialize the gyroscope
 //! \param     None
 //! \return    None

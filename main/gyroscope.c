@@ -68,7 +68,7 @@ void Gyroscope_Init(void)
 
 //_____________________________________________________________________________
 
-void Gyroscope_GetAngularVelocity(void)
+void Gyroscope_ReadAngularVelocity(void)
 {
   LSM6DS3US_GetAngularVelocity(&AngularVelocity);
 

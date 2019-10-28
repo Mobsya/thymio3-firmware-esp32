@@ -97,8 +97,16 @@ static int16_t Command = 0;  // 6 bits + 1 start bit (S2)
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
+//! \brief     Run the RX task
+//! \pre       First initialize the RC5 module
+//! \param     arg - Task parameter
+//! \return    None
 static void RunRXTask(void* arg);
 
+//! \brief     Parse the items
+//! \pre       First initialize the RC5 module
+//! \param     item - Received items
+//! \return    True if a frame is received, false otherwise
 static inline bool ParseItems(rmt_item16_t* item);
 
 //-----------------------------------------------------------------------------
