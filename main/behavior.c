@@ -252,12 +252,12 @@ static void RunBehaviors(void)
     Mode_Run();
   }
 
-#if 0  // FIXME
+//#if 0  // FIXME
   if (ENABLED(B_SOUND_BUTTON))
   {
     PlaySoundButtons();
   }
-#endif
+//#endif
 
 //#if 0
   if (ENABLED(B_SETTING))

@@ -1289,115 +1289,7 @@ static esp_err_t ConfigurePGAGain(T_PGAGain config)
 }
 
 //_____________________________________________________________________________
-#if 0
-static esp_err_t ConfigureClock(void)
-{
-  esp_err_t result = ESP_OK;
-  uint8_t constant = 0x00u;
 
-  // FIXME unknown register
-  constant = 0xA0u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, 0x6F, &constant, 1u);
-
-  // FIXME unknown register
-  constant = 0x41u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, 0x72, &constant, 1u);
-
-  // CLOCK MANAGER I Register
-  // --------------------------------------------------------------------
-  // PLL_PDN     = 0... ....  Enable PLL analog
-  // PLL_RB      = .0.. ....  Reset PLL digital
-  // PLLDITH_MAG = ...0 00..  Dither off
-  // PLLOUT_SEL  = .... ..11  VCO out divide by 2
-  //               ---------
-  //               0000 0011 = 0x03
-  // --------------------------------------------------------------------
-  constant = 0x03u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &constant, 1u);
-
-  // Set PLL_K[21:16]
-  constant = 0x00u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_L_REG_ADDRESS, &constant, 1u);
-
-  // Set PLL_K[15:8]
-  constant = 0x00u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_M_REG_ADDRESS, &constant, 1u);
-
-  // Set PLL_K[7:0]
-  constant = 0x00u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_N_REG_ADDRESS, &constant, 1u);
-
-  // CLOCK MANAGER J Register
-  // --------------------------------------------------------------------
-  // PLL_LP     = 1... ....  PLL low power mode
-  // PLL_CP     = .000 ....  PLL cp gain0
-  // PLL_SUPSEL = .... 10..  VDDD =3.3v
-  // PLL_KVCO   = .... ..10  VCO gain2
-  //              ---------
-  //              1000 1010 = 0x8A
-  // --------------------------------------------------------------------
-  constant = 0x8Au;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_J_REG_ADDRESS, &constant, 1u);
-
-  // CLOCK MANAGER K Register
-  // --------------------------------------------------------------------
-  // PLL_CAL_SHORT = 0... ....  PLL calibration 64 data
-  // PLL_VCO_WAIT  = .00. ....  Wait 2 MCLK for vcoout stable when calibration
-  // PLL_N         = .... 1100  Integer part of PLL frequency ratio = 12
-  //              ------------
-  // CLOCK_MANAGER = 0000 1100 = 0x0C
-  // --------------------------------------------------------------------
-  constant = 0x0Cu;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_K_REG_ADDRESS, &constant, 1u);
-
-  // CLOCK MANAGER I Register
-  // --------------------------------------------------------------------
-  // PLL_PDN     = 0... ....  Enable PLL analog
-  // PLL_RB      = .1.. ....  PLL digital on
-  // PLLDITH_MAG = ...0 00..  Dither off
-  // PLLOUT_SEL  = .... ..11  VCO out divide by 2
-  //               ---------
-  //               0100 0011 = 0x43
-  // --------------------------------------------------------------------
-  constant = 0x43u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &constant, 1u);
-
-  // Set ADC_OSR = 32 (0x20)
-  constant = 0x20u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_C_REG_ADDRESS, &constant, 1u);
-
-  // CLOCK MANAGER E Register
-  // --------------------------------------------------------------------
-  // CLK_ADC_DIV = 0001 ....  CLK_ADC_DIV = 1
-  // CLK_DAC_DIV = .... 0001  CLK_DAC_DIV = 1
-  //               ---------
-  //               0001 0001 = 0x11
-  // --------------------------------------------------------------------
-  constant = 0x11u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_E_REG_ADDRESS, &constant, 1u);
-
-
-  // Set Class D speaker clock divider = 32 (0x20)
-  constant = 0x20u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_H_REG_ADDRESS, &constant, 1u);
-
-  // CLOCK MANAGER B Register
-  // --------------------------------------------------------------------
-  // CLK_ADC_CONT   = .0.. ....  CLK_ADC flex
-  // CLK_ADC_DOUBLE = ..0. ....  clk_adc control normal
-  // CLK_DAC_DOUBLE = ...0 ....  clk_dac control normal
-  // PLL_SEL        = .... 0...  PLL disable
-  // SYNCMODE       = .... ...0  Sync mode normal
-  //                  ---------
-  //                  0000 0000 = 0x00
-  // --------------------------------------------------------------------
-  constant = 0x00u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_B_REG_ADDRESS, &constant, 1u);
-
-  return result;
-}
-#endif
-//#if 0
 static esp_err_t ConfigureClock(void)
 {
   ESP_LOGE(Tag, "ConfigureClock");
@@ -1510,7 +1402,7 @@ static esp_err_t ConfigureClock(void)
 
   return result;
 }
-//#endif
+
 //_____________________________________________________________________________
 
 //static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T_I2SClock cfg, es_dac_output_t out_channel, es_adc_input_t in_channel)

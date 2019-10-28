@@ -79,12 +79,15 @@
 #define WAV_PLAYER_CHANNEL          1  //!< Mono = 1
 #define WAV_PLAYER_BITS            16
 
-#define SAVE_FILE_RATE          48000  // 8000
+#define SAVE_FILE_RATE           8000
 #define SAVE_FILE_CHANNEL           1  //!< Mono = 1
 #define SAVE_FILE_BITS             16
 
 #define DEFAULT_PLAYER_TASK_STACK (4*1024)
 #define DEFAULT_PLAYER_TASK_PRIO (5)
+
+#define DEFAULT_RECORDER_TASK_STACK (4*1024)
+#define DEFAULT_RECORDER_TASK_PRIO (5)
 
 #define DEFAULT_ESP_PERIPH_STACK_SIZE      (4*1024)
 #define DEFAULT_ESP_PERIPH_TASK_PRIO       (5)
@@ -198,7 +201,7 @@ typedef struct WAVAudioPlayer
   audio_element_handle_t I2SStream;
   audio_element_handle_t SPIFFSStream;
   audio_element_handle_t Decoder;
-  //audio_element_handle_t Filter;
+  audio_element_handle_t Filter;
   audio_event_iface_handle_t Evt;
   audio_hal_handle_t Hal;
   bool Run;
@@ -224,6 +227,7 @@ typedef struct WAVAudioRecorder
   audio_element_handle_t I2SStream;
   audio_element_handle_t SPIFFSStream;
   audio_element_handle_t Encoder;
+  audio_element_handle_t Filter;
   audio_event_iface_handle_t Evt;
   audio_hal_handle_t Hal;
   bool Run;
@@ -715,9 +719,9 @@ static T_WAVPlayerHandle InitWAVPlayer(T_WAVPlayerConfig* config)
   ap->Decoder = CreateWAVDecoder();
   AUDIO_MEM_CHECK(Tag, ap->Decoder, goto _audio_init_failed);
 
-  //ESP_LOGI(Tag, "[2.3] Create filter to convert to 48 [kHz]");
-  //ap->Filter = CreateFilter(SAVE_FILE_RATE, SAVE_FILE_CHANNEL, WAV_PLAYER_RATE, WAV_PLAYER_CHANNEL, AUDIO_CODEC_TYPE_DECODER);
-  //AUDIO_MEM_CHECK(Tag, ap->Filter, goto _audio_init_failed);
+  ESP_LOGI(Tag, "[2.3] Create filter to convert to 48 [kHz]");
+  ap->Filter = CreateFilter(SAVE_FILE_RATE, SAVE_FILE_CHANNEL, WAV_PLAYER_RATE, WAV_PLAYER_CHANNEL, AUDIO_CODEC_TYPE_DECODER);
+  AUDIO_MEM_CHECK(Tag, ap->Filter, goto _audio_init_failed);
 
   ESP_LOGI(Tag, "[2.4] Create I2S stream to write audio data to codec chip");
   ap->I2SStream = CreateI2SStream(WAV_PLAYER_RATE, WAV_PLAYER_BITS, WAV_PLAYER_CHANNEL, AUDIO_STREAM_WRITER);
@@ -725,13 +729,13 @@ static T_WAVPlayerHandle InitWAVPlayer(T_WAVPlayerConfig* config)
   ESP_LOGI(Tag, "[2.5] Register all elements to audio pipeline");
   audio_pipeline_register(ap->Pipeline, ap->SPIFFSStream, "file_reader");
   audio_pipeline_register(ap->Pipeline, ap->Decoder, "wav_decoder");
-  //audio_pipeline_register(ap->Pipeline, ap->Filter, "filter_upsample");
+  audio_pipeline_register(ap->Pipeline, ap->Filter, "filter_upsample");
   audio_pipeline_register(ap->Pipeline, ap->I2SStream, "i2s_writer");
 
-  //ESP_LOGI(Tag, "[2.6] Link it together [flash]-->spiffs_stream-->wav_decoder-->filter-->i2s_stream-->[codec_chip]");
-  //audio_pipeline_link(ap->Pipeline, (const char *[]) {"file_reader", "wav_decoder", "filter_upsample", "i2s_writer"}, 4);
-  ESP_LOGI(Tag, "[2.6] Link it together [flash]-->spiffs_stream-->wav_decoder-->i2s_stream-->[codec_chip]");
-  audio_pipeline_link(ap->Pipeline, (const char *[]) {"file_reader", "wav_decoder", "i2s_writer"}, 3);
+  ESP_LOGI(Tag, "[2.6] Link it together [flash]-->spiffs_stream-->wav_decoder-->filter-->i2s_stream-->[codec_chip]");
+  audio_pipeline_link(ap->Pipeline, (const char *[]) {"file_reader", "wav_decoder", "filter_upsample", "i2s_writer"}, 4);
+  //ESP_LOGI(Tag, "[2.6] Link it together [flash]-->spiffs_stream-->wav_decoder-->i2s_stream-->[codec_chip]");
+  //audio_pipeline_link(ap->Pipeline, (const char *[]) {"file_reader", "wav_decoder", "i2s_writer"}, 3);
 
   ESP_LOGI(Tag, "[3.0] Setup event listener");
   audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
@@ -783,21 +787,25 @@ static T_WAVRecorderHandle InitWAVRecorder(T_WAVRecorderConfig* config)
   ESP_LOGI(Tag, "[2.1] Create I2S stream to write audio data to codec chip");
   ap->I2SStream = CreateI2SStream(RECORD_RATE, RECORD_BITS, RECORD_CHANNEL, AUDIO_STREAM_READER);
 
-  ESP_LOGI(Tag, "[2.2] Create WAV encoder to encode WAV format");
+  ESP_LOGI(Tag, "[2.2] Create filter to convert to 8 [kHz]");
+  ap->Filter = CreateFilter(RECORD_RATE, RECORD_CHANNEL, SAVE_FILE_RATE, SAVE_FILE_CHANNEL, AUDIO_CODEC_TYPE_ENCODER);
+
+  ESP_LOGI(Tag, "[2.3] Create WAV encoder to encode WAV format");
   ap->Encoder = CreateWAVEncoder();
   AUDIO_MEM_CHECK(Tag, ap->Encoder, goto _audio_init_failed);
 
-  ESP_LOGI(Tag, "[2.3] Create spiffs stream to write data to spi flash");
+  ESP_LOGI(Tag, "[2.4] Create spiffs stream to write data to spi flash");
   ap->SPIFFSStream = CreateSPIFFSStream(SAVE_FILE_RATE, SAVE_FILE_BITS, SAVE_FILE_CHANNEL, AUDIO_STREAM_WRITER);
   AUDIO_MEM_CHECK(Tag, ap->SPIFFSStream, goto _audio_init_failed);
 
-  ESP_LOGI(Tag, "[2.4] Register all elements to audio pipeline");
+  ESP_LOGI(Tag, "[2.5] Register all elements to audio pipeline");
   audio_pipeline_register(ap->Pipeline, ap->I2SStream, "i2s_reader");
+  audio_pipeline_register(ap->Pipeline, ap->Filter, "filter_downsample");
   audio_pipeline_register(ap->Pipeline, ap->Encoder, "wav_encoder");
   audio_pipeline_register(ap->Pipeline, ap->SPIFFSStream, "file_writer");
 
-  ESP_LOGI(Tag, "[2.5] Link it together [codec_chip]-->i2s_stream-->wav_encoder-->spiffs_stream-->[flash]");
-  audio_pipeline_link(ap->Pipeline, (const char *[]) {"i2s_reader", "wav_encoder", "file_writer"}, 3);
+  ESP_LOGI(Tag, "[2.6] Link it together [codec_chip]-->i2s_stream-->wav_encoder-->spiffs_stream-->[flash]");
+  audio_pipeline_link(ap->Pipeline, (const char *[]) {"i2s_reader", "filter_downsample", "wav_encoder", "file_writer"}, 4);
 
   ESP_LOGI(Tag, "[3.0] Setup event listener");
   audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
@@ -813,8 +821,8 @@ static T_WAVRecorderHandle InitWAVRecorder(T_WAVRecorderConfig* config)
   ap->Recording = false;
   ap->EventHandler = config->event_handler;
 
-  int task_stack = config->task_stack ? config->task_stack : DEFAULT_PLAYER_TASK_STACK;
-  int task_prio = config->task_prio ? config->task_prio : DEFAULT_PLAYER_TASK_PRIO;
+  int task_stack = config->task_stack ? config->task_stack : DEFAULT_RECORDER_TASK_STACK;
+  int task_prio = config->task_prio ? config->task_prio : DEFAULT_RECORDER_TASK_PRIO;
 
   //if (xTaskCreate(RunWAVRecorderTask, "replayer", task_stack, ap, task_prio, NULL) != pdTRUE)
   if (xTaskCreatePinnedToCore(RunWAVRecorderTask, "recorder", task_stack, ap, task_prio, &WAVRecorderTask, 0) != pdTRUE)
@@ -1221,6 +1229,109 @@ static void RunWAVRecorderTask(void* arg)
   while (ap->Run)
   {
     audio_event_iface_msg_t msg;
+
+    ESP_LOGE(Tag, "BON");
+    esp_err_t ret = audio_event_iface_listen(ap->Evt, &msg, 1000 /portMAX_DELAY);
+    ESP_LOGE(Tag, "JOUR");
+
+    if (ret != ESP_OK)
+    {
+      ESP_LOGE(Tag, "THYMIO");
+
+      if (!started)
+      {
+        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
+            && msg.source == (void*) ap->Encoder
+            && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
+            && (int)msg.data == AEL_STATUS_STATE_RUNNING)
+        {
+          ESP_LOGE(Tag, "[ * ] COUCOU SEND RECORD");
+          started = true;
+          SendWAVRecorderEvent(ap, RECORDER_EVENT_RECORD);
+          continue;
+        }
+      }
+      else
+      {
+        second_recorded++;
+
+      	ESP_LOGE(Tag, "[ * ] Recording ... %d", second_recorded);
+
+      	if (second_recorded >= RecordingDuration_s)
+      	{
+          finished = true;
+      	}
+
+        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
+            //&& msg.source == (void*) ap->Encoder
+            && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
+        {
+          audio_element_info_t music_info = {0};
+          audio_element_getinfo(ap->Encoder, &music_info);
+
+          ESP_LOGE(Tag, "[ * ] Receive music info from WAV encoder, sample_rates=%d, bits=%d, ch=%d",
+                   music_info.sample_rates, music_info.bits, music_info.channels);
+
+          audio_element_setinfo(ap->I2SStream, &music_info);
+          //i2s_stream_set_clk(ap->I2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
+          continue;
+        }
+
+      	ESP_LOGE(Tag, "3");
+
+    	if (started && finished)
+    	{
+          ESP_LOGI(Tag, "Stop pipeline");
+          ESP_LOGE(Tag, "[ * ] COUCOU SEND STOP");
+          SendWAVRecorderEvent(ap, RECORDER_EVENT_STOP);
+          audio_pipeline_stop(ap->Pipeline);
+          audio_pipeline_wait_for_stop(ap->Pipeline);
+          audio_element_reset_state(ap->Filter);
+          audio_element_reset_state(ap->SPIFFSStream);
+          audio_element_reset_state(ap->Encoder);
+          audio_element_reset_state(ap->I2SStream);
+          audio_pipeline_reset_ringbuffer(ap->Pipeline);
+          audio_pipeline_reset_items_state(ap->Pipeline);
+          audio_pipeline_terminate(ap->Pipeline);
+          ap->Recording = false;
+
+          finished = false;
+          started = false;
+          second_recorded = 0u;
+          RecordingDuration_s = 0u;
+
+          continue;
+    	}
+
+        ESP_LOGE(Tag, "VERSION");
+
+    	ESP_LOGE(Tag, "1");
+    	//vTaskDelay(1000 / portTICK_PERIOD_MS);
+      }
+    }
+    else
+    {
+      ESP_LOGE(Tag, "[ * ] Event interface error : %d", ret);
+      continue;
+    }
+
+    ESP_LOGE(Tag, "END");
+
+	continue;
+
+#if 0
+	/* Stop when the last pipeline element (WAVRecorderI2SStream in this case) receives stop event */
+	if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *) ap->I2SStream &&
+	    msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (((int) msg.data == AEL_STATUS_STATE_STOPPED) ||
+	    ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
+	{
+	  ESP_LOGE(Tag, "[ * ] Stop event received");
+	  break;
+	}
+#endif
+
+#if 0
+    audio_event_iface_msg_t msg;
     if (!started)
     {
       ESP_LOGE(Tag, "BON");
@@ -1305,6 +1416,8 @@ static void RunWAVRecorderTask(void* arg)
     }
 
     //vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+#endif
 
 #if 0
     if (RecordingDuration_s > 0u)
@@ -1400,8 +1513,34 @@ static void RunWAVRecorderTask(void* arg)
     }
 #endif
   }
+#if 0
+  ESP_LOGI(Tag, "[ 7 ] Stop audio_pipeline");
+  audio_pipeline_terminate(ap->Pipeline);
 
-  vTaskDelete(WAVRecorderTask);
+  audio_pipeline_unregister(ap->Pipeline, ap->Encoder);
+  audio_pipeline_unregister(ap->Pipeline, ap->Filter);
+  audio_pipeline_unregister(ap->Pipeline, ap->I2SStream);
+  audio_pipeline_unregister(ap->Pipeline, ap->SPIFFSStream);
+
+  /* Terminal the pipeline before removing the listener */
+  audio_pipeline_remove_listener(ap->Pipeline);
+
+  /* Stop all periph before removing the listener */
+  esp_periph_set_stop_all(Set);
+  audio_event_iface_remove_listener(esp_periph_set_get_event_iface(Set), ap->Evt);
+
+  /* Make sure audio_pipeline_remove_listener & audio_event_iface_remove_listener are called before destroying event_iface */
+  audio_event_iface_destroy(ap->Evt);
+
+  /* Release all resources */
+  audio_element_deinit(ap->I2SStream);
+  audio_element_deinit(ap->Filter);
+  audio_element_deinit(ap->Encoder);
+  audio_element_deinit(ap->SPIFFSStream);
+  esp_periph_set_destroy(Set);
+#endif
+
+  //vTaskDelete(WAVRecorderTask);
 }
 
 //_____________________________________________________________________________
