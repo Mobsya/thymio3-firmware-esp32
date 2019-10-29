@@ -43,29 +43,35 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-extern AsebaNativeFunctionDescription AsebaNativeDescription_set_led;
-void set_led(AsebaVMState* vm);
-
 extern AsebaNativeFunctionDescription AsebaNativeDescription_record_wav;
-void wav_record(AsebaVMState* vm);
+void record_wav(AsebaVMState* vm);
 
 extern AsebaNativeFunctionDescription AsebaNativeDescription_play_mp3;
-void mp3_playback(AsebaVMState* vm);
+void play_mp3(AsebaVMState* vm);
+
+extern AsebaNativeFunctionDescription AsebaNativeDescription_play_wav;
+void play_wav(AsebaVMState* vm);
 
 extern AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3;
-void mp3_pause(AsebaVMState* vm);
+void pause_mp3(AsebaVMState* vm);
+
+extern AsebaNativeFunctionDescription AsebaNativeDescription_pause_wav;
+void pause_wav(AsebaVMState* vm);
 
 extern AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3;
-void mp3_resume(AsebaVMState* vm);
+void resume_mp3(AsebaVMState* vm);
 
-extern AsebaNativeFunctionDescription AsebaNativeDescription_replay_wav;
-void wav_replay(AsebaVMState* vm);
+extern AsebaNativeFunctionDescription AsebaNativeDescription_resume_wav;
+void resume_wav(AsebaVMState* vm);
 
 extern AsebaNativeFunctionDescription AsebaNativeDescription_volume;
 void sound_volume(AsebaVMState* vm);
 
 extern AsebaNativeFunctionDescription AsebaNativeDescription_sound_system;
 void sound_system(AsebaVMState* vm);
+
+extern AsebaNativeFunctionDescription AsebaNativeDescription_set_led;
+void set_led(AsebaVMState* vm);
 
 extern AsebaNativeFunctionDescription AsebaNativeDescription_set_led_circle;
 void set_led_circle(AsebaVMState* vm);
@@ -134,14 +140,16 @@ extern AsebaNativeFunctionDescription AsebaNativeDescription_duration;
 void sound_duration(AsebaVMState* vm);
 
 #define THYMIO_NATIVES_DESCRIPTIONS \
-  &AsebaNativeDescription_set_led, \
   &AsebaNativeDescription_record_wav, \
   &AsebaNativeDescription_play_mp3, \
+  &AsebaNativeDescription_play_wav, \
   &AsebaNativeDescription_pause_mp3, \
+  &AsebaNativeDescription_pause_wav, \
   &AsebaNativeDescription_resume_mp3, \
-  &AsebaNativeDescription_replay_wav, \
+  &AsebaNativeDescription_resume_wav, \
   &AsebaNativeDescription_volume, \
   &AsebaNativeDescription_sound_system, \
+  &AsebaNativeDescription_set_led, \
   &AsebaNativeDescription_set_led_circle, \
   &AsebaNativeDescription_set_led_rgb_fl, \
   &AsebaNativeDescription_set_led_rgb_fr, \
@@ -166,14 +174,16 @@ void sound_duration(AsebaVMState* vm);
   &AsebaNativeDescription_duration
 
 #define THYMIO_NATIVES_FUNCTIONS \
-  set_led, \
-  wav_record, \
-  mp3_playback, \
-  mp3_pause, \
-  mp3_resume, \
-  wav_replay, \
+  record_wav, \
+  play_mp3, \
+  play_wav, \
+  pause_mp3, \
+  pause_wav, \
+  resume_mp3, \
+  resume_wav, \
   sound_volume, \
   sound_system, \
+  set_led, \
   set_led_circle, \
   set_rgb_fl, \
   set_rgb_fr, \

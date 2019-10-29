@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <math.h>
+
 #include <sys/stat.h>
 #include <sys/unistd.h>
 
@@ -122,6 +124,8 @@
             .bits = AUDIO_HAL_BIT_LENGTH_16BITS,        \
         },                                              \
 };
+
+#define BUF_SIZE (SAVE_FILE_RATE * 2) /* 2 second buffer */
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -297,6 +301,8 @@ static T_MP3PlayerHandle MP3Player = NULL;
 
 static T_WAVRecorderHandle WAVRecorder = NULL;
 
+static int16_t buffer[BUF_SIZE];
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -351,7 +357,11 @@ static esp_err_t PlayWAV(T_WAVPlayerHandle ap, const char* url);
 
 static esp_err_t PauseMP3(T_MP3PlayerHandle ap);
 
+static esp_err_t PauseWAV(T_WAVPlayerHandle ap);
+
 static esp_err_t ResumeMP3(T_MP3PlayerHandle ap);
+
+static esp_err_t ResumeWAV(T_WAVPlayerHandle ap);
 
 static esp_err_t RecordWAV(T_WAVRecorderHandle ap, const char* url);
 
@@ -368,6 +378,10 @@ esp_err_t HandleMP3PlayerEvent(T_MP3PlayerHandle ap, T_PlayerEvent event);
 esp_err_t HandleWAVPlayerEvent(T_WAVPlayerHandle ap, T_PlayerEvent event);
 
 esp_err_t HandleWAVRecorderEvent(T_WAVRecorderHandle ap, T_RecorderEvent event);
+
+static void WriteWAVFile(char* filename, uint32_t num_samples, int16_t* data, uint16_t s_rate);
+
+static void write_little_endian(unsigned int word, int num_bytes, FILE *wav_file);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -521,6 +535,30 @@ void Codec_PlayMP3FromFileSystem(int16_t index)
 
 //_____________________________________________________________________________
 
+void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz)
+{
+  //float t;
+  float amplitude = 2000;
+  //float freq_Hz = 440;  //440;523.25;
+  float phase = 0;
+  char* file;
+
+  float freq_radians_per_sample = ((freq_Hz * 2 * M_PI) / SAVE_FILE_RATE);
+
+  // Fill buffer with a sine wave
+  for (uint16_t i = 0u; i < BUF_SIZE; i++)
+  {
+    phase += freq_radians_per_sample;
+    buffer[i] = (int16_t)(amplitude * sin(phase));
+  }
+
+  SelectFileSystemFile(&file, index, E_Extension_WAV);
+
+  WriteWAVFile(file, BUF_SIZE, buffer, SAVE_FILE_RATE);
+}
+
+//_____________________________________________________________________________
+
 void Codec_PlayWAVFile(int16_t index)
 {
   char* file;
@@ -547,9 +585,23 @@ void Codec_PauseMP3File(void)
 
 //_____________________________________________________________________________
 
+void Codec_PauseWAVFile(void)
+{
+  PauseWAV(WAVPlayer);
+}
+
+//_____________________________________________________________________________
+
 void Codec_ResumeMP3File(void)
 {
   ResumeMP3(MP3Player);
+}
+
+//_____________________________________________________________________________
+
+void Codec_ResumeWAVFile(void)
+{
+  ResumeWAV(WAVPlayer);
 }
 
 //_____________________________________________________________________________
@@ -1201,11 +1253,12 @@ static void RunWAVPlayerTask(void* arg)
       audio_pipeline_stop(ap->Pipeline);
       audio_pipeline_wait_for_stop(ap->Pipeline);
       audio_element_reset_state(ap->SPIFFSStream);
-      //audio_element_reset_state(ap->Filter);
+      audio_element_reset_state(ap->Filter);
       audio_element_reset_state(ap->Decoder);
       audio_element_reset_state(ap->I2SStream);
       audio_pipeline_reset_ringbuffer(ap->Pipeline);
       audio_pipeline_reset_items_state(ap->Pipeline);
+      audio_pipeline_terminate(ap->Pipeline);
       ap->Playing = false;
     }
   }
@@ -1624,11 +1677,37 @@ static esp_err_t PauseMP3(T_MP3PlayerHandle ap)
 
 //_____________________________________________________________________________
 
+static esp_err_t PauseWAV(T_WAVPlayerHandle ap)
+{
+  if (ap->Playing)
+  {
+    ESP_LOGE(Tag, "Pause WAV file");
+    audio_pipeline_pause(ap->Pipeline);
+  }
+
+  return ESP_OK;
+}
+
+//_____________________________________________________________________________
+
 static esp_err_t ResumeMP3(T_MP3PlayerHandle ap)
 {
   if (ap->Playing)
   {
     ESP_LOGE(Tag, "Resume MP3 file");
+    audio_pipeline_resume(ap->Pipeline);
+  }
+
+  return ESP_OK;
+}
+
+//_____________________________________________________________________________
+
+static esp_err_t ResumeWAV(T_WAVPlayerHandle ap)
+{
+  if (ap->Playing)
+  {
+    ESP_LOGE(Tag, "Resume WAV file");
     audio_pipeline_resume(ap->Pipeline);
   }
 
@@ -1823,4 +1902,64 @@ esp_err_t HandleWAVRecorderEvent(T_WAVRecorderHandle ap, T_RecorderEvent event)
   }
 
   return ESP_OK;
+}
+
+//_____________________________________________________________________________
+
+static void WriteWAVFile(char* filename, uint32_t num_samples, int16_t* data, uint16_t s_rate)
+{
+  FILE* wav_file;
+  unsigned int sample_rate;
+  unsigned int bytes_per_sample;
+  unsigned int byte_rate;
+
+  bytes_per_sample = 2;
+
+  sample_rate = (unsigned int) s_rate;
+
+  byte_rate = sample_rate * WAV_PLAYER_CHANNEL * bytes_per_sample;
+
+  wav_file = fopen(filename, "w");
+  //assert(wav_file);   /* make sure it opened */
+
+  /* write RIFF header */
+  fwrite("RIFF", 1, 4, wav_file);
+  write_little_endian(36 + (bytes_per_sample * num_samples * WAV_PLAYER_CHANNEL), 4, wav_file);
+  fwrite("WAVE", 1, 4, wav_file);
+
+  /* write fmt  subchunk */
+  fwrite("fmt ", 1, 4, wav_file);
+  write_little_endian(16, 4, wav_file);   /* SubChunk1Size is 16 */
+  write_little_endian(1, 2, wav_file);    /* PCM is format 1 */
+  write_little_endian(WAV_PLAYER_CHANNEL, 2, wav_file);
+  write_little_endian(sample_rate, 4, wav_file);
+  write_little_endian(byte_rate, 4, wav_file);
+  write_little_endian(WAV_PLAYER_CHANNEL * bytes_per_sample, 2, wav_file);  /* block align */
+  write_little_endian(8 * bytes_per_sample, 2, wav_file);  /* bits/sample */
+
+  /* write data subchunk */
+  fwrite("data", 1, 4, wav_file);
+  write_little_endian(bytes_per_sample * num_samples * WAV_PLAYER_CHANNEL, 4, wav_file);
+
+  for (uint32_t i = 0u; i < num_samples; i++)
+  {
+    write_little_endian((unsigned int)(data[i]), bytes_per_sample, wav_file);
+  }
+
+  fclose(wav_file);
+}
+
+//_____________________________________________________________________________
+
+static void write_little_endian(unsigned int word, int num_bytes, FILE *wav_file)
+{
+  unsigned buf;
+
+  while (num_bytes > 0)
+  {
+    buf = word & 0xff;
+    fwrite(&buf, 1,1, wav_file);
+    num_bytes--;
+    word >>= 8;
+  }
 }

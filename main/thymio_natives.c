@@ -80,28 +80,41 @@ static void prepare_name(unsigned int n, char* buf);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-AsebaNativeFunctionDescription AsebaNativeDescription_set_led =
+AsebaNativeFunctionDescription AsebaNativeDescription_record_wav =
 {
-  "_leds.set",
-  "Set the led",
+  "wav.record",
+  "Recording of rN.wav",
   {
-    {1, "led"},
-    {1, "brightness"},
-    {0, 0}
+    {1, "N"},
+    {1, "duration"},
+    {0, 0},
   }
 };
 
-void set_led(AsebaVMState* vm)
+void record_wav(AsebaVMState* vm)
 {
-  int led = vm->variables[AsebaNativePopArg(vm)];
-  int b = vm->variables[AsebaNativePopArg(vm)];
-
-  if ((led < 0) || (led > 39))
+  char name[13] = {'r'};
+  int index    = vm->variables[AsebaNativePopArg(vm)];
+  int duration = vm->variables[AsebaNativePopArg(vm)];
+#if 0 // FIXME
+  if (number == -1)
   {
+    sd_stop_record();
     return;
   }
+  Behavior_Disable(B_SOUND_BUTTON);
 
-  Leds_SetSingleBrightness(led, b);
+  prepare_name(number, &name[1]);
+  sd_start_record(name);
+#endif
+
+  //Sound_StartRecording();
+  //I2S_Record();
+
+  //MP3_StartRecorder();
+  //Codec_StartWAVRecorder(index, duration);
+//  Codec_RecordWAVFile(index, duration);
+  Codec_CreateWAVFile(index, duration);
 }
 
 //_____________________________________________________________________________
@@ -116,7 +129,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_play_mp3 =
   }
 };
 
-void mp3_playback(AsebaVMState* vm)
+void play_mp3(AsebaVMState* vm)
 {
   char name[13] = {'p'};
   //int number = vm->variables[AsebaNativePopArg(vm)];
@@ -167,79 +180,9 @@ void mp3_playback(AsebaVMState* vm)
 
 //_____________________________________________________________________________
 
-AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3 =
+AsebaNativeFunctionDescription AsebaNativeDescription_play_wav =
 {
-  "mp3.pause",
-  "Pause of pN.mp3",
-  {
-    {0, 0},
-  }
-};
-
-void mp3_pause(AsebaVMState* vm)
-{
-  Codec_PauseMP3File();
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3 =
-{
-  "mp3.resume",
-  "Resume of pN.mp3",
-  {
-    {0, 0},
-  }
-};
-
-void mp3_resume(AsebaVMState* vm)
-{
-  Codec_ResumeMP3File();
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_record_wav =
-{
-  "wav.record",
-  "Recording of rN.wav",
-  {
-    {1, "N"},
-    {1, "duration"},
-    {0, 0},
-  }
-};
-
-void wav_record(AsebaVMState* vm)
-{
-  char name[13] = {'r'};
-  int index    = vm->variables[AsebaNativePopArg(vm)];
-  int duration = vm->variables[AsebaNativePopArg(vm)];
-#if 0 // FIXME
-  if (number == -1)
-  {
-    sd_stop_record();
-    return;
-  }
-  Behavior_Disable(B_SOUND_BUTTON);
-
-  prepare_name(number, &name[1]);
-  sd_start_record(name);
-#endif
-
-  //Sound_StartRecording();
-  //I2S_Record();
-
-  //MP3_StartRecorder();
-  //Codec_StartWAVRecorder(index, duration);
-  Codec_RecordWAVFile(index, duration);
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_replay_wav =
-{
-  "wav.replay",
+  "wav.play",
   "Playback of rN.wav",
   {
     {1, "N"},
@@ -247,7 +190,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_replay_wav =
   }
 };
 
-void wav_replay(AsebaVMState* vm)
+void play_wav(AsebaVMState* vm)
 {
   char name[13] = {'r'};
   int number = vm->variables[AsebaNativePopArg(vm)];
@@ -270,6 +213,70 @@ void wav_replay(AsebaVMState* vm)
   //Sound_Replay();
 //  Codec_StartWAVPlayer(number);
   Codec_PlayWAVFile(number);
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3 =
+{
+  "mp3.pause",
+  "Pause of pN.mp3",
+  {
+    {0, 0},
+  }
+};
+
+void pause_mp3(AsebaVMState* vm)
+{
+  Codec_PauseMP3File();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_pause_wav =
+{
+  "wav.pause",
+  "Pause of pN.wav",
+  {
+    {0, 0},
+  }
+};
+
+void pause_wav(AsebaVMState* vm)
+{
+  Codec_PauseWAVFile();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3 =
+{
+  "mp3.resume",
+  "Resume of pN.mp3",
+  {
+    {0, 0},
+  }
+};
+
+void resume_mp3(AsebaVMState* vm)
+{
+  Codec_ResumeMP3File();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_resume_wav =
+{
+  "wav.resume",
+  "Resume of pN.wav",
+  {
+    {0, 0},
+  }
+};
+
+void resume_wav(AsebaVMState* vm)
+{
+  Codec_ResumeWAVFile();
 }
 
 //_____________________________________________________________________________
@@ -341,6 +348,32 @@ void sound_system(AsebaVMState* vm)
     play_user_sound(name);
   }
 #endif
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_set_led =
+{
+  "_leds.set",
+  "Set the led",
+  {
+    {1, "led"},
+    {1, "brightness"},
+    {0, 0}
+  }
+};
+
+void set_led(AsebaVMState* vm)
+{
+  int led = vm->variables[AsebaNativePopArg(vm)];
+  int b = vm->variables[AsebaNativePopArg(vm)];
+
+  if ((led < 0) || (led > 39))
+  {
+    return;
+  }
+
+  Leds_SetSingleBrightness(led, b);
 }
 
 //_____________________________________________________________________________

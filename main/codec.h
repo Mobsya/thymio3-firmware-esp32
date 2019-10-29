@@ -59,6 +59,8 @@ extern void Codec_PlayMP3File(int16_t index);
 //! \return    None
 extern void Codec_PlayMP3FromFileSystem(int16_t index);
 
+extern void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz);
+
 //! \brief     Play a WAV file from the file system
 //! \pre       First initialize the codec
 //! \param     index - Index of the file to play
@@ -71,11 +73,23 @@ extern void Codec_PlayWAVFile(int16_t index);
 //! \return    None
 extern void Codec_PauseMP3File(void);
 
+//! \brief     Pause a WAV file
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
+extern void Codec_PauseWAVFile(void);
+
 //! \brief     Resume a MP3 file
 //! \pre       First initialize the codec
 //! \param     None
 //! \return    None
 extern void Codec_ResumeMP3File(void);
+
+//! \brief     Resume a WAV file
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
+extern void Codec_ResumeWAVFile(void);
 
 //! \brief     Record a WAV file
 //! \pre       First initialize the codec
