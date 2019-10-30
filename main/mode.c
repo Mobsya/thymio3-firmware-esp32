@@ -585,12 +585,12 @@ static void RunAttentive(void)
 
   when(acceleration >= 15000)  // Left side
   {
-    Codec_PlayMP3File(0);
+    Codec_PlayMP3FileFromFlash(0);
   }
 
   when(acceleration <= -15000)  // Right side
   {
-    Codec_PlayMP3File(2);
+    Codec_PlayMP3FileFromFlash(2);
   }
 }
 

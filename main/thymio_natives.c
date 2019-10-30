@@ -176,8 +176,8 @@ void play_mp3(AsebaVMState* vm)
   }
 #endif
 
-  //Codec_StartMP3Player(number);
-  Codec_PlayMP3File(number);
+  Codec_PlayMP3FileFromFlash(number);
+  //Codec_PlayMP3File(number);
 
 #if 0
   MelodyAseba.Melody = JamesBond;
@@ -249,7 +249,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3 =
 
 void pause_mp3(AsebaVMState* vm)
 {
-  Codec_PauseMP3File();
+  Codec_PauseMP3FileFromFlash();
 }
 
 //_____________________________________________________________________________
@@ -281,7 +281,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3 =
 
 void resume_mp3(AsebaVMState* vm)
 {
-  Codec_ResumeMP3File();
+  Codec_ResumeMP3FileFromFlash();
 }
 
 //_____________________________________________________________________________
