@@ -399,7 +399,7 @@ esp_err_t ES8374_Init(audio_hal_codec_config_t* cfg)
 
   T_I2SClock clkdiv;
 
-  ESP_LOGE(Tag, "ES8374_Init");
+  //ESP_LOGE(Tag, "ES8374_Init");
 
   if (!InitFlag)
   {
@@ -433,7 +433,7 @@ esp_err_t ES8374_Init(audio_hal_codec_config_t* cfg)
 
 esp_err_t ES8374_Deinit(void)
 {
-  ESP_LOGE(Tag, "ES8374_Deinit");
+  //ESP_LOGE(Tag, "ES8374_Deinit");
 
   //xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
@@ -451,7 +451,7 @@ esp_err_t ES8374_Deinit(void)
 
 esp_err_t ES8374_ConfigureI2S(audio_hal_codec_mode_t mode, audio_hal_codec_i2s_iface_t* iface)
 {
-  ESP_LOGE(Tag, "ES8374_ConfigureI2S");
+  //ESP_LOGE(Tag, "ES8374_ConfigureI2S");
 
   esp_err_t result = ESP_OK;
   T_BitsPerSample bitsPerSample = E_BitsPerSample_32bits;
@@ -480,7 +480,7 @@ esp_err_t ES8374_ConfigureI2S(audio_hal_codec_mode_t mode, audio_hal_codec_i2s_i
 
 esp_err_t ES8374_SetVoiceVolume(int volume)
 {
-  ESP_LOGE(Tag, "ES8374_SetVoiceVolume");
+  //ESP_LOGE(Tag, "ES8374_SetVoiceVolume");
 
   uint8_t vol = 0;
 
@@ -517,7 +517,7 @@ esp_err_t ES8374_SetVoiceVolume(int volume)
 
 esp_err_t ES8374_GetVoiceVolume(int* volume)
 {
-  ESP_LOGE(Tag, "ES8374_GetVoiceVolume");
+  //ESP_LOGE(Tag, "ES8374_GetVoiceVolume");
   uint8_t data = 0u;
 
   //xSemaphoreTake(I2CMutex, portMAX_DELAY);
@@ -542,7 +542,7 @@ esp_err_t ES8374_GetVoiceVolume(int* volume)
 
 esp_err_t ES8374_ControlState(audio_hal_codec_mode_t mode, audio_hal_ctrl_t ctrl_state)
 {
-  ESP_LOGE(Tag, "ES8374_ControlState");
+  //ESP_LOGE(Tag, "ES8374_ControlState");
   esp_err_t result = ESP_OK;
   T_Mode config = E_Mode_DAC;
 
@@ -586,7 +586,7 @@ static esp_err_t Start(T_Mode mode)
   uint8_t data = 0x00u;
   uint8_t constant = 0x00u;
 
-  ESP_LOGE(Tag, "Start");
+  //ESP_LOGE(Tag, "Start");
 
   //xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
@@ -665,7 +665,7 @@ static esp_err_t Start(T_Mode mode)
 
 static esp_err_t Stop(T_Mode mode)
 {
-  ESP_LOGE(Tag, "Stop");
+  //ESP_LOGE(Tag, "Stop");
 
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
@@ -744,7 +744,7 @@ static esp_err_t Stop(T_Mode mode)
 
 static esp_err_t ConfigureDACMute(T_DACMute config)
 {
-  ESP_LOGE(Tag, "ConfigureDACMute");
+  //ESP_LOGE(Tag, "ConfigureDACMute");
 
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
@@ -775,7 +775,7 @@ static esp_err_t ConfigureDACMute(T_DACMute config)
 
 static esp_err_t ConfigureI2SClock(T_I2SClock clock)
 {
-  ESP_LOGE(Tag, "ConfigureI2SClock");
+  //ESP_LOGE(Tag, "ConfigureI2SClock");
 
   esp_err_t result = ESP_OK;
   uint8_t data = 0u;
@@ -1014,7 +1014,7 @@ static esp_err_t ConfigureI2SClock(T_I2SClock clock)
 
 static esp_err_t ConfigureI2SFormat(T_Mode mode, uint8_t format)
 {
-  ESP_LOGE(Tag, "ConfigureI2SFormat");
+  //ESP_LOGE(Tag, "ConfigureI2SFormat");
 
   esp_err_t result = ESP_OK;
   uint8_t data = 0;
@@ -1069,7 +1069,7 @@ static esp_err_t ConfigureI2SFormat(T_Mode mode, uint8_t format)
 
 static esp_err_t UpdateBitsPerSample(T_Mode mode, T_BitsPerSample number)
 {
-  ESP_LOGE(Tag, "UpdateBitsPerSample");
+  //ESP_LOGE(Tag, "UpdateBitsPerSample");
 
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
@@ -1125,7 +1125,7 @@ static esp_err_t UpdateBitsPerSample(T_Mode mode, T_BitsPerSample number)
 
 static esp_err_t SetADCDACVolume(T_Mode mode, int16_t volume_dB, int16_t dot)
 {
-  ESP_LOGE(Tag, "SetADCDACVolume");
+  //ESP_LOGE(Tag, "SetADCDACVolume");
 
   esp_err_t result = ESP_OK;
   uint8_t data[2] = {0u, 0u};
@@ -1157,7 +1157,7 @@ static esp_err_t SetADCDACVolume(T_Mode mode, int16_t volume_dB, int16_t dot)
 
     if ((mode == E_Mode_ADC) || (mode == E_Mode_ADC_DAC))
     {
-      ESP_LOGE(Tag, "Volume_dB = %d, data = %d %d", vol, data[0], data[1]);
+      //ESP_LOGE(Tag, "Volume_dB = %d, data = %d %d", vol, data[0], data[1]);
       I2C_WriteToAddress(SLAVE_ADDRESS, ADC_CONTROL_B_REG_ADDRESS, data, 2u);
     }
 
@@ -1182,7 +1182,7 @@ static esp_err_t SetADCDACVolume(T_Mode mode, int16_t volume_dB, int16_t dot)
 //static esp_err_t ConfigureDACOutput(es_dac_output_t output)
 static esp_err_t ConfigureDACOutput(void)
 {
-  ESP_LOGE(Tag, "ConfigureDACOutput");
+  //ESP_LOGE(Tag, "ConfigureDACOutput");
 
   esp_err_t result = ESP_OK;
   uint8_t data = 0x02u;
@@ -1216,7 +1216,7 @@ static esp_err_t ConfigureDACOutput(void)
 //static esp_err_t ConfigureADCInput(es_adc_input_t input)
 static esp_err_t ConfigureADCInput(void)
 {
-  ESP_LOGE(Tag, "ConfigureADCInput");
+  //ESP_LOGE(Tag, "ConfigureADCInput");
 
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
@@ -1236,7 +1236,7 @@ static esp_err_t ConfigureADCInput(void)
 
 static esp_err_t SetMicrophoneGain(T_MicroGain gain_dB)
 {
-  ESP_LOGE(Tag, "SetMicrophoneGain");
+  //ESP_LOGE(Tag, "SetMicrophoneGain");
 
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
@@ -1263,7 +1263,7 @@ static esp_err_t SetMicrophoneGain(T_MicroGain gain_dB)
 
 static esp_err_t ConfigurePGAGain(T_PGAGain config)
 {
-  ESP_LOGE(Tag, "ConfigurePGAGain");
+  //ESP_LOGE(Tag, "ConfigurePGAGain");
 
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
@@ -1292,7 +1292,7 @@ static esp_err_t ConfigurePGAGain(T_PGAGain config)
 
 static esp_err_t ConfigureClock(void)
 {
-  ESP_LOGE(Tag, "ConfigureClock");
+  //ESP_LOGE(Tag, "ConfigureClock");
 
   esp_err_t result = ESP_OK;
   uint8_t constant = 0x00u;
@@ -1408,7 +1408,7 @@ static esp_err_t ConfigureClock(void)
 //static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T_I2SClock cfg, es_dac_output_t out_channel, es_adc_input_t in_channel)
 static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T_I2SClock cfg)
 {
-  ESP_LOGE(Tag, "InitRegisters");
+  //ESP_LOGE(Tag, "InitRegisters");
 
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
