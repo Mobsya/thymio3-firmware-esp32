@@ -46,6 +46,9 @@
 extern AsebaNativeFunctionDescription AsebaNativeDescription_record_wav;
 void record_wav(AsebaVMState* vm);
 
+extern AsebaNativeFunctionDescription AsebaNativeDescription_create_wav;
+void create_wav(AsebaVMState* vm);
+
 extern AsebaNativeFunctionDescription AsebaNativeDescription_play_mp3;
 void play_mp3(AsebaVMState* vm);
 
@@ -64,11 +67,20 @@ void resume_mp3(AsebaVMState* vm);
 extern AsebaNativeFunctionDescription AsebaNativeDescription_resume_wav;
 void resume_wav(AsebaVMState* vm);
 
+extern AsebaNativeFunctionDescription AsebaNativeDescription_get_duration_wav;
+void get_duration_wav(AsebaVMState* vm);
+
 extern AsebaNativeFunctionDescription AsebaNativeDescription_volume;
 void sound_volume(AsebaVMState* vm);
 
 extern AsebaNativeFunctionDescription AsebaNativeDescription_sound_system;
 void sound_system(AsebaVMState* vm);
+
+extern AsebaNativeFunctionDescription AsebaNativeDescription_duration;
+void sound_duration(AsebaVMState* vm);
+
+extern AsebaNativeFunctionDescription AsebaNativeDescription_erase_file;
+void erase_file(AsebaVMState* vm);
 
 extern AsebaNativeFunctionDescription AsebaNativeDescription_set_led;
 void set_led(AsebaVMState* vm);
@@ -136,19 +148,20 @@ void gyro_reset_angle(AsebaVMState* vm);
 extern AsebaNativeFunctionDescription AsebaNativeDescription_gyro_reset_calib_angle;
 void gyro_reset_calib_angle(AsebaVMState* vm);
 
-extern AsebaNativeFunctionDescription AsebaNativeDescription_duration;
-void sound_duration(AsebaVMState* vm);
-
 #define THYMIO_NATIVES_DESCRIPTIONS \
   &AsebaNativeDescription_record_wav, \
+  &AsebaNativeDescription_create_wav, \
   &AsebaNativeDescription_play_mp3, \
   &AsebaNativeDescription_play_wav, \
   &AsebaNativeDescription_pause_mp3, \
   &AsebaNativeDescription_pause_wav, \
   &AsebaNativeDescription_resume_mp3, \
   &AsebaNativeDescription_resume_wav, \
+  &AsebaNativeDescription_get_duration_wav, \
   &AsebaNativeDescription_volume, \
   &AsebaNativeDescription_sound_system, \
+  &AsebaNativeDescription_duration, \
+  &AsebaNativeDescription_erase_file, \
   &AsebaNativeDescription_set_led, \
   &AsebaNativeDescription_set_led_circle, \
   &AsebaNativeDescription_set_led_rgb_fl, \
@@ -170,19 +183,22 @@ void sound_duration(AsebaVMState* vm);
         &AsebaNativeDescription_sd_seek, \
   &AsebaNativeDescription_rf_nodeid, \
   &AsebaNativeDescription_gyro_reset_angle, \
-  &AsebaNativeDescription_gyro_reset_calib_angle, \
-  &AsebaNativeDescription_duration
+  &AsebaNativeDescription_gyro_reset_calib_angle
 
 #define THYMIO_NATIVES_FUNCTIONS \
   record_wav, \
+  create_wav, \
   play_mp3, \
   play_wav, \
   pause_mp3, \
   pause_wav, \
   resume_mp3, \
   resume_wav, \
+  get_duration_wav, \
   sound_volume, \
   sound_system, \
+  sound_duration, \
+  erase_file, \
   set_led, \
   set_led_circle, \
   set_rgb_fl, \
@@ -204,8 +220,7 @@ void sound_duration(AsebaVMState* vm);
         thymio_native_sd_seek, \
   set_rf_nodeid, \
   gyro_reset_angle, \
-  gyro_reset_calib_angle, \
-  sound_duration
+  gyro_reset_calib_angle
 
 #endif // THYMIO_NATIVES_H_
 

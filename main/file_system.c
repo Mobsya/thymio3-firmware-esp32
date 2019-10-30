@@ -58,6 +58,8 @@ T_AsebaSettings Input;
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
+static void WriteLittleEndian(unsigned int word, int numBytes, FILE* file);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -200,4 +202,133 @@ void FileSystem_UpdateSettings(int16_t leftMotor, int16_t rightMotor)
 {
   Input.LeftMotor  = leftMotor;
   Input.RightMotor = rightMotor;
+}
+
+//_____________________________________________________________________________
+
+bool FileSystem_DoesFileExist(char* fileName)
+{
+  struct stat st;
+  bool exist = true;
+
+  if (stat(fileName, &st) != 0)
+  {
+    exist = false;
+    ESP_LOGE(Tag, "File doesn't exist: %s", fileName);
+  }
+
+  return exist;
+}
+
+//_____________________________________________________________________________
+
+void FileSystem_SelectFile(char** fileName, int16_t index, T_Extension extension)
+{
+  char path[18] = "/spiffs/";
+  char name[4];
+  char type[6];
+
+  switch (extension)
+  {
+    case E_Extension_MP3:
+      strcpy(type, ".mp3\0");
+      break;
+
+    case E_Extension_WAV:
+      strcpy(type, ".wav\0");
+      break;
+
+    default:
+      // Do nothing
+      break;
+  }
+
+  itoa(index, name, 10);  // Convert the index (in base 10) to a string
+
+  strcat(path, name);
+  strcat(path, type);
+
+  *fileName = malloc(sizeof(path));  // Allocated memory
+
+  strcpy(*fileName, path);
+
+  printf("Selected file: %s\n", *fileName);
+}
+
+//_____________________________________________________________________________
+
+void FileSystem_EraseFile(char* fileName)
+{
+  // Check that the file exists
+  if (FileSystem_DoesFileExist(fileName))
+  {
+    if (unlink(fileName) == 0)
+    {
+      printf("Erased file: %s\n", fileName);
+    }
+    else
+    {
+      ESP_LOGE(Tag, "File unsuccessfully erased: %s", fileName);
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
+void FileSystem_WriteWAVFile(char* fileName, uint32_t numSamples, int16_t* data, uint16_t sampleRate, uint8_t channel)
+{
+  FILE* wav_file;
+  unsigned int sample_rate;
+  unsigned int bytes_per_sample;
+  unsigned int byte_rate;
+
+  bytes_per_sample = 2;
+
+  sample_rate = (unsigned int) sampleRate;
+
+  byte_rate = sample_rate * channel * bytes_per_sample;
+
+  wav_file = fopen(fileName, "w");
+  assert(wav_file);  // make sure it opened
+
+  // Write RIFF header
+  fwrite("RIFF", 1, 4, wav_file);
+  WriteLittleEndian(36 + (bytes_per_sample * numSamples * channel), 4, wav_file);
+  fwrite("WAVE", 1, 4, wav_file);
+
+  // Write fmt subchunk
+  fwrite("fmt ", 1, 4, wav_file);
+  WriteLittleEndian(16, 4, wav_file);                          // SubChunk1Size is 16
+  WriteLittleEndian(1, 2, wav_file);                           // PCM is format 1
+  WriteLittleEndian(channel, 2, wav_file);
+  WriteLittleEndian(sample_rate, 4, wav_file);
+  WriteLittleEndian(byte_rate, 4, wav_file);
+  WriteLittleEndian(channel * bytes_per_sample, 2, wav_file);  // block align
+  WriteLittleEndian(8 * bytes_per_sample, 2, wav_file);        // bits/sample
+
+  // Write data subchunk
+  fwrite("data", 1, 4, wav_file);
+  WriteLittleEndian(bytes_per_sample * numSamples * channel, 4, wav_file);
+
+  for (uint32_t i = 0u; i < numSamples; i++)
+  {
+    WriteLittleEndian((unsigned int)(data[i]), bytes_per_sample, wav_file);
+  }
+
+  fclose(wav_file);
+}
+
+//_____________________________________________________________________________
+
+static void WriteLittleEndian(unsigned int word, int numBytes, FILE* file)
+{
+  unsigned buffer;
+
+  while (numBytes > 0)
+  {
+    buffer = word & 0xff;
+    fwrite(&buffer, 1, 1, file);
+    numBytes--;
+    word >>= 8;
+  }
 }

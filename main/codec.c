@@ -60,6 +60,7 @@
 
 #include "board.h"
 #include "es8374.h"
+#include "file_system.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -77,7 +78,7 @@
 #define RECORD_CHANNEL              1  //!< Mono = 1
 #define RECORD_BITS                16
 
-#define WAV_PLAYER_RATE         48000
+#define WAV_PLAYER_RATE          8000
 #define WAV_PLAYER_CHANNEL          1  //!< Mono = 1
 #define WAV_PLAYER_BITS            16
 
@@ -125,7 +126,7 @@
         },                                              \
 };
 
-#define BUF_SIZE (SAVE_FILE_RATE * 2) /* 2 second buffer */
+#define BUF_SIZE (SAVE_FILE_RATE * 1) /* 2 second buffer */
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -137,12 +138,6 @@ typedef struct
   const uint8_t* Start;
   const uint8_t* End;
 } T_File;
-
-typedef enum
-{
-  E_Extension_MP3,
-  E_Extension_WAV
-} T_Extension;
 
 struct audio_board_handle
 {
@@ -182,13 +177,6 @@ typedef struct
 {
   int task_stack;
   int task_prio;
-  WAVPlayerEvent event_handler;
-} T_WAVPlayerConfig;
-
-typedef struct
-{
-  int task_stack;
-  int task_prio;
   MP3PlayerEvent event_handler;
 } T_MP3PlayerConfig;
 
@@ -196,8 +184,27 @@ typedef struct
 {
   int task_stack;
   int task_prio;
+  WAVPlayerEvent event_handler;
+} T_WAVPlayerConfig;
+
+typedef struct
+{
+  int task_stack;
+  int task_prio;
   WAVRecorderEvent event_handler;
 } T_WAVRecorderConfig;
+
+typedef struct MP3AudioPlayer
+{
+  audio_pipeline_handle_t Pipeline;
+  audio_element_handle_t I2SStream;
+  audio_element_handle_t Decoder;
+  audio_event_iface_handle_t Evt;
+  audio_hal_handle_t Hal;
+  bool Run;
+  bool Playing;
+  MP3PlayerEvent EventHandler;
+} T_MP3Player;
 
 typedef struct WAVAudioPlayer
 {
@@ -212,18 +219,6 @@ typedef struct WAVAudioPlayer
   bool Playing;
   WAVPlayerEvent EventHandler;
 } T_WAVPlayer;
-
-typedef struct MP3AudioPlayer
-{
-  audio_pipeline_handle_t Pipeline;
-  audio_element_handle_t I2SStream;
-  audio_element_handle_t Decoder;
-  audio_event_iface_handle_t Evt;
-  audio_hal_handle_t Hal;
-  bool Run;
-  bool Playing;
-  MP3PlayerEvent EventHandler;
-} T_MP3Player;
 
 typedef struct WAVAudioRecorder
 {
@@ -295,13 +290,13 @@ audio_hal_func_t AUDIO_CODEC_ES8374_DEFAULT_HANDLE =
 
 static audio_board_handle_t board_handle = 0;
 
-static T_WAVPlayerHandle WAVPlayer = NULL;
-
 static T_MP3PlayerHandle MP3Player = NULL;
+
+static T_WAVPlayerHandle WAVPlayer = NULL;
 
 static T_WAVRecorderHandle WAVRecorder = NULL;
 
-static int16_t buffer[BUF_SIZE];
+static int16_t buffer[4*BUF_SIZE];
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -335,10 +330,6 @@ static void GenerateMasterClock(uint32_t clock_Hz);
 
 static void SelectFile(int16_t index);
 
-static void SelectFileSystemFile(char** file, int16_t index, T_Extension extension);
-
-static void EraseFileSystemFile(char* file);
-
 static void RunMP3PlayerTask(void* arg);
 
 static void RunWAVPlayerTask(void* arg);
@@ -363,6 +354,8 @@ static esp_err_t ResumeMP3(T_MP3PlayerHandle ap);
 
 static esp_err_t ResumeWAV(T_WAVPlayerHandle ap);
 
+static int GetWAVPlayedTime(T_WAVPlayerHandle ap);
+
 static esp_err_t RecordWAV(T_WAVRecorderHandle ap, const char* url);
 
 static esp_err_t StopMP3(T_MP3PlayerHandle ap);
@@ -378,10 +371,6 @@ esp_err_t HandleMP3PlayerEvent(T_MP3PlayerHandle ap, T_PlayerEvent event);
 esp_err_t HandleWAVPlayerEvent(T_WAVPlayerHandle ap, T_PlayerEvent event);
 
 esp_err_t HandleWAVRecorderEvent(T_WAVRecorderHandle ap, T_RecorderEvent event);
-
-static void WriteWAVFile(char* filename, uint32_t num_samples, int16_t* data, uint16_t s_rate);
-
-static void write_little_endian(unsigned int word, int num_bytes, FILE *wav_file);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -427,6 +416,57 @@ void Codec_Init(void)
 
 //_____________________________________________________________________________
 
+void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz)
+{
+  //float t;
+  float amplitude = 2000;
+  //float freq_Hz = 440;  //440;523.25;
+  float phase = 0;
+  char* fileName;
+
+  float freq_radians_per_sample = ((freq_Hz * 2 * M_PI) / SAVE_FILE_RATE);
+
+  // Fill buffer with a sine wave
+  for (uint16_t i = 0u; i < BUF_SIZE; i++)
+  {
+    phase += freq_radians_per_sample;
+    buffer[i] = (int16_t)(amplitude * sin(phase));
+  }
+
+  phase = 0;
+  freq_radians_per_sample = ((554.37 * 2 * M_PI) / SAVE_FILE_RATE);
+
+  for (uint16_t i = BUF_SIZE; i < 2*BUF_SIZE; i++)
+  {
+    phase += freq_radians_per_sample;
+    buffer[i] = (int16_t)(amplitude * sin(phase));
+  }
+
+  phase = 0;
+  freq_radians_per_sample = ((659.25 * 2 * M_PI) / SAVE_FILE_RATE);
+
+  for (uint16_t i = 2*BUF_SIZE; i < 3*BUF_SIZE; i++)
+  {
+    phase += freq_radians_per_sample;
+    buffer[i] = (int16_t)(amplitude * sin(phase));
+  }
+
+  phase = 0;
+  freq_radians_per_sample = ((880.00 * 2 * M_PI) / SAVE_FILE_RATE);
+
+  for (uint16_t i = 3*BUF_SIZE; i < 4*BUF_SIZE; i++)
+  {
+    phase += freq_radians_per_sample;
+    buffer[i] = (int16_t)(amplitude * sin(phase));
+  }
+
+  FileSystem_SelectFile(&fileName, index, E_Extension_WAV);
+
+  FileSystem_WriteWAVFile(fileName, 4 * BUF_SIZE, buffer, SAVE_FILE_RATE, WAV_PLAYER_CHANNEL);
+}
+
+//_____________________________________________________________________________
+
 void Codec_PlayMP3File(int16_t index)
 {
   SelectFile(index);
@@ -439,9 +479,9 @@ void Codec_PlayMP3File(int16_t index)
 
 void Codec_PlayMP3FromFileSystem(int16_t index)
 {
-  char* file;
+  char* fileName;
 
-  SelectFileSystemFile(&file, index, E_Extension_MP3);
+  FileSystem_SelectFile(&fileName, index, E_Extension_MP3);
 
   //InitSPIFFS();
 
@@ -476,7 +516,7 @@ void Codec_PlayMP3FromFileSystem(int16_t index)
   audio_pipeline_link(MP3PlayerPipeline, (const char* []){"spiffs", "mp3", "i2s"}, 3);
 
   ESP_LOGI(Tag, "[3.6] Set up  uri (file as spiffs, mp3 as mp3 decoder, and default output is i2s)");
-  audio_element_set_uri(MP3PlayerSPIFFSStream, file);
+  audio_element_set_uri(MP3PlayerSPIFFSStream, fileName);
 
   ESP_LOGI(Tag, "[4] Set up event listener");
   audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
@@ -527,7 +567,7 @@ void Codec_PlayMP3FromFileSystem(int16_t index)
     }
   }
 
-  free(file);
+  free(fileName);
 
   ESP_LOGI(Tag, "[7] Stop audio_pipeline");
   StopMP3PlayerFromFileSystem();
@@ -535,44 +575,18 @@ void Codec_PlayMP3FromFileSystem(int16_t index)
 
 //_____________________________________________________________________________
 
-void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz)
-{
-  //float t;
-  float amplitude = 2000;
-  //float freq_Hz = 440;  //440;523.25;
-  float phase = 0;
-  char* file;
-
-  float freq_radians_per_sample = ((freq_Hz * 2 * M_PI) / SAVE_FILE_RATE);
-
-  // Fill buffer with a sine wave
-  for (uint16_t i = 0u; i < BUF_SIZE; i++)
-  {
-    phase += freq_radians_per_sample;
-    buffer[i] = (int16_t)(amplitude * sin(phase));
-  }
-
-  SelectFileSystemFile(&file, index, E_Extension_WAV);
-
-  WriteWAVFile(file, BUF_SIZE, buffer, SAVE_FILE_RATE);
-}
-
-//_____________________________________________________________________________
-
 void Codec_PlayWAVFile(int16_t index)
 {
-  char* file;
-  struct stat st;
+  char* fileName;
 
   FileIndex = index;
 
-  SelectFileSystemFile(&file, FileIndex, E_Extension_WAV);
+  FileSystem_SelectFile(&fileName, FileIndex, E_Extension_WAV);
 
   // Check that the file exists
-  if (stat(file, &st) == 0)
+  if (FileSystem_DoesFileExist(fileName))
   {
-    ESP_LOGE(Tag, "COUCOU File %d exists", FileIndex);
-    PlayWAV(WAVPlayer, file);
+    PlayWAV(WAVPlayer, fileName);
   }
 }
 
@@ -606,17 +620,24 @@ void Codec_ResumeWAVFile(void)
 
 //_____________________________________________________________________________
 
+int Codec_GetWAVPlayedTime(void)
+{
+  return GetWAVPlayedTime(WAVPlayer);
+}
+
+//_____________________________________________________________________________
+
 void Codec_RecordWAVFile(int16_t index, uint16_t duration_s)
 {
-  char* file;
+  char* fileName;
 
   RecordingDuration_s = duration_s;
 
   FileIndex = index;
 
-  SelectFileSystemFile(&file, FileIndex, E_Extension_WAV);
+  FileSystem_SelectFile(&fileName, FileIndex, E_Extension_WAV);
 
-  RecordWAV(WAVRecorder, file);
+  RecordWAV(WAVRecorder, fileName);
 }
 
 //_____________________________________________________________________________
@@ -1064,54 +1085,6 @@ static void SelectFile(int16_t index)
 
 //_____________________________________________________________________________
 
-static void SelectFileSystemFile(char** file, int16_t index, T_Extension extension)
-{
-  char path[18] = "/spiffs/";
-  char fileName[4];
-  char type[6];
-
-  switch (extension)
-  {
-    case E_Extension_MP3:
-      strcpy(type, ".mp3\0");
-      break;
-
-    case E_Extension_WAV:
-      strcpy(type, ".wav\0");
-      break;
-
-    default:
-      // Do nothing
-      break;
-  }
-
-  itoa(index, fileName, 10);  // Convert the index (in base 10) to a string
-
-  strcat(path, fileName);
-  strcat(path, type);
-
-  *file = malloc(sizeof(path));  // Allocated memory
-
-  strcpy(*file, path);
-
-  printf("Selected file: %s\n", *file);
-}
-
-//_____________________________________________________________________________
-
-static void EraseFileSystemFile(char* file)
-{
-  struct stat st;
-
-  // Check that the file exists
-  if (stat(file, &st) == 0)
-  {
-    unlink(file);
-  }
-}
-
-//_____________________________________________________________________________
-
 static void RunMP3PlayerTask(void* arg)
 {
   T_MP3PlayerHandle ap = (T_MP3PlayerHandle) arg;
@@ -1208,7 +1181,7 @@ static void RunWAVPlayerTask(void* arg)
         && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
         && (int)msg.data == AEL_STATUS_STATE_RUNNING)
     {
-      ESP_LOGE(Tag, "[ * ] COUCOU SEND PLAY");
+      //ESP_LOGE(Tag, "[ * ] COUCOU SEND PLAY");
       SendWAVPlayerEvent(ap, PLAYER_EVENT_PLAY);
       continue;
     }
@@ -1218,7 +1191,7 @@ static void RunWAVPlayerTask(void* arg)
         && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
         && (int)msg.data == AEL_STATUS_STATE_PAUSED)
     {
-      ESP_LOGE(Tag, "[ * ] COUCOU SEND PAUSE");
+      //ESP_LOGE(Tag, "[ * ] COUCOU SEND PAUSE");
       SendWAVPlayerEvent(ap, PLAYER_EVENT_PAUSE);
       continue;
     }
@@ -1248,7 +1221,7 @@ static void RunWAVPlayerTask(void* arg)
         && ap->Playing)
     {
       ESP_LOGI(Tag, "Stop pipeline");
-      ESP_LOGE(Tag, "[ * ] COUCOU SEND STOP");
+      //ESP_LOGE(Tag, "[ * ] COUCOU SEND STOP");
       SendWAVPlayerEvent(ap, PLAYER_EVENT_STOP);
       audio_pipeline_stop(ap->Pipeline);
       audio_pipeline_wait_for_stop(ap->Pipeline);
@@ -1648,12 +1621,12 @@ static esp_err_t PlayMP3(T_MP3PlayerHandle ap)
 
 static esp_err_t PlayWAV(T_WAVPlayerHandle ap, const char* url)
 {
-  ESP_LOGE(Tag, "COUCOU STOP WAV FROM PLAY");
+  //ESP_LOGE(Tag, "COUCOU STOP WAV FROM PLAY");
   StopWAV(ap);
 
   if (url)
   {
-    ESP_LOGE(Tag, "COUCOU PLAY WAV");
+    printf("Played WAV file: %s\n", url);
     audio_element_set_uri(ap->SPIFFSStream, url);
     audio_pipeline_run(ap->Pipeline);
     ap->Playing = true;
@@ -1716,6 +1689,31 @@ static esp_err_t ResumeWAV(T_WAVPlayerHandle ap)
 
 //_____________________________________________________________________________
 
+static int GetWAVPlayedTime(T_WAVPlayerHandle ap)
+{
+  audio_element_info_t info;
+
+  if (ap == NULL)
+  {
+    return 0;
+  }
+
+  if (audio_element_getinfo(ap->I2SStream, &info) != ESP_OK)
+  {
+    return 0;
+  }
+
+  //int time_sec = info.byte_pos / (info.sample_rates * info.channels * info.bits / 8);
+  //printf("Played Time: %d, pos: %lld, rate: %d, channel: %d, bit: %d\n", time_sec, info.byte_pos, info.sample_rates, info.channels, info.bits);
+
+  int time_ms = (info.byte_pos * 8000) / (info.sample_rates * info.channels * info.bits);
+  printf("Played Time: %d\n", time_ms);
+
+  return time_ms;
+}
+
+//_____________________________________________________________________________
+
 static esp_err_t RecordWAV(T_WAVRecorderHandle ap, const char* url)
 {
   ESP_LOGE(Tag, "COUCOU STOP WAV FROM RECORD");
@@ -1755,7 +1753,7 @@ static esp_err_t StopMP3(T_MP3PlayerHandle ap)
 
 static esp_err_t StopWAV(T_WAVPlayerHandle ap)
 {
-  ESP_LOGE(Tag, "COUCOU STOP WAV");
+  //ESP_LOGE(Tag, "COUCOU STOP WAV");
 
   if (ap->Playing)
   {
@@ -1820,10 +1818,6 @@ int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t 
 
 esp_err_t HandleMP3PlayerEvent(T_MP3PlayerHandle ap, T_PlayerEvent event)
 {
-  //SelectFile(FileIndex);
-
-  //MP3PlayerEvent = event;
-
   if (event == PLAYER_EVENT_PLAY)
   {
     //ESP_LOGE(Tag, "COUCOU HANDLE MP3 PLAY");
@@ -1846,28 +1840,19 @@ esp_err_t HandleMP3PlayerEvent(T_MP3PlayerHandle ap, T_PlayerEvent event)
 
 esp_err_t HandleWAVPlayerEvent(T_WAVPlayerHandle ap, T_PlayerEvent event)
 {
-  //char* file;
-
-  //SelectFileSystemFile(&file, FileIndex, E_Extension_WAV);
-  //SelectFileSystemFile(&file, 0, E_Extension_WAV);
-
-  //ESP_LOGE(Tag, "COUCOU WAV HANDLE");
-
   if (event == PLAYER_EVENT_PLAY)
   {
-    ESP_LOGE(Tag, "COUCOU HANDLE WAV PLAY");
-    //PlayWAV(WAVPlayer, file);
+    //ESP_LOGE(Tag, "COUCOU HANDLE WAV PLAY");
   }
 
   if (event == PLAYER_EVENT_STOP)
   {
-    ESP_LOGE(Tag, "COUCOU HANDLE WAV STOP");
-    //StopWAV(WAVPlayer);
+    //ESP_LOGE(Tag, "COUCOU HANDLE WAV STOP");
   }
 
   if (event == PLAYER_EVENT_PAUSE)
   {
-    ESP_LOGE(Tag, "COUCOU HANDLE WAV PAUSE");
+    //ESP_LOGE(Tag, "COUCOU HANDLE WAV PAUSE");
   }
 
   return ESP_OK;
@@ -1877,11 +1862,6 @@ esp_err_t HandleWAVPlayerEvent(T_WAVPlayerHandle ap, T_PlayerEvent event)
 
 esp_err_t HandleWAVRecorderEvent(T_WAVRecorderHandle ap, T_RecorderEvent event)
 {
-  //char* file;
-
-  //SelectFileSystemFile(&file, FileIndex, E_Extension_WAV);
-  //SelectFileSystemFile(&file, 0, E_Extension_WAV);
-
   //ESP_LOGE(Tag, "COUCOU WAV HANDLE");
 
   if (event == RECORDER_EVENT_RECORD)
@@ -1902,64 +1882,4 @@ esp_err_t HandleWAVRecorderEvent(T_WAVRecorderHandle ap, T_RecorderEvent event)
   }
 
   return ESP_OK;
-}
-
-//_____________________________________________________________________________
-
-static void WriteWAVFile(char* filename, uint32_t num_samples, int16_t* data, uint16_t s_rate)
-{
-  FILE* wav_file;
-  unsigned int sample_rate;
-  unsigned int bytes_per_sample;
-  unsigned int byte_rate;
-
-  bytes_per_sample = 2;
-
-  sample_rate = (unsigned int) s_rate;
-
-  byte_rate = sample_rate * WAV_PLAYER_CHANNEL * bytes_per_sample;
-
-  wav_file = fopen(filename, "w");
-  //assert(wav_file);   /* make sure it opened */
-
-  /* write RIFF header */
-  fwrite("RIFF", 1, 4, wav_file);
-  write_little_endian(36 + (bytes_per_sample * num_samples * WAV_PLAYER_CHANNEL), 4, wav_file);
-  fwrite("WAVE", 1, 4, wav_file);
-
-  /* write fmt  subchunk */
-  fwrite("fmt ", 1, 4, wav_file);
-  write_little_endian(16, 4, wav_file);   /* SubChunk1Size is 16 */
-  write_little_endian(1, 2, wav_file);    /* PCM is format 1 */
-  write_little_endian(WAV_PLAYER_CHANNEL, 2, wav_file);
-  write_little_endian(sample_rate, 4, wav_file);
-  write_little_endian(byte_rate, 4, wav_file);
-  write_little_endian(WAV_PLAYER_CHANNEL * bytes_per_sample, 2, wav_file);  /* block align */
-  write_little_endian(8 * bytes_per_sample, 2, wav_file);  /* bits/sample */
-
-  /* write data subchunk */
-  fwrite("data", 1, 4, wav_file);
-  write_little_endian(bytes_per_sample * num_samples * WAV_PLAYER_CHANNEL, 4, wav_file);
-
-  for (uint32_t i = 0u; i < num_samples; i++)
-  {
-    write_little_endian((unsigned int)(data[i]), bytes_per_sample, wav_file);
-  }
-
-  fclose(wav_file);
-}
-
-//_____________________________________________________________________________
-
-static void write_little_endian(unsigned int word, int num_bytes, FILE *wav_file)
-{
-  unsigned buf;
-
-  while (num_bytes > 0)
-  {
-    buf = word & 0xff;
-    fwrite(&buf, 1,1, wav_file);
-    num_bytes--;
-    word >>= 8;
-  }
 }

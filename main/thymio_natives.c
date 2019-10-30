@@ -35,6 +35,7 @@
 #include "behavior.h"
 //#include "tone.h"
 //#include "ir_prox.h"
+#include "file_system.h"
 #include "gyroscope.h"
 #include "sound.h"
 //#include "mp3.h"
@@ -113,8 +114,28 @@ void record_wav(AsebaVMState* vm)
 
   //MP3_StartRecorder();
   //Codec_StartWAVRecorder(index, duration);
-//  Codec_RecordWAVFile(index, duration);
-  Codec_CreateWAVFile(index, duration);
+  Codec_RecordWAVFile(index, duration);
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_create_wav =
+{
+  "wav.create",
+  "Create a rN.wav",
+  {
+    {1, "N"},
+    {1, "frequency"},
+    {0, 0},
+  }
+};
+
+void create_wav(AsebaVMState* vm)
+{
+  int index     = vm->variables[AsebaNativePopArg(vm)];
+  int frequency = vm->variables[AsebaNativePopArg(vm)];
+
+  Codec_CreateWAVFile(index, frequency);
 }
 
 //_____________________________________________________________________________
@@ -281,6 +302,25 @@ void resume_wav(AsebaVMState* vm)
 
 //_____________________________________________________________________________
 
+AsebaNativeFunctionDescription AsebaNativeDescription_get_duration_wav =
+{
+  "wav.duration",
+  "Duration of pN.wav",
+  {
+    {1, "duration"},
+    {0, 0},
+  }
+};
+
+void get_duration_wav(AsebaVMState* vm)
+{
+  unsigned int duration = AsebaNativePopArg(vm);
+
+  vm->variables[duration] = Codec_GetWAVPlayedTime();
+}
+
+//_____________________________________________________________________________
+
 AsebaNativeFunctionDescription AsebaNativeDescription_volume =
 {
   "sound.volume",
@@ -296,30 +336,6 @@ void sound_volume(AsebaVMState* vm)
   int volume = vm->variables[AsebaNativePopArg(vm)];
 
   Codec_SetVolume(volume);
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_duration =
-{
-  "sound.duration",
-  "Give duration in 1/10s of rN.wav",
-  {
-    {1, "N"},
-    {1, "duration"},
-    {0, 0},
-  }
-};
-
-void sound_duration(AsebaVMState* vm)
-{
-  char name[13] = {'r'};
-  int number = vm->variables[AsebaNativePopArg(vm)];
-  unsigned int durationIndex = AsebaNativePopArg(vm);
-#if 0
-  prepare_name(number, &name[1]);
-  vm->variables[durationIndex] = sd_read_duration(name);
-#endif
 }
 
 //_____________________________________________________________________________
@@ -348,6 +364,59 @@ void sound_system(AsebaVMState* vm)
     play_user_sound(name);
   }
 #endif
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_duration =
+{
+  "sound.duration",
+  "Give duration in 1/10s of rN.wav",
+  {
+    {1, "N"},
+    {1, "duration"},
+    {0, 0},
+  }
+};
+
+void sound_duration(AsebaVMState* vm)
+{
+  char name[13] = {'r'};
+  int number = vm->variables[AsebaNativePopArg(vm)];
+  unsigned int durationIndex = AsebaNativePopArg(vm);
+#if 0
+  prepare_name(number, &name[1]);
+  vm->variables[durationIndex] = sd_read_duration(name);
+#endif
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_erase_file =
+{
+  "file.erase",
+  "Erase file N.extension",
+  {
+    {1, "N"},
+    {1, "extension"},
+    {0, 0},
+  }
+};
+
+void erase_file(AsebaVMState* vm)
+{
+  int number = vm->variables[AsebaNativePopArg(vm)];
+  int extension = vm->variables[AsebaNativePopArg(vm)];
+
+  char* fileName;
+
+  FileSystem_SelectFile(&fileName, number, extension);
+
+  // Check that the file exists
+  if (FileSystem_DoesFileExist(fileName))
+  {
+    FileSystem_EraseFile(fileName);
+  }
 }
 
 //_____________________________________________________________________________
