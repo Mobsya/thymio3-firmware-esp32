@@ -105,7 +105,7 @@ void AsebaESP32_Start(void)
     NULL,          // Task input parameter
     1,             // Priority of the task
     NULL,          // Task handle
-    1);            // Core where the task should run
+    0);            // Core where the task should run
 }
 
 //_____________________________________________________________________________

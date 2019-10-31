@@ -443,7 +443,7 @@ void Codec_Init(void)
   MP3Player = InitMP3Player(&MP3PlayerConfig);
 //#endif
 
-//#if 0
+#if 0
   ESP_LOGE(Tag, "INIT WAV PLAYER");
   T_WAVPlayerConfig WAVPlayerConfig =
   {
@@ -451,7 +451,7 @@ void Codec_Init(void)
   };
 
   WAVPlayer = InitWAVPlayer(&WAVPlayerConfig);
-//#endif
+#endif
 
 #if 0
   ESP_LOGE(Tag, "INIT WAV RECORDER");
@@ -715,20 +715,19 @@ static T_MP3PlayerFromFlashHandle InitMP3PlayerFromFlash(T_MP3PlayerFromFlashCon
   AUDIO_MEM_CHECK(Tag, ap->Pipeline, goto _audio_init_failed);
 
   ESP_LOGI(Tag, "[2.2] Create MP3 decoder to decode MP3 format");
-  mp3_decoder_cfg_t mp3_cfg = DEFAULT_MP3_DECODER_CONFIG();
-  ap->Decoder = mp3_decoder_init(&mp3_cfg);
-  audio_element_set_read_cb(ap->Decoder, mp3_music_read_cb, NULL);
+  ap->Decoder = CreateMP3Decoder();
   AUDIO_MEM_CHECK(Tag, ap->Decoder, goto _audio_init_failed);
+  audio_element_set_read_cb(ap->Decoder, mp3_music_read_cb, NULL);
 
   ESP_LOGI(Tag, "[2.4] Create I2S stream to write audio data to codec chip");
   ap->I2SStream = CreateI2SStream(MP3_PLAYER_RATE, MP3_PLAYER_BITS, MP3_PLAYER_CHANNEL, AUDIO_STREAM_WRITER);
 
   ESP_LOGI(Tag, "[2.5] Register all elements to audio pipeline");
-  audio_pipeline_register(ap->Pipeline, ap->Decoder, "mp3_decoder");
+  audio_pipeline_register(ap->Pipeline, ap->Decoder,   "mp3_flash_decoder");
   audio_pipeline_register(ap->Pipeline, ap->I2SStream, "i2s_writer");
 
-  ESP_LOGI(Tag, "[2.6] Link it together [mp3_music_read_cb]-->mp3_decoder-->i2s_stream-->[codec_chip]");
-  audio_pipeline_link(ap->Pipeline, (const char *[]) {"mp3_decoder", "i2s_writer"}, 2);
+  ESP_LOGI(Tag, "[2.6] Link it together [mp3_music_read_cb]-->mp3_flash_decoder-->i2s_stream-->[codec_chip]");
+  audio_pipeline_link(ap->Pipeline, (const char *[]) {"mp3_flash_decoder", "i2s_writer"}, 2);
 
   ESP_LOGI(Tag, "[3.0] Setup event listener");
   audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
@@ -1192,6 +1191,7 @@ static void RunMP3PlayerFromFlashTask(void* arg)
       audio_pipeline_reset_ringbuffer(ap->Pipeline);
       audio_pipeline_reset_items_state(ap->Pipeline);
       ap->Playing = false;
+      //audio_pipeline_terminate(ap->Pipeline);
     }
   }
 
@@ -1204,7 +1204,7 @@ static void RunMP3PlayerTask(void* arg)
 {
   T_MP3PlayerHandle ap = (T_MP3PlayerHandle) arg;
 
-  i2s_stream_set_clk(ap->I2SStream, MP3_PLAYER_RATE, MP3_PLAYER_BITS, MP3_PLAYER_CHANNEL);
+  //i2s_stream_set_clk(ap->I2SStream, MP3_PLAYER_RATE, MP3_PLAYER_BITS, MP3_PLAYER_CHANNEL);
 
   while (ap->Run)
   {
@@ -1248,8 +1248,7 @@ static void RunMP3PlayerTask(void* arg)
                music_info.sample_rates, music_info.bits, music_info.channels);
 
       audio_element_setinfo(ap->I2SStream, &music_info);
-      //i2s_stream_set_clk(ap->I2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
-      //i2s_stream_set_clk(ap->I2SStream, WAV_PLAYER_RATE, WAV_PLAYER_BITS, WAV_PLAYER_CHANNEL);
+      i2s_stream_set_clk(ap->I2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
       continue;
     }
 
@@ -1267,7 +1266,6 @@ static void RunMP3PlayerTask(void* arg)
       audio_pipeline_stop(ap->Pipeline);
       audio_pipeline_wait_for_stop(ap->Pipeline);
       audio_element_reset_state(ap->SPIFFSStream);
-      //audio_element_reset_state(ap->Filter);
       audio_element_reset_state(ap->Decoder);
       audio_element_reset_state(ap->I2SStream);
       audio_pipeline_reset_ringbuffer(ap->Pipeline);
