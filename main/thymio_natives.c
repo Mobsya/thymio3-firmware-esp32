@@ -140,6 +140,28 @@ void create_wav(AsebaVMState* vm)
 
 //_____________________________________________________________________________
 
+AsebaNativeFunctionDescription AsebaNativeDescription_play_mp3_sys =
+{
+  "mp3.sys.play",
+  "Playback of pN.mp3",
+  {
+    {1, "N"},
+    {0, 0},
+  }
+};
+
+void play_mp3_sys(AsebaVMState* vm)
+{
+  char name[13] = {'p'};
+  int number = vm->variables[AsebaNativePopArg(vm)];
+
+  ESP_LOGE(Tag, "Number = %d", number);
+
+  Codec_PlayMP3FileFromFlash(number);
+}
+
+//_____________________________________________________________________________
+
 AsebaNativeFunctionDescription AsebaNativeDescription_play_mp3 =
 {
   "mp3.play",
@@ -153,50 +175,11 @@ AsebaNativeFunctionDescription AsebaNativeDescription_play_mp3 =
 void play_mp3(AsebaVMState* vm)
 {
   char name[13] = {'p'};
-  //int number = vm->variables[AsebaNativePopArg(vm)];
   int number = vm->variables[AsebaNativePopArg(vm)];
 
   ESP_LOGE(Tag, "Number = %d", number);
 
-  //uint8_t* const index = &number;
-  //static uint8_t index = number;
-
-#if 0 // FIXME
-  Behavior_Disable(B_SOUND_BUTTON);
-  playback_enable_event();
-
-  if (number == -1)
-  {
-    play_user_sound(NULL);
-  }
-  else
-  {
-    prepare_name(number, &name[1]);
-    play_user_sound(name);
-  }
-#endif
-
-  Codec_PlayMP3FileFromFlash(number);
-  //Codec_PlayMP3File(number);
-
-#if 0
-  MelodyAseba.Melody = JamesBond;
-  MelodyAseba.Tempo  = E_Tempo_Vivace;
-  MelodyAseba.Loop   = 1;
-  MelodyAseba.Size   = 21;
-
-  if (number == 1)
-  {
-    xTaskCreatePinnedToCore(
-      Sound_RunPlayerTask,
-      "sound",       // Name of the task
-      2048,          // Stack size in words
-      &MelodyAseba,  // Task input parameter
-      2,             // Priority of the task
-      NULL,          // Task handle
-      0);            // Core where the task should run
-  }
-#endif
+  Codec_PlayMP3File(number);
 }
 
 //_____________________________________________________________________________
@@ -238,6 +221,22 @@ void play_wav(AsebaVMState* vm)
 
 //_____________________________________________________________________________
 
+AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3_sys =
+{
+  "mp3.sys.pause",
+  "Pause of pN.mp3",
+  {
+    {0, 0},
+  }
+};
+
+void pause_mp3_sys(AsebaVMState* vm)
+{
+  Codec_PauseMP3FileFromFlash();
+}
+
+//_____________________________________________________________________________
+
 AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3 =
 {
   "mp3.pause",
@@ -249,7 +248,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3 =
 
 void pause_mp3(AsebaVMState* vm)
 {
-  Codec_PauseMP3FileFromFlash();
+  Codec_PauseMP3File();
 }
 
 //_____________________________________________________________________________
@@ -270,6 +269,22 @@ void pause_wav(AsebaVMState* vm)
 
 //_____________________________________________________________________________
 
+AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3_sys =
+{
+  "mp3.sys.resume",
+  "Resume of pN.mp3",
+  {
+    {0, 0},
+  }
+};
+
+void resume_mp3_sys(AsebaVMState* vm)
+{
+  Codec_ResumeMP3FileFromFlash();
+}
+
+//_____________________________________________________________________________
+
 AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3 =
 {
   "mp3.resume",
@@ -281,7 +296,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3 =
 
 void resume_mp3(AsebaVMState* vm)
 {
-  Codec_ResumeMP3FileFromFlash();
+  Codec_ResumeMP3File();
 }
 
 //_____________________________________________________________________________
@@ -298,6 +313,65 @@ AsebaNativeFunctionDescription AsebaNativeDescription_resume_wav =
 void resume_wav(AsebaVMState* vm)
 {
   Codec_ResumeWAVFile();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_erase_mp3 =
+{
+  "mp3.erase",
+  "Erase of pN.mp3",
+  {
+    {0, 0},
+  }
+};
+
+void erase_mp3(AsebaVMState* vm)
+{
+  int number = vm->variables[AsebaNativePopArg(vm)];
+  char* fileName;
+
+  FileSystem_SelectFile(&fileName, number, E_Extension_MP3);
+  FileSystem_EraseFile(fileName);
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_erase_wav =
+{
+  "wav.erase",
+  "Erase of pN.wav",
+  {
+    {0, 0},
+  }
+};
+
+void erase_wav(AsebaVMState* vm)
+{
+  int number = vm->variables[AsebaNativePopArg(vm)];
+  char* fileName;
+
+  FileSystem_SelectFile(&fileName, number, E_Extension_WAV);
+  FileSystem_EraseFile(fileName);
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_get_duration_mp3 =
+{
+  "mp3.duration",
+  "Duration of pN.mp3",
+  {
+    {1, "duration"},
+    {0, 0},
+  }
+};
+
+void get_duration_mp3(AsebaVMState* vm)
+{
+  unsigned int duration = AsebaNativePopArg(vm);
+
+  vm->variables[duration] = Codec_GetMP3PlayedTime();
 }
 
 //_____________________________________________________________________________
@@ -411,12 +485,7 @@ void erase_file(AsebaVMState* vm)
   char* fileName;
 
   FileSystem_SelectFile(&fileName, number, extension);
-
-  // Check that the file exists
-  if (FileSystem_DoesFileExist(fileName))
-  {
-    FileSystem_EraseFile(fileName);
-  }
+  FileSystem_EraseFile(fileName);
 }
 
 //_____________________________________________________________________________

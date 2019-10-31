@@ -49,11 +49,17 @@ void record_wav(AsebaVMState* vm);
 extern AsebaNativeFunctionDescription AsebaNativeDescription_create_wav;
 void create_wav(AsebaVMState* vm);
 
+extern AsebaNativeFunctionDescription AsebaNativeDescription_play_mp3_sys;
+void play_mp3_sys(AsebaVMState* vm);
+
 extern AsebaNativeFunctionDescription AsebaNativeDescription_play_mp3;
 void play_mp3(AsebaVMState* vm);
 
 extern AsebaNativeFunctionDescription AsebaNativeDescription_play_wav;
 void play_wav(AsebaVMState* vm);
+
+extern AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3_sys;
+void pause_mp3_sys(AsebaVMState* vm);
 
 extern AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3;
 void pause_mp3(AsebaVMState* vm);
@@ -61,11 +67,23 @@ void pause_mp3(AsebaVMState* vm);
 extern AsebaNativeFunctionDescription AsebaNativeDescription_pause_wav;
 void pause_wav(AsebaVMState* vm);
 
+extern AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3_sys;
+void resume_mp3_sys(AsebaVMState* vm);
+
 extern AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3;
 void resume_mp3(AsebaVMState* vm);
 
 extern AsebaNativeFunctionDescription AsebaNativeDescription_resume_wav;
 void resume_wav(AsebaVMState* vm);
+
+extern AsebaNativeFunctionDescription AsebaNativeDescription_erase_mp3;
+void erase_mp3(AsebaVMState* vm);
+
+extern AsebaNativeFunctionDescription AsebaNativeDescription_erase_wav;
+void erase_wav(AsebaVMState* vm);
+
+extern AsebaNativeFunctionDescription AsebaNativeDescription_get_duration_mp3;
+void get_duration_mp3(AsebaVMState* vm);
 
 extern AsebaNativeFunctionDescription AsebaNativeDescription_get_duration_wav;
 void get_duration_wav(AsebaVMState* vm);
@@ -151,12 +169,18 @@ void gyro_reset_calib_angle(AsebaVMState* vm);
 #define THYMIO_NATIVES_DESCRIPTIONS \
   &AsebaNativeDescription_record_wav, \
   &AsebaNativeDescription_create_wav, \
+  &AsebaNativeDescription_play_mp3_sys, \
   &AsebaNativeDescription_play_mp3, \
   &AsebaNativeDescription_play_wav, \
+  &AsebaNativeDescription_pause_mp3_sys, \
   &AsebaNativeDescription_pause_mp3, \
   &AsebaNativeDescription_pause_wav, \
+  &AsebaNativeDescription_resume_mp3_sys, \
   &AsebaNativeDescription_resume_mp3, \
   &AsebaNativeDescription_resume_wav, \
+  &AsebaNativeDescription_erase_mp3, \
+  &AsebaNativeDescription_erase_wav, \
+  &AsebaNativeDescription_get_duration_mp3, \
   &AsebaNativeDescription_get_duration_wav, \
   &AsebaNativeDescription_volume, \
   &AsebaNativeDescription_sound_system, \
@@ -188,12 +212,18 @@ void gyro_reset_calib_angle(AsebaVMState* vm);
 #define THYMIO_NATIVES_FUNCTIONS \
   record_wav, \
   create_wav, \
+  play_mp3_sys, \
   play_mp3, \
   play_wav, \
+  pause_mp3_sys, \
   pause_mp3, \
   pause_wav, \
+  resume_mp3_sys, \
   resume_mp3, \
   resume_wav, \
+  erase_mp3, \
+  erase_wav, \
+  get_duration_mp3, \
   get_duration_wav, \
   sound_volume, \
   sound_system, \
