@@ -35,7 +35,6 @@
 #include "leds.h"
 #include "mode.h"
 #include "rc5.h"
-#include "sound.h"
 #include "stm32_i2c.h"
 
 //-----------------------------------------------------------------------------
@@ -75,12 +74,6 @@ static uint16_t Behavior = 0u;
 #define ENABLED(b)     (Behavior & b)    // ({behavior & b;})
 #define ENABLE(b)      (Behavior |= b)   // do {behavior |= b;} while(0)
 #define DISABLE(b)     (Behavior &= ~b)  // do {behavior &= ~b;} while(0)  //(behavior &= ~b)
-
-const T_Note ButtonSound[1];
-const T_Note CenterButtonSound[3];
-
-static T_Melody MelodyButton;
-static T_Melody MelodyCenterButton;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -135,18 +128,6 @@ static void PlaySoundButtons(void);
 void Behavior_Init(void)
 {
   TaskIsStarted = false;
-#if 0
-  MelodyButton.Melody = ButtonSound;
-  MelodyButton.Tempo  = E_Tempo_Allegro;
-  MelodyButton.Loop   = 1;
-  MelodyButton.Size   = 1;
-
-  MelodyCenterButton.Melody = CenterButtonSound;
-  MelodyCenterButton.Tempo  = E_Tempo_Allegro;
-  MelodyCenterButton.Loop   = 1;
-  MelodyCenterButton.Size   = 3;
-#endif
-
   Behavior = 0u;
 }
 

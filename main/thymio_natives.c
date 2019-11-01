@@ -18,8 +18,6 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-//#include <types/types.h>
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/portmacro.h"
@@ -30,16 +28,9 @@
 
 #include "codec.h"
 #include "leds.h"
-//#include "sd.h"
-//#include "playback.h"
 #include "behavior.h"
-//#include "tone.h"
-//#include "ir_prox.h"
 #include "file_system.h"
 #include "gyroscope.h"
-#include "sound.h"
-//#include "mp3.h"
-//#include "i2s.h"
 #include "stm32_i2c.h"
 
 #include "aseba.h"
@@ -61,9 +52,6 @@
 //-----------------------------------------------------------------------------
 
 static const char* Tag = "thymio_natives";
-
-const T_Note JamesBond[21];
-static T_Melody MelodyAseba;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -109,11 +97,6 @@ void record_wav(AsebaVMState* vm)
   sd_start_record(name);
 #endif
 
-  //Sound_StartRecording();
-  //I2S_Record();
-
-  //MP3_StartRecorder();
-  //Codec_StartWAVRecorder(index, duration);
   Codec_RecordWAVFile(index, duration);
 }
 

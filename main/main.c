@@ -20,46 +20,33 @@
 
 #include <string.h>
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/portmacro.h"
-
 #include "sdkconfig.h"
 
 #include "esp_log.h"
 
 #include "aseba.h"
 #include "aseba_esp32.h"
-//#include "audio.h"
 #include "behavior.h"
 #include "buttons.h"
 #include "codec.h"
 #include "comm.h"
-#include "cosine_generator.h"
 #include "fifo.h"
 #include "file_system.h"
 #include "gpio.h"
 #include "i2c.h"
 #include "leds.h"
 #include "mode.h"
-#include "mp3.h"
 #include "power.h"
 #include "rc5.h"
 #include "sensors.h"
-#include "sound.h"
-//#include "sound_data.h"
+#include "stm32_i2c.h"
+#include "tcp_server.h"
 #include "test.h"
 #include "timer_sw.h"
 #include "tracking.h"
-//#include "uart.h"
+#include "uart.h"
 #include "wifi.h"
 #include "wifi_update.h"
-
-#include "i2s.h"
-#include "stm32_i2c.h"
-
-#include "tcp_server.h"
-#include "uart.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -126,13 +113,6 @@ int app_main(void)
 
   //Buttons_Init();
 
-  //I2S_Init();
-  //Sound_Init();
-  //Sound_Process();
-  //I2S_Process();
-  //I2S_Record();
-  //Sound_Replay();
-
   RC5_Init();
 
   I2C_Init();
@@ -161,12 +141,9 @@ int app_main(void)
   esp_log_level_set("*", ESP_LOG_ERROR);
 
   Codec_SetVolume(100);
-  //Codec_PlayMP3FromFileSystem(0);
   //Codec_PlayMP3File(2);
-  //Codec_RecordWAV(0);
+  //Codec_RecordWAVFile(0);
   //Codec_PlayWAVFile(2);
-
-  //Codec_SetVolume(80);
 
 //*****************************************************************************
 // Start the tasks
@@ -197,12 +174,6 @@ int app_main(void)
   Comm_Start();
 
   Leds_Start();
-
-  //while (!TCPServer_IsTestFlagOk())
-  //{}
-
-  //ESP_LOGI(Tag, "All tasks are started");
-  //UART_Flush();
 
   return 0;
 }

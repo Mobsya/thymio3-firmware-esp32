@@ -20,10 +20,6 @@
 
 #include <stdio.h>  // Only for debug
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/portmacro.h"
-
 #include "esp_log.h"
 
 #include "mode.h"
@@ -34,18 +30,14 @@
 #include "behavior.h"
 #include "buttons.h"
 #include "codec.h"
+#include "color_sensor.h"
 #include "fifo.h"
 #include "gyroscope.h"
 #include "leds.h"
 #include "rc5.h"
+#include "stm32_i2c.h"
 #include "tcp_server.h"
 #include "timer_sw.h"
-
-#include "color_sensor.h"
-
-#include "sound.h"
-#include "mp3.h"
-#include "stm32_i2c.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -96,15 +88,6 @@ static uint16_t Position = 0u;
 
 static T_TimerSw* MovementTimer = NULL;  //!< Used to move the robot in obedient mode
 static T_TimerSw* StopTimer = NULL;      //!< Used to stop the robot in obedient mode
-
-const T_Note Accord[4];
-
-const T_Note LeLionEstMort[15];
-
-const T_Note JamesBond[21];
-
-static T_Melody MelodyInvestigator;
-static T_Melody MelodyObedient;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -190,18 +173,6 @@ void Mode_Init(void)
     _selecting = MODE_FOLLOW; // Bypass the "VM exit mode"
     set_mode_color(_selecting);
   }
-#endif
-
-#if 0
-  MelodyInvestigator.Melody = LeLionEstMort;
-  MelodyInvestigator.Tempo  = E_Tempo_Allegro;
-  MelodyInvestigator.Loop   = 1;
-  MelodyInvestigator.Size   = 15;
-
-  MelodyObedient.Melody = JamesBond;
-  MelodyObedient.Tempo  = E_Tempo_Vivace;
-  MelodyObedient.Loop   = 1;
-  MelodyObedient.Size   = 21;
 #endif
 
   Behavior_Enable(B_ALWAYS | B_MODE);
@@ -355,17 +326,6 @@ static void StartMode(T_Mode mode)
 
     case E_Mode_Attentive:
       Behavior_Enable(B_LEDS_PROX);
-
-#if 0
-      xTaskCreatePinnedToCore(
-        Sound_RunPlayerTask,
-        "sound",       // Name of the task
-        2048,          // Stack size in words
-        &MelodyInvestigator,  // Task input parameter
-        2,             // Priority of the task
-        NULL,          // Task handle
-        0);            // Core where the task should run
-#endif
       break;
 
     case E_Mode_LineTracker:
@@ -375,16 +335,6 @@ static void StartMode(T_Mode mode)
     case E_Mode_Obedient:
       Behavior_Enable(B_LEDS_PROX);
       RecordSequenceIsFinished = false;
-#if 0
-      xTaskCreatePinnedToCore(
-        Sound_RunPlayerTask,
-        "sound",       // Name of the task
-        2048,          // Stack size in words
-        &MelodyObedient,  // Task input parameter
-        2,             // Priority of the task
-        NULL,          // Task handle
-        0);            // Core where the task should run
-#endif
       break;
 
     default:
