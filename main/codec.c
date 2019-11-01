@@ -164,45 +164,18 @@ typedef enum
   RECORDER_EVENT_RESUME,
 } T_RecorderEvent;
 
+
 typedef struct MP3AudioPlayerFromFlash* T_MP3PlayerFromFlashHandle;
-typedef esp_err_t (*MP3PlayerFromFlashEvent)(T_MP3PlayerFromFlashHandle ap, T_PlayerEvent event);
+//typedef esp_err_t (*MP3PlayerFromFlashEvent)(T_MP3PlayerFromFlashHandle ap, T_PlayerEvent event);
 
 typedef struct MP3AudioPlayer* T_MP3PlayerHandle;
-typedef esp_err_t (*MP3PlayerEvent)(T_MP3PlayerHandle ap, T_PlayerEvent event);
+//typedef esp_err_t (*MP3PlayerEvent)(T_MP3PlayerHandle ap, T_PlayerEvent event);
 
 typedef struct WAVAudioPlayer* T_WAVPlayerHandle;
-typedef esp_err_t (*WAVPlayerEvent)(T_WAVPlayerHandle ap, T_PlayerEvent event);
+//typedef esp_err_t (*WAVPlayerEvent)(T_WAVPlayerHandle ap, T_PlayerEvent event);
 
 typedef struct WAVAudioRecorder* T_WAVRecorderHandle;
-typedef esp_err_t (*WAVRecorderEvent)(T_WAVRecorderHandle ap, T_RecorderEvent event);
-
-typedef struct
-{
-  int task_stack;
-  int task_prio;
-  MP3PlayerFromFlashEvent event_handler;
-} T_MP3PlayerFromFlashConfig;
-
-typedef struct
-{
-  int task_stack;
-  int task_prio;
-  MP3PlayerEvent event_handler;
-} T_MP3PlayerConfig;
-
-typedef struct
-{
-  int task_stack;
-  int task_prio;
-  WAVPlayerEvent event_handler;
-} T_WAVPlayerConfig;
-
-typedef struct
-{
-  int task_stack;
-  int task_prio;
-  WAVRecorderEvent event_handler;
-} T_WAVRecorderConfig;
+//typedef esp_err_t (*WAVRecorderEvent)(T_WAVRecorderHandle ap, T_RecorderEvent event);
 
 typedef struct MP3AudioPlayerFromFlash
 {
@@ -213,7 +186,7 @@ typedef struct MP3AudioPlayerFromFlash
   audio_hal_handle_t Hal;
   bool Run;
   bool Playing;
-  MP3PlayerFromFlashEvent EventHandler;
+  //MP3PlayerFromFlashEvent EventHandler;
 } T_MP3PlayerFromFlash;
 
 typedef struct MP3AudioPlayer
@@ -226,7 +199,7 @@ typedef struct MP3AudioPlayer
   audio_hal_handle_t Hal;
   bool Run;
   bool Playing;
-  MP3PlayerEvent EventHandler;
+  //MP3PlayerEvent EventHandler;
 } T_MP3Player;
 
 typedef struct WAVAudioPlayer
@@ -240,7 +213,7 @@ typedef struct WAVAudioPlayer
   audio_hal_handle_t Hal;
   bool Run;
   bool Playing;
-  WAVPlayerEvent EventHandler;
+  //WAVPlayerEvent EventHandler;
 } T_WAVPlayer;
 
 typedef struct WAVAudioRecorder
@@ -254,7 +227,7 @@ typedef struct WAVAudioRecorder
   audio_hal_handle_t Hal;
   bool Run;
   bool Recording;
-  WAVRecorderEvent EventHandler;
+  //WAVRecorderEvent EventHandler;
 } T_WAVRecorder;
 
 //-----------------------------------------------------------------------------
@@ -323,13 +296,13 @@ static audio_hal_handle_t InitCodec(void);
 
 static void InitSPIFFS(void);
 
-static T_MP3PlayerFromFlashHandle InitMP3PlayerFromFlash(T_MP3PlayerFromFlashConfig* config);
+static T_MP3PlayerFromFlashHandle InitMP3PlayerFromFlash(void);
 
-static T_MP3PlayerHandle InitMP3Player(T_MP3PlayerConfig* config);
+static T_MP3PlayerHandle InitMP3Player(void);
 
-static T_WAVPlayerHandle InitWAVPlayer(T_WAVPlayerConfig* config);
+static T_WAVPlayerHandle InitWAVPlayer(void);
 
-static T_WAVRecorderHandle InitWAVRecorder(T_WAVRecorderConfig* config);
+static T_WAVRecorderHandle InitWAVRecorder(void);
 
 static audio_element_handle_t CreateSPIFFSStream(int sample_rates, int bits, int channels, audio_stream_type_t type);
 
@@ -354,14 +327,6 @@ static void RunMP3PlayerTask(void* arg);
 static void RunWAVPlayerTask(void* arg);
 
 static void RunWAVRecorderTask(void* arg);
-
-static esp_err_t SendMP3PlayerFromFlashEvent(T_MP3PlayerFromFlashHandle player, T_PlayerEvent event);
-
-static esp_err_t SendMP3PlayerEvent(T_MP3PlayerHandle player, T_PlayerEvent event);
-
-static esp_err_t SendWAVPlayerEvent(T_WAVPlayerHandle player, T_PlayerEvent event);
-
-static esp_err_t SendWAVRecorderEvent(T_WAVRecorderHandle recorder, T_RecorderEvent event);
 
 static esp_err_t PlayMP3FromFlash(T_MP3PlayerFromFlashHandle ap);
 
@@ -397,14 +362,6 @@ static esp_err_t StopWAVRecord(T_WAVRecorderHandle ap);
 
 int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t wait_time, void* ctx);
 
-esp_err_t HandleMP3PlayerFromFlashEvent(T_MP3PlayerFromFlashHandle ap, T_PlayerEvent event);
-
-esp_err_t HandleMP3PlayerEvent(T_MP3PlayerHandle ap, T_PlayerEvent event);
-
-esp_err_t HandleWAVPlayerEvent(T_WAVPlayerHandle ap, T_PlayerEvent event);
-
-esp_err_t HandleWAVRecorderEvent(T_WAVRecorderHandle ap, T_RecorderEvent event);
-
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -425,42 +382,22 @@ void Codec_Init(void)
 
 //#if 0
   ESP_LOGE(Tag, "INIT MP3 PLAYER FROM FLASH");
-  T_MP3PlayerFromFlashConfig MP3PlayerFromFlashConfig =
-  {
-    .event_handler = HandleMP3PlayerFromFlashEvent,
-  };
-
-  MP3PlayerFromFlash = InitMP3PlayerFromFlash(&MP3PlayerFromFlashConfig);
+  MP3PlayerFromFlash = InitMP3PlayerFromFlash();
 //#endif
 
 //#if 0
   ESP_LOGE(Tag, "INIT MP3 PLAYER");
-  T_MP3PlayerConfig MP3PlayerConfig =
-  {
-    .event_handler = HandleMP3PlayerEvent,
-  };
-
-  MP3Player = InitMP3Player(&MP3PlayerConfig);
+  MP3Player = InitMP3Player();
 //#endif
 
 #if 0
   ESP_LOGE(Tag, "INIT WAV PLAYER");
-  T_WAVPlayerConfig WAVPlayerConfig =
-  {
-    .event_handler = HandleWAVPlayerEvent,
-  };
-
-  WAVPlayer = InitWAVPlayer(&WAVPlayerConfig);
+  WAVPlayer = InitWAVPlayer();
 #endif
 
 #if 0
   ESP_LOGE(Tag, "INIT WAV RECORDER");
-  T_WAVRecorderConfig WAVRecorderConfig =
-  {
-    .event_handler = HandleWAVRecorderEvent,
-  };
-
-  WAVRecorder = InitWAVRecorder(&WAVRecorderConfig);
+  WAVRecorder = InitWAVRecorder();
 #endif
 }
 
@@ -698,7 +635,7 @@ static void InitSPIFFS(void)
 
 //_____________________________________________________________________________
 
-static T_MP3PlayerFromFlashHandle InitMP3PlayerFromFlash(T_MP3PlayerFromFlashConfig* config)
+static T_MP3PlayerFromFlashHandle InitMP3PlayerFromFlash(void)
 {
   T_MP3PlayerFromFlashHandle ap = calloc(1, sizeof(T_MP3PlayerFromFlash));
   AUDIO_MEM_CHECK(Tag, ap, NULL);
@@ -738,10 +675,9 @@ static T_MP3PlayerFromFlashHandle InitMP3PlayerFromFlash(T_MP3PlayerFromFlashCon
 
   ap->Run = true;
   ap->Playing = false;
-  ap->EventHandler = config->event_handler;
 
-  int task_stack = config->task_stack ? config->task_stack : DEFAULT_PLAYER_TASK_STACK;
-  int task_prio = config->task_prio ? config->task_prio : DEFAULT_PLAYER_TASK_PRIO;
+  int task_stack = DEFAULT_PLAYER_TASK_STACK;
+  int task_prio = DEFAULT_PLAYER_TASK_PRIO;
 
   //if (xTaskCreate(RunMP3PlayerFromFlashTask, "replayer", task_stack, ap, task_prio, NULL) != pdTRUE)
   if (xTaskCreatePinnedToCore(RunMP3PlayerFromFlashTask, "player", task_stack, ap, task_prio, &MP3PlayerFromFlashTask, 0) != pdTRUE)
@@ -757,7 +693,7 @@ _audio_init_failed:
 
 //_____________________________________________________________________________
 
-static T_MP3PlayerHandle InitMP3Player(T_MP3PlayerConfig* config)
+static T_MP3PlayerHandle InitMP3Player(void)
 {
   T_MP3PlayerHandle ap = calloc(1, sizeof(T_MP3Player));
   AUDIO_MEM_CHECK(Tag, ap, NULL);
@@ -811,13 +747,8 @@ static T_MP3PlayerHandle InitMP3Player(T_MP3PlayerConfig* config)
 
   ap->Run = true;
   ap->Playing = false;
-  ap->EventHandler = config->event_handler;
 
-  int task_stack = config->task_stack ? config->task_stack : DEFAULT_PLAYER_TASK_STACK;
-  int task_prio = config->task_prio ? config->task_prio : DEFAULT_PLAYER_TASK_PRIO;
-
-  //if (xTaskCreate(RunWAVPlayerTask, "replayer", task_stack, ap, task_prio, NULL) != pdTRUE)
-  if (xTaskCreatePinnedToCore(RunMP3PlayerTask, "mp3_player", task_stack, ap, task_prio, &MP3PlayerTask, 0) != pdTRUE)
+  if (xTaskCreatePinnedToCore(RunMP3PlayerTask, "mp3_player", DEFAULT_PLAYER_TASK_STACK, ap, DEFAULT_PLAYER_TASK_PRIO, &MP3PlayerTask, 0) != pdTRUE)
   {
     ESP_LOGE(Tag, "Error creating the Player task");
     goto _audio_init_failed;
@@ -830,7 +761,7 @@ _audio_init_failed:
 
 //_____________________________________________________________________________
 
-static T_WAVPlayerHandle InitWAVPlayer(T_WAVPlayerConfig* config)
+static T_WAVPlayerHandle InitWAVPlayer(void)
 {
   T_WAVPlayerHandle ap = calloc(1, sizeof(T_WAVPlayer));
   AUDIO_MEM_CHECK(Tag, ap, NULL);
@@ -884,10 +815,9 @@ static T_WAVPlayerHandle InitWAVPlayer(T_WAVPlayerConfig* config)
 
   ap->Run = true;
   ap->Playing = false;
-  ap->EventHandler = config->event_handler;
 
-  int task_stack = config->task_stack ? config->task_stack : DEFAULT_PLAYER_TASK_STACK;
-  int task_prio = config->task_prio ? config->task_prio : DEFAULT_PLAYER_TASK_PRIO;
+  int task_stack = DEFAULT_PLAYER_TASK_STACK;
+  int task_prio = DEFAULT_PLAYER_TASK_PRIO;
 
   //if (xTaskCreate(RunWAVPlayerTask, "replayer", task_stack, ap, task_prio, NULL) != pdTRUE)
   if (xTaskCreatePinnedToCore(RunWAVPlayerTask, "replayer", task_stack, ap, task_prio, &WAVPlayerTask, 0) != pdTRUE)
@@ -903,7 +833,7 @@ _audio_init_failed:
 
 //_____________________________________________________________________________
 
-static T_WAVRecorderHandle InitWAVRecorder(T_WAVRecorderConfig* config)
+static T_WAVRecorderHandle InitWAVRecorder(void)
 {
   T_WAVRecorderHandle ap = calloc(1, sizeof(T_WAVRecorder));
   AUDIO_MEM_CHECK(Tag, ap, NULL);
@@ -954,10 +884,9 @@ static T_WAVRecorderHandle InitWAVRecorder(T_WAVRecorderConfig* config)
 
   ap->Run = true;
   ap->Recording = false;
-  ap->EventHandler = config->event_handler;
 
-  int task_stack = config->task_stack ? config->task_stack : DEFAULT_RECORDER_TASK_STACK;
-  int task_prio = config->task_prio ? config->task_prio : DEFAULT_RECORDER_TASK_PRIO;
+  int task_stack = DEFAULT_RECORDER_TASK_STACK;
+  int task_prio = DEFAULT_RECORDER_TASK_PRIO;
 
   //if (xTaskCreate(RunWAVRecorderTask, "replayer", task_stack, ap, task_prio, NULL) != pdTRUE)
   if (xTaskCreatePinnedToCore(RunWAVRecorderTask, "recorder", task_stack, ap, task_prio, &WAVRecorderTask, 0) != pdTRUE)
@@ -1147,7 +1076,6 @@ static void RunMP3PlayerFromFlashTask(void* arg)
         && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
         && (int)msg.data == AEL_STATUS_STATE_RUNNING)
     {
-      SendMP3PlayerFromFlashEvent(ap, PLAYER_EVENT_PLAY);
       continue;
     }
 
@@ -1156,7 +1084,6 @@ static void RunMP3PlayerFromFlashTask(void* arg)
         && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
         && (int)msg.data == AEL_STATUS_STATE_PAUSED)
     {
-      SendMP3PlayerFromFlashEvent(ap, PLAYER_EVENT_PAUSE);
       continue;
     }
 
@@ -1183,7 +1110,6 @@ static void RunMP3PlayerFromFlashTask(void* arg)
         && ap->Playing)
     {
       ESP_LOGI(Tag, "Stop pipeline");
-      SendMP3PlayerFromFlashEvent(ap, PLAYER_EVENT_STOP);
       audio_pipeline_stop(ap->Pipeline);
       audio_pipeline_wait_for_stop(ap->Pipeline);
       audio_element_reset_state(ap->Decoder);
@@ -1223,7 +1149,6 @@ static void RunMP3PlayerTask(void* arg)
         && (int)msg.data == AEL_STATUS_STATE_RUNNING)
     {
       //ESP_LOGE(Tag, "[ * ] COUCOU SEND PLAY");
-      SendMP3PlayerEvent(ap, PLAYER_EVENT_PLAY);
       continue;
     }
 
@@ -1233,7 +1158,6 @@ static void RunMP3PlayerTask(void* arg)
         && (int)msg.data == AEL_STATUS_STATE_PAUSED)
     {
       //ESP_LOGE(Tag, "[ * ] COUCOU SEND PAUSE");
-      SendMP3PlayerEvent(ap, PLAYER_EVENT_PAUSE);
       continue;
     }
 
@@ -1262,7 +1186,6 @@ static void RunMP3PlayerTask(void* arg)
     {
       ESP_LOGI(Tag, "Stop pipeline");
       //ESP_LOGE(Tag, "[ * ] COUCOU SEND STOP");
-      SendMP3PlayerEvent(ap, PLAYER_EVENT_STOP);
       audio_pipeline_stop(ap->Pipeline);
       audio_pipeline_wait_for_stop(ap->Pipeline);
       audio_element_reset_state(ap->SPIFFSStream);
@@ -1303,7 +1226,6 @@ static void RunWAVPlayerTask(void* arg)
         && (int)msg.data == AEL_STATUS_STATE_RUNNING)
     {
       //ESP_LOGE(Tag, "[ * ] COUCOU SEND PLAY");
-      SendWAVPlayerEvent(ap, PLAYER_EVENT_PLAY);
       continue;
     }
 
@@ -1313,7 +1235,6 @@ static void RunWAVPlayerTask(void* arg)
         && (int)msg.data == AEL_STATUS_STATE_PAUSED)
     {
       //ESP_LOGE(Tag, "[ * ] COUCOU SEND PAUSE");
-      SendWAVPlayerEvent(ap, PLAYER_EVENT_PAUSE);
       continue;
     }
 
@@ -1343,7 +1264,6 @@ static void RunWAVPlayerTask(void* arg)
     {
       ESP_LOGI(Tag, "Stop pipeline");
       //ESP_LOGE(Tag, "[ * ] COUCOU SEND STOP");
-      SendWAVPlayerEvent(ap, PLAYER_EVENT_STOP);
       audio_pipeline_stop(ap->Pipeline);
       audio_pipeline_wait_for_stop(ap->Pipeline);
       audio_element_reset_state(ap->SPIFFSStream);
@@ -1394,7 +1314,6 @@ static void RunWAVRecorderTask(void* arg)
         {
           ESP_LOGE(Tag, "[ * ] COUCOU SEND RECORD");
           started = true;
-          SendWAVRecorderEvent(ap, RECORDER_EVENT_RECORD);
           continue;
         }
       }
@@ -1430,7 +1349,6 @@ static void RunWAVRecorderTask(void* arg)
     	{
           ESP_LOGI(Tag, "Stop pipeline");
           ESP_LOGE(Tag, "[ * ] COUCOU SEND STOP");
-          SendWAVRecorderEvent(ap, RECORDER_EVENT_STOP);
           audio_pipeline_stop(ap->Pipeline);
           audio_pipeline_wait_for_stop(ap->Pipeline);
           audio_element_reset_state(ap->Filter);
@@ -1688,54 +1606,6 @@ static void RunWAVRecorderTask(void* arg)
 #endif
 
   //vTaskDelete(WAVRecorderTask);
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t SendMP3PlayerFromFlashEvent(T_MP3PlayerFromFlashHandle player, T_PlayerEvent event)
-{
-  if (player->EventHandler)
-  {
-    return player->EventHandler(player, event);
-  }
-
-  return ESP_OK;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t SendMP3PlayerEvent(T_MP3PlayerHandle player, T_PlayerEvent event)
-{
-  if (player->EventHandler)
-  {
-    return player->EventHandler(player, event);
-  }
-
-  return ESP_OK;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t SendWAVPlayerEvent(T_WAVPlayerHandle player, T_PlayerEvent event)
-{
-  if (player->EventHandler)
-  {
-    return player->EventHandler(player, event);
-  }
-
-  return ESP_OK;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t SendWAVRecorderEvent(T_WAVRecorderHandle recorder, T_RecorderEvent event)
-{
-  if (recorder->EventHandler)
-  {
-    return recorder->EventHandler(recorder, event);
-  }
-
-  return ESP_OK;
 }
 
 //_____________________________________________________________________________
@@ -2037,96 +1907,4 @@ int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t 
   File.Position += read_size;
 
   return read_size;
-}
-
-//_____________________________________________________________________________
-
-esp_err_t HandleMP3PlayerFromFlashEvent(T_MP3PlayerFromFlashHandle ap, T_PlayerEvent event)
-{
-  if (event == PLAYER_EVENT_PLAY)
-  {
-    //ESP_LOGE(Tag, "COUCOU HANDLE MP3 PLAY");
-  }
-
-  if (event == PLAYER_EVENT_STOP)
-  {
-    //ESP_LOGE(Tag, "COUCOU HANDLE MP3 STOP");
-  }
-
-  if (event == PLAYER_EVENT_PAUSE)
-  {
-    //ESP_LOGE(Tag, "COUCOU HANDLE MP3 PAUSE");
-  }
-
-  return ESP_OK;
-}
-
-//_____________________________________________________________________________
-
-esp_err_t HandleMP3PlayerEvent(T_MP3PlayerHandle ap, T_PlayerEvent event)
-{
-  if (event == PLAYER_EVENT_PLAY)
-  {
-    //ESP_LOGE(Tag, "COUCOU HANDLE WAV PLAY");
-  }
-
-  if (event == PLAYER_EVENT_STOP)
-  {
-    //ESP_LOGE(Tag, "COUCOU HANDLE WAV STOP");
-  }
-
-  if (event == PLAYER_EVENT_PAUSE)
-  {
-    //ESP_LOGE(Tag, "COUCOU HANDLE WAV PAUSE");
-  }
-
-  return ESP_OK;
-}
-
-//_____________________________________________________________________________
-
-esp_err_t HandleWAVPlayerEvent(T_WAVPlayerHandle ap, T_PlayerEvent event)
-{
-  if (event == PLAYER_EVENT_PLAY)
-  {
-    //ESP_LOGE(Tag, "COUCOU HANDLE WAV PLAY");
-  }
-
-  if (event == PLAYER_EVENT_STOP)
-  {
-    //ESP_LOGE(Tag, "COUCOU HANDLE WAV STOP");
-  }
-
-  if (event == PLAYER_EVENT_PAUSE)
-  {
-    //ESP_LOGE(Tag, "COUCOU HANDLE WAV PAUSE");
-  }
-
-  return ESP_OK;
-}
-
-//_____________________________________________________________________________
-
-esp_err_t HandleWAVRecorderEvent(T_WAVRecorderHandle ap, T_RecorderEvent event)
-{
-  //ESP_LOGE(Tag, "COUCOU WAV HANDLE");
-
-  if (event == RECORDER_EVENT_RECORD)
-  {
-    ESP_LOGE(Tag, "COUCOU HANDLE WAV RECORD %d SECONDS", RecordingDuration_s);
-    //PlayWAV(WAVPlayer, file);
-  }
-
-  if (event == RECORDER_EVENT_STOP)
-  {
-    ESP_LOGE(Tag, "COUCOU HANDLE WAV RECORD STOP");
-    //StopWAV(WAVPlayer);
-  }
-
-  if (event == RECORDER_EVENT_PAUSE)
-  {
-    ESP_LOGE(Tag, "COUCOU HANDLE WAV RECORD PAUSE");
-  }
-
-  return ESP_OK;
 }
