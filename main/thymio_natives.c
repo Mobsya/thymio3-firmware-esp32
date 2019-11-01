@@ -322,6 +322,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_erase_mp3 =
   "mp3.erase",
   "Erase of pN.mp3",
   {
+    {1, "N"},
     {0, 0},
   }
 };
@@ -342,6 +343,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_erase_wav =
   "wav.erase",
   "Erase of pN.wav",
   {
+    {1, "N"},
     {0, 0},
   }
 };
