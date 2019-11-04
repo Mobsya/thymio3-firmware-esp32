@@ -29,8 +29,6 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-//#include "freertos/portmacro.h"
-//#include "freertos/timers.h"
 
 #include "esp_log.h"
 
@@ -39,7 +37,6 @@
 #include "audio_event_iface.h"
 #include "audio_mem.h"
 #include "audio_common.h"
-//#include "audio_hal.h"
 
 #include "i2s_stream.h"
 #include "spiffs_stream.h"
@@ -96,7 +93,7 @@
 #define DEFAULT_ESP_PERIPH_TASK_PRIO       (5)
 #define DEFAULT_ESP_PERIPH_TASK_CORE       (0)
 
-#define DEFAULT_ESP_PERIPH_SET_CONFIG() {\
+#define DEFAULT_ESP_PERIPH_SET_CONFIG() {                  \
     .task_stack         = DEFAULT_ESP_PERIPH_STACK_SIZE,   \
     .task_prio          = DEFAULT_ESP_PERIPH_TASK_PRIO,    \
     .task_core          = DEFAULT_ESP_PERIPH_TASK_CORE,    \
@@ -141,7 +138,7 @@ typedef struct
 
 struct audio_board_handle
 {
-  audio_hal_handle_t audio_hal; /*!< audio hardware abstract layer handle */
+  audio_hal_handle_t audio_hal;  // Audio hardware abstract layer handle
 };
 
 typedef struct audio_board_handle* audio_board_handle_t;
@@ -166,16 +163,9 @@ typedef enum
 
 
 typedef struct MP3AudioPlayerFromFlash* T_MP3PlayerFromFlashHandle;
-//typedef esp_err_t (*MP3PlayerFromFlashEvent)(T_MP3PlayerFromFlashHandle ap, T_PlayerEvent event);
-
-typedef struct MP3AudioPlayer* T_MP3PlayerHandle;
-//typedef esp_err_t (*MP3PlayerEvent)(T_MP3PlayerHandle ap, T_PlayerEvent event);
-
-typedef struct WAVAudioPlayer* T_WAVPlayerHandle;
-//typedef esp_err_t (*WAVPlayerEvent)(T_WAVPlayerHandle ap, T_PlayerEvent event);
-
-typedef struct WAVAudioRecorder* T_WAVRecorderHandle;
-//typedef esp_err_t (*WAVRecorderEvent)(T_WAVRecorderHandle ap, T_RecorderEvent event);
+typedef struct MP3AudioPlayer*          T_MP3PlayerHandle;
+typedef struct WAVAudioPlayer*          T_WAVPlayerHandle;
+typedef struct WAVAudioRecorder*        T_WAVRecorderHandle;
 
 typedef struct MP3AudioPlayerFromFlash
 {
@@ -186,7 +176,6 @@ typedef struct MP3AudioPlayerFromFlash
   audio_hal_handle_t Hal;
   bool Run;
   bool Playing;
-  //MP3PlayerFromFlashEvent EventHandler;
 } T_MP3PlayerFromFlash;
 
 typedef struct MP3AudioPlayer
@@ -199,7 +188,6 @@ typedef struct MP3AudioPlayer
   audio_hal_handle_t Hal;
   bool Run;
   bool Playing;
-  //MP3PlayerEvent EventHandler;
 } T_MP3Player;
 
 typedef struct WAVAudioPlayer
@@ -213,7 +201,6 @@ typedef struct WAVAudioPlayer
   audio_hal_handle_t Hal;
   bool Run;
   bool Playing;
-  //WAVPlayerEvent EventHandler;
 } T_WAVPlayer;
 
 typedef struct WAVAudioRecorder
@@ -227,7 +214,6 @@ typedef struct WAVAudioRecorder
   audio_hal_handle_t Hal;
   bool Run;
   bool Recording;
-  //WAVRecorderEvent EventHandler;
 } T_WAVRecorder;
 
 //-----------------------------------------------------------------------------
@@ -277,87 +263,237 @@ audio_hal_func_t AUDIO_CODEC_ES8374_DEFAULT_HANDLE =
   .audio_codec_get_volume   = ES8374_GetVoiceVolume
 };
 
-static audio_board_handle_t board_handle = 0;
+static audio_board_handle_t BoardHandle = 0;
 
 static T_MP3PlayerFromFlashHandle MP3PlayerFromFlash = NULL;
 static T_MP3PlayerHandle          MP3Player          = NULL;
 static T_WAVPlayerHandle          WAVPlayer          = NULL;
 static T_WAVRecorderHandle        WAVRecorder        = NULL;
 
-static int16_t buffer[4*BUF_SIZE];
+static int16_t buffer[4 * BUF_SIZE];
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
-static audio_board_handle_t Init(void);
+//! \brief     Initialize the board
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
+static audio_board_handle_t InitBoard(void);
 
+//! \brief     Initialize the codec
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static audio_hal_handle_t InitCodec(void);
 
+//! \brief     Initialize the SPI file system
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static void InitSPIFFS(void);
 
+//! \brief     Initialize the MP3 player from flash
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static T_MP3PlayerFromFlashHandle InitMP3PlayerFromFlash(void);
 
+//! \brief     Initialize the MP3 player
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static T_MP3PlayerHandle InitMP3Player(void);
 
+//! \brief     Initialize the WAV player
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static T_WAVPlayerHandle InitWAVPlayer(void);
 
+//! \brief     Initialize the WAV recorder
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static T_WAVRecorderHandle InitWAVRecorder(void);
 
-static audio_element_handle_t CreateSPIFFSStream(int sample_rates, int bits, int channels, audio_stream_type_t type);
+//! \brief     Create the SPI file system stream
+//! \pre       First initialize the codec
+//! \param     sampleRates - Sample rates of the SPIFFS stream in [Hz]
+//! \param     bits - Bit wide
+//! \param     channels - Number of audio channels, mono is 1, stereo is 2
+//! \param     type - Direction of the SPIFFS stream (reader or writer)
+//! \return    None
+static audio_element_handle_t CreateSPIFFSStream(int sampleRates, int bits, int channels, audio_stream_type_t type);
 
-static audio_element_handle_t CreateI2SStream(int sample_rates, int bits, int channels, audio_stream_type_t type);
+//! \brief     Create the I2S stream
+//! \pre       First initialize the codec
+//! \param     sampleRates - Sample rates of the I2S stream in [Hz]
+//! \param     bits - Bit wide
+//! \param     channels - Number of audio channels, mono is 1, stereo is 2
+//! \param     type - Direction of the I2S stream (reader or writer)
+//! \return    None
+static audio_element_handle_t CreateI2SStream(int sampleRates, int bits, int channels, audio_stream_type_t type);
 
-static audio_element_handle_t CreateFilter(int source_rate, int source_channel, int dest_rate, int dest_channel, audio_codec_type_t type);
+//! \brief     Create the filter
+//! \pre       First initialize the codec
+//! \param     sourceRate - Input rate of the filter in [Hz]
+//! \param     sourceChannel - Input channel of the filter, mono is 1, stereo is 2
+//! \param     destRate - Output rate of the filter in [Hz]
+//! \param     destChannel - Output channel of the filter, mono is 1, stereo is 2
+//! \param     mode - Resampling mode
+//! \return    None
+static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel, int mode);
 
-static audio_element_handle_t CreateWAVEncoder(void);
-
+//! \brief     Create the MP3 decoder
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static audio_element_handle_t CreateMP3Decoder(void);
 
+//! \brief     Create the WAV decoder
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static audio_element_handle_t CreateWAVDecoder(void);
 
+//! \brief     Create the WAV encoder
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
+static audio_element_handle_t CreateWAVEncoder(void);
+
+//! \brief     Generate the master clock (MCLK)
+//! \pre       First initialize the codec
+//! \param     clock_Hz - Clock frequency in [Hz]
+//! \return    None
 static void GenerateMasterClock(uint32_t clock_Hz);
 
+//! \brief     Select the file (from/to the flash)
+//! \pre       First initialize the codec
+//! \param     index - Index of the selected file
+//! \return    None
 static void SelectFile(int16_t index);
 
+//! \brief     Run the MP3 player (from the flash) task
+//! \pre       First initialize the codec
+//! \param     arg - Task parameter
+//! \return    None
 static void RunMP3PlayerFromFlashTask(void* arg);
 
+//! \brief     Run the MP3 player (from the SPI file system) task
+//! \pre       First initialize the codec
+//! \param     arg - Task parameter
+//! \return    None
 static void RunMP3PlayerTask(void* arg);
 
+//! \brief     Run the WAV player (from the SPI file system) task
+//! \pre       First initialize the codec
+//! \param     arg - Task parameter
+//! \return    None
 static void RunWAVPlayerTask(void* arg);
 
+//! \brief     Run the WAV recorder (to the SPI file system) task
+//! \pre       First initialize the codec
+//! \param     arg - Task parameter
+//! \return    None
 static void RunWAVRecorderTask(void* arg);
 
+//! \brief     Play a MP3 file (from the flash)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t PlayMP3FromFlash(T_MP3PlayerFromFlashHandle ap);
 
+//! \brief     Play a MP3 file (from the SPI file system)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t PlayMP3(T_MP3PlayerHandle ap, const char* url);
 
+//! \brief     Play a WAV file (from the SPI file system)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t PlayWAV(T_WAVPlayerHandle ap, const char* url);
 
+//! \brief     Pause a MP3 file (from the flash)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t PauseMP3FromFlash(T_MP3PlayerFromFlashHandle ap);
 
+//! \brief     Pause a MP3 file (from the SPI file system)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t PauseMP3(T_MP3PlayerHandle ap);
 
+//! \brief     Pause a WAV file (from the SPI file system)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t PauseWAV(T_WAVPlayerHandle ap);
 
+//! \brief     Resume a MP3 file (from the flash)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t ResumeMP3FromFlash(T_MP3PlayerFromFlashHandle ap);
 
+//! \brief     Resume a MP3 file (from the SPI file system)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t ResumeMP3(T_MP3PlayerHandle ap);
 
+//! \brief     Resume a WAV file (from the SPI file system)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t ResumeWAV(T_WAVPlayerHandle ap);
 
+//! \brief     Get the played time [s/10] of a MP3 file  (from the SPI file system)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static int GetMP3PlayedTime(T_MP3PlayerHandle ap);
 
+//! \brief     Get the played time [s/10] of a WAV file  (from the SPI file system)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static int GetWAVPlayedTime(T_WAVPlayerHandle ap);
 
+//! \brief     Record a WAV file (to the SPI file system)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t RecordWAV(T_WAVRecorderHandle ap, const char* url);
 
+//! \brief     Stop playing a MP3 file (from the flash)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t StopMP3FromFlash(T_MP3PlayerFromFlashHandle ap);
 
+//! \brief     Stop playing a MP3 file (from the SPI file system)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t StopMP3(T_MP3PlayerHandle ap);
 
+//! \brief     Stop playing a WAV file (from the SPI file system)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t StopWAV(T_WAVPlayerHandle ap);
 
+//! \brief     Stop recording a WAV file (to the SPI file system)
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
 static esp_err_t StopWAVRecord(T_WAVRecorderHandle ap);
 
 int mp3_music_read_cb(audio_element_handle_t el, char* buf, int len, TickType_t wait_time, void* ctx);
@@ -377,8 +513,8 @@ void Codec_Init(void)
   InitSPIFFS();
 
   //ESP_LOGI(Tag, "[2] Start codec chip");
-  board_handle = Init();
-  audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
+  BoardHandle = InitBoard();
+  audio_hal_ctrl_codec(BoardHandle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
 
 //#if 0
   ESP_LOGE(Tag, "INIT MP3 PLAYER FROM FLASH");
@@ -576,19 +712,19 @@ void Codec_SetVolume(int16_t volume)
 
 //_____________________________________________________________________________
 
-static audio_board_handle_t Init(void)
+static audio_board_handle_t InitBoard(void)
 {
-  if (board_handle)
+  if (BoardHandle)
   {
     ESP_LOGW(Tag, "The board has already been initialized!");
-    return board_handle;
+    return BoardHandle;
   }
 
-  board_handle = (audio_board_handle_t) audio_calloc(1, sizeof(struct audio_board_handle));
-  AUDIO_MEM_CHECK(Tag, board_handle, return NULL);
-  board_handle->audio_hal = InitCodec();
+  BoardHandle = (audio_board_handle_t) audio_calloc(1, sizeof(struct audio_board_handle));
+  AUDIO_MEM_CHECK(Tag, BoardHandle, return NULL);
+  BoardHandle->audio_hal = InitCodec();
 
-  return board_handle;
+  return BoardHandle;
 }
 
 //_____________________________________________________________________________
@@ -610,6 +746,7 @@ static void InitSPIFFS(void)
   Set = esp_periph_set_init(&periph_cfg);
 
   ESP_LOGI(Tag, "[1] Mount spiffs");
+
   // Initialize Spiffs peripheral
   periph_spiffs_cfg_t spiffs_cfg =
   {
@@ -641,9 +778,7 @@ static T_MP3PlayerFromFlashHandle InitMP3PlayerFromFlash(void)
   AUDIO_MEM_CHECK(Tag, ap, NULL);
 
   ESP_LOGI(Tag, "[1] Start audio codec chip");
-  //board_handle = Init();
-  //audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
-  ap->Hal = board_handle->audio_hal;
+  ap->Hal = BoardHandle->audio_hal;
   AUDIO_MEM_CHECK(Tag, ap->Hal, goto _audio_init_failed);
 
   ESP_LOGI(Tag, "[2.0] Create audio pipeline for playback");
@@ -676,11 +811,14 @@ static T_MP3PlayerFromFlashHandle InitMP3PlayerFromFlash(void)
   ap->Run = true;
   ap->Playing = false;
 
-  int task_stack = DEFAULT_PLAYER_TASK_STACK;
-  int task_prio = DEFAULT_PLAYER_TASK_PRIO;
-
-  //if (xTaskCreate(RunMP3PlayerFromFlashTask, "replayer", task_stack, ap, task_prio, NULL) != pdTRUE)
-  if (xTaskCreatePinnedToCore(RunMP3PlayerFromFlashTask, "player", task_stack, ap, task_prio, &MP3PlayerFromFlashTask, 0) != pdTRUE)
+  if (xTaskCreatePinnedToCore(
+        RunMP3PlayerFromFlashTask,
+        "sys_player",
+        DEFAULT_PLAYER_TASK_STACK,
+        ap,
+        DEFAULT_PLAYER_TASK_PRIO,
+        &MP3PlayerFromFlashTask,
+        0) != pdTRUE)
   {
     ESP_LOGE(Tag, "Error creating the Player task");
     goto _audio_init_failed;
@@ -699,9 +837,7 @@ static T_MP3PlayerHandle InitMP3Player(void)
   AUDIO_MEM_CHECK(Tag, ap, NULL);
 
   ESP_LOGI(Tag, "[1] Start audio codec chip");
-  //board_handle = Init();
-  //audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
-  ap->Hal = board_handle->audio_hal;
+  ap->Hal = BoardHandle->audio_hal;
   AUDIO_MEM_CHECK(Tag, ap->Hal, goto _audio_init_failed);
 
   ESP_LOGI(Tag, "[2.0] Create audio pipeline for playback");
@@ -748,7 +884,14 @@ static T_MP3PlayerHandle InitMP3Player(void)
   ap->Run = true;
   ap->Playing = false;
 
-  if (xTaskCreatePinnedToCore(RunMP3PlayerTask, "mp3_player", DEFAULT_PLAYER_TASK_STACK, ap, DEFAULT_PLAYER_TASK_PRIO, &MP3PlayerTask, 0) != pdTRUE)
+  if (xTaskCreatePinnedToCore(
+        RunMP3PlayerTask,
+        "mp3_player",
+        DEFAULT_PLAYER_TASK_STACK,
+        ap,
+        DEFAULT_PLAYER_TASK_PRIO,
+        &MP3PlayerTask,
+        0) != pdTRUE)
   {
     ESP_LOGE(Tag, "Error creating the Player task");
     goto _audio_init_failed;
@@ -767,9 +910,7 @@ static T_WAVPlayerHandle InitWAVPlayer(void)
   AUDIO_MEM_CHECK(Tag, ap, NULL);
 
   ESP_LOGI(Tag, "[1] Start audio codec chip");
-  //board_handle = Init();
-  //audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
-  ap->Hal = board_handle->audio_hal;
+  ap->Hal = BoardHandle->audio_hal;
   AUDIO_MEM_CHECK(Tag, ap->Hal, goto _audio_init_failed);
 
   ESP_LOGI(Tag, "[2.0] Create audio pipeline for playback");
@@ -816,11 +957,14 @@ static T_WAVPlayerHandle InitWAVPlayer(void)
   ap->Run = true;
   ap->Playing = false;
 
-  int task_stack = DEFAULT_PLAYER_TASK_STACK;
-  int task_prio = DEFAULT_PLAYER_TASK_PRIO;
-
-  //if (xTaskCreate(RunWAVPlayerTask, "replayer", task_stack, ap, task_prio, NULL) != pdTRUE)
-  if (xTaskCreatePinnedToCore(RunWAVPlayerTask, "replayer", task_stack, ap, task_prio, &WAVPlayerTask, 0) != pdTRUE)
+  if (xTaskCreatePinnedToCore(
+        RunWAVPlayerTask,
+        "wav_player",
+        DEFAULT_PLAYER_TASK_STACK,
+        ap,
+        DEFAULT_PLAYER_TASK_PRIO,
+        &WAVPlayerTask,
+        0) != pdTRUE)
   {
     ESP_LOGE(Tag, "Error creating the Player task");
     goto _audio_init_failed;
@@ -839,9 +983,7 @@ static T_WAVRecorderHandle InitWAVRecorder(void)
   AUDIO_MEM_CHECK(Tag, ap, NULL);
 
   ESP_LOGI(Tag, "[1] Start audio codec chip");
-  //board_handle = Init();
-  //audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
-  ap->Hal = board_handle->audio_hal;
+  ap->Hal = BoardHandle->audio_hal;
   AUDIO_MEM_CHECK(Tag, ap->Hal, goto _audio_init_failed);
 
   ESP_LOGI(Tag, "[2.0] Create audio pipeline for record");
@@ -885,11 +1027,14 @@ static T_WAVRecorderHandle InitWAVRecorder(void)
   ap->Run = true;
   ap->Recording = false;
 
-  int task_stack = DEFAULT_RECORDER_TASK_STACK;
-  int task_prio = DEFAULT_RECORDER_TASK_PRIO;
-
-  //if (xTaskCreate(RunWAVRecorderTask, "replayer", task_stack, ap, task_prio, NULL) != pdTRUE)
-  if (xTaskCreatePinnedToCore(RunWAVRecorderTask, "recorder", task_stack, ap, task_prio, &WAVRecorderTask, 0) != pdTRUE)
+  if (xTaskCreatePinnedToCore(
+        RunWAVRecorderTask,
+        "recorder",
+        DEFAULT_RECORDER_TASK_STACK,
+        ap,
+        DEFAULT_RECORDER_TASK_PRIO,
+        &WAVRecorderTask,
+        0) != pdTRUE)
   {
     ESP_LOGE(Tag, "Error creating the Recorder task");
     goto _audio_init_failed;
@@ -902,7 +1047,7 @@ _audio_init_failed:
 
 //_____________________________________________________________________________
 
-static audio_element_handle_t CreateSPIFFSStream(int sample_rates, int bits, int channels, audio_stream_type_t type)
+static audio_element_handle_t CreateSPIFFSStream(int sampleRates, int bits, int channels, audio_stream_type_t type)
 {
   spiffs_stream_cfg_t spiffs_cfg = SPIFFS_STREAM_CFG_DEFAULT();
   spiffs_cfg.type = type;
@@ -914,7 +1059,7 @@ static audio_element_handle_t CreateSPIFFSStream(int sample_rates, int bits, int
   audio_element_getinfo(spiffs_stream, &writer_info);
   writer_info.bits = bits;
   writer_info.channels = channels;
-  writer_info.sample_rates = sample_rates;
+  writer_info.sample_rates = sampleRates;
   audio_element_setinfo(spiffs_stream, &writer_info);
 
   return spiffs_stream;
@@ -922,16 +1067,12 @@ static audio_element_handle_t CreateSPIFFSStream(int sample_rates, int bits, int
 
 //_____________________________________________________________________________
 
-static audio_element_handle_t CreateI2SStream(int sample_rates, int bits, int channels, audio_stream_type_t type)
+static audio_element_handle_t CreateI2SStream(int sampleRates, int bits, int channels, audio_stream_type_t type)
 {
   i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
   i2s_cfg.type = type;
   i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ALL_RIGHT;
-  //i2s_cfg.i2s_pin_config.bck_io_num = I2S_SCLK_PIN;
-  //i2s_cfg.i2s_pin_config.ws_io_num  = I2S_LCLK_PIN;
-  //i2s_cfg.i2s_pin_config.data_out_num = I2S_DSIN_PIN;
-  //i2s_cfg.i2s_pin_config.data_in_num = I2S_DOUT_PIN;
-  i2s_cfg.i2s_config.sample_rate = sample_rates;
+  i2s_cfg.i2s_config.sample_rate = sampleRates;
 
   audio_element_handle_t i2s_stream = i2s_stream_init(&i2s_cfg);
   mem_assert(i2s_stream);
@@ -940,7 +1081,7 @@ static audio_element_handle_t CreateI2SStream(int sample_rates, int bits, int ch
   audio_element_getinfo(i2s_stream, &i2s_info);
   i2s_info.bits = bits;
   i2s_info.channels = channels;
-  i2s_info.sample_rates = sample_rates;
+  i2s_info.sample_rates = sampleRates;
   audio_element_setinfo(i2s_stream, &i2s_info);
 
   return i2s_stream;
@@ -948,25 +1089,16 @@ static audio_element_handle_t CreateI2SStream(int sample_rates, int bits, int ch
 
 //_____________________________________________________________________________
 
-static audio_element_handle_t CreateFilter(int source_rate, int source_channel, int dest_rate, int dest_channel, audio_codec_type_t type)
+static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel, int mode)
 {
   rsp_filter_cfg_t rsp_cfg = DEFAULT_RESAMPLE_FILTER_CONFIG();
-  rsp_cfg.src_rate = source_rate;
-  rsp_cfg.src_ch = source_channel;
-  rsp_cfg.dest_rate = dest_rate;
-  rsp_cfg.dest_ch = dest_channel;
-  rsp_cfg.type = type;
+  rsp_cfg.src_rate = sourceRate;
+  rsp_cfg.src_ch = sourceChannel;
+  rsp_cfg.dest_rate = destRate;
+  rsp_cfg.dest_ch = destChannel;
+  rsp_cfg.mode = mode;
 
   return rsp_filter_init(&rsp_cfg);
-}
-
-//_____________________________________________________________________________
-
-static audio_element_handle_t CreateWAVEncoder(void)
-{
-  wav_encoder_cfg_t wav_cfg = DEFAULT_WAV_ENCODER_CONFIG();
-
-  return wav_encoder_init(&wav_cfg);
 }
 
 //_____________________________________________________________________________
@@ -985,6 +1117,15 @@ static audio_element_handle_t CreateWAVDecoder(void)
   wav_decoder_cfg_t wav_cfg = DEFAULT_WAV_DECODER_CONFIG();
 
   return wav_decoder_init(&wav_cfg);
+}
+
+//_____________________________________________________________________________
+
+static audio_element_handle_t CreateWAVEncoder(void)
+{
+  wav_encoder_cfg_t wav_cfg = DEFAULT_WAV_ENCODER_CONFIG();
+
+  return wav_encoder_init(&wav_cfg);
 }
 
 //_____________________________________________________________________________
@@ -1058,8 +1199,6 @@ static void RunMP3PlayerFromFlashTask(void* arg)
 {
   T_MP3PlayerFromFlashHandle ap = (T_MP3PlayerFromFlashHandle) arg;
 
-  //i2s_stream_set_clk(ap->I2SStream, WAV_PLAYER_RATE, WAV_PLAYER_BITS, WAV_PLAYER_CHANNEL);
-
   while (ap->Run)
   {
     audio_event_iface_msg_t msg;
@@ -1130,8 +1269,6 @@ static void RunMP3PlayerTask(void* arg)
 {
   T_MP3PlayerHandle ap = (T_MP3PlayerHandle) arg;
 
-  //i2s_stream_set_clk(ap->I2SStream, MP3_PLAYER_RATE, MP3_PLAYER_BITS, MP3_PLAYER_CHANNEL);
-
   while (ap->Run)
   {
     audio_event_iface_msg_t msg;
@@ -1148,7 +1285,6 @@ static void RunMP3PlayerTask(void* arg)
         && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
         && (int)msg.data == AEL_STATUS_STATE_RUNNING)
     {
-      //ESP_LOGE(Tag, "[ * ] COUCOU SEND PLAY");
       continue;
     }
 
@@ -1157,7 +1293,6 @@ static void RunMP3PlayerTask(void* arg)
         && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
         && (int)msg.data == AEL_STATUS_STATE_PAUSED)
     {
-      //ESP_LOGE(Tag, "[ * ] COUCOU SEND PAUSE");
       continue;
     }
 
@@ -1177,7 +1312,6 @@ static void RunMP3PlayerTask(void* arg)
     }
 
     // Stop when the last pipeline element (I2SStream in this case) receives stop event
-
     if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
         && msg.source == (void*)ap->I2SStream
         && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
@@ -1185,7 +1319,6 @@ static void RunMP3PlayerTask(void* arg)
         && ap->Playing)
     {
       ESP_LOGI(Tag, "Stop pipeline");
-      //ESP_LOGE(Tag, "[ * ] COUCOU SEND STOP");
       audio_pipeline_stop(ap->Pipeline);
       audio_pipeline_wait_for_stop(ap->Pipeline);
       audio_element_reset_state(ap->SPIFFSStream);
@@ -1642,7 +1775,6 @@ static esp_err_t PlayMP3(T_MP3PlayerHandle ap, const char* url)
 
 static esp_err_t PlayWAV(T_WAVPlayerHandle ap, const char* url)
 {
-  //ESP_LOGE(Tag, "COUCOU STOP WAV FROM PLAY");
   StopWAV(ap);
 
   if (url)
@@ -1753,7 +1885,7 @@ static int GetMP3PlayedTime(T_MP3PlayerHandle ap)
   //int time_sec = info.byte_pos / (info.sample_rates * info.channels * info.bits / 8);
   //printf("Played Time: %d, pos: %lld, rate: %d, channel: %d, bit: %d\n", time_sec, info.byte_pos, info.sample_rates, info.channels, info.bits);
 
-  int time_ms = (info.byte_pos * 8000) / (info.sample_rates * info.channels * info.bits);
+  int time_ms = (info.byte_pos * 80) / (info.sample_rates * info.channels * info.bits);
   printf("Played Time: %d\n", time_ms);
 
   return time_ms;
@@ -1778,7 +1910,7 @@ static int GetWAVPlayedTime(T_WAVPlayerHandle ap)
   //int time_sec = info.byte_pos / (info.sample_rates * info.channels * info.bits / 8);
   //printf("Played Time: %d, pos: %lld, rate: %d, channel: %d, bit: %d\n", time_sec, info.byte_pos, info.sample_rates, info.channels, info.bits);
 
-  int time_ms = (info.byte_pos * 8000) / (info.sample_rates * info.channels * info.bits);
+  int time_ms = (info.byte_pos * 80) / (info.sample_rates * info.channels * info.bits);
   printf("Played Time: %d\n", time_ms);
 
   return time_ms;
