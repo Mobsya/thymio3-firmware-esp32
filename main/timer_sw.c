@@ -84,7 +84,7 @@ void TimerSw_Init(void)
 
 //_____________________________________________________________________________
 
-T_TimerSw* TimerSw_Create(uint32_t duration_us, void (*callback)(void*))
+T_TimerSw* TimerSw_Create(uint32_t duration_us, T_TimerCallback callback)
 {
   T_TimerSw* timer = NULL;
   uint8_t i;
