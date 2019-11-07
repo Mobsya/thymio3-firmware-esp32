@@ -150,35 +150,35 @@ static uint8_t Threshold[THRESHOLD_BYTE_NUM] =
 
 //! \brief     Update the RGBC measurement time
 //! \pre       None
-//! \param     time The measurement time
+//! \param     time - Measurement time
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdateMeasurementTime.svg
 static void UpdateMeasurementTime(T_MeasurementTime time);
 
 //! \brief     Update the ADC gain
 //! \pre       None
-//! \param     gain The selected ADC gain
+//! \param     gain - ADC gain
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdateADCGain.svg
 static void UpdateADCGain(T_ADCGain gain);
 
 //! \brief     Update the persistence
 //! \pre       None
-//! \param     persistence The selected persistence
+//! \param     persistence - Persistence
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdatePersistence.svg
 static void UpdatePersistence(T_Persistence persistence);
 
 //! \brief     Update the interrupt source
 //! \pre       None
-//! \param     source The selected interrupt source
+//! \param     source - Interrupt source
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdateInterruptSource.svg
 static void UpdateInterruptSource(T_InterruptSource source);
 
 //! \brief     Update the threshold
 //! \pre       None
-//! \param     threshold The selected threshold
+//! \param     threshold - Threshold detection
 //! \return    None
 static void UpdateThreshold(uint8_t* threshold);
 
@@ -200,10 +200,9 @@ static void EnableMeasurement(void);
 //! \return    None
 static void EnableInterruptPin(void);
 
-
 //! \brief     Read the manufacturer ID
 //! \pre       None
-//! \param     None
+//! \param     data - Data read from the manufacturer ID register
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\ReadManufacturerId.svg
 static void ReadManufacturerId(uint8_t* data);

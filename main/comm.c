@@ -129,13 +129,17 @@ static void RunCommTask(void* arg)
 
   ESP_LOGI(Tag, "Start Comm Task");
 
+  if (STM32_CheckId() != E_Error_None)
+  {
+    ESP_LOGE(Tag, "STM32 error");
+  }
+
   while (1)
   {
     xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
     //STM32_Communicate();
 
-    //STM32_CheckId();
     STM32_ReadStatus();
 //#if 0
     STM32_ReadBatteryVoltage();

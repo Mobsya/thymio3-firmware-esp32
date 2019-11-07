@@ -133,6 +133,16 @@ static void RunSensorsTask(void* arg)
 {
   ESP_LOGI(Tag, "Start Sensors Task");
 
+  if (ColorSensor_CheckManufacturerId() != E_Error_None)
+  {
+    ESP_LOGE(Tag, "Color sensor error");
+  }
+
+  if (Accelerometer_CheckManufacturerId() != E_Error_None)
+  {
+    ESP_LOGE(Tag, "Accelerometer/Gyroscope error");
+  }
+
   while (1)
   {
     Buttons_UpdateStatus();
