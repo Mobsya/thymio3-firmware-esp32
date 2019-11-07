@@ -58,6 +58,11 @@
 #define DIR_LOST     (10)
 #define DIR_FRONT     (0)
 
+#define ACC_OBSTACLE                 50
+#define ACC_FREE_FALL                14
+
+#define DETECT  25
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -103,9 +108,11 @@ static bool IsModeEnabled(T_Mode mode);
 
 static void SetModeColor(T_Mode mode);
 
+static void RunFollower(void);
+
 static void RunExplorer(void);
 
-static void RunFollower(void);
+static void RunShy(void);
 
 static void RunAttentive(void);
 
@@ -286,6 +293,10 @@ void Mode_Run(void)
       RunExplorer();
       break;
 
+    case E_Mode_Shy:
+      RunShy();
+      break;
+
     case E_Mode_Attentive:
       RunAttentive();
       break;
@@ -322,6 +333,11 @@ static void StartMode(T_Mode mode)
 
     case E_Mode_Explorer:
       Behavior_Enable(B_LEDS_PROX);
+      break;
+
+    case E_Mode_Shy:
+      Behavior_Enable(B_LEDS_PROX);
+      Behavior_Enable(B_LEDS_ACC);
       break;
 
     case E_Mode_Attentive:
@@ -368,6 +384,13 @@ static void ExitMode(T_Mode mode)
       vmVariables.target[0] = 0;
       vmVariables.target[1] = 0;
       Behavior_Disable(B_LEDS_PROX);
+      break;
+
+    case E_Mode_Shy:
+      vmVariables.target[0] = 0;
+      vmVariables.target[1] = 0;
+      Behavior_Disable(B_LEDS_PROX);
+      Behavior_Disable(B_LEDS_ACC);
       break;
 
     case E_Mode_Attentive:
@@ -462,6 +485,10 @@ static void SetModeColor(T_Mode mode)
       Leds_SetBodyBrightness(MAX_BRIGHTNESS, 12, 0u);
       break;
 
+    case E_Mode_Shy:  // Red
+      Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);
+      break;
+
     case E_Mode_Attentive:  // Dark blue
       Leds_SetBodyBrightness(0u, 0u, MAX_BRIGHTNESS);
       break;
@@ -482,150 +509,88 @@ static void SetModeColor(T_Mode mode)
 
 //_____________________________________________________________________________
 
-static void RunExplorer(void)
-{
-  static int16_t speed = 150;
-
-  int16_t brightness = GetBodyColorPulse();
-
-  // Yellow pulse
-  Leds_SetBodyBrightness(brightness, brightness, 0u);
-
-#if 0
-  RunCircleLedRotation();
-
-  // Buttons management
-  SetSpeedUsingButtons(&speed);
-
-  if (speed >= 0)
-  {
-    HandlePositiveSpeed(speed);
-  }
-  else
-  {
-    HandleNegativeSpeed(speed);
-  }
-
-  if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
-  {
-// FIXME    vmVariables.target[0] = 0;
-// FIXME    vmVariables.target[1] = 0;
-    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, MAX_BRIGHTNESS);
-    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, MAX_BRIGHTNESS);
-  }
-  else
-  {
-    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0u);
-    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0u);
-  }
-#endif
-}
-
-//_____________________________________________________________________________
-
-// When the Thymio is placed on the left side, the WAV recorder is activated.
-// When the Thymio is placed on the right side, the WAV player is activated (replay).
-static void RunAttentive(void)
-{
-  int16_t brightness = GetBodyColorPulse();
-  int16_t acceleration = Accelerometer_GetAccelerationY();
-
-  // Dark blue pulse
-  Leds_SetBodyBrightness(0u, 0u, brightness);
-
-  when(acceleration >= 15000)  // Left side
-  {
-    Codec_PlayMP3FileFromFlash(0);
-  }
-
-  when(acceleration <= -15000)  // Right side
-  {
-    Codec_PlayMP3FileFromFlash(2);
-  }
-}
-
-//_____________________________________________________________________________
-
-static void RunLineTracker(void)
-{
-  static uint8_t state[2] = {STATE_WHITE, STATE_WHITE};
-  static int16_t dir = DIR_LOST;
-  static uint16_t bs_black_level = 650; //400;
-  static uint16_t bs_white_level = 700; //450;
-
-  int16_t brightness = GetBodyColorPulse();
-
-  // Cyan pulse
-  Leds_SetBodyBrightness(0u, brightness, brightness);
-
-#if 0
-  if (!CalibrateLevelUsingButtons(&bs_black_level, &bs_white_level))
-  {
-    // Calibration is not in progress
-
-    GetLineSensorsState(&bs_black_level, &bs_white_level, state);
-#if 0
-    T_Color color = ColorSensor_GetColor();
-
-    switch (color)
-    {
-      case E_Color_Red:
-        Leds_SetTopBrightness(MAX_BRIGHTNESS, 0u, 0u);
-        break;
-
-      case E_Color_Orange:
-        Leds_SetTopBrightness(MAX_BRIGHTNESS, 20u, 0u);
-        break;
-
-      case E_Color_Yellow:
-        Leds_SetTopBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
-        break;
-
-      case E_Color_Green:
-        Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, 0u);
-        break;
-
-      case E_Color_Cyan:
-        Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        break;
-
-      case E_Color_Blue:
-        Leds_SetTopBrightness(0u, 0u, MAX_BRIGHTNESS);
-        break;
-
-      case E_Color_Purple:
-        Leds_SetTopBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
-        break;
-
-      case E_Color_White:
-        Leds_SetTopBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        break;
-
-      case E_Color_Unknown:
-        Leds_SetTopBrightness(0u, 0u, 0u);
-        break;
-
-      default:
-        Leds_SetTopBrightness(0u, 0u, 0u);
-        break;
-    }
-#endif
-
-    GetLineDirection(state, &dir);
-
-    SetTargetAccordingToDirection(&dir);
-  }
-#endif
-}
-
-//_____________________________________________________________________________
-
 static void RunFollower(void)
 {
+  int16_t max = vmVariables.prox[0];
+  int16_t min = 0;
+  int16_t t;
   int16_t brightness = GetBodyColorPulse();
+  int16_t speedDiff;
+  int16_t speed_l = 0;
+
+  static int16_t speed = 300;
 
   // Green pulse
   Leds_SetBodyBrightness(0u, brightness, 0u);
+
+  for (uint8_t index = 1; index < 5; index++)
+  {
+	if (vmVariables.prox[index] > max)
+	{
+	  max = vmVariables.prox[index];
+	  min = index;
+	}
+  }
+
+  t = 2 - min;
+  speedDiff = t * (speed / 2);
+
+  if (max > 175)
+  {
+    speed_l = (175 - max) / 2;
+  }
+
+  if (max > 200)
+  {
+    speed_l = -speed;
+  }
+
+  if (max < 150)
+  {
+    t = 15 - ((max - 100) / 7);
+    speed_l = t;
+  }
+
+  if (max < 100)
+  {
+    speed_l = speed;
+  }
+
+  if (speed_l > speed)
+  {
+    speed_l = speed;
+  }
+
+  if (speed_l < -speed)
+  {
+    speed_l = -speed;
+  }
+
+  if (max < DETECT)
+  {
+#if 0  // FIXME
+    if (does_see_friend)
+    {
+      vmVariables.target[0] = speed;
+      vmVariables.target[1] = speed;
+    }
+    else
+#endif
+    {
+      vmVariables.target[0] = 0;
+      vmVariables.target[1] = 0;
+    }
+  }
+  else
+  {
+    vmVariables.target[1] = (speedDiff + speed_l);
+    vmVariables.target[0] = (speed_l - speedDiff);
+  }
+
+  when (max > DETECT)
+  {
+    Codec_PlayMP3FileFromFlash(4);
+  }
 
 #if 0
   static char sound_done;
@@ -828,6 +793,271 @@ static void RunFollower(void)
 
 //_____________________________________________________________________________
 
+static void RunExplorer(void)
+{
+  static int16_t speed = 150;
+
+  int16_t brightness = GetBodyColorPulse();
+
+  // Yellow pulse
+  Leds_SetBodyBrightness(brightness, brightness, 0u);
+
+//#if 0
+  RunCircleLedRotation();
+
+  // Buttons management
+  SetSpeedUsingButtons(&speed);
+
+  if (speed >= 0)
+  {
+    HandlePositiveSpeed(speed);
+  }
+  else
+  {
+    HandleNegativeSpeed(speed);
+  }
+
+  if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
+  {
+// FIXME    vmVariables.target[0] = 0;
+// FIXME    vmVariables.target[1] = 0;
+    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, MAX_BRIGHTNESS);
+    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, MAX_BRIGHTNESS);
+  }
+  else
+  {
+    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0u);
+    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0u);
+  }
+//#endif
+}
+
+//_____________________________________________________________________________
+
+static void RunShy(void)
+{
+  int16_t brightness = GetBodyColorPulse();
+  bool play = false;
+  static unsigned int acc = 32;
+  static uint8_t counter = 0u;
+
+  // Red pulse
+  //Leds_SetBodyBrightness(brightness, 0u, 0u);
+
+  //acc = acc + acc + acc + abs(vmVariables.acc[0]) + abs(vmVariables.acc[1]) + abs(vmVariables.acc[2]);
+  //acc >>= 2;
+  acc = abs(vmVariables.acc[0]) + abs(vmVariables.acc[1]) + abs(vmVariables.acc[2]);
+
+  if (acc < ACC_FREE_FALL)
+  {
+	ESP_LOGE(Tag, "acc = %d", acc);
+    play = true;
+  }
+
+  when (acc > ACC_FREE_FALL)
+  {
+	Leds_SetBodyBrightness((MAX_BRIGHTNESS / 2), 0u, 0u);
+  }
+
+  if (acc < ACC_FREE_FALL)
+  {
+	counter++;
+
+	if (counter > 5)
+	{
+	  if (counter == 10)
+	  {
+		counter = 0;
+	  }
+
+	  Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);
+    }
+	else
+	{
+      Leds_SetBodyBrightness(0u, 0u , 0u);
+	}
+  }
+  else
+  {
+    // Red pulse
+    Leds_SetBodyBrightness(brightness, 0u, 0u);
+  }
+
+  // Moving part.
+  if ((vmVariables.prox[1] > ACC_OBSTACLE) && (vmVariables.prox[2] > ACC_OBSTACLE) && (vmVariables.prox[3] > ACC_OBSTACLE) &&
+      ((vmVariables.prox[5] > ACC_OBSTACLE) || (vmVariables.prox[6] > ACC_OBSTACLE))) //&&
+  			//(vmVariables.ground_delta[0] > 130 && vmVariables.ground_delta[1] > 130))
+  {
+    vmVariables.target[0] = 0;
+  	vmVariables.target[1] = 0;
+  	play = true;
+  }
+  else if ((vmVariables.prox[0] > ACC_OBSTACLE) || (vmVariables.prox[1] > ACC_OBSTACLE) ||
+		   (vmVariables.prox[2] > ACC_OBSTACLE) || (vmVariables.prox[3] > ACC_OBSTACLE) ||
+		   (vmVariables.prox[4] > ACC_OBSTACLE))
+  {
+    //int temp = vmVariables.prox[0]/5 + vmVariables.prox[1]/4 + vmVariables.prox[2]/4;
+  	//temp += vmVariables.prox[3]/4 + vmVariables.prox[4]/5;
+	int temp = vmVariables.prox[0]/3 + vmVariables.prox[1]/2 + vmVariables.prox[2]/2;
+	temp += vmVariables.prox[3]/2 + vmVariables.prox[4]/3;
+
+  	int temp2 = vmVariables.prox[0]/4 + vmVariables.prox[1]/3;
+  	temp2 -= vmVariables.prox[3]/3 + vmVariables.prox[4]/4;
+
+  	vmVariables.target[0] = -(temp + temp2);
+  	vmVariables.target[1] = temp2 - temp;
+
+  	//ESP_LOGE(Tag, "target_left = %d, target_right = %d", vmVariables.target[0], vmVariables.target[1]);
+  }
+  else if ((vmVariables.prox[5] > ACC_OBSTACLE) || (vmVariables.prox[6] > ACC_OBSTACLE))
+  {
+  	vmVariables.target[0] = vmVariables.prox[5]/2;
+  	vmVariables.target[1] = vmVariables.prox[6]/2;
+  }
+  else
+  {
+    vmVariables.target[0] = 0;
+    vmVariables.target[1] = 0;
+  }
+#if 0
+  if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
+  {
+	vmVariables.target[0] = 0;
+	vmVariables.target[1] = 0;
+	leds_set_br(32,0,0);
+	leds_set_bl(32,0,0);
+  }
+  else
+  {
+	leds_set_br(0,0,0);
+	leds_set_bl(0,0,0);
+  }
+#endif
+  if (vmVariables.target[0] < -600)
+  {
+	vmVariables.target[0] = -600;
+  }
+
+  if (vmVariables.target[1] < -600)
+  {
+	vmVariables.target[1]= -600;
+  }
+
+  if (vmVariables.target[0] > 600)
+  {
+    vmVariables.target[0] = 600;
+  }
+
+  if (vmVariables.target[1] > 600)
+  {
+    vmVariables.target[1] = 600;
+  }
+
+  when (play)
+  {
+    Codec_PlayMP3FileFromFlash(3);
+  }
+}
+
+//_____________________________________________________________________________
+
+// When the Thymio is placed on the left side, the WAV recorder is activated.
+// When the Thymio is placed on the right side, the WAV player is activated (replay).
+static void RunAttentive(void)
+{
+  int16_t brightness = GetBodyColorPulse();
+  int16_t acceleration = Accelerometer_GetAccelerationY();
+
+  // Dark blue pulse
+  Leds_SetBodyBrightness(0u, 0u, brightness);
+
+  when(acceleration >= 15000)  // Left side
+  {
+    Codec_PlayMP3FileFromFlash(3);
+  }
+
+  when(acceleration <= -15000)  // Right side
+  {
+    Codec_PlayMP3FileFromFlash(4);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void RunLineTracker(void)
+{
+  static uint8_t state[2] = {STATE_WHITE, STATE_WHITE};
+  static int16_t dir = DIR_LOST;
+  static uint16_t bs_black_level = 650; //400;
+  static uint16_t bs_white_level = 700; //450;
+
+  int16_t brightness = GetBodyColorPulse();
+
+  // Cyan pulse
+  Leds_SetBodyBrightness(0u, brightness, brightness);
+
+#if 0
+  if (!CalibrateLevelUsingButtons(&bs_black_level, &bs_white_level))
+  {
+    // Calibration is not in progress
+
+    GetLineSensorsState(&bs_black_level, &bs_white_level, state);
+#if 0
+    T_Color color = ColorSensor_GetColor();
+
+    switch (color)
+    {
+      case E_Color_Red:
+        Leds_SetTopBrightness(MAX_BRIGHTNESS, 0u, 0u);
+        break;
+
+      case E_Color_Orange:
+        Leds_SetTopBrightness(MAX_BRIGHTNESS, 20u, 0u);
+        break;
+
+      case E_Color_Yellow:
+        Leds_SetTopBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
+        break;
+
+      case E_Color_Green:
+        Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, 0u);
+        break;
+
+      case E_Color_Cyan:
+        Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;
+
+      case E_Color_Blue:
+        Leds_SetTopBrightness(0u, 0u, MAX_BRIGHTNESS);
+        break;
+
+      case E_Color_Purple:
+        Leds_SetTopBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
+        break;
+
+      case E_Color_White:
+        Leds_SetTopBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;
+
+      case E_Color_Unknown:
+        Leds_SetTopBrightness(0u, 0u, 0u);
+        break;
+
+      default:
+        Leds_SetTopBrightness(0u, 0u, 0u);
+        break;
+    }
+#endif
+
+    GetLineDirection(state, &dir);
+
+    SetTargetAccordingToDirection(&dir);
+  }
+#endif
+}
+
+//_____________________________________________________________________________
+
 static void RunObedient(void)
 {
   int16_t brightness = GetBodyColorPulse();
@@ -843,53 +1073,6 @@ static void RunObedient(void)
   {
     PlayMovementSequence();
   }
-
-#if 0
-  T_Color color = ColorSensor_GetColor();
-
-  switch (color)
-  {
-    case E_Color_Red:
-      Leds_SetTopBrightness(MAX_BRIGHTNESS, 0u, 0u);
-      break;
-
-    case E_Color_Orange:
-      Leds_SetTopBrightness(MAX_BRIGHTNESS, 20u, 0u);
-      break;
-
-    case E_Color_Yellow:
-      Leds_SetTopBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
-      break;
-
-    case E_Color_Green:
-      Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, 0u);
-      break;
-
-    case E_Color_Cyan:
-      Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      break;
-
-    case E_Color_Blue:
-      Leds_SetTopBrightness(0u, 0u, MAX_BRIGHTNESS);
-      break;
-
-    case E_Color_Purple:
-      Leds_SetTopBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
-      break;
-
-    case E_Color_White:
-      Leds_SetTopBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      break;
-
-    case E_Color_Unknown:
-      Leds_SetTopBrightness(0u, 0u, 0u);
-      break;
-
-    default:
-      Leds_SetTopBrightness(0u, 0u, 0u);
-      break;
-  }
-#endif
 }
 
 //_____________________________________________________________________________

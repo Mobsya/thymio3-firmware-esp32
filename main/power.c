@@ -27,6 +27,7 @@
 #include "power.h"
 
 #include "board.h"
+#include "codec.h"
 #include "gpio.h"
 #include "stm32_i2c.h"
 
@@ -80,7 +81,7 @@ void Power_Init(void)
 
 void Power_HandlePowerModeRequest(void)
 {
-  static bool first = true;
+  static bool soundStarted = false;
 
   if (STM32_IsModeUpdateRequested())
   {
@@ -88,12 +89,19 @@ void Power_HandlePowerModeRequest(void)
     {
       if (!STM32_IsAllowedToSwitchOff())
       {
-        if (first)
+        if (!soundStarted)
         {
-          STM32_AllowToSwitchOff();  // Give the permission to the STM32 to switch off
-          first = false;
+          Codec_PlayMP3FileFromFlash(5);
+          //STM32_AllowToSwitchOff();  // Give the permission to the STM32 to switch off
+          soundStarted = true;
         }
       }
     }
+  }
+
+  if (soundStarted && Codec_IsClosingSoundFinished())
+  {
+    soundStarted = false;
+    STM32_AllowToSwitchOff();  // Give the permission to the STM32 to switch off
   }
 }

@@ -59,6 +59,8 @@
 #include "es8374.h"
 #include "file_system.h"
 
+#include "stm32_i2c.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -220,20 +222,23 @@ typedef struct WAVAudioRecorder
 // Exported Global Data
 //-----------------------------------------------------------------------------
 
-extern const uint8_t adf_music_mp3_start[] asm("_binary_adf_music_mp3_start");
-extern const uint8_t adf_music_mp3_end[]   asm("_binary_adf_music_mp3_end");
+extern const uint8_t magic_mp3_start[]     asm("_binary_magic_mp3_start");
+extern const uint8_t magic_mp3_end[]       asm("_binary_magic_mp3_end");
 
-extern const uint8_t chicken_mp3_start[]   asm("_binary_chicken_mp3_start");
-extern const uint8_t chicken_mp3_end[]     asm("_binary_chicken_mp3_end");
-
-extern const uint8_t harry_mp3_start[]     asm("_binary_harry_mp3_start");
-extern const uint8_t harry_mp3_end[]       asm("_binary_harry_mp3_end");
+extern const uint8_t tick_mp3_start[]      asm("_binary_tick_mp3_start");
+extern const uint8_t tick_mp3_end[]        asm("_binary_tick_mp3_end");
 
 extern const uint8_t blop_mp3_start[]      asm("_binary_blop_mp3_start");
 extern const uint8_t blop_mp3_end[]        asm("_binary_blop_mp3_end");
 
-extern const uint8_t tick_mp3_start[]      asm("_binary_tick_mp3_start");
-extern const uint8_t tick_mp3_end[]        asm("_binary_tick_mp3_end");
+extern const uint8_t fall_mp3_start[]      asm("_binary_fall_mp3_start");
+extern const uint8_t fall_mp3_end[]        asm("_binary_fall_mp3_end");
+
+extern const uint8_t detect_mp3_start[]    asm("_binary_detect_mp3_start");
+extern const uint8_t detect_mp3_end[]      asm("_binary_detect_mp3_end");
+
+extern const uint8_t bye_mp3_start[]       asm("_binary_bye_mp3_start");
+extern const uint8_t bye_mp3_end[]         asm("_binary_bye_mp3_end");
 
 //-----------------------------------------------------------------------------
 // Private Data
@@ -249,6 +254,7 @@ static TaskHandle_t WAVRecorderTask        = NULL;
 static T_File File;
 
 static int16_t FileIndex = -1;
+static int16_t FileIndexFromFlash = -1;
 static uint16_t RecordingDuration_s = 0;
 
 static esp_periph_set_handle_t Set;
@@ -271,6 +277,8 @@ static T_WAVPlayerHandle          WAVPlayer          = NULL;
 static T_WAVRecorderHandle        WAVRecorder        = NULL;
 
 static int16_t buffer[4 * BUF_SIZE];
+
+static bool ClosingSoundIsFinished = false;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -344,7 +352,8 @@ static audio_element_handle_t CreateI2SStream(int sampleRates, int bits, int cha
 //! \param     destChannel - Output channel of the filter, mono is 1, stereo is 2
 //! \param     mode - Resampling mode
 //! \return    None
-static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel, int mode);
+//static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel, int mode);
+static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel, audio_codec_type_t type);
 
 //! \brief     Create the MP3 decoder
 //! \pre       First initialize the codec
@@ -592,8 +601,9 @@ void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz)
 
 void Codec_PlayMP3FileFromFlash(int16_t index)
 {
-  SelectFile(index);
-  //FileIndex = index;
+  FileIndexFromFlash = index;
+
+  SelectFile(FileIndexFromFlash);
 
   PlayMP3FromFlash(MP3PlayerFromFlash);
 }
@@ -708,6 +718,13 @@ void Codec_RecordWAVFile(int16_t index, uint16_t duration_s)
 void Codec_SetVolume(int16_t volume)
 {
   ES8374_SetVoiceVolume(volume);
+}
+
+//_____________________________________________________________________________
+
+bool Codec_IsClosingSoundFinished(void)
+{
+  return ClosingSoundIsFinished;
 }
 
 //_____________________________________________________________________________
@@ -991,7 +1008,7 @@ static T_WAVRecorderHandle InitWAVRecorder(void)
   ap->Pipeline = audio_pipeline_init(&pipeline_cfg);
   AUDIO_MEM_CHECK(Tag, ap->Pipeline, goto _audio_init_failed);
 
-  ESP_LOGI(Tag, "[2.1] Create I2S stream to write audio data to codec chip");
+  ESP_LOGI(Tag, "[2.1] Create I2S stream to read audio data from codec chip");
   ap->I2SStream = CreateI2SStream(RECORD_RATE, RECORD_BITS, RECORD_CHANNEL, AUDIO_STREAM_READER);
 
   ESP_LOGI(Tag, "[2.2] Create filter to convert to 8 [kHz]");
@@ -1089,14 +1106,15 @@ static audio_element_handle_t CreateI2SStream(int sampleRates, int bits, int cha
 
 //_____________________________________________________________________________
 
-static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel, int mode)
+//static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel, int mode)
+static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel, audio_codec_type_t type)
 {
   rsp_filter_cfg_t rsp_cfg = DEFAULT_RESAMPLE_FILTER_CONFIG();
   rsp_cfg.src_rate = sourceRate;
   rsp_cfg.src_ch = sourceChannel;
   rsp_cfg.dest_rate = destRate;
   rsp_cfg.dest_ch = destChannel;
-  rsp_cfg.mode = mode;
+  rsp_cfg.type = type;
 
   return rsp_filter_init(&rsp_cfg);
 }
@@ -1161,28 +1179,33 @@ static void SelectFile(int16_t index)
   switch (index)
   {
     case 0:
-      File.Start = adf_music_mp3_start;
-      File.End   = adf_music_mp3_end;
+      File.Start = magic_mp3_start;
+      File.End   = magic_mp3_end;
       break;
 
     case 1:
-      File.Start = chicken_mp3_start;
-      File.End   = chicken_mp3_end;
+      File.Start = tick_mp3_start;
+      File.End   = tick_mp3_end;
       break;
 
     case 2:
-      File.Start = harry_mp3_start;
-      File.End   = harry_mp3_end;
-      break;
-
-    case 3:
       File.Start = blop_mp3_start;
       File.End   = blop_mp3_end;
       break;
 
+    case 3:
+      File.Start = fall_mp3_start;
+      File.End   = fall_mp3_end;
+      break;
+
     case 4:
-      File.Start = tick_mp3_start;
-      File.End   = tick_mp3_end;
+      File.Start = detect_mp3_start;
+      File.End   = detect_mp3_end;
+      break;
+
+    case 5:
+      File.Start = bye_mp3_start;
+      File.End   = bye_mp3_end;
       break;
 
     default:
@@ -1257,6 +1280,15 @@ static void RunMP3PlayerFromFlashTask(void* arg)
       audio_pipeline_reset_items_state(ap->Pipeline);
       ap->Playing = false;
       //audio_pipeline_terminate(ap->Pipeline);
+
+      if (FileIndexFromFlash == 5)
+      {
+        ClosingSoundIsFinished = true;
+      }
+      else
+      {
+    	ClosingSoundIsFinished = false;
+      }
     }
   }
 
@@ -1418,212 +1450,18 @@ static void RunWAVPlayerTask(void* arg)
 static void RunWAVRecorderTask(void* arg)
 {
   T_WAVRecorderHandle ap = (T_WAVRecorderHandle) arg;
-  bool finished = false;
-  static bool started = false;
 
   i2s_stream_set_clk(ap->I2SStream, RECORD_RATE, RECORD_BITS, RECORD_CHANNEL);
 
-  ESP_LOGE(Tag, "[ 6 ] Listen for all pipeline events, record for %d Seconds", RecordingDuration_s);
-  uint16_t second_recorded = 0u;
-
+  int second_recorded = 0;
   while (ap->Run)
   {
     audio_event_iface_msg_t msg;
 
-    ESP_LOGE(Tag, "BON");
-    esp_err_t ret = audio_event_iface_listen(ap->Evt, &msg, 1000 /portMAX_DELAY);
-    ESP_LOGE(Tag, "JOUR");
-
-    if (ret != ESP_OK)
+    if (audio_event_iface_listen(ap->Evt, &msg, 1000 / portTICK_RATE_MS) != ESP_OK)
     {
-      ESP_LOGE(Tag, "THYMIO");
-
-      if (!started)
-      {
-        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-            && msg.source == (void*) ap->Encoder
-            && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
-            && (int)msg.data == AEL_STATUS_STATE_RUNNING)
-        {
-          ESP_LOGE(Tag, "[ * ] COUCOU SEND RECORD");
-          started = true;
-          continue;
-        }
-      }
-      else
-      {
-        second_recorded++;
-
-      	ESP_LOGE(Tag, "[ * ] Recording ... %d", second_recorded);
-
-      	if (second_recorded >= RecordingDuration_s)
-      	{
-          finished = true;
-      	}
-
-        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-            //&& msg.source == (void*) ap->Encoder
-            && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
-        {
-          audio_element_info_t music_info = {0};
-          audio_element_getinfo(ap->Encoder, &music_info);
-
-          ESP_LOGE(Tag, "[ * ] Receive music info from WAV encoder, sample_rates=%d, bits=%d, ch=%d",
-                   music_info.sample_rates, music_info.bits, music_info.channels);
-
-          audio_element_setinfo(ap->I2SStream, &music_info);
-          //i2s_stream_set_clk(ap->I2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
-          continue;
-        }
-
-      	ESP_LOGE(Tag, "3");
-
-    	if (started && finished)
-    	{
-          ESP_LOGI(Tag, "Stop pipeline");
-          ESP_LOGE(Tag, "[ * ] COUCOU SEND STOP");
-          audio_pipeline_stop(ap->Pipeline);
-          audio_pipeline_wait_for_stop(ap->Pipeline);
-          audio_element_reset_state(ap->Filter);
-          audio_element_reset_state(ap->SPIFFSStream);
-          audio_element_reset_state(ap->Encoder);
-          audio_element_reset_state(ap->I2SStream);
-          audio_pipeline_reset_ringbuffer(ap->Pipeline);
-          audio_pipeline_reset_items_state(ap->Pipeline);
-          audio_pipeline_terminate(ap->Pipeline);
-          ap->Recording = false;
-
-          finished = false;
-          started = false;
-          second_recorded = 0u;
-          RecordingDuration_s = 0u;
-
-          continue;
-    	}
-
-        ESP_LOGE(Tag, "VERSION");
-
-    	ESP_LOGE(Tag, "1");
-    	//vTaskDelay(1000 / portTICK_PERIOD_MS);
-      }
-    }
-    else
-    {
-      ESP_LOGE(Tag, "[ * ] Event interface error : %d", ret);
-      continue;
-    }
-
-    ESP_LOGE(Tag, "END");
-
-	continue;
-
-#if 0
-	/* Stop when the last pipeline element (WAVRecorderI2SStream in this case) receives stop event */
-	if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *) ap->I2SStream &&
-	    msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (((int) msg.data == AEL_STATUS_STATE_STOPPED) ||
-	    ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
-	{
-	  ESP_LOGE(Tag, "[ * ] Stop event received");
-	  break;
-	}
-#endif
-
-#if 0
-    audio_event_iface_msg_t msg;
-    if (!started)
-    {
-      ESP_LOGE(Tag, "BON");
-      esp_err_t ret = audio_event_iface_listen(ap->Evt, &msg, portMAX_DELAY);
-      ESP_LOGE(Tag, "JOUR");
-
-      if (ret != ESP_OK)
-      {
-        ESP_LOGE(Tag, "[ * ] Event interface error : %d", ret);
-        continue;
-      }
-
-      if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-          && msg.source == (void*) ap->Encoder
-          && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
-          && (int)msg.data == AEL_STATUS_STATE_RUNNING)
-      {
-        ESP_LOGE(Tag, "[ * ] COUCOU SEND RECORD");
-        started = true;
-        SendWAVRecorderEvent(ap, RECORDER_EVENT_RECORD);
-        continue;
-      }
-
-      ESP_LOGE(Tag, "THYMIO");
-    }
-    else
-    {
-      second_recorded++;
-
-      ESP_LOGE(Tag, "[ * ] Recording ... %d", second_recorded);
-
-      if (second_recorded >= RecordingDuration_s)
-      {
-        //break;
-        finished = true;
-      }
-
-      if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-          && msg.source == (void*) ap->Encoder
-          && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
-      {
-        audio_element_info_t music_info = {0};
-        audio_element_getinfo(ap->Encoder, &music_info);
-
-        ESP_LOGE(Tag, "[ * ] Receive music info from WAV encoder, sample_rates=%d, bits=%d, ch=%d",
-                 music_info.sample_rates, music_info.bits, music_info.channels);
-
-        audio_element_setinfo(ap->I2SStream, &music_info);
-        //i2s_stream_set_clk(ap->I2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
-        continue;
-      }
-
-      if (started && finished)
-      {
-        // Stop when the last pipeline element (I2SStream in this case) receives stop event
-        //if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-        //&& msg.source == (void *)ap->I2SStream
-        //&& msg.cmd == AEL_MSG_CMD_REPORT_STATUS
-        //&& (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED))
-        //&& ap->Recording)
-        {
-          ESP_LOGI(Tag, "Stop pipeline");
-          ESP_LOGE(Tag, "[ * ] COUCOU SEND STOP");
-          SendWAVRecorderEvent(ap, RECORDER_EVENT_STOP);
-          audio_pipeline_stop(ap->Pipeline);
-          audio_pipeline_wait_for_stop(ap->Pipeline);
-          audio_element_reset_state(ap->SPIFFSStream);
-          audio_element_reset_state(ap->Encoder);
-          audio_element_reset_state(ap->I2SStream);
-          audio_pipeline_reset_ringbuffer(ap->Pipeline);
-          audio_pipeline_reset_items_state(ap->Pipeline);
-          audio_pipeline_terminate(ap->Pipeline);
-          ap->Recording = false;
-
-          finished = false;
-          started = false;
-          RecordingDuration_s = 0u;
-
-          continue;
-        }
-      }
-    }
-
-    //vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-#endif
-
-#if 0
-    if (RecordingDuration_s > 0u)
-    {
-      ESP_LOGE(Tag, "0");
-
-      //if (audio_event_iface_listen(ap->Evt, &msg, (1000 / portTICK_RATE_MS)) != ESP_OK)
-      if (ret != ESP_OK)
+      ESP_LOGE(Tag, "RUN RUN");
+      if (ap->Recording)
       {
         second_recorded++;
 
@@ -1632,113 +1470,28 @@ static void RunWAVRecorderTask(void* arg)
         if (second_recorded >= RecordingDuration_s)
         {
           //break;
-          finished = true;
-        }
-        else
-        {
-          //continue;
-        }
-
-        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-            && msg.source == (void*) ap->Encoder
-            && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
-            && (int)msg.data == AEL_STATUS_STATE_RUNNING)
-        {
-          ESP_LOGE(Tag, "[ * ] COUCOU SEND RECORD");
-          SendWAVRecorderEvent(ap, RECORDER_EVENT_RECORD);
-          continue;
-        }
-
-        if (finished)
-        {
-          // Stop when the last pipeline element (I2SStream in this case) receives stop event
-          //if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-          //&& msg.source == (void *)ap->I2SStream
-          //&& msg.cmd == AEL_MSG_CMD_REPORT_STATUS
-          //&& (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED))
-          //&& ap->Recording)
-          {
-            ESP_LOGI(Tag, "Stop pipeline");
-            ESP_LOGE(Tag, "[ * ] COUCOU SEND STOP");
-            SendWAVRecorderEvent(ap, RECORDER_EVENT_STOP);
-            audio_pipeline_stop(ap->Pipeline);
-            audio_pipeline_wait_for_stop(ap->Pipeline);
-            audio_element_reset_state(ap->SPIFFSStream);
-            audio_element_reset_state(ap->Encoder);
-            audio_element_reset_state(ap->I2SStream);
-            audio_pipeline_reset_ringbuffer(ap->Pipeline);
-            audio_pipeline_reset_items_state(ap->Pipeline);
-            ap->Recording = false;
-
-            finished = false;
-            RecordingDuration_s = 0u;
-          }
+          StopWAVRecord(ap);
         }
       }
-#if 0
-      if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-          && msg.source == (void*) ap->Encoder
-          && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
-          && (int)msg.data == AEL_STATUS_STATE_PAUSED)
-      {
-        ESP_LOGE(Tag, "[ * ] COUCOU SEND PAUSE");
-        SendWAVPlayerEvent(ap, PLAYER_EVENT_PAUSE);
-        continue;
-      }
 
-      if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-          && msg.source == (void*) ap->Encoder
-          && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
-      {
-        audio_element_info_t music_info = {0};
-        audio_element_getinfo(ap->Decoder, &music_info);
-
-        ESP_LOGE(Tag, "[ * ] Receive music info from WAV decoder, sample_rates=%d, bits=%d, ch=%d",
-                 music_info.sample_rates, music_info.bits, music_info.channels);
-
-        audio_element_setinfo(ap->I2SStream, &music_info);
-        //i2s_stream_set_clk(ap->I2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
-        //i2s_stream_set_clk(ap->I2SStream, WAV_PLAYER_RATE, WAV_PLAYER_BITS, WAV_PLAYER_CHANNEL);
-        continue;
-      }
-#endif
+      continue;
     }
-    //else
+#if 0
+    /* Stop when the last pipeline element (i2s_stream_reader in this case) receives stop event */
+    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *) ap->I2SStream
+          && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
+          && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
     {
-      //ESP_LOGE(Tag, "WAITING");
-      //vTaskPrioritySet(WAVRecorderTask, 1);
-      //vTaskDelay(1000 / portTICK_PERIOD_MS);
+      ESP_LOGE(Tag, "[ * ] Stop event received");
+      break;
     }
 #endif
   }
-#if 0
-  ESP_LOGI(Tag, "[ 7 ] Stop audio_pipeline");
-  audio_pipeline_terminate(ap->Pipeline);
 
-  audio_pipeline_unregister(ap->Pipeline, ap->Encoder);
-  audio_pipeline_unregister(ap->Pipeline, ap->Filter);
-  audio_pipeline_unregister(ap->Pipeline, ap->I2SStream);
-  audio_pipeline_unregister(ap->Pipeline, ap->SPIFFSStream);
+  ESP_LOGE(Tag, "STOP STOP");
+  //StopWAVRecord(ap);
 
-  /* Terminal the pipeline before removing the listener */
-  audio_pipeline_remove_listener(ap->Pipeline);
-
-  /* Stop all periph before removing the listener */
-  esp_periph_set_stop_all(Set);
-  audio_event_iface_remove_listener(esp_periph_set_get_event_iface(Set), ap->Evt);
-
-  /* Make sure audio_pipeline_remove_listener & audio_event_iface_remove_listener are called before destroying event_iface */
-  audio_event_iface_destroy(ap->Evt);
-
-  /* Release all resources */
-  audio_element_deinit(ap->I2SStream);
-  audio_element_deinit(ap->Filter);
-  audio_element_deinit(ap->Encoder);
-  audio_element_deinit(ap->SPIFFSStream);
-  esp_periph_set_destroy(Set);
-#endif
-
-  //vTaskDelete(WAVRecorderTask);
+  vTaskDelete(WAVRecorderTask);
 }
 
 //_____________________________________________________________________________

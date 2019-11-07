@@ -109,14 +109,21 @@ extern int Codec_GetWAVPlayedTime(void);
 
 //! \brief     Record a WAV file
 //! \pre       First initialize the codec
-//! \param     None
+//! \param     index - Index of the sound to record
+//! \param     duration_s - Duration of the sound to record in [s]
 //! \return    None
 extern void Codec_RecordWAVFile(int16_t index, uint16_t duration_s);
 
 //! \brief     Set the sound volume
-//! \pre       None
+//! \pre       First initialize the codec
 //! \param     volume - Volume
 //! \return    None
 extern void Codec_SetVolume(int16_t volume);
+
+//! \brief     Is the closing sound finished?
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    True if the closing sound is finished, false otherwise
+extern bool Codec_IsClosingSoundFinished(void);
 
 #endif // CODEC_H_
