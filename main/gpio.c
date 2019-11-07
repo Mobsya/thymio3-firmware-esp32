@@ -55,11 +55,6 @@ typedef struct
 
 static const char* Tag = "gpio";
 
-static uint64_t RisingEdge = 0;
-static uint64_t FallingEdge = 0;
-
-static uint32_t PulseCounter = 0;
-
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -157,27 +152,6 @@ T_GpioLevel Gpio_GetPinLevel(uint16_t pinNumber)
   }
 
   return level;
-}
-
-//_____________________________________________________________________________
-
-uint16_t Gpio_GetPulseCounter(void)
-{
-  return PulseCounter;
-}
-
-//_____________________________________________________________________________
-
-uint16_t Gpio_GetRisingEdgeTime(void)
-{
-  return RisingEdge;
-}
-
-//_____________________________________________________________________________
-
-uint16_t Gpio_GetFallingEdgeTime(void)
-{
-  return FallingEdge;
 }
 
 //_____________________________________________________________________________
@@ -291,30 +265,20 @@ static gpio_int_type_t SetInterrupt(T_GpioInterrupt interrupt)
 
 static void IRAM_ATTR ISR_GPIOHandler(void* arg)
 {
+#if 0  // Uncomment if used
   uint32_t gpio_num = (uint32_t) arg;
 
-  static uint64_t start = 0;
-  static uint64_t stop = 0;
 
-  static bool risingEdgeBackRightDone = false;
-
-  //if (gpio_num == IR_SENSE_BACK_RIGHT_PIN)
+  if (gpio_num == pin name)
   {
     if (Gpio_GetPinLevel(gpio_num) == E_GpioLevel_High)
     {
-      start = esp_timer_get_time();
-      risingEdgeBackRightDone = true;
+
     }
     else
     {
-      if (risingEdgeBackRightDone)
-      {
-        stop = esp_timer_get_time();
-        RisingEdge = start;
-        FallingEdge = stop;
-        PulseCounter++;
-        risingEdgeBackRightDone = false;
-      }
+
     }
   }
+#endif
 }

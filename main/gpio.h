@@ -120,22 +120,4 @@ extern void Gpio_TogglePinLevel(uint16_t pinNumber);
 //! \return    Logical level of a GPIO
 extern T_GpioLevel Gpio_GetPinLevel(uint16_t pinNumber);
 
-//! \brief     Get the number of pulses detected
-//! \pre       First configure the GPIO
-//! \param     None
-//! \return    Number of pulses
-extern uint16_t Gpio_GetPulseCounter(void);
-
-//! \brief     Get the time captured at the rising edge of a pulse
-//! \pre       First configure the GPIO
-//! \param     None
-//! \return    Time captured at the rising edge of a pulse
-extern uint16_t Gpio_GetRisingEdgeTime(void);
-
-//! \brief     Get the time captured at the falling edge of a pulse
-//! \pre       First configure the GPIO
-//! \param     None
-//! \return    Time captured at the falling edge of a pulse
-extern uint16_t Gpio_GetFallingEdgeTime(void);
-
 #endif // GPIO_H_

@@ -525,11 +525,11 @@ static void RunFollower(void)
 
   for (uint8_t index = 1; index < 5; index++)
   {
-	if (vmVariables.prox[index] > max)
-	{
-	  max = vmVariables.prox[index];
-	  min = index;
-	}
+    if (vmVariables.prox[index] > max)
+    {
+      max = vmVariables.prox[index];
+      min = index;
+    }
   }
 
   t = 2 - min;
@@ -587,7 +587,7 @@ static void RunFollower(void)
     vmVariables.target[0] = (speed_l - speedDiff);
   }
 
-  when (max > DETECT)
+  when(max > DETECT)
   {
     Codec_PlayMP3FileFromFlash(4);
   }
@@ -850,32 +850,32 @@ static void RunShy(void)
 
   if (acc < ACC_FREE_FALL)
   {
-	ESP_LOGE(Tag, "acc = %d", acc);
+    ESP_LOGE(Tag, "acc = %d", acc);
     play = true;
   }
 
-  when (acc > ACC_FREE_FALL)
+  when(acc > ACC_FREE_FALL)
   {
-	Leds_SetBodyBrightness((MAX_BRIGHTNESS / 2), 0u, 0u);
+    Leds_SetBodyBrightness((MAX_BRIGHTNESS / 2), 0u, 0u);
   }
 
   if (acc < ACC_FREE_FALL)
   {
-	counter++;
+    counter++;
 
-	if (counter > 5)
-	{
-	  if (counter == 10)
-	  {
-		counter = 0;
-	  }
+    if (counter > 5)
+    {
+      if (counter == 10)
+      {
+        counter = 0;
+      }
 
-	  Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);
+      Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);
     }
-	else
-	{
-      Leds_SetBodyBrightness(0u, 0u , 0u);
-	}
+    else
+    {
+      Leds_SetBodyBrightness(0u, 0u, 0u);
+    }
   }
   else
   {
@@ -884,35 +884,36 @@ static void RunShy(void)
   }
 
   // Moving part.
-  if ((vmVariables.prox[1] > ACC_OBSTACLE) && (vmVariables.prox[2] > ACC_OBSTACLE) && (vmVariables.prox[3] > ACC_OBSTACLE) &&
+  if ((vmVariables.prox[1] > ACC_OBSTACLE) && (vmVariables.prox[2] > ACC_OBSTACLE)
+      && (vmVariables.prox[3] > ACC_OBSTACLE) &&
       ((vmVariables.prox[5] > ACC_OBSTACLE) || (vmVariables.prox[6] > ACC_OBSTACLE))) //&&
-  			//(vmVariables.ground_delta[0] > 130 && vmVariables.ground_delta[1] > 130))
+    //(vmVariables.ground_delta[0] > 130 && vmVariables.ground_delta[1] > 130))
   {
     vmVariables.target[0] = 0;
-  	vmVariables.target[1] = 0;
-  	play = true;
+    vmVariables.target[1] = 0;
+    play = true;
   }
   else if ((vmVariables.prox[0] > ACC_OBSTACLE) || (vmVariables.prox[1] > ACC_OBSTACLE) ||
-		   (vmVariables.prox[2] > ACC_OBSTACLE) || (vmVariables.prox[3] > ACC_OBSTACLE) ||
-		   (vmVariables.prox[4] > ACC_OBSTACLE))
+           (vmVariables.prox[2] > ACC_OBSTACLE) || (vmVariables.prox[3] > ACC_OBSTACLE) ||
+           (vmVariables.prox[4] > ACC_OBSTACLE))
   {
     //int temp = vmVariables.prox[0]/5 + vmVariables.prox[1]/4 + vmVariables.prox[2]/4;
-  	//temp += vmVariables.prox[3]/4 + vmVariables.prox[4]/5;
-	int temp = vmVariables.prox[0]/3 + vmVariables.prox[1]/2 + vmVariables.prox[2]/2;
-	temp += vmVariables.prox[3]/2 + vmVariables.prox[4]/3;
+    //temp += vmVariables.prox[3]/4 + vmVariables.prox[4]/5;
+    int temp = vmVariables.prox[0] / 3 + vmVariables.prox[1] / 2 + vmVariables.prox[2] / 2;
+    temp += vmVariables.prox[3] / 2 + vmVariables.prox[4] / 3;
 
-  	int temp2 = vmVariables.prox[0]/4 + vmVariables.prox[1]/3;
-  	temp2 -= vmVariables.prox[3]/3 + vmVariables.prox[4]/4;
+    int temp2 = vmVariables.prox[0] / 4 + vmVariables.prox[1] / 3;
+    temp2 -= vmVariables.prox[3] / 3 + vmVariables.prox[4] / 4;
 
-  	vmVariables.target[0] = -(temp + temp2);
-  	vmVariables.target[1] = temp2 - temp;
+    vmVariables.target[0] = -(temp + temp2);
+    vmVariables.target[1] = temp2 - temp;
 
-  	//ESP_LOGE(Tag, "target_left = %d, target_right = %d", vmVariables.target[0], vmVariables.target[1]);
+    //ESP_LOGE(Tag, "target_left = %d, target_right = %d", vmVariables.target[0], vmVariables.target[1]);
   }
   else if ((vmVariables.prox[5] > ACC_OBSTACLE) || (vmVariables.prox[6] > ACC_OBSTACLE))
   {
-  	vmVariables.target[0] = vmVariables.prox[5]/2;
-  	vmVariables.target[1] = vmVariables.prox[6]/2;
+    vmVariables.target[0] = vmVariables.prox[5] / 2;
+    vmVariables.target[1] = vmVariables.prox[6] / 2;
   }
   else
   {
@@ -922,25 +923,25 @@ static void RunShy(void)
 #if 0
   if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
   {
-	vmVariables.target[0] = 0;
-	vmVariables.target[1] = 0;
-	leds_set_br(32,0,0);
-	leds_set_bl(32,0,0);
+    vmVariables.target[0] = 0;
+    vmVariables.target[1] = 0;
+    leds_set_br(32, 0, 0);
+    leds_set_bl(32, 0, 0);
   }
   else
   {
-	leds_set_br(0,0,0);
-	leds_set_bl(0,0,0);
+    leds_set_br(0, 0, 0);
+    leds_set_bl(0, 0, 0);
   }
 #endif
   if (vmVariables.target[0] < -600)
   {
-	vmVariables.target[0] = -600;
+    vmVariables.target[0] = -600;
   }
 
   if (vmVariables.target[1] < -600)
   {
-	vmVariables.target[1]= -600;
+    vmVariables.target[1] = -600;
   }
 
   if (vmVariables.target[0] > 600)
@@ -953,7 +954,7 @@ static void RunShy(void)
     vmVariables.target[1] = 600;
   }
 
-  when (play)
+  when(play)
   {
     Codec_PlayMP3FileFromFlash(3);
   }

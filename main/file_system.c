@@ -34,17 +34,17 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define	FNM_PERIOD		0x04	// Period must be matched by period.
+#define FNM_PERIOD    0x04  // Period must be matched by period.
 
 // fnmatch defines
-#define	FNM_NOMATCH     1       // Match failed.
-#define	FNM_NOESCAPE	0x01	// Disable backslash escaping.
-#define	FNM_PATHNAME	0x02	// Slash must be matched by slash.
-#define	FNM_PERIOD		0x04	// Period must be matched by period.
-#define	FNM_LEADING_DIR	0x08	// Ignore /<tail> after Imatch.
-#define	FNM_CASEFOLD	0x10	// Case insensitive search.
-#define FNM_PREFIX_DIRS	0x20	// Directory prefixes of pattern match too.
-#define	EOS	            '\0'
+#define FNM_NOMATCH     1       // Match failed.
+#define FNM_NOESCAPE  0x01  // Disable backslash escaping.
+#define FNM_PATHNAME  0x02  // Slash must be matched by slash.
+#define FNM_PERIOD    0x04  // Period must be matched by period.
+#define FNM_LEADING_DIR 0x08  // Ignore /<tail> after Imatch.
+#define FNM_CASEFOLD  0x10  // Case insensitive search.
+#define FNM_PREFIX_DIRS 0x20  // Directory prefixes of pattern match too.
+#define EOS             '\0'
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -74,11 +74,11 @@ T_AsebaSettings Input;
 
 static void WriteLittleEndian(unsigned int word, int numBytes, FILE* file);
 
-static void list(char *path, char *match);
+static void list(char* path, char* match);
 
-static int fnmatch(const char *pattern, const char *string, int flags);
+static int fnmatch(const char* pattern, const char* string, int flags);
 
-static const char * rangematch(const char *pattern, char test, int flags);
+static const char* rangematch(const char* pattern, char test, int flags);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -357,17 +357,17 @@ static void WriteLittleEndian(unsigned int word, int numBytes, FILE* file)
 
 //_____________________________________________________________________________
 
-static void list(char *path, char *match)
+static void list(char* path, char* match)
 {
-  DIR *dir = NULL;
-  struct dirent *ent;
+  DIR* dir = NULL;
+  struct dirent* ent;
   char type;
   char size[9];
   char tpath[255];
   char tbuffer[80];
   struct stat sb;
-  struct tm *tm_info;
-  char *lpath = NULL;
+  struct tm* tm_info;
+  char* lpath = NULL;
   int statok;
 
   printf("\nList of Directory [%s]\n", path);
@@ -392,12 +392,12 @@ static void list(char *path, char *match)
   {
     sprintf(tpath, path);
 
-    if (path[strlen(path)-1] != '/')
+    if (path[strlen(path) - 1] != '/')
     {
-      strcat(tpath,"/");
+      strcat(tpath, "/");
     }
 
-    strcat(tpath,ent->d_name);
+    strcat(tpath, ent->d_name);
     tbuffer[0] = '\0';
 
     if ((match == NULL) || (fnmatch(match, tpath, (FNM_PERIOD)) == 0))
@@ -428,17 +428,17 @@ static void list(char *path, char *match)
         {
           total += sb.st_size;
 
-          if (sb.st_size < (1024*1024))
+          if (sb.st_size < (1024 * 1024))
           {
-            sprintf(size,"%8d", (int)sb.st_size);
+            sprintf(size, "%8d", (int)sb.st_size);
           }
-          else if ((sb.st_size/1024) < (1024*1024))
+          else if ((sb.st_size / 1024) < (1024 * 1024))
           {
-        	sprintf(size,"%6dKB", (int)(sb.st_size / 1024));
+            sprintf(size, "%6dKB", (int)(sb.st_size / 1024));
           }
           else
           {
-            sprintf(size,"%6dMB", (int)(sb.st_size / (1024 * 1024)));
+            sprintf(size, "%6dMB", (int)(sb.st_size / (1024 * 1024)));
           }
         }
       }
@@ -448,11 +448,11 @@ static void list(char *path, char *match)
         strcpy(size, "       -");
       }
 
-        printf("%c  %s  %s  %s\r\n",
-               type,
-               size,
-               tbuffer,
-               ent->d_name
+      printf("%c  %s  %s  %s\r\n",
+             type,
+             size,
+             tbuffer,
+             ent->d_name
             );
     }
   }
@@ -461,11 +461,11 @@ static void list(char *path, char *match)
   {
     printf("-----------------------------------\n");
 
-    if (total < (1024*1024))
+    if (total < (1024 * 1024))
     {
       printf("   %8d", (int)total);
     }
-    else if ((total/1024) < (1024*1024))
+    else if ((total / 1024) < (1024 * 1024))
     {
       printf("   %6dKB", (int)(total / 1024));
     }
@@ -483,22 +483,22 @@ static void list(char *path, char *match)
 
   free(lpath);
 
-  uint32_t tot=0, used=0;
+  uint32_t tot = 0, used = 0;
   esp_spiffs_info(NULL, &tot, &used);
-  printf("SPIFFS: free %d KB of %d KB\n", (tot-used) / 1024, tot / 1024);
+  printf("SPIFFS: free %d KB of %d KB\n", (tot - used) / 1024, tot / 1024);
   printf("-----------------------------------\n\n");
 }
 
 //_____________________________________________________________________________
 
-static int fnmatch(const char *pattern, const char *string, int flags)
+static int fnmatch(const char* pattern, const char* string, int flags)
 {
-  const char *stringstart;
+  const char* stringstart;
   char c, test;
 
   for (stringstart = string;;)
-	switch (c = *pattern++)
-	{
+    switch (c = *pattern++)
+    {
       case EOS:
         if ((flags & FNM_LEADING_DIR) && *string == '/')
         {
@@ -520,7 +520,7 @@ static int fnmatch(const char *pattern, const char *string, int flags)
 
         if (*string == '.' && (flags & FNM_PERIOD) &&
             (string == stringstart ||
-            ((flags & FNM_PATHNAME) && *(string - 1) == '/')))
+             ((flags & FNM_PATHNAME) && *(string - 1) == '/')))
         {
           return (FNM_NOMATCH);
         }
@@ -530,98 +530,110 @@ static int fnmatch(const char *pattern, const char *string, int flags)
       case '*':
         c = *pattern;
         // Collapse multiple stars.
-        while (c == '*') c = *++pattern;
+        while (c == '*')
+        {
+          c = *++pattern;
+        }
 
         if (*string == '.' && (flags & FNM_PERIOD) &&
             (string == stringstart ||
-            ((flags & FNM_PATHNAME) && *(string - 1) == '/')))
-                return (FNM_NOMATCH);
-
-        // Optimize for pattern with * at end or before /.
-        if (c == EOS)
-          if (flags & FNM_PATHNAME)
-            return ((flags & FNM_LEADING_DIR) ||
-                      strchr(string, '/') == NULL ?
-                      0 : FNM_NOMATCH);
-        else return (0);
-      else if ((c == '/') && (flags & FNM_PATHNAME))
-      {
-        if ((string = strchr(string, '/')) == NULL)
+             ((flags & FNM_PATHNAME) && *(string - 1) == '/')))
         {
           return (FNM_NOMATCH);
         }
 
-        break;
-      }
-
-      // General case, use recursion.
-      while ((test = *string) != EOS)
-      {
-        if (!fnmatch(pattern, string, flags & ~FNM_PERIOD))
+        // Optimize for pattern with * at end or before /.
+        if (c == EOS)
         {
-          return (0);
+          if (flags & FNM_PATHNAME)
+          {
+            return ((flags & FNM_LEADING_DIR) ||
+                    strchr(string, '/') == NULL ?
+                    0 : FNM_NOMATCH);
+          }
+          else
+          {
+            return (0);
+          }
         }
-
-        if ((test == '/') && (flags & FNM_PATHNAME))
+        else if ((c == '/') && (flags & FNM_PATHNAME))
         {
+          if ((string = strchr(string, '/')) == NULL)
+          {
+            return (FNM_NOMATCH);
+          }
+
           break;
         }
 
-        ++string;
-      }
-
-      return (FNM_NOMATCH);
-
-    case '[':
-      if (*string == EOS)
-      {
-    	return (FNM_NOMATCH);
-      }
-
-      if ((*string == '/') && (flags & FNM_PATHNAME))
-      {
-        return (FNM_NOMATCH);
-      }
-
-      if ((pattern = rangematch(pattern, *string, flags)) == NULL)
-      {
-    	return (FNM_NOMATCH);
-      }
-
-      ++string;
-      break;
-
-    case '\\':
-      if (!(flags & FNM_NOESCAPE))
-      {
-        if ((c = *pattern++) == EOS)
+        // General case, use recursion.
+        while ((test = *string) != EOS)
         {
-          c = '\\';
-          --pattern;
-        }
-      }
-      break;
-      // FALLTHROUGH
-    default:
-      if (c == *string)
-      {
-      }
-      else if ((flags & FNM_CASEFOLD) && (tolower((unsigned char)c) == tolower((unsigned char)*string)))
-      {
-      }
-      else if ((flags & FNM_PREFIX_DIRS) && *string == EOS && ((c == '/' && string != stringstart) ||
-    		  (string == stringstart+1 && *stringstart == '/')))
-      {
-        return (0);
-      }
-      else
-      {
-        return (FNM_NOMATCH);
-      }
+          if (!fnmatch(pattern, string, flags & ~FNM_PERIOD))
+          {
+            return (0);
+          }
 
-      string++;
-      break;
-  }
+          if ((test == '/') && (flags & FNM_PATHNAME))
+          {
+            break;
+          }
+
+          ++string;
+        }
+
+        return (FNM_NOMATCH);
+
+      case '[':
+        if (*string == EOS)
+        {
+          return (FNM_NOMATCH);
+        }
+
+        if ((*string == '/') && (flags & FNM_PATHNAME))
+        {
+          return (FNM_NOMATCH);
+        }
+
+        if ((pattern = rangematch(pattern, *string, flags)) == NULL)
+        {
+          return (FNM_NOMATCH);
+        }
+
+        ++string;
+        break;
+
+      case '\\':
+        if (!(flags & FNM_NOESCAPE))
+        {
+          if ((c = *pattern++) == EOS)
+          {
+            c = '\\';
+            --pattern;
+          }
+        }
+        break;
+      // FALLTHROUGH
+      default:
+        if (c == *string)
+        {
+        }
+        else if ((flags & FNM_CASEFOLD) && (tolower((unsigned char)c) == tolower((unsigned char)*string)))
+        {
+        }
+        else if ((flags & FNM_PREFIX_DIRS) && *string == EOS && ((c == '/' && string != stringstart) ||
+                 (string == stringstart + 1 && *stringstart == '/')))
+        {
+          return (0);
+        }
+        else
+        {
+          return (FNM_NOMATCH);
+        }
+
+        string++;
+        break;
+    }
 
   // NOTREACHED
   return 0;
@@ -629,7 +641,7 @@ static int fnmatch(const char *pattern, const char *string, int flags)
 
 //_____________________________________________________________________________
 
-static const char * rangematch(const char *pattern, char test, int flags)
+static const char* rangematch(const char* pattern, char test, int flags)
 {
   int negate, ok;
   char c, c2;
@@ -646,7 +658,10 @@ static const char * rangematch(const char *pattern, char test, int flags)
     ++pattern;
   }
 
-  if (flags & FNM_CASEFOLD) test = tolower((unsigned char)test);
+  if (flags & FNM_CASEFOLD)
+  {
+    test = tolower((unsigned char)test);
+  }
 
   for (ok = 0; (c = *pattern++) != ']';)
   {
@@ -665,7 +680,7 @@ static const char * rangematch(const char *pattern, char test, int flags)
       c = tolower((unsigned char)c);
     }
 
-    if (*pattern == '-' && (c2 = *(pattern+1)) != EOS && c2 != ']')
+    if (*pattern == '-' && (c2 = *(pattern + 1)) != EOS && c2 != ']')
     {
       pattern += 2;
 
@@ -676,12 +691,12 @@ static const char * rangematch(const char *pattern, char test, int flags)
 
       if (c2 == EOS)
       {
-    	return (NULL);
+        return (NULL);
       }
 
       if (flags & FNM_CASEFOLD)
       {
-    	c2 = tolower((unsigned char)c2);
+        c2 = tolower((unsigned char)c2);
       }
 
       if ((unsigned char)c <= (unsigned char)test &&

@@ -107,6 +107,7 @@ extern void FileSystem_EraseFile(char* fileName);
 //! \param     sampleRate - Sample rate
 //! \param     channel - Channel
 //! \return    None
-extern void FileSystem_WriteWAVFile(char* fileName, uint32_t numSamples, int16_t* data, uint16_t sampleRate, uint8_t channel);
+extern void FileSystem_WriteWAVFile(char* fileName, uint32_t numSamples, int16_t* data, uint16_t sampleRate,
+                                    uint8_t channel);
 
 #endif // FILE_SYSTEM_H_
