@@ -91,7 +91,7 @@ void Power_HandlePowerModeRequest(void)
       {
         if (!soundStarted)
         {
-          Codec_PlayMP3FileFromFlash(5);
+          Codec_PlayMP3FileFromFlash(E_SystemSound_Bye);
           //STM32_AllowToSwitchOff();  // Give the permission to the STM32 to switch off
           soundStarted = true;
         }

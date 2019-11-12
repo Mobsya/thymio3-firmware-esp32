@@ -29,6 +29,17 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
+enum
+{
+  E_SystemSound_Startup,
+  E_SystemSound_Tick,
+  E_SystemSound_Blop,
+  E_SystemSound_Fall,
+  E_SystemSound_Detection,
+  E_SystemSound_Bye
+};
+typedef int16_t T_SystemSound;  //!< Accelerometer tap recognition
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -53,7 +64,7 @@ extern void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz);
 //! \pre       First initialize the codec
 //! \param     None
 //! \return    None
-extern void Codec_PlayMP3FileFromFlash(int16_t index);
+extern void Codec_PlayMP3FileFromFlash(T_SystemSound index);
 
 //! \brief     Play a MP3 file from the file system
 //! \pre       First initialize the codec

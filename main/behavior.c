@@ -222,23 +222,24 @@ static void RunBehaviors(void)
     SetButtonsLeds();
   }
 
+  //#if 0  // FIXME
+  if (ENABLED(B_SOUND_BUTTON))
+  {
+    PlaySoundButtons();
+  }
+  //#endif
+
+  if (ENABLED(B_MODE))
+  {
+    Mode_Run();
+  }
+
 #if 0  // FIXME
   if (ENABLED(B_LEDS_ACC))
   {
     SetAccelerometerLeds();
   }
 #endif
-  if (ENABLED(B_MODE))
-  {
-    Mode_Run();
-  }
-
-//#if 0  // FIXME
-  if (ENABLED(B_SOUND_BUTTON))
-  {
-    PlaySoundButtons();
-  }
-//#endif
 
 //#if 0
   if (ENABLED(B_SETTING))
@@ -477,26 +478,26 @@ static void PlaySoundButtons(void)
 
   when(buttonState[E_Button_Backward] != 0u)
   {
-    Codec_PlayMP3FileFromFlash(1);
+    Codec_PlayMP3FileFromFlash(E_SystemSound_Tick);
   }
 
   when(buttonState[E_Button_Left] != 0u)
   {
-    Codec_PlayMP3FileFromFlash(1);
+    Codec_PlayMP3FileFromFlash(E_SystemSound_Tick);
   }
 
   when(buttonState[E_Button_Center] != 0u)
   {
-    Codec_PlayMP3FileFromFlash(2);
+    Codec_PlayMP3FileFromFlash(E_SystemSound_Blop);
   }
 
   when(buttonState[E_Button_Forward] != 0u)
   {
-    Codec_PlayMP3FileFromFlash(1);
+    Codec_PlayMP3FileFromFlash(E_SystemSound_Tick);
   }
 
   when(buttonState[E_Button_Right] != 0u)
   {
-    Codec_PlayMP3FileFromFlash(1);
+    Codec_PlayMP3FileFromFlash(E_SystemSound_Tick);
   }
 }

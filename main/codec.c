@@ -163,7 +163,6 @@ typedef enum
   RECORDER_EVENT_RESUME,
 } T_RecorderEvent;
 
-
 typedef struct MP3AudioPlayerFromFlash* T_MP3PlayerFromFlashHandle;
 typedef struct MP3AudioPlayer*          T_MP3PlayerHandle;
 typedef struct WAVAudioPlayer*          T_WAVPlayerHandle;
@@ -383,7 +382,7 @@ static void GenerateMasterClock(uint32_t clock_Hz);
 //! \pre       First initialize the codec
 //! \param     index - Index of the selected file
 //! \return    None
-static void SelectFile(int16_t index);
+static void SelectFile(T_SystemSound index);
 
 //! \brief     Run the MP3 player (from the flash) task
 //! \pre       First initialize the codec
@@ -599,7 +598,7 @@ void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz)
 
 //_____________________________________________________________________________
 
-void Codec_PlayMP3FileFromFlash(int16_t index)
+void Codec_PlayMP3FileFromFlash(T_SystemSound index)
 {
   FileIndexFromFlash = index;
 
@@ -1174,7 +1173,7 @@ static void GenerateMasterClock(uint32_t clock_Hz)
 
 //_____________________________________________________________________________
 
-static void SelectFile(int16_t index)
+static void SelectFile(T_SystemSound index)
 {
   switch (index)
   {

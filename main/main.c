@@ -136,15 +136,15 @@ int app_main(void)
   //AsebaESP32_Init();
 
   Codec_SetVolume(100);
-  Codec_PlayMP3FileFromFlash(0);
+  Codec_PlayMP3FileFromFlash(E_SystemSound_Startup);
 
   while (!WIFI_IsConnected())
   {}
 
   esp_log_level_set("*", ESP_LOG_ERROR);
 
-  //Codec_SetVolume(100);
-  //Codec_PlayMP3FileFromFlash(0);
+  Codec_SetVolume(80);
+  //Codec_PlayMP3FileFromFlash(E_SystemSound_Tick);
   //Codec_PlayMP3File(2);
   //Codec_RecordWAVFile(0);
   //Codec_PlayWAVFile(2);
