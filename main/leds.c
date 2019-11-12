@@ -36,7 +36,7 @@
 
 #define LED_OFF_BANK_0          0x0Fu  //!< LSB --> U26.QA
 #define LED_OFF_BANK_1          0x0Fu  //!< LSB --> U27.QA
-#define LED_OFF_BANK_2          0x00u  //!< LSB --> U25.QA
+#define LED_OFF_BANK_2          0x80u  //!< LSB --> U25.QA
 #define LED_OFF_BANK_3          0x0Fu  //!< LSB --> U28.QA
 #define LED_OFF_BANK_4          0x0Fu  //!< LSB --> U29.QA
 #define LED_OFF_BANK_5          0x00u  //!< LSB --> U30.QA

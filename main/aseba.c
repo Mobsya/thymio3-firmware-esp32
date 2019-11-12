@@ -106,6 +106,8 @@ static void UpdateLedBackLeft(void);
 
 static void UpdateLedBackRight(void);
 
+static void UpdateLedColorSensor(void);
+
 static void UpdateLedsGroundIR(void);
 
 static void UpdateSoundThreshold(void);
@@ -165,7 +167,7 @@ void update_aseba_variables_write(void)
   xSemaphoreGive(I2CMutex);
 
   UpdateTimers();
-#if 0
+//#if 0
   UpdateLedsCircle();
 
   UpdateLedsLegoFront();
@@ -179,7 +181,9 @@ void update_aseba_variables_write(void)
   UpdateLedBackLeft();
 
   UpdateLedBackRight();
-#endif
+
+  UpdateLedColorSensor();
+//#endif
 }
 
 //_____________________________________________________________________________
@@ -541,6 +545,27 @@ static void UpdateLedBackRight(void)
 
       Behavior_Disable(B_LEDS_RGB);
       Leds_SetSingleBrightness((E_Led_R_Back_Right + index), brightness[index]);
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateLedColorSensor(void)
+{
+  // brightness[0] is assigned to the LED D25 (red)
+  // brightness[1] is assigned to the LED D25 (green)
+  // brightness[2] is assigned to the LED D25 (blue)
+  static int16_t brightness[3] = {0, 0, 0};
+
+  for (uint8_t index = 0u; index < 3u; index++)
+  {
+    if (brightness[index] != vmVariables.led_color_sensor[index])
+    {
+      brightness[index] = vmVariables.led_color_sensor[index];
+
+      Behavior_Disable(B_LEDS_RGB);
+      Leds_SetSingleBrightness((E_Led_R_Color_Sensor + index), brightness[index]);
     }
   }
 }

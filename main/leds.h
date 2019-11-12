@@ -68,7 +68,7 @@ enum
   E_Led_G_Front_Right,   // U25.QE --> D26 Green
   E_Led_B_Front_Right,   // U25.QF --> D26 Blue
   E_Led_RC5,             // U25.QG --> D18
-  E_Led_NC,              // U25.QH --> Not connected
+  E_Led_R_Debug,         // U25.QH --> D53 Red
 
   // LEDs connected to U28
   E_Led_Lego_Front_0,    // U28.QA --> D28
