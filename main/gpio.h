@@ -120,4 +120,12 @@ extern void Gpio_TogglePinLevel(uint16_t pinNumber);
 //! \return    Logical level of a GPIO
 extern T_GpioLevel Gpio_GetPinLevel(uint16_t pinNumber);
 
+extern bool Gpio_IsFreeFallDetected(void);
+
+extern void Gpio_ClearFreeFallStatus(void);
+
+extern bool Gpio_IsTapDetected(void);
+
+extern void Gpio_ClearTapStatus(void);
+
 #endif // GPIO_H_

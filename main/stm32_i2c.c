@@ -404,7 +404,7 @@ void STM32_ReadInducedVoltage(void)
   vmVariables.uind[E_Motor_Left]  = Vind[E_Motor_Left];
   vmVariables.uind[E_Motor_Right] = Vind[E_Motor_Right];
 
-  SET_EVENT(EVENT_MOTOR);
+  //SET_EVENT(EVENT_MOTOR);
 }
 
 //_____________________________________________________________________________
@@ -458,7 +458,7 @@ void STM32_ReadSoundValue(void)
 
   if ((vmVariables.sound_tresh > 0) && (vmVariables.sound_level > vmVariables.sound_tresh))
   {
-    //SET_EVENT(EVENT_MIC);
+    SET_EVENT(EVENT_MIC);
   }
 
   //ESP_LOGE(Tag, "Volume = %d", vmVariables.sound_level);

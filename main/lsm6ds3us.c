@@ -89,6 +89,10 @@
 // TODO last registers
 #define TAP_CFG_REG_ADDRESS                  0x58u  //!< Tap recognition configuration register address                         (Read/Write)
 #define TAP_THS_6D_REG_ADDRESS               0x59u  //!< Portrait/landscape position and tap threshold register address         (Read/Write)
+#define INT_DUR2_REG_ADDRESS                 0x5Au  //!< Tap recognition register address                                       (Read/Write)
+#define FREE_FALL_REG_ADDRESS                0x5Du  //!< Free-Fall register address                                             (Read/Write)
+#define MD1_CFG_REG_ADDRESS                  0x5Eu  //!< Routing on INT1 register address                                       (Read/Write)
+#define MD2_CFG_REG_ADDRESS                  0x5Fu  //!< Routing on INT2 register address                                       (Read/Write)
 
 // Manufacturer ID
 #define MANUFACTURER_ID                      0x69u  //!< Manufacturer ID
@@ -169,6 +173,19 @@ enum
   E_Acc_Tap_EnableAll  = 0x07
 };
 typedef uint8_t T_Acc_Tap;  //!< Accelerometer tap recognition
+
+enum
+{
+  E_Acc_FreeFallThreshold_156g,
+  E_Acc_FreeFallThreshold_219g,
+  E_Acc_FreeFallThreshold_250g,
+  E_Acc_FreeFallThreshold_312g,
+  E_Acc_FreeFallThreshold_344g,
+  E_Acc_FreeFallThreshold_406g,
+  E_Acc_FreeFallThreshold_469g,
+  E_Acc_FreeFallThreshold_500g
+};
+typedef uint8_t T_Acc_FreeFallThreshold;  //!< Accelerometer tap recognition
 
 enum
 {
@@ -274,8 +291,8 @@ static const char* Tag = "lsm6ds3us";
 
 static const T_GpioPinConfig PinConfig[2] =
 {
-  {ACC_INT1_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable},
-  {ACC_INT2_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable}
+  {ACC_INT1_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_RisingEdge},
+  {ACC_INT2_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_RisingEdge}
 };
 
 static int16_t Buffer[3][10];
@@ -298,6 +315,18 @@ static int32_t Div = 0;
 //! \return    None
 static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate);
 
+//! \brief     Configure the INT1 interrupt
+//! \pre       None
+//! \param     None
+//! \return    None
+static void ConfigureINT1(uint8_t interrupt);
+
+//! \brief     Configure the INT2 interrupt
+//! \pre       None
+//! \param     None
+//! \return    None
+static void ConfigureINT2(uint8_t interrupt);
+
 //! \brief     Configure the accelerometer tap recognition
 //! \pre       None
 //! \param     None
@@ -309,6 +338,12 @@ static void ConfigureTap(T_Acc_Tap config);
 //! \param     None
 //! \return    None
 static void UpdateTapThreshold(T_Acc_TapThreshold threshold);
+
+//! \brief     Configure the free-fall detection
+//! \pre       None
+//! \param     None
+//! \return    None
+static void UpdateFreeFall(T_Acc_FreeFallThreshold threshold, uint8_t duration);
 
 //! \brief     Read the acceleration
 //! \pre       None
@@ -423,10 +458,15 @@ void LSM6DS3US_InitAccelerometer(void)
     Gpio_ConfigurePin(&PinConfig[index]);
   }
 
-  UpdateAccOutputDataRate(E_Acc_OutputDataRate_104Hz);
+  UpdateAccOutputDataRate(E_Acc_OutputDataRate_416Hz);
+
+  ConfigureINT1(0x10);
+  ConfigureINT2(0x40);
 
   ConfigureTap(E_Acc_Tap_EnableAll);
-  UpdateTapThreshold(E_Acc_TapThreshold_MidLow);
+  UpdateTapThreshold(E_Acc_TapThreshold_Mid);
+
+  UpdateFreeFall(E_Acc_FreeFallThreshold_312g, 6);
 
   ESP_LOGI(Tag, "LSM6DS3US accelerometer is initialized");
 }
@@ -470,6 +510,24 @@ static void UpdateAccOutputDataRate(T_Acc_OutputDataRate rate)
 
 //_____________________________________________________________________________
 
+static void ConfigureINT1(uint8_t interrupt)
+{
+  uint8_t data = interrupt;
+
+  I2C_WriteToAddress(SLAVE_ADDRESS, MD1_CFG_REG_ADDRESS, &data, 1u);
+}
+
+//_____________________________________________________________________________
+
+static void ConfigureINT2(uint8_t interrupt)
+{
+  uint8_t data = interrupt;
+
+  I2C_WriteToAddress(SLAVE_ADDRESS, MD2_CFG_REG_ADDRESS, &data, 1u);
+}
+
+//_____________________________________________________________________________
+
 static void ConfigureTap(T_Acc_Tap config)
 {
   uint8_t data = 0x00u;
@@ -482,6 +540,10 @@ static void ConfigureTap(T_Acc_Tap config)
     data |= (config << ACC_TAP_EN_BIT_POS);
 
     I2C_WriteToAddress(SLAVE_ADDRESS, TAP_CFG_REG_ADDRESS, &data, 1u);
+
+    // TODO check if needed
+    data = 0x06;
+    I2C_WriteToAddress(SLAVE_ADDRESS, INT_DUR2_REG_ADDRESS, &data, 1u);
   }
 }
 
@@ -499,6 +561,26 @@ static void UpdateTapThreshold(T_Acc_TapThreshold threshold)
     data |= threshold;
 
     I2C_WriteToAddress(SLAVE_ADDRESS, TAP_THS_6D_REG_ADDRESS, &data, 1u);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void UpdateFreeFall(T_Acc_FreeFallThreshold threshold, uint8_t duration)
+{
+  uint8_t data = 0x00u;
+
+  if (threshold <= E_Acc_FreeFallThreshold_500g)
+  {
+    if (duration > 31)
+    {
+      duration = 31;
+    }
+
+    data = (duration << 3);
+    data |= threshold;
+
+    I2C_WriteToAddress(SLAVE_ADDRESS, FREE_FALL_REG_ADDRESS, &data, 1u);
   }
 }
 
@@ -558,8 +640,6 @@ void LSM6DS3US_InitGyroscope(void)
   UpdateFifoOutputDataRate(E_Fifo_OutputDataRate_104Hz);
   UpdateGyroFifoDecimationSetting(E_Decimation_1);
   //UpdateFifoThreshold(1500);
-
-  EnableGyroDataReadyInterrupt(E_Interrupt_INT2);
 
   ESP_LOGI(Tag, "LSM6DS3US gyroscope is initialized");
 }

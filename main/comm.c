@@ -26,6 +26,7 @@
 
 #include "comm.h"
 
+#include "aseba_esp32.h"
 #include "behavior.h"
 #include "board.h"
 #include "i2c.h"
@@ -151,6 +152,8 @@ static void RunCommTask(void* arg)
     STM32_ReadMotorCurrent();
     STM32_ReadPwmDutyCycle();
 //#endif
+
+    SET_EVENT(EVENT_STM32);
 
     //Spi_WriteVSPI(Microcontroller, tx, 5);
 

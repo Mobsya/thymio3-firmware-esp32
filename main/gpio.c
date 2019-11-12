@@ -26,6 +26,7 @@
 #include "freertos/queue.h"
 #include "esp_log.h"
 
+#include "aseba_esp32.h"
 #include "gpio.h"
 #include "board.h"
 
@@ -54,6 +55,9 @@ typedef struct
 //-----------------------------------------------------------------------------
 
 static const char* Tag = "gpio";
+
+static bool FreeFall = false;
+static bool Tap = false;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -152,6 +156,34 @@ T_GpioLevel Gpio_GetPinLevel(uint16_t pinNumber)
   }
 
   return level;
+}
+
+//_____________________________________________________________________________
+
+bool Gpio_IsFreeFallDetected(void)
+{
+  return FreeFall;
+}
+
+//_____________________________________________________________________________
+
+void Gpio_ClearFreeFallStatus(void)
+{
+  FreeFall = false;
+}
+
+//_____________________________________________________________________________
+
+bool Gpio_IsTapDetected(void)
+{
+  return Tap;
+}
+
+//_____________________________________________________________________________
+
+void Gpio_ClearTapStatus(void)
+{
+  Tap = false;
 }
 
 //_____________________________________________________________________________
@@ -265,12 +297,14 @@ static gpio_int_type_t SetInterrupt(T_GpioInterrupt interrupt)
 
 static void IRAM_ATTR ISR_GPIOHandler(void* arg)
 {
-#if 0  // Uncomment if used
   uint32_t gpio_num = (uint32_t) arg;
 
-
-  if (gpio_num == pin name)
+  if (gpio_num == ACC_INT1_PIN)
   {
+    FreeFall = true;
+    SET_EVENT(EVENT_FREEFALL);
+
+#if 0
     if (Gpio_GetPinLevel(gpio_num) == E_GpioLevel_High)
     {
 
@@ -279,6 +313,12 @@ static void IRAM_ATTR ISR_GPIOHandler(void* arg)
     {
 
     }
-  }
 #endif
+  }
+
+  if (gpio_num == ACC_INT2_PIN)
+  {
+    Tap = true;
+    SET_EVENT(EVENT_TAP);
+  }
 }

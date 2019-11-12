@@ -81,7 +81,7 @@ void ColorSensor_ReadColor(void)
   vmVariables.color[2] = Illuminance.Blue;
   vmVariables.color[3] = Illuminance.Clear;
 
-  SET_EVENT(EVENT_COLOR);
+  //SET_EVENT(EVENT_COLOR);
 
   DetectColor();
 }

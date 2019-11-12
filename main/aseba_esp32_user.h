@@ -99,6 +99,7 @@ struct _vmVariables
   int16_t led_front_right[3];
   int16_t led_back_left[3];
   int16_t led_back_right[3];
+  int16_t led_color_sensor[3];
   int16_t leds_ground[2];
   int16_t freeSpace[VM_VARIABLES_FREE_SPACE];
 };
@@ -110,18 +111,20 @@ enum Event
   EVENT_B_CENTER,
   EVENT_B_FORWARD,
   EVENT_B_RIGHT,
-  EVENT_BUTTONS,
-  EVENT_PROX,
+  EVENT_SENSORS,
+  EVENT_STM32,
+//  EVENT_BUTTONS,
+//  EVENT_PROX,
   //EVENT_DATA,
   EVENT_TAP,
-  EVENT_ACC,
-  EVENT_GYRO,
-  //EVENT_MIC,
+  EVENT_FREEFALL,
+//  EVENT_ACC,
+//  EVENT_GYRO,
+  EVENT_MIC,
   //EVENT_SOUND_FINISHED,
-  //EVENT_TEMPERATURE,
-  //EVENT_RC5,
-  EVENT_MOTOR,
-  EVENT_COLOR,
+  EVENT_RC5,
+//  EVENT_MOTOR,
+//  EVENT_COLOR,
   // Must be consecutive
   EVENT_TIMER0,
   EVENT_TIMER1,

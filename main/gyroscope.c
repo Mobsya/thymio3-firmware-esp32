@@ -96,7 +96,7 @@ void Gyroscope_ReadAngle(void)
 
   //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", vmVariables.angle_deg[0], vmVariables.angle_deg[1], vmVariables.angle_deg[2]);
 
-  SET_EVENT(EVENT_GYRO);
+  //SET_EVENT(EVENT_GYRO);
 }
 
 //_____________________________________________________________________________

@@ -27,6 +27,7 @@
 #include "sensors.h"
 
 #include "accelerometer.h"
+#include "aseba_esp32.h"
 #include "board.h"
 #include "buttons.h"
 #include "codec.h"
@@ -155,6 +156,8 @@ static void RunSensorsTask(void* arg)
     Gyroscope_ReadAngularVelocity();
     Gyroscope_ReadAngle();
     ColorSensor_ReadColor();
+
+    SET_EVENT(EVENT_SENSORS);
 
     xSemaphoreGive(I2CMutex);
 

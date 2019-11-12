@@ -240,7 +240,7 @@ static void RunRXTask(void* arg)
             {
               vmVariables.rc5_address = Address;
               vmVariables.rc5_command = Command;
-              //SET_EVENT(EVENT_RC5);
+              SET_EVENT(EVENT_RC5);
 
               OldToggle = Toggle;
             }

@@ -73,6 +73,24 @@ extern void Accelerometer_ReadTapSource(void);
 //! \return    None
 extern uint8_t Accelerometer_GetTapSource(void);
 
+//! \brief     Is a tap detected (from interrupt)
+//! \pre       First initialize the accelerometer
+//! \param     None
+//! \return    True if a tap has been detected by the interrupt, false otherwise
+extern bool Accelerometer_IsTapDetected(void);
+
+//! \brief     Clear the acceleration tap status
+//! \pre       First initialize the accelerometer
+//! \param     None
+//! \return    None
+extern void Accelerometer_ClearTapStatus(void);
+
+//! \brief     Is a free fall detected (from interrupt)
+//! \pre       First initialize the accelerometer
+//! \param     None
+//! \return    True if a free fall has been detected by the interrupt, false otherwise
+extern bool Accelerometer_IsFreeFallDetected(void);
+
 //! \brief     Check the accelerometer
 //! \pre       First initialize the accelerometer
 //! \param     None
