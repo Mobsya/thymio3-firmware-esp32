@@ -138,7 +138,7 @@ void play_mp3_sys(AsebaVMState* vm)
   char name[13] = {'p'};
   int number = vm->variables[AsebaNativePopArg(vm)];
 
-  ESP_LOGE(Tag, "Number = %d", number);
+  //ESP_LOGE(Tag, "Number = %d", number);
 
   Codec_PlayMP3FileFromFlash(number);
 }
@@ -160,7 +160,7 @@ void play_mp3(AsebaVMState* vm)
   char name[13] = {'p'};
   int number = vm->variables[AsebaNativePopArg(vm)];
 
-  ESP_LOGE(Tag, "Number = %d", number);
+  //ESP_LOGE(Tag, "Number = %d", number);
 
   Codec_PlayMP3File(number);
 }
@@ -767,30 +767,6 @@ void set_sound_leds(AsebaVMState* vm)
 
 //_____________________________________________________________________________
 
-AsebaNativeFunctionDescription AsebaNativeDescription_set_ntc_leds =
-{
-  "leds.temperature",
-  "Set ntc led",
-  {
-    {1, "red"},
-    {1, "blue"},
-    {0, 0},
-  }
-};
-
-void set_ntc_leds(AsebaVMState* vm)
-{
-  int l1 = vm->variables[AsebaNativePopArg(vm)];
-  int l2 = vm->variables[AsebaNativePopArg(vm)];
-#if 0 // FIXME
-  Behavior_Disable(B_LEDS_TEMPERATURE);
-#endif
-  //Leds_SetSingleBrightness(E_Led_Temp_Red, l1);
-  //Leds_SetSingleBrightness(E_Led_Temp_Blue, l2);
-}
-
-//_____________________________________________________________________________
-
 AsebaNativeFunctionDescription AsebaNativeDescription_play_freq =
 {
   "sound.freq",
@@ -869,122 +845,6 @@ void prox_network(AsebaVMState* vm)
   {
     prox_disable_network();
   }
-#endif
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_sd_open =
-{
-  "sd.open",
-  "Open a file on the SD card",
-  {
-    {1, "number"},
-    {1, "status"},
-    {0, 0},
-  }
-};
-
-void thymio_native_sd_open(AsebaVMState* vm)
-{
-  int no = vm->variables[AsebaNativePopArg(vm)];
-  unsigned int status = AsebaNativePopArg(vm);
-  char name[13] = {'u'};
-  char* p;
-#if 0 // FIXME
-
-  if (no == -1)
-  {
-    sd_user_open(NULL);
-    vm->variables[status] = 0;
-  }
-  else
-  {
-    p = _prepare_name(no, &name[1]);
-    *p++ = '.';
-    *p++ = 'd';
-    *p++ = 'a';
-    *p++ = 't';
-    *p++ = 0;
-    vm->variables[status] = sd_user_open(name);
-  }
-#endif
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_sd_write =
-{
-  "sd.write",
-  "Write data to the opened file",
-  {
-    {-1, "data"},
-    {1, "written"},
-    {0, 0},
-  }
-};
-
-void thymio_native_sd_write(AsebaVMState* vm)
-{
-#if 0
-  // variable pos
-  unsigned char* data = (unsigned char*)(vm->variables + AsebaNativePopArg(vm));
-  uint16_t status = AsebaNativePopArg(vm);
-
-  // variable size
-  uint16_t length = AsebaNativePopArg(vm) * 2;
-
-  vm->variables[status] = sd_user_write(data, length) / 2;
-#endif
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_sd_read =
-{
-  "sd.read",
-  "Read data from the opened file",
-  {
-    {-1, "data"},
-    {1, "read"},
-    {0, 0},
-  }
-};
-
-void thymio_native_sd_read(AsebaVMState* vm)
-{
-#if 0
-  // variable pos
-  unsigned char* data = (unsigned char*)(vm->variables + AsebaNativePopArg(vm));
-  uint16_t status = AsebaNativePopArg(vm);
-
-  // variable size
-  uint16_t length = AsebaNativePopArg(vm) * 2;
-
-  vm->variables[status] = sd_user_read(data, length) / 2;
-#endif
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_sd_seek =
-{
-  "sd.seek",
-  "Seek the opened file",
-  {
-    {1, "position"},
-    {1, "status"},
-    {0, 0},
-  }
-};
-
-void thymio_native_sd_seek(AsebaVMState* vm)
-{
-#if 0
-  unsigned long seek =  vm->variables[AsebaNativePopArg(vm)];
-  unsigned int status = AsebaNativePopArg(vm);
-
-  vm->variables[status] = sd_user_seek(seek * 2);
 #endif
 }
 
