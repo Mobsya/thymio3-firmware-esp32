@@ -408,7 +408,7 @@ static void UpdateLedsCircle(void)
       brightness[index] = vmVariables.leds_circle[index];
 
       Behavior_Disable(B_LEDS_CIRCLE);
-      Leds_SetSingleBrightness((E_Led_Circle_0 + index), brightness[index]);
+      Leds_SetSingleBrightness((E_Led_Circle_N + index), brightness[index]);
     }
   }
 }

@@ -51,14 +51,14 @@ enum
   E_Led_White_Sensor,    // U26.GH --> D20
 
   // LEDs connected to U27
-  E_Led_Circle_0,        // U27.QA --> D27
-  E_Led_Circle_1,        // U27.QB --> D30
-  E_Led_Circle_2,        // U27.QC --> D33
-  E_Led_Circle_3,        // U27.QD --> D36
-  E_Led_Circle_4,        // U27.QE --> D39
-  E_Led_Circle_5,        // U27.QF --> D42
-  E_Led_Circle_6,        // U27.QG --> D45
-  E_Led_Circle_7,        // U27.QH --> D48
+  E_Led_Circle_N,        // U27.QA --> D27
+  E_Led_Circle_NE,       // U27.QB --> D30
+  E_Led_Circle_E,        // U27.QC --> D33
+  E_Led_Circle_SE,       // U27.QD --> D36
+  E_Led_Circle_S,        // U27.QE --> D39
+  E_Led_Circle_SW,       // U27.QF --> D42
+  E_Led_Circle_W,        // U27.QG --> D45
+  E_Led_Circle_NW,       // U27.QH --> D48
 
   // LEDs connected to U25
   E_Led_R_Front_Left,    // U25.QA --> D19 Red

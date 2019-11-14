@@ -216,14 +216,14 @@ void Leds_SetSingleBrightness(T_Led led, uint8_t brightness)
 void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
                               uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
 {
-  Leds_SetSingleBrightness(E_Led_Circle_0, l0);
-  Leds_SetSingleBrightness(E_Led_Circle_1, l1);
-  Leds_SetSingleBrightness(E_Led_Circle_2, l2);
-  Leds_SetSingleBrightness(E_Led_Circle_3, l3);
-  Leds_SetSingleBrightness(E_Led_Circle_4, l4);
-  Leds_SetSingleBrightness(E_Led_Circle_5, l5);
-  Leds_SetSingleBrightness(E_Led_Circle_6, l6);
-  Leds_SetSingleBrightness(E_Led_Circle_7, l7);
+  Leds_SetSingleBrightness(E_Led_Circle_N, l0);
+  Leds_SetSingleBrightness(E_Led_Circle_NE, l1);
+  Leds_SetSingleBrightness(E_Led_Circle_E, l2);
+  Leds_SetSingleBrightness(E_Led_Circle_SE, l3);
+  Leds_SetSingleBrightness(E_Led_Circle_S, l4);
+  Leds_SetSingleBrightness(E_Led_Circle_SW, l5);
+  Leds_SetSingleBrightness(E_Led_Circle_W, l6);
+  Leds_SetSingleBrightness(E_Led_Circle_NW, l7);
 }
 
 //_____________________________________________________________________________

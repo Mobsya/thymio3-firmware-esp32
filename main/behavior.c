@@ -222,24 +222,20 @@ static void RunBehaviors(void)
     SetButtonsLeds();
   }
 
-  //#if 0  // FIXME
   if (ENABLED(B_SOUND_BUTTON))
   {
     PlaySoundButtons();
   }
-  //#endif
 
   if (ENABLED(B_MODE))
   {
     Mode_Run();
   }
 
-#if 0  // FIXME
   if (ENABLED(B_LEDS_ACC))
   {
     SetAccelerometerLeds();
   }
-#endif
 
 //#if 0
   if (ENABLED(B_SETTING))
@@ -372,52 +368,52 @@ static void SetAccelerometerLeds(void)
   // FIXME: Use vmVariables ?!
   if (vmVariables.acc[2] < 16800)  // 21
   {
-    int ha = (aseba_atan2(vmVariables.acc[0], vmVariables.acc[1]) / 2);
+    //int ha = (aseba_atan2(vmVariables.acc[0], vmVariables.acc[1]) / 2);
+    int ha = (aseba_atan2(vmVariables.acc[1], vmVariables.acc[0]) / 2);
 
     //printf("z = %d\n", vmVariables.acc[2]);
     //printf("ha = %d\n", ha);
 
     if ((ha >= -2000) && (ha < 2000))
     {
-      led = E_Led_Circle_4;
+      led = E_Led_Circle_N;
     }
     else if ((ha < -2000) && (ha >= -6000))
     {
-      led = E_Led_Circle_3;
+      led = E_Led_Circle_NE;
     }
     else if (ha < -6000 && ha >= -10000)
     {
-      led = E_Led_Circle_2;
+      led = E_Led_Circle_E;
     }
     else if ((ha < -10000) && (ha >= -14000))
     {
-      led = E_Led_Circle_1;
+      led = E_Led_Circle_SE;
     }
     else if ((ha  < -14000) || (ha >= 14000))
     {
-      led = E_Led_Circle_0;
+      led = E_Led_Circle_S;
     }
     else if ((ha < 6000) && (ha >= 2000))
     {
-      led = E_Led_Circle_5;
+      led = E_Led_Circle_NW;
     }
     else if ((ha < 10000) && (ha >= 6000))
     {
-      led = E_Led_Circle_6;
+      led = E_Led_Circle_W;
     }
     else if ((ha < 14000) && (ha >= 10000))
     {
-      led = E_Led_Circle_7;
+      led = E_Led_Circle_SW;
     }
     else
     {
       // Do nothing
     }
 
-    //intensity = (40 - (abs(vmVariables.acc[2]) * 2));  // TODO
-    intensity = MAX_BRIGHTNESS;
+    intensity = (16 - (abs(vmVariables.acc[2]) >> 10));
 
-    if (intensity < 0)
+    if ((intensity < 0) || ((abs(vmVariables.acc[0]) + abs(vmVariables.acc[1])) <= 2500))
     {
       intensity = 0;
     }

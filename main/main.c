@@ -127,10 +127,8 @@ int app_main(void)
 
   Behavior_Init();
 
-  //Behavior_Enable(B_ALWAYS | B_LEDS_PROX);  // FIXME Replace by Mode_Init()
-
   Mode_Init();
-  Mode_InitVM();
+  //Mode_InitVM();
 
   WIFI_Init();
   //AsebaESP32_Init();
