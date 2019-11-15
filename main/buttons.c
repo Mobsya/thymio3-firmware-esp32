@@ -39,8 +39,6 @@
 #define TOUCH_THRESH_PERCENT  (80)
 #define TOUCHPAD_FILTER_TOUCH_PERIOD (10)
 
-#define BUTTONS_NUM            5u
-
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -94,13 +92,15 @@ void Buttons_Init(void)
   // the high reference voltage will be 2.7V - 1V = 1.7V, The low reference voltage will be 0.5V.
   touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
 
+  //touch_pad_set_trigger_mode(TOUCH_TRIGGER_BELOW);
+
   // Init touch pad IO
   InitTouchPad();
 
   // Initialize and start a software filter to detect slight change of capacitance.
   touch_pad_filter_start(TOUCHPAD_FILTER_TOUCH_PERIOD);
 
-  // Set thresh hold
+  // Set threshold
   SetThresholds();
 
   // Register touch interrupt ISR
@@ -133,41 +133,17 @@ void Buttons_ClearStatus(void)
 
 void Buttons_UpdateStatus(void)
 {
-  //static uint8_t oldButtonStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
+  //SetThresholds();
 
   for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
   {
     //touch_pad_read_raw_data(Buttons_Table[button], &ButtonRaw[button]);
     touch_pad_read_filtered(Buttons_Table[button], &ButtonRaw[button]);
 
-    //if (button == 1)
-    {
-      //ESP_LOGI(Tag, "COUCOU Raw%d %d", button, ButtonRaw[button]);
-    }
-
     if (ButtonStatus[button] != 0u)
     {
-      if (button == 0)  // Backward
-      {
-        ESP_LOGI(Tag, "SALUT Raw%d %d", button, ButtonRaw[button]);
-      }
-      //ESP_LOGI(Tag, "COUCOU Raw%d %d", button, ButtonRaw[button]);
-      //ESP_LOGI(Tag, "COUCOU T%d activated!", Buttons_Table[index]);
-
-      // Wait a while for the pad being released
-//      vTaskDelay(200 / portTICK_PERIOD_MS);
       ButtonBehaviorStatus[button] = 1;
       ButtonStatus[button] = 0u;
-      //oldButtonStatus[button] = 1u;
-    }
-    //else if (oldButtonStatus[button] == 0)
-    {
-      //ButtonBehaviorStatus[button] = 0;
-      //oldButtonStatus[button] = 0u;
-    }
-    //else
-    {
-      //oldButtonStatus[button] = 0u;
     }
 
     vmVariables.buttons_state[button] = (int16_t)ButtonBehaviorStatus[button];
@@ -198,7 +174,7 @@ static void Callback_DetectionTouchPad(void* arg)
 {
   uint32_t pad_intr = touch_pad_get_status();
 
-  //clear interrupt
+  // Clear interrupt
   touch_pad_clear_status();
 
   for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
@@ -210,7 +186,7 @@ static void Callback_DetectionTouchPad(void* arg)
     }
   }
 
-  SET_EVENT(EVENT_BUTTONS);
+  //SET_EVENT(EVENT_BUTTONS);
 }
 
 //_____________________________________________________________________________
@@ -221,11 +197,36 @@ static void SetThresholds(void)
 
   for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
   {
-    //read filtered value
+    // Read filtered value
     touch_pad_read_filtered(Buttons_Table[button], &value);
-//    s_pad_init_val[button] = value;
-//    ESP_LOGI(Tag, "test init: touch pad [%d] val is %d", button, touch_value);
-    //set interrupt threshold.
-    ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 13 / 14));  // for proto 1 16 / 17                // 19 / 20
+
+    ESP_LOGE(Tag, "test init: touch pad [%d] val is %d", button, value);
+
+    // Set interrupt threshold
+    if (button == 0)
+    {
+      // Backward threshold
+      ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 19 / 20));
+    }
+    else if (button == 1)
+    {
+      // Left threshold
+      ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 19 / 20));
+    }
+    else if (button == 2)
+    {
+      // Center threshold
+      ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 19 / 20));
+    }
+    else if (button == 3)
+    {
+      // Forward threshold
+      ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 19 / 20));
+    }
+    else if (button == 4)
+    {
+      // Right threshold
+      ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 19 / 20));
+    }
   }
 }

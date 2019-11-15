@@ -22,6 +22,7 @@
 //-----------------------------------------------------------------------------
 
 #include "error.h"
+#include "lsm6ds3us.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -54,6 +55,8 @@ extern void Accelerometer_Init(void);
 //! \param     None
 //! \return    None
 extern void Accelerometer_ReadAcceleration(void);
+
+extern T_Axis Accelerometer_GetAcceleration(void);
 
 //! \brief     Get the acceleration on Y-axis
 //! \pre       First initialize the accelerometer

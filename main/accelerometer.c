@@ -24,7 +24,6 @@
 
 #include "aseba_esp32.h"
 #include "gpio.h"
-#include "lsm6ds3us.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -78,6 +77,13 @@ void Accelerometer_ReadAcceleration(void)
   vmVariables.acc[2] = Acceleration.Z;
 
   //SET_EVENT(EVENT_ACC);
+}
+
+//_____________________________________________________________________________
+
+T_Axis Accelerometer_GetAcceleration(void)
+{
+  return Acceleration;
 }
 
 //_____________________________________________________________________________

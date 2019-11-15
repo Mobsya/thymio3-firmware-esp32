@@ -28,14 +28,12 @@
 
 #include "behavior.h"
 
-#include "aseba_esp32.h"
-#include "board.h"
+#include "accelerometer.h"
 #include "buttons.h"
 #include "codec.h"
 #include "leds.h"
 #include "mode.h"
 #include "rc5.h"
-#include "stm32_i2c.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -115,6 +113,10 @@ static void SetAccelerometerLeds(void);
 //! \return    None
 static void UpdateSettings(void);
 
+//! \brief     Play the sound buttons
+//! \pre       None
+//! \param     None
+//! \return    None
 static void PlaySoundButtons(void);
 
 //-----------------------------------------------------------------------------
@@ -165,10 +167,6 @@ void Behavior_Stop(void)
 void Behavior_Enable(uint16_t b)
 {
   ENABLE(b);
-
-  //behavior |= b;
-
-  STM32_UpdateBehaviorStatus(Behavior);
 }
 
 //_____________________________________________________________________________
@@ -176,10 +174,6 @@ void Behavior_Enable(uint16_t b)
 void Behavior_Disable(uint16_t b)
 {
   DISABLE(b);
-
-  //behavior &= ~b;
-
-  STM32_UpdateBehaviorStatus(Behavior);
 }
 
 //_____________________________________________________________________________
@@ -251,26 +245,15 @@ static void RunBehaviors(void)
 
 static void SetRC5Led(void)
 {
-//#if 0
-  // Switch on for a short time when we have a valid rc5 code ..
-  //when (rc5_valid_flag == 0)
-  //when (!RC5_IsFrameValid())
-  {
-    //Leds_SetSingleBrightness(E_Led_RC5, 0);
-  }
-
-  //if (rc5_valid_flag)
   if (RC5_IsFrameValid())
   {
-    //rc5_valid_flag = 0;
     RC5_ClearFrameValidity();
     Leds_SetSingleBrightness(E_Led_RC5, MAX_BRIGHTNESS);
   }
   else
   {
-    Leds_SetSingleBrightness(E_Led_RC5, 0);
+    Leds_SetSingleBrightness(E_Led_RC5, 0u);
   }
-//#endif
 }
 
 //_____________________________________________________________________________
@@ -360,49 +343,46 @@ int16_t aseba_atan2(int16_t y, int16_t x); // We use a function which should be 
 
 static void SetAccelerometerLeds(void)
 {
-  static int previous_led;
+  static int16_t previousLed = 0;
+  int16_t intensity = 0;
+  int16_t led = -1;
+  int16_t tilt = 0;
 
-  int intensity;
-  int led = -1;
+  T_Axis acc = Accelerometer_GetAcceleration();
 
-  // FIXME: Use vmVariables ?!
-  if (vmVariables.acc[2] < 16800)  // 21
+  if (acc.Z < 16800)
   {
-    //int ha = (aseba_atan2(vmVariables.acc[0], vmVariables.acc[1]) / 2);
-    int ha = (aseba_atan2(vmVariables.acc[1], vmVariables.acc[0]) / 2);
+    tilt = (aseba_atan2(acc.Y, acc.X) / 2);
 
-    //printf("z = %d\n", vmVariables.acc[2]);
-    //printf("ha = %d\n", ha);
-
-    if ((ha >= -2000) && (ha < 2000))
+    if ((tilt >= -2000) && (tilt < 2000))
     {
       led = E_Led_Circle_N;
     }
-    else if ((ha < -2000) && (ha >= -6000))
+    else if ((tilt < -2000) && (tilt >= -6000))
     {
       led = E_Led_Circle_NE;
     }
-    else if (ha < -6000 && ha >= -10000)
+    else if (tilt < -6000 && tilt >= -10000)
     {
       led = E_Led_Circle_E;
     }
-    else if ((ha < -10000) && (ha >= -14000))
+    else if ((tilt < -10000) && (tilt >= -14000))
     {
       led = E_Led_Circle_SE;
     }
-    else if ((ha  < -14000) || (ha >= 14000))
+    else if ((tilt  < -14000) || (tilt >= 14000))
     {
       led = E_Led_Circle_S;
     }
-    else if ((ha < 6000) && (ha >= 2000))
+    else if ((tilt < 6000) && (tilt >= 2000))
     {
       led = E_Led_Circle_NW;
     }
-    else if ((ha < 10000) && (ha >= 6000))
+    else if ((tilt < 10000) && (tilt >= 6000))
     {
       led = E_Led_Circle_W;
     }
-    else if ((ha < 14000) && (ha >= 10000))
+    else if ((tilt < 14000) && (tilt >= 10000))
     {
       led = E_Led_Circle_SW;
     }
@@ -411,34 +391,34 @@ static void SetAccelerometerLeds(void)
       // Do nothing
     }
 
-    intensity = (16 - (abs(vmVariables.acc[2]) >> 10));
+    intensity = (16 - (abs(acc.Z) >> 10));
 
-    if ((intensity < 0) || ((abs(vmVariables.acc[0]) + abs(vmVariables.acc[1])) <= 2500))
+    if ((intensity < 0) || ((abs(acc.X) + abs(acc.Y)) <= 2500))
     {
       intensity = 0;
     }
 
     if (led >= 0)
     {
-      if (previous_led >= 0)
+      if (previousLed >= 0)
       {
-        Leds_SetSingleBrightness(previous_led, 0u);
+        Leds_SetSingleBrightness(previousLed, 0u);
       }
 
       Leds_SetSingleBrightness(led, intensity);
     }
 
-    previous_led = led;
+    previousLed = led;
 
   }
   else
   {
-    if (previous_led >= 0)
+    if (previousLed >= 0)
     {
-      Leds_SetSingleBrightness(previous_led, 0u);
+      Leds_SetSingleBrightness(previousLed, 0u);
     }
 
-    previous_led = -1;
+    previousLed = -1;
   }
 }
 
