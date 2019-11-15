@@ -63,7 +63,7 @@ typedef enum
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void Mode_Init(void);
+extern void Mode_Init(bool enableVM);
 
 extern void Mode_InitVM(void);
 

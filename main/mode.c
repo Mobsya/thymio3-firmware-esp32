@@ -97,6 +97,8 @@ static uint16_t Position = 0u;
 static T_TimerSw* MovementTimer = NULL;  //!< Used to move the robot in obedient mode
 static T_TimerSw* StopTimer = NULL;      //!< Used to stop the robot in obedient mode
 
+static bool VMIsActive = false;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -167,7 +169,7 @@ static void Callback_TimerStop(void* arg);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void Mode_Init(void)
+void Mode_Init(bool enableVM)
 {
 #if 0  // TODO when the mode are defined
   // Init the defaults behaviors + our behavior.
@@ -187,8 +189,6 @@ void Mode_Init(void)
   }
 #endif
 
-  Behavior_Enable(B_ALWAYS | B_MODE);
-
   ButtonsSeqFifo = Fifo8bits_Create(ButtonsSeqBuffer, BUTTONS_SEQ_BUFFER_SIZE);
   RecordSequenceIsFinished = false;
   MovementIsStarted = false;
@@ -198,6 +198,22 @@ void Mode_Init(void)
   StopTimerIsRunning = false;
   MovementTimer = TimerSw_Create(MOVEMENT_DURATION_us, Callback_TimerMovement);
   StopTimer = TimerSw_Create(STOP_DURATION_us, Callback_TimerStop);
+
+  VMIsActive = enableVM;
+
+  StartMode(E_Mode_Menu);
+
+  if (VMIsActive)
+  {
+    SelectMode = E_Mode_Menu;
+  }
+  else
+  {
+	SelectMode = E_Mode_Follower;
+	SetModeColor(SelectMode);
+  }
+
+  Behavior_Enable(B_ALWAYS | B_MODE);
 
   ESP_LOGI(Tag, "Mode is initialized");
 }
@@ -233,7 +249,7 @@ void Mode_Run(void)
     when(buttonState[E_Button_Center])
     {
       ExitMode(CurrentMode);
-//#if 0  // FIXME
+
       if (SelectMode == E_Mode_Menu)
       {
         // Special case, if we select the mode menu stuff
@@ -241,7 +257,6 @@ void Mode_Run(void)
         Mode_InitVM();
         return;
       }
-//#endif
 
       if (SelectMode == CurrentMode)
       {
@@ -455,18 +470,7 @@ static bool IsModeEnabled(T_Mode mode)
 {
   bool result = true;
 
-#if 0  // FIXME
-  if ((temp == MODE_DRAW) || (temp == MODE_SIDE))
-  {
-    result = false;
-  }
-  else if ((mode == E_Mode_Menu) && !VMActive) // Here mode menu == VM mode
-  {
-    result = false;
-  }
-#endif
-
-  if (mode == E_Mode_Menu)
+  if ((mode == E_Mode_Menu) && !VMIsActive)
   {
     result = false;
   }

@@ -127,7 +127,7 @@ int app_main(void)
 
   Behavior_Init();
 
-  Mode_Init();
+  Mode_Init(false);
   //Mode_InitVM();
 
   WIFI_Init();
