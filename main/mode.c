@@ -58,10 +58,13 @@
 #define DIR_LOST     (10)
 #define DIR_FRONT     (0)
 
-#define ACC_OBSTACLE                 50
-#define ACC_FREE_FALL                14
+#define ACC_OBSTACLE                175
+#define ACC_FREE_FALL              1000
 
-#define DETECT  25
+#define DETECT                       85
+
+#define MIN_SPEED                  -600
+#define MAX_SPEED                   600
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -123,6 +126,8 @@ static void RunObedient(void);
 static void HandlePositiveSpeed(int16_t speed);
 
 static void HandleNegativeSpeed(int16_t speed);
+
+static void LimitSpeed(int16_t min, int16_t max);
 
 static int16_t GetBodyColorPulse(void);
 
@@ -338,6 +343,7 @@ static void StartMode(T_Mode mode)
     case E_Mode_Shy:
       Behavior_Enable(B_LEDS_PROX);
       Behavior_Enable(B_LEDS_ACC);
+      Accelerometer_ClearTapStatus();  // Clear any tap made before entering this mode
       break;
 
     case E_Mode_Attentive:
@@ -351,6 +357,7 @@ static void StartMode(T_Mode mode)
     case E_Mode_Obedient:
       Behavior_Enable(B_LEDS_PROX);
       RecordSequenceIsFinished = false;
+      Accelerometer_ClearTapStatus();  // Clear any tap made before entering this mode
       break;
 
     default:
@@ -535,23 +542,23 @@ static void RunFollower(void)
   t = 2 - min;
   speedDiff = t * (speed / 2);
 
-  if (max > 175)
+  if (max > 600)
   {
-    speed_l = (175 - max) / 2;
+    speed_l = (600 - max) / 2;
   }
 
-  if (max > 200)
+  if (max > 700)
   {
     speed_l = -speed;
   }
 
-  if (max < 150)
+  if (max < 520)
   {
-    t = 15 - ((max - 100) / 7);
+    t = 52 - ((max - 175) / 7);
     speed_l = t;
   }
 
-  if (max < 100)
+  if (max < 350)
   {
     speed_l = speed;
   }
@@ -589,7 +596,7 @@ static void RunFollower(void)
 
   when(max > DETECT)
   {
-    Codec_PlayMP3FileFromFlash(4);
+    Codec_PlayMP3FileFromFlash(E_SystemSound_Detection);
   }
 
 #if 0
@@ -838,22 +845,25 @@ static void RunShy(void)
 {
   int16_t brightness = GetBodyColorPulse();
   bool play = false;
-  static unsigned int acc = 32;
-  static uint8_t counter = 0u;
+//  static unsigned int acc = 32;
+//  static uint8_t counter = 0u;
 
   // Red pulse
   //Leds_SetBodyBrightness(brightness, 0u, 0u);
 
   //acc = acc + acc + acc + abs(vmVariables.acc[0]) + abs(vmVariables.acc[1]) + abs(vmVariables.acc[2]);
   //acc >>= 2;
-  acc = abs(vmVariables.acc[0]) + abs(vmVariables.acc[1]) + abs(vmVariables.acc[2]);
+  //acc = abs(vmVariables.acc[0]) + abs(vmVariables.acc[1]) + abs(vmVariables.acc[2]);
 
-  if (acc < ACC_FREE_FALL)
+  //if (acc < ACC_FREE_FALL)
+  if (Accelerometer_IsFreeFallDetected())
   {
-    ESP_LOGE(Tag, "acc = %d", acc);
+    //ESP_LOGE(Tag, "acc = %d", acc);
+    ESP_LOGE(Tag, "FREE FALL DETECTED");
     play = true;
   }
 
+#if 0
   when(acc > ACC_FREE_FALL)
   {
     Leds_SetBodyBrightness((MAX_BRIGHTNESS / 2), 0u, 0u);
@@ -882,7 +892,16 @@ static void RunShy(void)
     // Red pulse
     Leds_SetBodyBrightness(brightness, 0u, 0u);
   }
+#endif
 
+#if 0
+  if (Accelerometer_IsTapDetected())
+  {
+    Codec_PlayMP3FileFromFlash(E_SystemSound_Tick);
+  }
+#endif
+
+//#if 0
   // Moving part.
   if ((vmVariables.prox[1] > ACC_OBSTACLE) && (vmVariables.prox[2] > ACC_OBSTACLE)
       && (vmVariables.prox[3] > ACC_OBSTACLE) &&
@@ -934,29 +953,11 @@ static void RunShy(void)
     leds_set_bl(0, 0, 0);
   }
 #endif
-  if (vmVariables.target[0] < -600)
-  {
-    vmVariables.target[0] = -600;
-  }
-
-  if (vmVariables.target[1] < -600)
-  {
-    vmVariables.target[1] = -600;
-  }
-
-  if (vmVariables.target[0] > 600)
-  {
-    vmVariables.target[0] = 600;
-  }
-
-  if (vmVariables.target[1] > 600)
-  {
-    vmVariables.target[1] = 600;
-  }
-
+  LimitSpeed(MIN_SPEED, MAX_SPEED);
+//#endif
   when(play)
   {
-    Codec_PlayMP3FileFromFlash(3);
+    Codec_PlayMP3FileFromFlash(E_SystemSound_Fall);
   }
 }
 
@@ -974,12 +975,12 @@ static void RunAttentive(void)
 
   when(acceleration >= 15000)  // Left side
   {
-    Codec_PlayMP3FileFromFlash(3);
+    Codec_PlayMP3FileFromFlash(E_SystemSound_Startup);
   }
 
   when(acceleration <= -15000)  // Right side
   {
-    Codec_PlayMP3FileFromFlash(4);
+    Codec_PlayMP3FileFromFlash(E_SystemSound_Bye);
   }
 }
 
@@ -1100,32 +1101,7 @@ static void HandlePositiveSpeed(int16_t speed)
   vmVariables.target[1] = speed - (((temp1 - temp2) * speed) / 200); //2000);
 
   //printf("target = %d\n", vmVariables.target[0]);
-
-  if (vmVariables.target[0] < -600)
-  {
-    vmVariables.target[0] = -600;
-  }
-  else if (vmVariables.target[0] > 600)
-  {
-    vmVariables.target[0] = 600;
-  }
-  else
-  {
-    // Do nothing
-  }
-
-  if (vmVariables.target[1] < -600)
-  {
-    vmVariables.target[1] = -600;
-  }
-  else if (vmVariables.target[1] > 600)
-  {
-    vmVariables.target[1] = 600;
-  }
-  else
-  {
-    // Do nothing
-  }
+  LimitSpeed(MIN_SPEED, MAX_SPEED);
 }
 
 //_____________________________________________________________________________
@@ -1138,26 +1114,33 @@ static void HandleNegativeSpeed(int16_t speed)
   temp = ((int32_t)vmVariables.prox[5] * (int32_t)speed);
   vmVariables.target[1] = speed  + (temp / -300);
 
-  if (vmVariables.target[0] < -600)
+  LimitSpeed(MIN_SPEED, MAX_SPEED);
+}
+
+//_____________________________________________________________________________
+
+static void LimitSpeed(int16_t min, int16_t max)
+{
+  if (vmVariables.target[0] < min)
   {
-    vmVariables.target[0] = -600;
+    vmVariables.target[0] = min;
   }
-  else if (vmVariables.target[0] > 600)
+  else if (vmVariables.target[0] > max)
   {
-    vmVariables.target[0] = 600;
+    vmVariables.target[0] = max;
   }
   else
   {
     // Do nothing
   }
 
-  if (vmVariables.target[1] < -600)
+  if (vmVariables.target[1] < min)
   {
-    vmVariables.target[1] = -600;
+    vmVariables.target[1] = min;
   }
-  else if (vmVariables.target[1] > 600)
+  else if (vmVariables.target[1] > max)
   {
-    vmVariables.target[1] = 600;
+    vmVariables.target[1] = max;
   }
   else
   {
@@ -1592,7 +1575,6 @@ static void SetTargetAccordingToDirection(int16_t* direction)
 static void RecordButtonsSequence(uint8_t choice)
 {
   uint8_t* buttonState;
-  uint8_t  tap = Accelerometer_GetTapSource();
   uint8_t  data = 0u;
   int16_t command = 0;
 
@@ -1662,7 +1644,7 @@ static void RecordButtonsSequence(uint8_t choice)
     }
   }
 
-  when(tap)
+  when (Accelerometer_IsTapDetected())
   {
     if (!Fifo8bits_IsEmpty(ButtonsSeqFifo))  // Ready to play a new sequence
     {
@@ -1684,11 +1666,11 @@ static void RecordButtonsSequence(uint8_t choice)
 
 static void PlayMovementSequence(void)
 {
-  uint8_t  data = 0u;
-  uint8_t  next = 0u;
+  uint8_t data = 0u;
+  uint8_t next = 0u;
 
   static int16_t angleTarget = 0;
-  int16_t output = 0;
+  //int16_t output = 0;
 
   if (!Fifo8bits_IsEmpty(ButtonsSeqFifo))
   {
@@ -1725,7 +1707,6 @@ static void PlayMovementSequence(void)
 
       if (data == (1 << E_Button_Left))
       {
-        ESP_LOGI(Tag, "LEFT");
         RotationIsInProgress = true;
         angleTarget = 90;
         Gyroscope_ResetAngle();
@@ -1768,25 +1749,31 @@ static void PlayMovementSequence(void)
       TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
       StopTimerIsRunning = true;
     }
-    else if (!MovementIsInProgress && !MovementTimerIsRunning && !StopTimerIsRunning && RotationIsInProgress)
+    else if (RotationIsInProgress)
     {
-      output = AngleController_Update(angleTarget);
+      //output = AngleController_Update(angleTarget);
 
-      if (output == 0)
+      if (AngleController_Update(angleTarget) == 0)
       {
         RotationIsInProgress = false;
-
-        ESP_LOGI(Tag, "ROTATION FINISHED");
       }
     }
   }
   else if (!MovementTimerIsRunning && !RotationIsInProgress)  // Handle the last stop delay
   {
-    ESP_LOGI(Tag, "FINISHED");
-    TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
-    StopTimerIsRunning = true;
-
     RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence
+    ESP_LOGE(Tag, "Last movement finished");
+  }
+  else if (RotationIsInProgress)  // Handle the rotation at the end of the sequence
+  {
+    //output = AngleController_Update(angleTarget);
+
+    if (AngleController_Update(angleTarget) == 0)
+    {
+      RotationIsInProgress = false;
+      RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence
+      ESP_LOGE(Tag, "Last rotation finished");
+    }
   }
 }
 
