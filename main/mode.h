@@ -35,7 +35,7 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
-typedef enum
+enum
 {
   E_Mode_Menu,
   E_Mode_Follower,
@@ -45,7 +45,8 @@ typedef enum
   E_Mode_LineTracker,
   E_Mode_Obedient,
   E_Mode_Max = E_Mode_Obedient
-} T_Mode;
+};
+typedef int16_t T_Mode;  // Mode selection
 
 //-----------------------------------------------------------------------------
 // Exported Global Data

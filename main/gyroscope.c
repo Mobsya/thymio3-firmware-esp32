@@ -101,7 +101,21 @@ void Gyroscope_ReadAngle(void)
 
 //_____________________________________________________________________________
 
+int16_t Gyroscope_GetAngularVelocityZ(void)
+{
+  return AngularVelocity.Z;
+}
+
+//_____________________________________________________________________________
+
 int16_t Gyroscope_GetAngleZ(void)
+{
+  return Angle[2];
+}
+
+//_____________________________________________________________________________
+
+int16_t Gyroscope_GetAngleZ_deg(void)
 {
   return Angle_deg[2];
 }

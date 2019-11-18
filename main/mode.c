@@ -131,7 +131,7 @@ static void HandleNegativeSpeed(int16_t speed);
 
 static void LimitSpeed(int16_t min, int16_t max);
 
-static int16_t GetBodyColorPulse(void);
+static uint8_t GetBodyColorPulse(void);
 
 static void GetRainbow(uint8_t* rgb);
 
@@ -223,6 +223,7 @@ void Mode_Init(bool enableVM)
 void Mode_InitVM(void)
 {
   Behavior_Enable(B_LEDS_ACC);
+  Behavior_Enable(B_LEDS_LEGO);
   Behavior_Enable(B_LEDS_PROX);
   Behavior_Enable(B_SOUND_BUTTON);
 
@@ -242,7 +243,7 @@ void Mode_Run(void)
   ignore++;
 
   // As the user mode disable the "mode menu thing"...
-  if (ignore > 100)
+  if (ignore > 100u)
   {
     ignore = 101;
 
@@ -358,6 +359,7 @@ static void StartMode(T_Mode mode)
     case E_Mode_Shy:
       Behavior_Enable(B_LEDS_PROX);
       Behavior_Enable(B_LEDS_ACC);
+      Behavior_Enable(B_LEDS_LEGO);
       Accelerometer_ClearTapStatus();  // Clear any tap made before entering this mode
       break;
 
@@ -371,6 +373,7 @@ static void StartMode(T_Mode mode)
 
     case E_Mode_Obedient:
       Behavior_Enable(B_LEDS_PROX);
+      Behavior_Enable(B_LEDS_LEGO);
       RecordSequenceIsFinished = false;
       Accelerometer_ClearTapStatus();  // Clear any tap made before entering this mode
       break;
@@ -413,6 +416,7 @@ static void ExitMode(T_Mode mode)
       vmVariables.target[1] = 0;
       Behavior_Disable(B_LEDS_PROX);
       Behavior_Disable(B_LEDS_ACC);
+      Behavior_Disable(B_LEDS_LEGO);
       break;
 
     case E_Mode_Attentive:
@@ -431,6 +435,7 @@ static void ExitMode(T_Mode mode)
       vmVariables.target[0] = 0;
       vmVariables.target[1] = 0;
       Behavior_Disable(B_LEDS_PROX);
+      Behavior_Disable(B_LEDS_LEGO);
       break;
 
     default:
@@ -443,7 +448,7 @@ static void ExitMode(T_Mode mode)
 
 static T_Mode SelectNextMode(T_Mode mode, int16_t index)
 {
-  int16_t temp = mode;
+  int16_t temp = (int16_t)mode;
 
   do
   {
@@ -525,7 +530,7 @@ static void RunFollower(void)
   int16_t max = vmVariables.prox[0];
   int16_t min = 0;
   int16_t t;
-  int16_t brightness = GetBodyColorPulse();
+  uint8_t brightness = GetBodyColorPulse();
   int16_t speedDiff;
   int16_t speed_l = 0;
 
@@ -534,7 +539,7 @@ static void RunFollower(void)
   // Green pulse
   Leds_SetBodyBrightness(0u, brightness, 0u);
 
-  for (uint8_t index = 1; index < 5; index++)
+  for (uint8_t index = 1u; index < 5u; index++)
   {
     if (vmVariables.prox[index] > max)
     {
@@ -808,7 +813,7 @@ static void RunExplorer(void)
 {
   static int16_t speed = 150;
 
-  int16_t brightness = GetBodyColorPulse();
+  uint8_t brightness = GetBodyColorPulse();
 
   // Yellow pulse
   Leds_SetBodyBrightness(brightness, brightness, 0u);
@@ -847,7 +852,7 @@ static void RunExplorer(void)
 
 static void RunShy(void)
 {
-  int16_t brightness = GetBodyColorPulse();
+  uint8_t brightness = GetBodyColorPulse();
   bool play = false;
 //  static unsigned int acc = 32;
 //  static uint8_t counter = 0u;
@@ -922,11 +927,11 @@ static void RunShy(void)
   {
     //int temp = vmVariables.prox[0]/5 + vmVariables.prox[1]/4 + vmVariables.prox[2]/4;
     //temp += vmVariables.prox[3]/4 + vmVariables.prox[4]/5;
-    int temp = vmVariables.prox[0] / 3 + vmVariables.prox[1] / 2 + vmVariables.prox[2] / 2;
-    temp += vmVariables.prox[3] / 2 + vmVariables.prox[4] / 3;
+    int16_t temp = (vmVariables.prox[0] / 3) + (vmVariables.prox[1] / 2) + (vmVariables.prox[2] / 2);
+    temp += (vmVariables.prox[3] / 2) + (vmVariables.prox[4] / 3);
 
-    int temp2 = vmVariables.prox[0] / 4 + vmVariables.prox[1] / 3;
-    temp2 -= vmVariables.prox[3] / 3 + vmVariables.prox[4] / 4;
+    int16_t temp2 = (vmVariables.prox[0] / 4) + (vmVariables.prox[1] / 3);
+    temp2 -= (vmVariables.prox[3] / 3) + (vmVariables.prox[4] / 4);
 
     vmVariables.target[0] = -(temp + temp2);
     vmVariables.target[1] = temp2 - temp;
@@ -971,7 +976,7 @@ static void RunShy(void)
 // When the Thymio is placed on the right side, the WAV player is activated (replay).
 static void RunAttentive(void)
 {
-  int16_t brightness = GetBodyColorPulse();
+  uint8_t brightness = GetBodyColorPulse();
   int16_t acceleration = Accelerometer_GetAccelerationY();
 
   // Dark blue pulse
@@ -997,7 +1002,7 @@ static void RunLineTracker(void)
   static uint16_t bs_black_level = 650; //400;
   static uint16_t bs_white_level = 700; //450;
 
-  int16_t brightness = GetBodyColorPulse();
+  uint8_t brightness = GetBodyColorPulse();
 
   // Cyan pulse
   Leds_SetBodyBrightness(0u, brightness, brightness);
@@ -1066,7 +1071,7 @@ static void RunLineTracker(void)
 
 static void RunObedient(void)
 {
-  int16_t brightness = GetBodyColorPulse();
+  uint8_t brightness = GetBodyColorPulse();
 
   // Magenta pulse
   Leds_SetBodyBrightness(brightness, 0u, brightness);
@@ -1154,9 +1159,9 @@ static void LimitSpeed(int16_t min, int16_t max)
 
 //_____________________________________________________________________________
 
-static int16_t GetBodyColorPulse(void)
+static uint8_t GetBodyColorPulse(void)
 {
-  static int16_t led_pulse;
+  static int16_t led_pulse = 0;
   int16_t ret;
 
   led_pulse++;
@@ -1175,37 +1180,35 @@ static int16_t GetBodyColorPulse(void)
     ret = -led_pulse / 4;
   }
 
-  //printf("p = %d, ret = %d\n", led_pulse, ret);
-
-  return ret;
+  return (uint8_t)ret;
 }
 
 //_____________________________________________________________________________
 
 static void GetRainbow(uint8_t* rgb)
 {
-  static uint8_t led_i;
+  static uint8_t led = 0u;
 
-  led_i++;
+  led++;
 
-  if (led_i > 96)
+  if (led > 96u)
   {
-    led_i = 0;
+    led = 0u;
   }
 
-  rgb[0] = led_i;
-  rgb[1] = (led_i + MAX_BRIGHTNESS);
+  rgb[0] = led;
+  rgb[1] = (led + MAX_BRIGHTNESS);
 
-  if (rgb[1] > 96)
+  if (rgb[1] > 96u)
   {
-    rgb[1] -= 96;
+    rgb[1] -= 96u;
   }
 
-  rgb[2] = (led_i + 64);
+  rgb[2] = (led + 64u);
 
-  if (rgb[2] > 96)
+  if (rgb[2] > 96u)
   {
-    rgb[2] -= 96;
+    rgb[2] -= 96u;
   }
 
   rgb[0] = GetRainbowBrightness(rgb[0]);
@@ -1239,11 +1242,11 @@ static uint8_t GetRainbowBrightness(uint8_t index)
 
 static void RunCircleLedRotation(void)
 {
-  static uint8_t led_state;
-  uint8_t l[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  static uint8_t led_state = 0u;
+  uint8_t l[8] = {0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u};
   uint8_t fixed;
 
-  led_state += 2;
+  led_state += 2u;
   fixed = (led_state / MAX_BRIGHTNESS);
 
   l[fixed & 0x7] = MAX_BRIGHTNESS;
@@ -1257,11 +1260,11 @@ static void RunCircleLedRotation(void)
 
 static void RunCircleLedCross(void)
 {
-  static uint8_t led_state;
-  uint8_t l[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  static uint8_t led_state = 0u;
+  uint8_t l[8] = {0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u};
   uint8_t fixed;
 
-  led_state += 2;
+  led_state += 2u;
   fixed = (led_state / MAX_BRIGHTNESS);
 
   l[fixed & 0x7] = MAX_BRIGHTNESS;
@@ -1584,10 +1587,10 @@ static void RecordButtonsSequence(uint8_t choice)
 
   static int16_t toggle = 0;
 
-  //RunCircleLedCross();
-  RunLegoLedAnimation();
+  RunCircleLedCross();
+  //RunLegoLedAnimation();
 
-  if (choice == 0)
+  if (choice == 0u)
   {
     buttonState = Buttons_GetStatus();
 
@@ -1645,6 +1648,10 @@ static void RecordButtonsSequence(uint8_t choice)
         data |= (1 << E_Button_Left);
         Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
       }
+      else
+      {
+        // Do nothing
+      }
     }
   }
 
@@ -1660,6 +1667,7 @@ static void RecordButtonsSequence(uint8_t choice)
       Fifo8bits_SetConsumePosition(ButtonsSeqFifo, Position);
     }
 
+    //Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
     RecordSequenceIsFinished = true;
     MovementIsStarted = false;
     ESP_LOGI(Tag, "End of recording");
@@ -1695,8 +1703,8 @@ static void PlayMovementSequence(void)
         MovementIsInProgress = true;
         MovementTimerIsRunning = true;
 
-        vmVariables.target[0] = -260;  // TODO Check why the speed in backward direction is slower
-        vmVariables.target[1] = -260;
+        vmVariables.target[0] = -300;  // TODO Check why the speed in backward direction is slower
+        vmVariables.target[1] = -300;
       }
 
       if (data == (1 << E_Button_Forward))
@@ -1705,21 +1713,21 @@ static void PlayMovementSequence(void)
         MovementIsInProgress = true;
         MovementTimerIsRunning = true;
 
-        vmVariables.target[0] = 240;
-        vmVariables.target[1] = 240;
+        vmVariables.target[0] = 300;
+        vmVariables.target[1] = 300;
       }
 
       if (data == (1 << E_Button_Left))
       {
         RotationIsInProgress = true;
-        angleTarget = 90;
+        angleTarget = 16383;//90;
         Gyroscope_ResetAngle();
       }
 
       if (data == (1 << E_Button_Right))
       {
         RotationIsInProgress = true;
-        angleTarget = -90;
+        angleTarget = -16383;//-90;
         Gyroscope_ResetAngle();
       }
 
@@ -1755,12 +1763,16 @@ static void PlayMovementSequence(void)
     }
     else if (RotationIsInProgress)
     {
-      //output = AngleController_Update(angleTarget);
+      //output = AngleController_Update(angleTarget, 300);
 
-      if (AngleController_Update(angleTarget) == 0)
+      if (AngleController_Update(angleTarget, 500) == 0)
       {
         RotationIsInProgress = false;
       }
+    }
+    else
+    {
+      // Do nothing
     }
   }
   else if (!MovementTimerIsRunning && !RotationIsInProgress)  // Handle the last stop delay
@@ -1770,14 +1782,18 @@ static void PlayMovementSequence(void)
   }
   else if (RotationIsInProgress)  // Handle the rotation at the end of the sequence
   {
-    //output = AngleController_Update(angleTarget);
+    //output = AngleController_Update(angleTarget, 300);
 
-    if (AngleController_Update(angleTarget) == 0)
+    if (AngleController_Update(angleTarget, 500) == 0)
     {
       RotationIsInProgress = false;
       RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence
       ESP_LOGE(Tag, "Last rotation finished");
     }
+  }
+  else
+  {
+    // Do nothing
   }
 }
 

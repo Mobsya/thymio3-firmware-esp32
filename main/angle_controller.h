@@ -51,6 +51,6 @@ extern void AngleController_Init(void);
 //! \pre       First initialize the angle controller
 //! \param     target - Target of the angle on the Z-axis
 //! \return    None
-extern int16_t AngleController_Update(int16_t target);
+extern int16_t AngleController_Update(int16_t target, int16_t maxSpeed);
 
 #endif // ANGLE_CONTROLLER_H_
