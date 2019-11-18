@@ -217,6 +217,7 @@ void AsebaVMResetCB(AsebaVMState* vm)
   leds_set(LED_RC, 0);
 #endif
   Behavior_Enable(B_LEDS_ACC);
+  Behavior_Enable(B_LEDS_LEGO);
 #if 0 // FIXME
   Behavior_Enable(B_LEDS_TEMPERATURE);
   Behavior_Enable(B_LED_MIC);

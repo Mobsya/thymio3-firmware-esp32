@@ -31,6 +31,7 @@
 #include "accelerometer.h"
 #include "buttons.h"
 #include "codec.h"
+#include "gyroscope.h"
 #include "leds.h"
 #include "mode.h"
 #include "rc5.h"
@@ -106,6 +107,12 @@ static void SetButtonsLeds(void);
 //! \param     None
 //! \return    None
 static void SetAccelerometerLeds(void);
+
+//! \brief     Set the gyroscope LEDs
+//! \pre       None
+//! \param     None
+//! \return    None
+static void SetGyroscopeLeds(void);
 
 //! \brief     Update the settings
 //! \pre       None
@@ -200,12 +207,6 @@ static void RunBehaviorTask(void* arg)
 
 static void RunBehaviors(void)
 {
-  if (ENABLED(B_LEDS_LEGO))
-  {
-    //Leds_SetLegoBackBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
-    //Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
-  }
-
   if (ENABLED(B_LED_RC5))
   {
     SetRC5Led();
@@ -229,6 +230,11 @@ static void RunBehaviors(void)
   if (ENABLED(B_LEDS_ACC))
   {
     SetAccelerometerLeds();
+  }
+
+  if (ENABLED(B_LEDS_LEGO))
+  {
+    SetGyroscopeLeds();
   }
 
 //#if 0
@@ -261,9 +267,7 @@ static void SetRC5Led(void)
 static void SetButtonsLeds(void)
 {
   static uint8_t brightness[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
-  uint8_t* buttonState;
-
-  buttonState = Buttons_GetStatus();
+  uint8_t* buttonState = Buttons_GetStatus();
 
   for (T_Button index = E_Button_Backward; index <= E_Button_Right; index++)
   {
@@ -362,7 +366,7 @@ static void SetAccelerometerLeds(void)
     {
       led = E_Led_Circle_NE;
     }
-    else if (tilt < -6000 && tilt >= -10000)
+    else if ((tilt < -6000) && (tilt >= -10000))
     {
       led = E_Led_Circle_E;
     }
@@ -419,6 +423,52 @@ static void SetAccelerometerLeds(void)
     }
 
     previousLed = -1;
+  }
+}
+
+//_____________________________________________________________________________
+
+static void SetGyroscopeLeds(void)
+{
+  int16_t gyro = Gyroscope_GetAngularVelocityZ();
+
+  // Turn left
+  if (gyro >= 20000)
+  {
+    Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+  }
+  else if (gyro >= 10000)
+  {
+    Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
+  }
+  else if (gyro >= 5000)
+  {
+    Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u);
+  }
+  else if (gyro >= 2500)
+  {
+    Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u);
+  }
+  // Turn right
+  else if (gyro <= -20000)
+  {
+    Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
+  }
+  else if (gyro <= -10000)
+  {
+    Leds_SetLegoFrontBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
+  }
+  else if (gyro <= -5000)
+  {
+    Leds_SetLegoFrontBrightness(0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
+  }
+  else if (gyro <= -2500)
+  {
+    Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
+  }
+  else
+  {
+    Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
   }
 }
 
