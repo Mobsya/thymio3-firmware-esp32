@@ -40,7 +40,7 @@ enum
   E_Mode_Menu,
   E_Mode_Follower,
   E_Mode_Explorer,
-  E_Mode_Shy,
+  E_Mode_Fearful,
   E_Mode_Attentive,
   E_Mode_LineTracker,
   E_Mode_Obedient,

@@ -117,7 +117,7 @@ static void RunFollower(void);
 
 static void RunExplorer(void);
 
-static void RunShy(void);
+static void RunFearful(void);
 
 static void RunAttentive(void);
 
@@ -153,8 +153,16 @@ static void GetLineDirection(uint8_t* state, int16_t* direction);
 
 static void SetTargetAccordingToDirection(int16_t* direction);
 
-static void RecordButtonsSequence(uint8_t choice);
+//! \brief     Record the movement sequence in the obedient mode
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
+static void RecordMovementSequence(void);
 
+//! \brief     Play the movement sequence in the obedient mode
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
 static void PlayMovementSequence(void);
 
 static void Callback_TimerMovement(void* arg);
@@ -314,8 +322,8 @@ void Mode_Run(void)
       RunExplorer();
       break;
 
-    case E_Mode_Shy:
-      RunShy();
+    case E_Mode_Fearful:
+      RunFearful();
       break;
 
     case E_Mode_Attentive:
@@ -356,7 +364,7 @@ static void StartMode(T_Mode mode)
       Behavior_Enable(B_LEDS_PROX);
       break;
 
-    case E_Mode_Shy:
+    case E_Mode_Fearful:
       Behavior_Enable(B_LEDS_PROX);
       Behavior_Enable(B_LEDS_ACC);
       Behavior_Enable(B_LEDS_LEGO);
@@ -411,7 +419,7 @@ static void ExitMode(T_Mode mode)
       Behavior_Disable(B_LEDS_PROX);
       break;
 
-    case E_Mode_Shy:
+    case E_Mode_Fearful:
       vmVariables.target[0] = 0;
       vmVariables.target[1] = 0;
       Behavior_Disable(B_LEDS_PROX);
@@ -501,7 +509,7 @@ static void SetModeColor(T_Mode mode)
       Leds_SetBodyBrightness(MAX_BRIGHTNESS, 12, 0u);
       break;
 
-    case E_Mode_Shy:  // Red
+    case E_Mode_Fearful:  // Red
       Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);
       break;
 
@@ -850,7 +858,7 @@ static void RunExplorer(void)
 
 //_____________________________________________________________________________
 
-static void RunShy(void)
+static void RunFearful(void)
 {
   uint8_t brightness = GetBodyColorPulse();
   bool play = false;
@@ -1078,7 +1086,7 @@ static void RunObedient(void)
 
   if (!RecordSequenceIsFinished)
   {
-    RecordButtonsSequence(0);
+    RecordMovementSequence();
   }
   else
   {
@@ -1161,26 +1169,26 @@ static void LimitSpeed(int16_t min, int16_t max)
 
 static uint8_t GetBodyColorPulse(void)
 {
-  static int16_t led_pulse = 0;
-  int16_t ret;
+  static int16_t pulse = 0;
+  int16_t brightness = 0;
 
-  led_pulse++;
+  pulse++;
 
-  if (led_pulse > 0)
+  if (pulse > 0)
   {
-    ret = led_pulse;
+	brightness = pulse;
 
-    if (led_pulse >= MAX_BRIGHTNESS)
+    if (pulse >= MAX_BRIGHTNESS)
     {
-      led_pulse = -(MAX_BRIGHTNESS * 4);
+      pulse = -(MAX_BRIGHTNESS * 4);
     }
   }
   else
   {
-    ret = -led_pulse / 4;
+    brightness = -pulse / 4;
   }
 
-  return (uint8_t)ret;
+  return (uint8_t)brightness;
 }
 
 //_____________________________________________________________________________
@@ -1579,7 +1587,7 @@ static void SetTargetAccordingToDirection(int16_t* direction)
 
 //_____________________________________________________________________________
 
-static void RecordButtonsSequence(uint8_t choice)
+static void RecordMovementSequence(void)
 {
   uint8_t* buttonState;
   uint8_t  data = 0u;
@@ -1590,72 +1598,38 @@ static void RecordButtonsSequence(uint8_t choice)
   RunCircleLedCross();
   //RunLegoLedAnimation();
 
-  if (choice == 0u)
+  buttonState = Buttons_GetStatus();
+
+  if (RC5_IsNewMessageReceived(&toggle))
   {
-    buttonState = Buttons_GetStatus();
-
-    when(buttonState[E_Button_Backward])
-    {
-      data |= (1 << E_Button_Backward);
-      Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-    }
-
-    when(buttonState[E_Button_Left])
-    {
-      data |= (1 << E_Button_Left);
-      Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-    }
-
-    when(buttonState[E_Button_Forward])
-    {
-      data |= (1 << E_Button_Forward);
-      Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-    }
-
-    when(buttonState[E_Button_Right])
-    {
-      data |= (1 << E_Button_Right);
-      Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-    }
-  }
-  else
-  {
-    if (RC5_IsNewMessageReceived(&toggle))
-    {
-      command = RC5_GetCommand();
-
-      if (command == E_Command_UpArrow)
-      {
-        Leds_SetSingleBrightness(E_Led_Button_Forward, MAX_BRIGHTNESS);
-        data |= (1 << E_Button_Forward);
-        Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-      }
-      else if (command == E_Command_DownArrow)
-      {
-        Leds_SetSingleBrightness(E_Led_Button_Backward, MAX_BRIGHTNESS);
-        data |= (1 << E_Button_Backward);
-        Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-      }
-      else if (command == E_Command_RightArrow)
-      {
-        Leds_SetSingleBrightness(E_Led_Button_Right, MAX_BRIGHTNESS);
-        data |= (1 << E_Button_Right);
-        Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-      }
-      else if (command == E_Command_LeftArrow)
-      {
-        Leds_SetSingleBrightness(E_Led_Button_Left, MAX_BRIGHTNESS);
-        data |= (1 << E_Button_Left);
-        Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
-      }
-      else
-      {
-        // Do nothing
-      }
-    }
+    command = RC5_GetCommand();
   }
 
-  when (Accelerometer_IsTapDetected())
+  when(buttonState[E_Button_Backward] || (command == E_Command_DownArrow))
+  {
+    data |= (1 << E_Button_Backward);
+    Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+  }
+
+  when(buttonState[E_Button_Left] || (command == E_Command_LeftArrow))
+  {
+    data |= (1 << E_Button_Left);
+    Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+  }
+
+  when(buttonState[E_Button_Forward] || (command == E_Command_UpArrow))
+  {
+    data |= (1 << E_Button_Forward);
+    Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+  }
+
+  when(buttonState[E_Button_Right] || (command == E_Command_RightArrow))
+  {
+    data |= (1 << E_Button_Right);
+    Fifo8bits_Write(ButtonsSeqFifo, &data, 1u);
+  }
+
+  when (Accelerometer_IsTapDetected() || (command == E_Command_Go))
   {
     if (!Fifo8bits_IsEmpty(ButtonsSeqFifo))  // Ready to play a new sequence
     {
@@ -1682,7 +1656,6 @@ static void PlayMovementSequence(void)
   uint8_t next = 0u;
 
   static int16_t angleTarget = 0;
-  //int16_t output = 0;
 
   if (!Fifo8bits_IsEmpty(ButtonsSeqFifo))
   {
@@ -1720,14 +1693,14 @@ static void PlayMovementSequence(void)
       if (data == (1 << E_Button_Left))
       {
         RotationIsInProgress = true;
-        angleTarget = 16383;//90;
+        angleTarget = 16383;  //90;
         Gyroscope_ResetAngle();
       }
 
       if (data == (1 << E_Button_Right))
       {
         RotationIsInProgress = true;
-        angleTarget = -16383;//-90;
+        angleTarget = -16383;  //-90;
         Gyroscope_ResetAngle();
       }
 
@@ -1763,8 +1736,6 @@ static void PlayMovementSequence(void)
     }
     else if (RotationIsInProgress)
     {
-      //output = AngleController_Update(angleTarget, 300);
-
       if (AngleController_Update(angleTarget, 500) == 0)
       {
         RotationIsInProgress = false;
@@ -1782,8 +1753,6 @@ static void PlayMovementSequence(void)
   }
   else if (RotationIsInProgress)  // Handle the rotation at the end of the sequence
   {
-    //output = AngleController_Update(angleTarget, 300);
-
     if (AngleController_Update(angleTarget, 500) == 0)
     {
       RotationIsInProgress = false;
