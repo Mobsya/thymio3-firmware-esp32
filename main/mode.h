@@ -25,12 +25,6 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define when(cond) if(({static unsigned char prev; \
-                        unsigned char c = !!(cond); \
-                        unsigned char result = c && !prev; \
-                        prev = c; \
-                        result;}))
-
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -43,8 +37,8 @@ enum
   E_Mode_Fearful,
   E_Mode_Attentive,
   E_Mode_LineTracker,
-  E_Mode_Obedient,
-  E_Mode_Max = E_Mode_Obedient
+  E_Mode_Responsive,
+  E_Mode_Max = E_Mode_Responsive
 };
 typedef int16_t T_Mode;  // Mode selection
 

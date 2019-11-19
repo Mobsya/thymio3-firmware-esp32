@@ -31,6 +31,7 @@
 #include "accelerometer.h"
 #include "buttons.h"
 #include "codec.h"
+#include "common.h"
 #include "gyroscope.h"
 #include "leds.h"
 #include "mode.h"
