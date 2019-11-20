@@ -27,6 +27,7 @@
 #include "aseba_esp32.h"
 #include "behavior.h"
 #include "buttons.h"
+#include "codec.h"
 #include "common.h"
 #include "fifo.h"
 #include "gyroscope.h"
@@ -71,6 +72,8 @@ static bool MovementIsInProgress = false;
 static bool RotationIsInProgress = false;
 static bool MovementTimerIsRunning = false;
 static bool StopTimerIsRunning = false;
+static bool FirstRecording = false;
+static bool Erase = false;
 
 static uint16_t Position = 0u;  //!< Consume position of the FIFO
 
@@ -81,23 +84,41 @@ static T_TimerSw* StopTimer = NULL;      //!< Used to stop the robot in responsi
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Record the movement sequence
+//! \brief     Record the sequence
 //! \pre       First initialize the mode
 //! \param     None
 //! \return    None
-static void RecordMovementSequence(void);
+static void RecordSequence(void);
 
-//! \brief     Play the movement sequence in the obedient mode
+//! \brief     Erase the sequence
 //! \pre       First initialize the mode
 //! \param     None
 //! \return    None
-static void PlayMovementSequence(void);
+static void EraseSequence(void);
 
-//! \brief     Run the LEDs animation
+//! \brief     Play the sequence
 //! \pre       First initialize the mode
 //! \param     None
 //! \return    None
-static void RunCircleLedCross(void);
+static void PlaySequence(void);
+
+//! \brief     Run the record animation
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
+static void RunRecordAnimation(void);
+
+//! \brief     Run the erase animation
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
+static void RunEraseAnimation(void);
+
+//! \brief     Run the play animation
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
+static void RunPlayAnimation(uint8_t next);
 
 //! \brief     Callback called at the end of each movement
 //! \pre       First initialize the mode
@@ -157,23 +178,31 @@ void Responsive_Stop(void)
 void Responsive_Run(void)
 {
   uint8_t brightness = Common_GetBodyColorPulse();
+  int16_t acceleration = Accelerometer_GetAccelerationY();
 
   // Magenta pulse
   Leds_SetBodyBrightness(brightness, 0u, brightness);
 
   if (!RecordSequenceIsFinished)
   {
-    RecordMovementSequence();
+	if (acceleration <= -15000)  // Right side
+	{
+      EraseSequence();
+	}
+	else
+	{
+      RecordSequence();
+	}
   }
   else
   {
-    PlayMovementSequence();
+    PlaySequence();
   }
 }
 
 //_____________________________________________________________________________
 
-static void RecordMovementSequence(void)
+static void RecordSequence(void)
 {
   uint8_t* buttonState;
   uint8_t  data = 0u;
@@ -181,7 +210,7 @@ static void RecordMovementSequence(void)
 
   static int16_t toggle = 0;
 
-  RunCircleLedCross();
+  RunRecordAnimation();
 
   buttonState = Buttons_GetStatus();
 
@@ -216,25 +245,39 @@ static void RecordMovementSequence(void)
 
   when (Accelerometer_IsTapDetected() || (command == E_Command_Go))
   {
-    if (!Fifo8bits_IsEmpty(SequenceFifo))  // Ready to play a new sequence
-    {
-      ESP_LOGI(Tag, "Fifo is NOT empty");
-    }
-    else  // Ready to play the old sequence
-    {
-      ESP_LOGI(Tag, "Fifo is empty %d", Position);
-      Fifo8bits_SetConsumePosition(SequenceFifo, Position);
-    }
+	// Initialize the position to play the sequence
+    Fifo8bits_SetConsumePosition(SequenceFifo, Position);
+    ESP_LOGE(Tag, "Set record pos %d", Position);
 
     RecordSequenceIsFinished = true;
-    MovementIsStarted = false;
+
+    if (!FirstRecording)
+    {
+      MovementIsStarted = false;
+      FirstRecording = true;
+      ESP_LOGE(Tag, "First pos %d", Position);
+    }
     ESP_LOGI(Tag, "End of recording");
   }
 }
 
 //_____________________________________________________________________________
 
-static void PlayMovementSequence(void)
+static void EraseSequence(void)
+{
+  when(!Erase)
+  {
+    Erase = true;
+    Position = Fifo8bits_GetConsumePosition(SequenceFifo);
+    FirstRecording = false;
+    RunEraseAnimation();
+    ESP_LOGE(Tag, "Get erased pos %d", Position);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void PlaySequence(void)
 {
   uint8_t current = 0u;
   uint8_t next = 0u;
@@ -248,11 +291,14 @@ static void PlayMovementSequence(void)
       if (!MovementIsStarted)
       {
         Position = Fifo8bits_GetConsumePosition(SequenceFifo);
+        ESP_LOGE(Tag, "Get play pos %d", Position);
         MovementIsStarted = true;
       }
 
       Fifo8bits_Read(SequenceFifo, &current, 1);
       Fifo8bits_Peek(SequenceFifo, &next, 1);
+
+      ESP_LOGE(Tag, "Current value %d", current);
 
       if (current == (1u << E_Button_Backward))
       {
@@ -288,30 +334,7 @@ static void PlayMovementSequence(void)
         Gyroscope_ResetAngle();
       }
 
-      if (next == 0u)
-      {
-        Leds_SetCircleBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u);
-      }
-
-      if (next == (1u << E_Button_Backward))
-      {
-        Leds_SetCircleBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u);
-      }
-
-      if (next == (1u << E_Button_Forward))
-      {
-        Leds_SetCircleBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-      }
-
-      if (next == (1u << E_Button_Left))
-      {
-        Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u);
-      }
-
-      if (next == (1u << E_Button_Right))
-      {
-        Leds_SetCircleBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u);
-      }
+      RunPlayAnimation(next);
     }
     else if (MovementIsInProgress && !MovementTimerIsRunning && !StopTimerIsRunning)
     {
@@ -334,14 +357,16 @@ static void PlayMovementSequence(void)
   {
     RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence
     ESP_LOGE(Tag, "Last movement finished");
+    Erase = false;
   }
   else if (RotationIsInProgress)  // Handle the rotation at the end of the sequence
   {
     if (AngleController_Update(angleTarget, MAX_ROTATION_SPEED) == 0)
     {
       RotationIsInProgress = false;
-      RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence
+      RecordSequenceIsFinished = false;  // Allow a new recording sequence
       ESP_LOGE(Tag, "Last rotation finished");
+      Erase = false;
     }
   }
   else
@@ -352,7 +377,7 @@ static void PlayMovementSequence(void)
 
 //_____________________________________________________________________________
 
-static void RunCircleLedCross(void)
+static void RunRecordAnimation(void)
 {
   static uint8_t led_state = 0u;
   uint8_t l[8] = {0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u};
@@ -367,6 +392,43 @@ static void RunCircleLedCross(void)
   l[(fixed + 4u) & 0x7u] = (led_state & (MAX_BRIGHTNESS - 1u));
 
   Leds_SetCircleBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
+}
+
+//_____________________________________________________________________________
+
+static void RunEraseAnimation(void)
+{
+  Codec_PlayMP3FileFromFlash(E_SystemSound_Detection);
+}
+
+//_____________________________________________________________________________
+
+static void RunPlayAnimation(uint8_t next)
+{
+  if (next == 0u)
+  {
+    Leds_SetCircleBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u);
+  }
+
+  if (next == (1u << E_Button_Backward))
+  {
+    Leds_SetCircleBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u);
+  }
+
+  if (next == (1u << E_Button_Forward))
+  {
+    Leds_SetCircleBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  }
+
+  if (next == (1u << E_Button_Left))
+  {
+    Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u);
+  }
+
+  if (next == (1u << E_Button_Right))
+  {
+    Leds_SetCircleBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u);
+  }
 }
 
 //_____________________________________________________________________________
