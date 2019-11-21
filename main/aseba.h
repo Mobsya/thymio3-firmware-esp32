@@ -6,8 +6,8 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    accelerometer.h
-//! \brief   This module provides the useful functions to use the accelerometer
+//! \file    aseba.h
+//! \brief   This module provides the useful functions to use Aseba Studio
 //!
 //! \author  Vincent Gonet
 //!

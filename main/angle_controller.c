@@ -108,7 +108,7 @@ int16_t AngleController_Update(int16_t target, int16_t maxSpeed)
 
   int16_t output = proportional + derivative;
 
-  ESP_LOGE(Tag, "error: %d, measure: %d, output: %d", error, measure, output);
+  //ESP_LOGE(Tag, "error: %d, measure: %d, output: %d", error, measure, output);
 
   lastError = error;
 

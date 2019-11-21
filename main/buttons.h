@@ -33,14 +33,15 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
-typedef enum
+enum
 {
   E_Button_Backward,  // Button 1
   E_Button_Left,      // Button 2
   E_Button_Center,    // Button 3
   E_Button_Forward,   // Button 4
   E_Button_Right      // Button 5
-} T_Button;
+};
+typedef uint8_t T_Button;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data

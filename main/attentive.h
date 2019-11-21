@@ -53,7 +53,7 @@ extern void Attentive_Init(void);
 //! \return    None
 extern void Attentive_Start(void);
 
-//! \brief     Start the attentive mode
+//! \brief     Stop the attentive mode
 //! \pre       First initialize the attentive mode
 //! \param     None
 //! \return    None
