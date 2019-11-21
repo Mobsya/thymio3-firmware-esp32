@@ -32,7 +32,8 @@
 #include "tcp_server.h"
 
 // Include of the modes
-#include "attentive.h"
+//#include "attentive.h"
+#include "drawer.h"
 #include "explorer.h"
 #include "fearful.h"
 #include "follower.h"
@@ -215,8 +216,9 @@ void Mode_Run(void)
       Fearful_Run();
       break;
 
-    case E_Mode_Attentive:
-      Attentive_Run();
+    case E_Mode_Drawer:
+      //Attentive_Run();
+      Drawer_Run();
       break;
 
     case E_Mode_LineTracker:
@@ -260,7 +262,7 @@ static void StartMode(T_Mode mode)
       Fearful_Start();
       break;
 
-    case E_Mode_Attentive:
+    case E_Mode_Drawer:
       Behavior_Enable(B_LEDS_PROX);
       break;
 
@@ -312,7 +314,7 @@ static void ExitMode(T_Mode mode)
       Behavior_Disable(B_LEDS_LEGO);
       break;
 
-    case E_Mode_Attentive:
+    case E_Mode_Drawer:
       //Attentive_Stop();
       Behavior_Disable(B_LEDS_PROX);
       break;
@@ -395,7 +397,7 @@ static void SetModeColor(T_Mode mode)
       Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);
       break;
 
-    case E_Mode_Attentive:  // Dark blue
+    case E_Mode_Drawer:  // Dark blue
       Leds_SetBodyBrightness(0u, 0u, MAX_BRIGHTNESS);
       break;
 

@@ -40,6 +40,12 @@ typedef struct
 } T_Settings;
 //#endif
 
+typedef struct
+{
+  int16_t Left;
+  int16_t Right;
+} T_Vind;  //!< Induced voltage
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -196,6 +202,12 @@ extern void STM32_ReadBatteryVoltage(void);
 //! \param     None
 //! \return    The battery voltage
 extern int16_t STM32_GetBatteryVoltage(void);
+
+//extern int16_t STM32_GetLeftInducedVoltage(void);
+
+//extern int16_t STM32_GetRightInducedVoltage(void);
+
+extern T_Vind STM32_GetInducedVoltage(void);
 
 //! \brief     Read the sound value
 //! \pre       None

@@ -121,13 +121,15 @@ static const char* Tag = "stm32";
 static uint8_t Status = 0u;
 
 static int16_t VbatMotor[MOTORS_NUM] = {0, 0};
-static int16_t Vind[MOTORS_NUM]      = {0, 0};
+//static int16_t Vind[MOTORS_NUM]      = {0, 0};
 static int16_t DutyCycle[MOTORS_NUM] = {0, 0};
 static int16_t Current[MOTORS_NUM]   = {0, 0};
 
 static int16_t ProxIRValue[PROX_IR_SENSORS_NUM] = {0, 0, 0, 0, 0, 0, 0};
 
 static int16_t Vbat = 0;
+
+static T_Vind Vind;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -204,8 +206,8 @@ bool STM32_IsUSBCablePresent(void)
 
 bool STM32_IsUSBPortOpen(void)
 {
-  //return ((Status & (1 << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
-  return false;  // FIXME temporary used to run Aseba with WIFI
+  return ((Status & (1 << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
+  //return false;  // FIXME temporary used to run Aseba with WIFI
   //return true;  // FIXME temporary used to run Aseba with UART
 }
 
@@ -398,11 +400,14 @@ void STM32_ReadInducedVoltage(void)
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, INDUCED_VOLTAGE_REG_ADDRESS, data, INDUCED_VOLTAGE_MESSAGE_LENGTH);
 
-  Vind[E_Motor_Left]  = ((data[1] << 8) | data[0]);
-  Vind[E_Motor_Right] = ((data[3] << 8) | data[2]);
+  //Vind[E_Motor_Left]  = ((data[1] << 8) | data[0]);
+  //Vind[E_Motor_Right] = ((data[3] << 8) | data[2]);
 
-  vmVariables.uind[E_Motor_Left]  = Vind[E_Motor_Left];
-  vmVariables.uind[E_Motor_Right] = Vind[E_Motor_Right];
+  Vind.Left  = ((data[1] << 8) | data[0]);
+  Vind.Right = ((data[3] << 8) | data[2]);
+
+  vmVariables.uind[E_Motor_Left]  = Vind.Left;
+  vmVariables.uind[E_Motor_Right] = Vind.Right;
 
   //SET_EVENT(EVENT_MOTOR);
 }
@@ -442,6 +447,28 @@ void STM32_ReadBatteryVoltage(void)
 int16_t STM32_GetBatteryVoltage(void)
 {
   return Vbat;
+}
+
+//_____________________________________________________________________________
+#if 0
+int16_t STM32_GetLeftInducedVoltage(void)
+{
+  return Vind[E_Motor_Left];
+}
+
+//_____________________________________________________________________________
+
+int16_t STM32_GetRightInducedVoltage(void)
+{
+  return Vind[E_Motor_Right];
+}
+#endif
+
+//_____________________________________________________________________________
+
+T_Vind STM32_GetInducedVoltage(void)
+{
+  return Vind;
 }
 
 //_____________________________________________________________________________
