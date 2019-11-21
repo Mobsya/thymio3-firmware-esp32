@@ -27,6 +27,7 @@
 #include "behavior.h"
 #include "buttons.h"
 #include "common.h"
+#include "gpio.h"
 #include "leds.h"
 #include "stm32_i2c.h"
 #include "tcp_server.h"
@@ -137,6 +138,8 @@ void Mode_Run(void)
   static uint8_t ignore;
 
   buttonState = Buttons_GetStatus();
+  //uint8_t sideState = Buttons_GetSideStatus();
+  bool sideState = Gpio_IsButtonPressed();
 
   ignore++;
 
@@ -145,6 +148,7 @@ void Mode_Run(void)
   {
     ignore = 101;
 
+    // Enter into a mode
     when(buttonState[E_Button_Center])
     {
       ExitMode(CurrentMode);
@@ -154,6 +158,28 @@ void Mode_Run(void)
         // Special case, if we select the mode menu stuff
         Behavior_Disable(B_MODE | B_SETTING);
         Mode_InitVM();
+        ESP_LOGE(Tag, "B");
+        return;
+      }
+
+      if (SelectMode != CurrentMode)
+      {
+        StartMode(SelectMode);
+        CurrentMode = SelectMode;
+      }
+    }
+
+    // Exit from a mode
+    when (sideState)
+    {
+      ExitMode(CurrentMode);
+
+      if (SelectMode == E_Mode_Menu)
+      {
+        // Special case, if we select the mode menu stuff
+        Behavior_Disable(B_MODE | B_SETTING);
+        Mode_InitVM();
+        ESP_LOGE(Tag, "E");
         return;
       }
 
@@ -162,11 +188,14 @@ void Mode_Run(void)
         StartMode(E_Mode_Menu);
         CurrentMode = E_Mode_Menu;
       }
-      else
+      //else
       {
-        StartMode(SelectMode);
-        CurrentMode = SelectMode;
+        //StartMode(SelectMode);
+        //CurrentMode = SelectMode;
+        //ESP_LOGE(Tag, "D");
       }
+
+      //Gpio_ClearButtonStatus();
     }
   }
 

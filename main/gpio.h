@@ -128,4 +128,8 @@ extern bool Gpio_IsTapDetected(void);
 
 extern void Gpio_ClearTapStatus(void);
 
+extern bool Gpio_IsButtonPressed(void);
+
+extern void Gpio_ClearButtonStatus(void);
+
 #endif // GPIO_H_

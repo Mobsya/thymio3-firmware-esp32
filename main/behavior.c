@@ -32,6 +32,7 @@
 #include "buttons.h"
 #include "codec.h"
 #include "common.h"
+#include "gpio.h"
 #include "gyroscope.h"
 #include "leds.h"
 #include "mode.h"
@@ -246,6 +247,7 @@ static void RunBehaviors(void)
 //#endif
 
   Buttons_ClearStatus();
+  Gpio_ClearButtonStatus();
 }
 
 //_____________________________________________________________________________

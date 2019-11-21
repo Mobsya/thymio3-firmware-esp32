@@ -22,8 +22,6 @@
 
 #include "bh1745nuc.h"
 
-#include "board.h"
-#include "gpio.h"
 #include "i2c.h"
 
 //-----------------------------------------------------------------------------
@@ -134,8 +132,6 @@ typedef uint8_t T_InterruptSource;  //!< Interrupt source
 
 static const char* Tag = "bh1745nuc";
 
-static const T_GpioPinConfig PinConfig = {COLOR_INT_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_Disable};
-
 static uint8_t Threshold[THRESHOLD_BYTE_NUM] =
 {
   TH_LSB_BYTE,
@@ -169,13 +165,6 @@ static void UpdateADCGain(T_ADCGain gain);
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdatePersistence.svg
 static void UpdatePersistence(T_Persistence persistence);
 
-//! \brief     Update the interrupt source
-//! \pre       None
-//! \param     source - Interrupt source
-//! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdateInterruptSource.svg
-static void UpdateInterruptSource(T_InterruptSource source);
-
 //! \brief     Update the threshold
 //! \pre       None
 //! \param     threshold - Threshold detection
@@ -193,12 +182,6 @@ static void UpdateModeControl3(void);
 //! \param     None
 //! \return    None
 static void EnableMeasurement(void);
-
-//! \brief     Enable the interrupt pin
-//! \pre       None
-//! \param     None
-//! \return    None
-static void EnableInterruptPin(void);
 
 //! \brief     Read the manufacturer ID
 //! \pre       None
@@ -268,16 +251,12 @@ static void ReadClearDataMsbRegister(uint8_t* data);
 
 void BH1745NUC_Init(void)
 {
-  Gpio_ConfigurePin(&PinConfig);
-
   UpdateMeasurementTime(E_MeasurementTime_160ms);
   UpdateADCGain(E_ADCGain_1x);
   UpdatePersistence(E_Persistence_UpdateAfter4);
-  UpdateInterruptSource(E_InterruptSource_Red);
   UpdateThreshold(Threshold);
   UpdateModeControl3();
   EnableMeasurement();
-  EnableInterruptPin();
 
   ESP_LOGI(Tag, "BH1745NUC is initialized");
 }
@@ -402,27 +381,6 @@ static void UpdatePersistence(T_Persistence persistence)
 
 //_____________________________________________________________________________
 
-static void UpdateInterruptSource(T_InterruptSource source)
-{
-  uint8_t data = 0x00u;
-
-  if (source <= E_InterruptSource_Clear)
-  {
-    I2C_ReadFromAddress(SLAVE_ADDRESS, INTERRUPT_REG_ADDRESS, &data, 1u);
-
-    data &= INT_SOURCE_BIT_MASK;
-    data |= (source << INT_SOURCE_BIT_POS);
-
-    I2C_WriteToAddress(SLAVE_ADDRESS, INTERRUPT_REG_ADDRESS, &data, 1u);
-  }
-  else
-  {
-    ESP_LOGE(Tag, "Invalid interrupt source: %d", source);
-  }
-}
-
-//_____________________________________________________________________________
-
 static void UpdateThreshold(uint8_t* threshold)
 {
   I2C_WriteToAddress(SLAVE_ADDRESS, TH_LSB_REG_ADDRESS, threshold, THRESHOLD_BYTE_NUM);
@@ -448,19 +406,6 @@ static void EnableMeasurement(void)
   data |= (1u << RGBC_EN_BIT_POS);
 
   I2C_WriteToAddress(SLAVE_ADDRESS, MODE_CONTROL2_REG_ADDRESS, &data, 1u);
-}
-
-//_____________________________________________________________________________
-
-static void EnableInterruptPin(void)
-{
-  uint8_t data = 0x00u;
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, INTERRUPT_REG_ADDRESS, &data, 1u);
-
-  data |= 1u;
-
-  I2C_WriteToAddress(SLAVE_ADDRESS, INTERRUPT_REG_ADDRESS, &data, 1u);
 }
 
 //_____________________________________________________________________________

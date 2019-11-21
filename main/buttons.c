@@ -30,6 +30,8 @@
 #include "buttons.h"
 
 #include "aseba_esp32.h"
+#include "board.h"
+#include "gpio.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -61,6 +63,8 @@ static uint16_t ButtonRaw[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
 
 static uint8_t ButtonBehaviorStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
 
+static const T_GpioPinConfig PinConfig = {BUTTON_SIDE_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_FallingEdge};
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -81,6 +85,8 @@ static void SetThresholds(void);
 
 void Buttons_Init(void)
 {
+  Gpio_ConfigurePin(&PinConfig);
+
   // Initialize touch pad peripheral, it will start a timer to run a filter
   touch_pad_init();
 

@@ -58,6 +58,7 @@ static const char* Tag = "gpio";
 
 static bool FreeFall = false;
 static bool Tap = false;
+static bool Side = false;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -184,6 +185,20 @@ bool Gpio_IsTapDetected(void)
 void Gpio_ClearTapStatus(void)
 {
   Tap = false;
+}
+
+//_____________________________________________________________________________
+
+bool Gpio_IsButtonPressed(void)
+{
+  return Side;
+}
+
+//_____________________________________________________________________________
+
+void Gpio_ClearButtonStatus(void)
+{
+  Side = false;
 }
 
 //_____________________________________________________________________________
@@ -320,5 +335,10 @@ static void IRAM_ATTR ISR_GPIOHandler(void* arg)
   {
     Tap = true;
     SET_EVENT(EVENT_TAP);
+  }
+
+  if (gpio_num == BUTTON_SIDE_PIN)
+  {
+    Side = true;
   }
 }

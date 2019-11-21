@@ -59,10 +59,12 @@
 #define BUTTON_FORWARD_PIN           27u  //!< BUTTON_FORWARD pin is GPIO27 (Channel T7)
 #define BUTTON_RIGHT_PIN             33u  //!< BUTTON_RIGHT pin is GPIO33 (Channel T8)
 
+// Mechanical button pins
+#define BUTTON_SIDE_PIN              34u  //!< BUTTON_SIDE pin is GPIO34
+
 // Sensors interrupt pins
 #define ACC_INT1_PIN                 36u  //!< ACC_INT pin is GPIO36
 #define ACC_INT2_PIN                 39u  //!< ACC_INT pin is GPIO39
-#define COLOR_INT_PIN                34u  //!< ACC_INT pin is GPIO34
 
 // I2C pins
 #define SDA_PIN                      21u  //!< SDA pin is GPIO21
