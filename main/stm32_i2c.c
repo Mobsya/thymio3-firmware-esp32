@@ -85,11 +85,11 @@
 //-----------------------------------------------------------------------------
 
 //! \details Motor selection
-typedef enum
+enum
 {
   E_Motor_Left,  //!< Left motor
   E_Motor_Right  //!< Right motor
-} T_Motor;
+};
 
 enum
 {
@@ -120,16 +120,14 @@ static const char* Tag = "stm32";
 
 static uint8_t Status = 0u;
 
-static int16_t VbatMotor[MOTORS_NUM] = {0, 0};
-//static int16_t Vind[MOTORS_NUM]      = {0, 0};
-static int16_t DutyCycle[MOTORS_NUM] = {0, 0};
-static int16_t Current[MOTORS_NUM]   = {0, 0};
+static T_Motor Vind;
+static T_Motor VbatMotor;
+static T_Motor DutyCycle;
+static T_Motor Current;
 
-static int16_t ProxIRValue[PROX_IR_SENSORS_NUM] = {0, 0, 0, 0, 0, 0, 0};
+static T_ProxIR ProxIR;
 
 static int16_t Vbat = 0;
-
-static T_Vind Vind;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -149,6 +147,23 @@ static void ReadId(uint8_t* id);
 //-----------------------------------------------------------------------------
 // Functions Implementation
 //-----------------------------------------------------------------------------
+
+void STM32_Init(void)
+{
+  Vind.Left = 0;
+  Vind.Right = 0;
+
+  VbatMotor.Left = 0;
+  VbatMotor.Right = 0;
+
+  DutyCycle.Left = 0;
+  DutyCycle.Right = 0;
+
+  Current.Left = 0;
+  Current.Right = 0;
+}
+
+//_____________________________________________________________________________
 
 void STM32_UpdateProxIRLedsBrightness(uint16_t l0, uint16_t l1, uint16_t l2, uint16_t l3,
                                       uint16_t l4, uint16_t l5, uint16_t l6, uint16_t l7)
@@ -199,14 +214,14 @@ void STM32_ReadStatus(void)
 
 bool STM32_IsUSBCablePresent(void)
 {
-  return ((Status & (1 << USB_CABLE_IS_PRESENT_BIT_POS)) == USB_CABLE_IS_PRESENT_BIT_MASK);
+  return ((Status & (1u << USB_CABLE_IS_PRESENT_BIT_POS)) == USB_CABLE_IS_PRESENT_BIT_MASK);
 }
 
 //_____________________________________________________________________________
 
 bool STM32_IsUSBPortOpen(void)
 {
-  return ((Status & (1 << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
+  return ((Status & (1u << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
   //return false;  // FIXME temporary used to run Aseba with WIFI
   //return true;  // FIXME temporary used to run Aseba with UART
 }
@@ -215,21 +230,21 @@ bool STM32_IsUSBPortOpen(void)
 
 bool STM32_IsModeUpdateRequested(void)
 {
-  return ((Status & (1 << MODE_UPDATE_BIT_POS)) == MODE_UPDATE_BIT_MASK);
+  return ((Status & (1u << MODE_UPDATE_BIT_POS)) == MODE_UPDATE_BIT_MASK);
 }
 
 //_____________________________________________________________________________
 
 bool STM32_IsReadyToSwitchOff(void)
 {
-  return ((Status & (1 << READY_TO_SWITCH_OFF_BIT_POS)) == READY_TO_SWITCH_OFF_BIT_MASK);
+  return ((Status & (1u << READY_TO_SWITCH_OFF_BIT_POS)) == READY_TO_SWITCH_OFF_BIT_MASK);
 }
 
 //_____________________________________________________________________________
 
 void STM32_AllowToSwitchOff(void)
 {
-  uint8_t data = (Status | (1 << OK_TO_SWITCH_OFF_BIT_POS));
+  uint8_t data = (Status | (1u << OK_TO_SWITCH_OFF_BIT_POS));
 
   I2C_WriteToAddress(SLAVE_ADDRESS, STATUS_REG_ADDRESS, &data, 1u);
 }
@@ -238,7 +253,7 @@ void STM32_AllowToSwitchOff(void)
 
 bool STM32_IsAllowedToSwitchOff(void)
 {
-  return ((Status & (1 << OK_TO_SWITCH_OFF_BIT_POS)) == OK_TO_SWITCH_OFF_BIT_MASK);
+  return ((Status & (1u << OK_TO_SWITCH_OFF_BIT_POS)) == OK_TO_SWITCH_OFF_BIT_MASK);
 }
 
 //_____________________________________________________________________________
@@ -363,11 +378,11 @@ void STM32_ReadPwmDutyCycle(void)
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, PWM_DUTY_CYCLE_REG_ADDRESS, data, PWM_DUTY_CYCLE_MESSAGE_LENGTH);
 
-  DutyCycle[E_Motor_Left]  = ((data[1] << 8) | data[0]);
-  DutyCycle[E_Motor_Right] = ((data[3] << 8) | data[2]);
+  DutyCycle.Left = ((data[1] << 8) | data[0]);
+  DutyCycle.Right = ((data[3] << 8) | data[2]);
 
-  vmVariables.pwm[E_Motor_Left]  = DutyCycle[E_Motor_Left];
-  vmVariables.pwm[E_Motor_Right] = DutyCycle[E_Motor_Right];
+  vmVariables.pwm[E_Motor_Left]  = DutyCycle.Left;
+  vmVariables.pwm[E_Motor_Right] = DutyCycle.Right;
 }
 
 //_____________________________________________________________________________
@@ -378,18 +393,18 @@ void STM32_ReadBatteryMotorVoltage(void)
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, BATTERY_MOTOR_VOLTAGE_REG_ADDRESS, data, BATTERY_MOTOR_VOLTAGE_MESSAGE_LENGTH);
 
-  VbatMotor[E_Motor_Left]  = ((data[1] << 8) | data[0]);
-  VbatMotor[E_Motor_Right] = ((data[3] << 8) | data[2]);
+  VbatMotor.Left  = ((data[1] << 8) | data[0]);
+  VbatMotor.Right = ((data[3] << 8) | data[2]);
 
-  vmVariables.vbat_motor[E_Motor_Left]  = VbatMotor[E_Motor_Left];
-  vmVariables.vbat_motor[E_Motor_Right] = VbatMotor[E_Motor_Right];
+  vmVariables.vbat_motor[E_Motor_Left]  = VbatMotor.Left;
+  vmVariables.vbat_motor[E_Motor_Right] = VbatMotor.Right;
 }
 
 //_____________________________________________________________________________
 
 int16_t STM32_GetBatteryMotorVoltage(void)
 {
-  return (VbatMotor[E_Motor_Left] + VbatMotor[E_Motor_Right]);
+  return (VbatMotor.Left + VbatMotor.Right);
 }
 
 //_____________________________________________________________________________
@@ -399,9 +414,6 @@ void STM32_ReadInducedVoltage(void)
   uint8_t data[INDUCED_VOLTAGE_MESSAGE_LENGTH];
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, INDUCED_VOLTAGE_REG_ADDRESS, data, INDUCED_VOLTAGE_MESSAGE_LENGTH);
-
-  //Vind[E_Motor_Left]  = ((data[1] << 8) | data[0]);
-  //Vind[E_Motor_Right] = ((data[3] << 8) | data[2]);
 
   Vind.Left  = ((data[1] << 8) | data[0]);
   Vind.Right = ((data[3] << 8) | data[2]);
@@ -420,11 +432,11 @@ void STM32_ReadMotorCurrent(void)
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, MOTOR_CURRENT_REG_ADDRESS, data, MOTOR_CURRENT_MESSAGE_LENGTH);
 
-  Current[E_Motor_Left]  = ((data[1] << 8) | data[0]);
-  Current[E_Motor_Right] = ((data[3] << 8) | data[2]);
+  Current.Left  = ((data[1] << 8) | data[0]);
+  Current.Right= ((data[3] << 8) | data[2]);
 
-  vmVariables.imot[E_Motor_Left]  = Current[E_Motor_Left];
-  vmVariables.imot[E_Motor_Right] = Current[E_Motor_Right];
+  vmVariables.imot[E_Motor_Left]  = Current.Left;
+  vmVariables.imot[E_Motor_Right] = Current.Right;
 }
 
 //_____________________________________________________________________________
@@ -466,7 +478,7 @@ int16_t STM32_GetRightInducedVoltage(void)
 
 //_____________________________________________________________________________
 
-T_Vind STM32_GetInducedVoltage(void)
+T_Motor STM32_GetInducedVoltage(void)
 {
   return Vind;
 }
@@ -499,21 +511,21 @@ void STM32_ReadProxIRValue(void)
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, PROX_IR_VALUE_REG_ADDRESS, data, PROX_IR_VALUE_MESSAGE_LENGTH);
 
-  ProxIRValue[E_ProxIR_FrontLeft]        = ((data[1] << 8) | data[0]);
-  ProxIRValue[E_ProxIR_FrontLeftCenter]  = ((data[3] << 8) | data[2]);
-  ProxIRValue[E_ProxIR_FrontCenter]      = ((data[5] << 8) | data[4]);
-  ProxIRValue[E_ProxIR_FrontRightCenter] = ((data[7] << 8) | data[6]);
-  ProxIRValue[E_ProxIR_FrontRight]       = ((data[9] << 8) | data[8]);
-  ProxIRValue[E_ProxIR_BackLeft]         = ((data[11] << 8) | data[10]);
-  ProxIRValue[E_ProxIR_BackRight]        = ((data[13] << 8) | data[12]);
+  ProxIR.FrontLeft        = ((data[1] << 8) | data[0]);
+  ProxIR.FrontLeftCenter  = ((data[3] << 8) | data[2]);
+  ProxIR.FrontCenter      = ((data[5] << 8) | data[4]);
+  ProxIR.FrontRightCenter = ((data[7] << 8) | data[6]);
+  ProxIR.FrontRight       = ((data[9] << 8) | data[8]);
+  ProxIR.BackLeft         = ((data[11] << 8) | data[10]);
+  ProxIR.BackRight        = ((data[13] << 8) | data[12]);
 
-  vmVariables.prox[E_ProxIR_FrontLeft]        = ProxIRValue[E_ProxIR_FrontLeft];
-  vmVariables.prox[E_ProxIR_FrontLeftCenter]  = ProxIRValue[E_ProxIR_FrontLeftCenter];
-  vmVariables.prox[E_ProxIR_FrontCenter]      = ProxIRValue[E_ProxIR_FrontCenter];
-  vmVariables.prox[E_ProxIR_FrontRightCenter] = ProxIRValue[E_ProxIR_FrontRightCenter];
-  vmVariables.prox[E_ProxIR_FrontRight]       = ProxIRValue[E_ProxIR_FrontRight];
-  vmVariables.prox[E_ProxIR_BackLeft]         = ProxIRValue[E_ProxIR_BackLeft];
-  vmVariables.prox[E_ProxIR_BackRight]        = ProxIRValue[E_ProxIR_BackRight];
+  vmVariables.prox[E_ProxIR_FrontLeft]        = ProxIR.FrontLeft;
+  vmVariables.prox[E_ProxIR_FrontLeftCenter]  = ProxIR.FrontLeftCenter;
+  vmVariables.prox[E_ProxIR_FrontCenter]      = ProxIR.FrontCenter;
+  vmVariables.prox[E_ProxIR_FrontRightCenter] = ProxIR.FrontRightCenter;
+  vmVariables.prox[E_ProxIR_FrontRight]       = ProxIR.FrontRight;
+  vmVariables.prox[E_ProxIR_BackLeft]         = ProxIR.BackLeft;
+  vmVariables.prox[E_ProxIR_BackRight]        = ProxIR.BackRight;
 }
 
 //_____________________________________________________________________________

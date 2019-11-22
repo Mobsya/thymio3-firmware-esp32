@@ -137,7 +137,7 @@ static void RunWaitState(void)
   Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
   Leds_SetBodyBrightness(0u, 0u, MAX_BRIGHTNESS);
 
-  T_Vind vind = STM32_GetInducedVoltage();
+  T_Motor vind = STM32_GetInducedVoltage();
 
   if (abs(vind.Left + vind.Right) > 400)
   {
@@ -169,7 +169,7 @@ static void RunRecordState(void)
 {
   uint8_t* buttonState;
 
-  T_Vind vind = STM32_GetInducedVoltage();
+  T_Motor vind = STM32_GetInducedVoltage();
   int16_t temp = 0;
 
   Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);

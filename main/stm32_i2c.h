@@ -44,7 +44,18 @@ typedef struct
 {
   int16_t Left;
   int16_t Right;
-} T_Vind;  //!< Induced voltage
+} T_Motor;  //!< Motor description
+
+typedef struct
+{
+  int16_t FrontLeft;
+  int16_t FrontLeftCenter;
+  int16_t FrontCenter;
+  int16_t FrontRightCenter;
+  int16_t FrontRight;
+  int16_t BackLeft;
+  int16_t BackRight;
+} T_ProxIR;  //!< Proximity IR sensor description
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -58,8 +69,14 @@ typedef struct
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
+//! \brief     Initialize the STM32
+//! \pre       None
+//! \param     None
+//! \return    None
+extern void STM32_Init(void);
+
 extern void STM32_UpdateProxIRLedsBrightness(uint16_t l0, uint16_t l1, uint16_t l2, uint16_t l3,
-    uint16_t l4, uint16_t l5, uint16_t l6, uint16_t l7);
+                                             uint16_t l4, uint16_t l5, uint16_t l6, uint16_t l7);
 
 extern void STM32_UpdateMicrophoneLedBrightness(uint16_t brightness);
 //! \brief     Update the settings
@@ -207,7 +224,7 @@ extern int16_t STM32_GetBatteryVoltage(void);
 
 //extern int16_t STM32_GetRightInducedVoltage(void);
 
-extern T_Vind STM32_GetInducedVoltage(void);
+extern T_Motor STM32_GetInducedVoltage(void);
 
 //! \brief     Read the sound value
 //! \pre       None

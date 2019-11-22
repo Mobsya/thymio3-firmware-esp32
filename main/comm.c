@@ -82,7 +82,7 @@ void Comm_Init(void)
 {
   UART_Init();
 
-  //STM32_Init();
+  STM32_Init();
 
   TaskIsStarted = false;
 

@@ -84,16 +84,6 @@
 // IR receiver pins
 #define IR_RECEIVER_PIN              35u  //!< IR_RECEIVER pin is GPIO35
 
-//*****************************************************************************
-// External devices (not connected to the ESP32)
-//*****************************************************************************
-
-#define PROX_IR_SENSORS_NUM           7u  //!< Number of proximity IR sensors
-
-#define GROUND_IR_SENSORS_NUM         2u  //!< Number of ground IR sensors
-
-#define MOTORS_NUM                    2u  //!< Number of motors
-
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
