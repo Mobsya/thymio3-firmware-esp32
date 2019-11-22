@@ -33,6 +33,7 @@
 #include "gyroscope.h"
 #include "leds.h"
 #include "rc5.h"
+#include "stm32_i2c.h"
 #include "timer_sw.h"
 
 //-----------------------------------------------------------------------------
@@ -54,6 +55,15 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
+//! \details States of the state machine
+typedef enum
+{
+  E_State_Record,
+  E_State_Erase,
+  E_State_Play,
+  E_State_Wait
+} T_State;
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -67,18 +77,18 @@ static const char* Tag = "responsive";
 static T_FifoBytes* SequenceFifo = NULL;
 
 static bool RecordSequenceIsFinished = false;
-static bool MovementIsStarted = false;
 static bool MovementIsInProgress = false;
 static bool RotationIsInProgress = false;
 static bool MovementTimerIsRunning = false;
 static bool StopTimerIsRunning = false;
 static bool FirstRecording = false;
-static bool Erase = false;
 
 static uint16_t Position = 0u;  //!< Consume position of the FIFO
 
 static T_TimerSw* MovementTimer = NULL;  //!< Used to move the robot in responsive mode
 static T_TimerSw* StopTimer = NULL;      //!< Used to stop the robot in responsive mode
+
+static T_State State = E_State_Record;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -147,7 +157,6 @@ void Responsive_Init(void)
   SequenceFifo = Fifo8bits_Create(buffer, SEQUENCE_BUFFER_SIZE);
 
   RecordSequenceIsFinished = false;
-  MovementIsStarted = false;
   MovementIsInProgress = false;
   RotationIsInProgress = false;
   MovementTimerIsRunning = false;
@@ -177,26 +186,27 @@ void Responsive_Stop(void)
 
 void Responsive_Run(void)
 {
-  uint8_t brightness = Common_GetBodyColorPulse();
-  int16_t acceleration = Accelerometer_GetAccelerationY();
-
-  // Magenta pulse
-  Leds_SetBodyBrightness(brightness, 0u, brightness);
-
-  if (!RecordSequenceIsFinished)
+  switch (State)
   {
-	if (acceleration <= -15000)  // Right side
-	{
-      EraseSequence();
-	}
-	else
-	{
+    case E_State_Record:
       RecordSequence();
-	}
-  }
-  else
-  {
-    PlaySequence();
+	  break;
+
+	case E_State_Erase:
+	  EraseSequence();
+	  break;
+
+	case E_State_Play:
+	  PlaySequence();
+	  break;
+
+	case E_State_Wait:
+	  //PlaySequence()();
+	  break;
+
+	default:
+	  // Do nothing
+	  break;
   }
 }
 
@@ -217,6 +227,7 @@ static void RecordSequence(void)
   if (RC5_IsNewMessageReceived(&toggle))
   {
     command = RC5_GetCommand();
+    ESP_LOGE(Tag, "Rec Command %d", command);
   }
 
   when(buttonState[E_Button_Backward] || (command == E_Command_DownArrow))
@@ -245,19 +256,25 @@ static void RecordSequence(void)
 
   when (Accelerometer_IsTapDetected() || (command == E_Command_Go))
   {
-	// Initialize the position to play the sequence
-    Fifo8bits_SetConsumePosition(SequenceFifo, Position);
-    ESP_LOGE(Tag, "Set record pos %d", Position);
-
     RecordSequenceIsFinished = true;
+
+    // Initialize the position to play the sequence
+    Fifo8bits_SetConsumePosition(SequenceFifo, Position);
 
     if (!FirstRecording)
     {
-      MovementIsStarted = false;
       FirstRecording = true;
-      ESP_LOGE(Tag, "First pos %d", Position);
+      Position = Fifo8bits_GetConsumePosition(SequenceFifo);
     }
-    ESP_LOGI(Tag, "End of recording");
+
+    State = E_State_Play;
+
+    ESP_LOGE(Tag, "End of recording");
+  }
+
+  when(command == E_Command_Stop)
+  {
+	State = E_State_Erase;
   }
 }
 
@@ -265,14 +282,11 @@ static void RecordSequence(void)
 
 static void EraseSequence(void)
 {
-  when(!Erase)
-  {
-    Erase = true;
-    Position = Fifo8bits_GetConsumePosition(SequenceFifo);
-    FirstRecording = false;
-    RunEraseAnimation();
-    ESP_LOGE(Tag, "Get erased pos %d", Position);
-  }
+  Position = Fifo8bits_GetConsumePosition(SequenceFifo);
+  FirstRecording = false;
+  RunEraseAnimation();
+
+  State = E_State_Record;
 }
 
 //_____________________________________________________________________________
@@ -282,23 +296,16 @@ static void PlaySequence(void)
   uint8_t current = 0u;
   uint8_t next = 0u;
 
+  T_ProxIR proxIR = STM32_GetProxIRValue();
+
   static int16_t angleTarget = 0;
 
   if (!Fifo8bits_IsEmpty(SequenceFifo))
   {
     if (!MovementIsInProgress && !MovementTimerIsRunning && !StopTimerIsRunning && !RotationIsInProgress)
     {
-      if (!MovementIsStarted)
-      {
-        Position = Fifo8bits_GetConsumePosition(SequenceFifo);
-        ESP_LOGE(Tag, "Get play pos %d", Position);
-        MovementIsStarted = true;
-      }
-
       Fifo8bits_Read(SequenceFifo, &current, 1);
       Fifo8bits_Peek(SequenceFifo, &next, 1);
-
-      ESP_LOGE(Tag, "Current value %d", current);
 
       if (current == (1u << E_Button_Backward))
       {
@@ -356,8 +363,8 @@ static void PlaySequence(void)
   else if (!MovementTimerIsRunning && !RotationIsInProgress)  // Handle the last stop delay
   {
     RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence
+    State = E_State_Record;
     ESP_LOGE(Tag, "Last movement finished");
-    Erase = false;
   }
   else if (RotationIsInProgress)  // Handle the rotation at the end of the sequence
   {
@@ -365,8 +372,8 @@ static void PlaySequence(void)
     {
       RotationIsInProgress = false;
       RecordSequenceIsFinished = false;  // Allow a new recording sequence
+      State = E_State_Record;
       ESP_LOGE(Tag, "Last rotation finished");
-      Erase = false;
     }
   }
   else
