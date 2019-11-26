@@ -238,6 +238,12 @@ extern void STM32_ReadSoundValue(void);
 //! \return    None
 extern void STM32_ReadProxIRValue(void);
 
+//! \brief     Get the prox IR value
+//! \pre       None
+//! \param     None
+//! \return    None
+extern T_ProxIR STM32_GetProxIRValue(void);
+
 //! \brief     Read the ground IR value
 //! \pre       None
 //! \param     None

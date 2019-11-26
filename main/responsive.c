@@ -35,6 +35,7 @@
 #include "rc5.h"
 #include "stm32_i2c.h"
 #include "timer_sw.h"
+#include "timer_hw.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -42,7 +43,9 @@
 
 #define SEQUENCE_BUFFER_SIZE           50u  //!< Number of actions stored in the FIFO
 
-#define MOVEMENT_DURATION_us      1500000u  //!< Duration of a movement
+// Duration of the pulse = 1500000 [us] -> TIMER_SCALE * 1500000 [us] = 7500000 (timer_group)
+#define MOVEMENT_DURATION_us      7500000u
+//#define MOVEMENT_DURATION_us      1500000u  //!< Duration of a movement
 #define STOP_DURATION_us           500000u  //!< Delay at the end of a movement
 
 #define MOVEMENT_SPEED                300   //!< Movement speed
@@ -82,6 +85,7 @@ static bool RotationIsInProgress = false;
 static bool MovementTimerIsRunning = false;
 static bool StopTimerIsRunning = false;
 static bool FirstRecording = false;
+static bool ObstacleIsDetected = false;
 
 static uint16_t Position = 0u;  //!< Consume position of the FIFO
 
@@ -112,6 +116,12 @@ static void EraseSequence(void);
 //! \return    None
 static void PlaySequence(void);
 
+//! \brief     Pause the sequence
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
+static void PauseSequence(void);
+
 //! \brief     Run the record animation
 //! \pre       First initialize the mode
 //! \param     None
@@ -130,11 +140,19 @@ static void RunEraseAnimation(void);
 //! \return    None
 static void RunPlayAnimation(uint8_t next);
 
+//! \brief     Run the pause animation
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
+static void RunPauseAnimation(void);
+
 //! \brief     Callback called at the end of each movement
 //! \pre       First initialize the mode
 //! \param     None
 //! \return    None
 static void Callback_TimerMovement(void* arg);
+
+static void IRAM_ATTR ISR_EndOfMovement(void* para);
 
 //! \brief     Callback called at the end of the delay added after a movement
 //! \pre       First initialize the mode
@@ -163,6 +181,8 @@ void Responsive_Init(void)
   StopTimerIsRunning = false;
 
   MovementTimer = TimerSw_Create(MOVEMENT_DURATION_us, Callback_TimerMovement);
+
+  TimerHw_Init(1, 0, true, MOVEMENT_DURATION_us, ISR_EndOfMovement);
   StopTimer = TimerSw_Create(STOP_DURATION_us, Callback_TimerStop);
 }
 
@@ -190,23 +210,23 @@ void Responsive_Run(void)
   {
     case E_State_Record:
       RecordSequence();
-	  break;
+      break;
 
-	case E_State_Erase:
-	  EraseSequence();
-	  break;
+    case E_State_Erase:
+      EraseSequence();
+      break;
 
-	case E_State_Play:
-	  PlaySequence();
-	  break;
+    case E_State_Play:
+      PlaySequence();
+      break;
 
-	case E_State_Wait:
-	  //PlaySequence()();
-	  break;
+    case E_State_Wait:
+      PauseSequence();
+      break;
 
-	default:
-	  // Do nothing
-	  break;
+    default:
+      // Do nothing
+      break;
   }
 }
 
@@ -227,7 +247,6 @@ static void RecordSequence(void)
   if (RC5_IsNewMessageReceived(&toggle))
   {
     command = RC5_GetCommand();
-    ESP_LOGE(Tag, "Rec Command %d", command);
   }
 
   when(buttonState[E_Button_Backward] || (command == E_Command_DownArrow))
@@ -274,7 +293,7 @@ static void RecordSequence(void)
 
   when(command == E_Command_Stop)
   {
-	State = E_State_Erase;
+    State = E_State_Erase;
   }
 }
 
@@ -293,7 +312,7 @@ static void EraseSequence(void)
 
 static void PlaySequence(void)
 {
-  uint8_t current = 0u;
+  static uint8_t current = 0u;
   uint8_t next = 0u;
 
   T_ProxIR proxIR = STM32_GetProxIRValue();
@@ -309,7 +328,7 @@ static void PlaySequence(void)
 
       if (current == (1u << E_Button_Backward))
       {
-        TimerSw_StartTimerOnce(MovementTimer, MOVEMENT_DURATION_us);
+        TimerHw_Start(1, 0);
         MovementIsInProgress = true;
         MovementTimerIsRunning = true;
 
@@ -319,7 +338,8 @@ static void PlaySequence(void)
 
       if (current == (1u << E_Button_Forward))
       {
-        TimerSw_StartTimerOnce(MovementTimer, MOVEMENT_DURATION_us);
+        //TimerSw_StartTimerOnce(MovementTimer, MOVEMENT_DURATION_us);
+        TimerHw_Start(1, 0);
         MovementIsInProgress = true;
         MovementTimerIsRunning = true;
 
@@ -348,16 +368,84 @@ static void PlaySequence(void)
       TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
       StopTimerIsRunning = true;
     }
+    else if (MovementIsInProgress && MovementTimerIsRunning)
+    {
+      if (proxIR.FrontCenter > 700)
+      {
+        TimerHw_Stop(1, 0);
+        vmVariables.target[0] = 0;
+        vmVariables.target[1] = 0;
+
+        State = E_State_Wait;
+      }
+      else if (ObstacleIsDetected)
+      {
+        TimerHw_Start(1, 0);
+
+        if (current == (1u << E_Button_Forward))
+        {
+          vmVariables.target[0] = MOVEMENT_SPEED;
+          vmVariables.target[1] = MOVEMENT_SPEED;
+        }
+        else if (current == (1u << E_Button_Backward))
+        {
+          vmVariables.target[0] = -MOVEMENT_SPEED;
+          vmVariables.target[1] = -MOVEMENT_SPEED;
+        }
+
+        ObstacleIsDetected = false;
+      }
+    }
     else if (RotationIsInProgress)
     {
-      if (AngleController_Update(angleTarget, MAX_ROTATION_SPEED) == 0)
+      if (proxIR.FrontCenter > 700)
       {
+        vmVariables.target[0] = 0;
+        vmVariables.target[1] = 0;
+
+        State = E_State_Wait;
+      }
+      else if (AngleController_Update(angleTarget, MAX_ROTATION_SPEED) == 0)
+      {
+    	ObstacleIsDetected = false;
         RotationIsInProgress = false;
       }
     }
     else
     {
       // Do nothing
+    }
+  }
+  else if (MovementTimerIsRunning)
+  {
+    if (proxIR.FrontCenter > 700)
+    {
+      TimerHw_Stop(1, 0);
+      vmVariables.target[0] = 0;
+      vmVariables.target[1] = 0;
+
+      State = E_State_Wait;
+    }
+    else if (ObstacleIsDetected)
+    {
+      TimerHw_Start(1, 0);
+
+      if (current == (1u << E_Button_Forward))
+      {
+        vmVariables.target[0] = MOVEMENT_SPEED;
+        vmVariables.target[1] = MOVEMENT_SPEED;
+      }
+      else if (current == (1u << E_Button_Backward))
+      {
+        vmVariables.target[0] = -MOVEMENT_SPEED;
+        vmVariables.target[1] = -MOVEMENT_SPEED;
+      }
+      else
+      {
+        // Do nothing
+      }
+
+      ObstacleIsDetected = false;
     }
   }
   else if (!MovementTimerIsRunning && !RotationIsInProgress)  // Handle the last stop delay
@@ -368,17 +456,44 @@ static void PlaySequence(void)
   }
   else if (RotationIsInProgress)  // Handle the rotation at the end of the sequence
   {
-    if (AngleController_Update(angleTarget, MAX_ROTATION_SPEED) == 0)
+    if (proxIR.FrontCenter > 700)
+    {
+      vmVariables.target[0] = 0;
+      vmVariables.target[1] = 0;
+
+      State = E_State_Wait;
+    }
+    else if (AngleController_Update(angleTarget, MAX_ROTATION_SPEED) == 0)
     {
       RotationIsInProgress = false;
       RecordSequenceIsFinished = false;  // Allow a new recording sequence
       State = E_State_Record;
       ESP_LOGE(Tag, "Last rotation finished");
     }
+    else
+    {
+      // Do nothing
+    }
   }
   else
   {
     // Do nothing
+  }
+}
+
+//_____________________________________________________________________________
+
+static void PauseSequence(void)
+{
+  T_ProxIR proxIR = STM32_GetProxIRValue();
+
+  ObstacleIsDetected = true;
+  RunPauseAnimation();
+
+  if (proxIR.FrontCenter < 600)
+  {
+    State = E_State_Play;
+    Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
   }
 }
 
@@ -440,6 +555,13 @@ static void RunPlayAnimation(uint8_t next)
 
 //_____________________________________________________________________________
 
+static void RunPauseAnimation(void)
+{
+  Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);
+}
+
+//_____________________________________________________________________________
+
 static void Callback_TimerMovement(void* arg)
 {
   if (MovementIsInProgress)
@@ -449,6 +571,34 @@ static void Callback_TimerMovement(void* arg)
 
     MovementTimerIsRunning = false;
   }
+}
+
+//_____________________________________________________________________________
+
+static void IRAM_ATTR ISR_EndOfMovement(void* para)
+{
+  // Retrieve the interrupt status and the counter value
+  // from the timer that reported the interrupt
+  uint32_t intr_status = TIMERG1.int_st_timers.val;
+  TIMERG1.hw_timer[0].update = 1;
+
+  // Clear the interrupt and update the alarm time for the timer with without reload
+  if (intr_status & BIT(0))
+  {
+    if (MovementIsInProgress)
+    {
+      vmVariables.target[0] = 0;
+      vmVariables.target[1] = 0;
+
+      MovementTimerIsRunning = false;
+    }
+
+    TIMERG1.int_clr_timers.t0 = 1;
+    timer_pause(1, 0);
+  }
+
+  // After the alarm has been triggered, we need enable it again, so it is triggered the next time
+  TIMERG1.hw_timer[0].config.alarm_en = TIMER_ALARM_EN;
 }
 
 //_____________________________________________________________________________

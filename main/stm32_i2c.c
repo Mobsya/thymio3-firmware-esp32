@@ -530,6 +530,13 @@ void STM32_ReadProxIRValue(void)
 
 //_____________________________________________________________________________
 
+T_ProxIR STM32_GetProxIRValue(void)
+{
+  return ProxIR;
+}
+
+//_____________________________________________________________________________
+
 void STM32_ReadGroundIRValue(void)
 {
   uint8_t data[GROUND_IR_VALUE_MESSAGE_LENGTH];
