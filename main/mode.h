@@ -38,7 +38,8 @@ enum
   E_Mode_Drawer,
   E_Mode_LineTracker,
   E_Mode_Responsive,
-  E_Mode_Max = E_Mode_Responsive
+  E_Mode_Musician,
+  E_Mode_Max = E_Mode_Musician
 };
 typedef int16_t T_Mode;  // Mode selection
 

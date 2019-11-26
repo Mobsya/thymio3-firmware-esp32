@@ -258,6 +258,9 @@ void Mode_Run(void)
       Responsive_Run();
       break;
 
+    case E_Mode_Musician:
+      break;
+
     default:
       // Do nothing
       break;
@@ -303,6 +306,10 @@ static void StartMode(T_Mode mode)
       Behavior_Enable(B_LEDS_PROX);
       Behavior_Enable(B_LEDS_LEGO);
       Responsive_Start();
+      break;
+
+    case E_Mode_Musician:
+      Behavior_Enable(B_LEDS_PROX);
       break;
 
     default:
@@ -357,6 +364,10 @@ static void ExitMode(T_Mode mode)
       Responsive_Stop();
       Behavior_Disable(B_LEDS_PROX);
       Behavior_Disable(B_LEDS_LEGO);
+      break;
+
+    case E_Mode_Musician:
+      Behavior_Disable(B_LEDS_PROX);
       break;
 
     default:
@@ -419,7 +430,7 @@ static void SetModeColor(T_Mode mode)
       break;
 
     case E_Mode_Explorer:  // Yellow
-      Leds_SetBodyBrightness(MAX_BRIGHTNESS, 12, 0u);
+      Leds_SetBodyBrightness(MAX_BRIGHTNESS, 12u, 0u);
       break;
 
     case E_Mode_Fearful:  // Red
@@ -436,6 +447,10 @@ static void SetModeColor(T_Mode mode)
 
     case E_Mode_Responsive:  // Magenta
       Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
+      break;
+
+    case E_Mode_Musician:  // White
+      Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
       break;
 
     default:
