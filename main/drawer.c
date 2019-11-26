@@ -207,11 +207,11 @@ static void RunRecordState(void)
     }
     else if ((LeftSpeed[CurrentStep - 1u] < 0) && (vind.Left < 0) && (temp > 0))
     {
-	  LeftSpeed[CurrentStep - 1u] = -32767;
+      LeftSpeed[CurrentStep - 1u] = -32767;
     }
     else
     {
-	  LeftSpeed[CurrentStep - 1u] = temp;
+      LeftSpeed[CurrentStep - 1u] = temp;
     }
 
     temp = RightSpeed[CurrentStep - 1u] + vind.Right;
@@ -236,27 +236,27 @@ static void RunRecordState(void)
   {
     if (CounterStep > 0u)
     {
-	  LeftSpeed[CurrentStep - 1u] = LeftSpeed[CurrentStep - 1u] / CounterStep;
+      LeftSpeed[CurrentStep - 1u] = LeftSpeed[CurrentStep - 1u] / CounterStep;
       RightSpeed[CurrentStep - 1u] = RightSpeed[CurrentStep - 1u] / CounterStep;
       Duration[CurrentStep - 1u] = CounterStep;
     }
-	else
-	{
+    else
+    {
       LeftSpeed[CurrentStep - 1u] = 0;
       RightSpeed[CurrentStep - 1u] = 0;
       Duration[CurrentStep - 1u] = 0;
-	}
+    }
 
     CurrentStep++;
-	CounterStep = 0u;
+    CounterStep = 0u;
 
-	if ((CurrentStep - 1u) >= 4u)
-	{
-	  CurrentStep = 0u;
-	  CounterStep = 0u;
+    if ((CurrentStep - 1u) >= 4u)
+    {
+      CurrentStep = 0u;
+      CounterStep = 0u;
 
-	  State = E_DrawerState_Wait;
-	}
+      State = E_DrawerState_Wait;
+    }
   }
 }
 
@@ -289,8 +289,8 @@ static void RunPlayState(void)
   when(buttonState[E_Button_Forward])
   {
     vmVariables.target[0] = 0;
-	vmVariables.target[1] = 0;
+    vmVariables.target[1] = 0;
 
-	State = E_DrawerState_Wait;
+    State = E_DrawerState_Wait;
   }
 }

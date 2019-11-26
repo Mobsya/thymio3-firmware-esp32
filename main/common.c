@@ -64,7 +64,7 @@ uint8_t Common_GetBodyColorPulse(void)
 
   if (pulse > 0)
   {
-	brightness = pulse;
+    brightness = pulse;
 
     if (pulse >= MAX_BRIGHTNESS)
     {

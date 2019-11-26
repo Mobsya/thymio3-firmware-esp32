@@ -273,7 +273,7 @@ static void RecordSequence(void)
     Fifo8bits_Write(SequenceFifo, &data, 1u);
   }
 
-  when (Accelerometer_IsTapDetected() || (command == E_Command_Go))
+  when(Accelerometer_IsTapDetected() || (command == E_Command_Go))
   {
     RecordSequenceIsFinished = true;
 
@@ -407,7 +407,7 @@ static void PlaySequence(void)
       }
       else if (AngleController_Update(angleTarget, MAX_ROTATION_SPEED) == 0)
       {
-    	ObstacleIsDetected = false;
+        ObstacleIsDetected = false;
         RotationIsInProgress = false;
       }
     }

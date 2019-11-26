@@ -106,8 +106,8 @@ void Mode_Init(bool enableVM)
   }
   else
   {
-	SelectMode = E_Mode_Follower;
-	SetModeColor(SelectMode);
+    SelectMode = E_Mode_Follower;
+    SetModeColor(SelectMode);
   }
 
   Behavior_Enable(B_ALWAYS | B_MODE);
@@ -170,7 +170,7 @@ void Mode_Run(void)
     }
 
     // Exit from a mode
-    when (sideState)
+    when(sideState)
     {
       ExitMode(CurrentMode);
 

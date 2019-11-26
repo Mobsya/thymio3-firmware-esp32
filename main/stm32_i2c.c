@@ -433,7 +433,7 @@ void STM32_ReadMotorCurrent(void)
   I2C_ReadFromAddress(SLAVE_ADDRESS, MOTOR_CURRENT_REG_ADDRESS, data, MOTOR_CURRENT_MESSAGE_LENGTH);
 
   Current.Left  = ((data[1] << 8) | data[0]);
-  Current.Right= ((data[3] << 8) | data[2]);
+  Current.Right = ((data[3] << 8) | data[2]);
 
   vmVariables.imot[E_Motor_Left]  = Current.Left;
   vmVariables.imot[E_Motor_Right] = Current.Right;
