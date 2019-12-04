@@ -54,6 +54,8 @@
 
 #define ROTATION_ANGLE              16383   //!< Rotation angle corresponding to 90° (0x3FFF)
 
+#define COLLISION_THRESHOLD           700   //!< Collision threshold
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -63,9 +65,17 @@ typedef enum
 {
   E_State_Record,
   E_State_Erase,
-  E_State_Play,
-  E_State_Wait
+  E_State_Play
 } T_State;
+
+//! \details States of the play state machine
+typedef enum
+{
+  E_PlayState_Replay,
+  E_PlayState_Movement,
+  E_PlayState_Rotation,
+  E_PlayState_Collision
+} T_PlayState;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -82,17 +92,18 @@ static T_FifoBytes* SequenceFifo = NULL;
 static bool RecordSequenceIsFinished = false;
 static bool MovementIsInProgress = false;
 static bool RotationIsInProgress = false;
-static bool MovementTimerIsRunning = false;
-static bool StopTimerIsRunning = false;
 static bool FirstRecording = false;
 static bool ObstacleIsDetected = false;
 
 static uint16_t Position = 0u;  //!< Consume position of the FIFO
 
-static T_TimerSw* MovementTimer = NULL;  //!< Used to move the robot in responsive mode
 static T_TimerSw* StopTimer = NULL;      //!< Used to stop the robot in responsive mode
 
 static T_State State = E_State_Record;
+static T_PlayState PlayState = E_PlayState_Replay;
+
+static uint8_t Current = 0u;
+static int16_t AngleTarget = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -116,11 +127,17 @@ static void EraseSequence(void);
 //! \return    None
 static void PlaySequence(void);
 
-//! \brief     Pause the sequence
+static void HandleReplay(void);
+
+static void HandleMovement(void);
+
+static void HandleRotation(void);
+
+//! \brief     Handle the collision
 //! \pre       First initialize the mode
 //! \param     None
 //! \return    None
-static void PauseSequence(void);
+static void HandleCollision(void);
 
 //! \brief     Run the record animation
 //! \pre       First initialize the mode
@@ -145,12 +162,6 @@ static void RunPlayAnimation(uint8_t next);
 //! \param     None
 //! \return    None
 static void RunPauseAnimation(void);
-
-//! \brief     Callback called at the end of each movement
-//! \pre       First initialize the mode
-//! \param     None
-//! \return    None
-static void Callback_TimerMovement(void* arg);
 
 static void IRAM_ATTR ISR_EndOfMovement(void* para);
 
@@ -177,10 +188,6 @@ void Responsive_Init(void)
   RecordSequenceIsFinished = false;
   MovementIsInProgress = false;
   RotationIsInProgress = false;
-  MovementTimerIsRunning = false;
-  StopTimerIsRunning = false;
-
-  MovementTimer = TimerSw_Create(MOVEMENT_DURATION_us, Callback_TimerMovement);
 
   TimerHw_Init(1, 0, true, MOVEMENT_DURATION_us, ISR_EndOfMovement);
   StopTimer = TimerSw_Create(STOP_DURATION_us, Callback_TimerStop);
@@ -218,10 +225,6 @@ void Responsive_Run(void)
 
     case E_State_Play:
       PlaySequence();
-      break;
-
-    case E_State_Wait:
-      PauseSequence();
       break;
 
     default:
@@ -312,188 +315,185 @@ static void EraseSequence(void)
 
 static void PlaySequence(void)
 {
-  static uint8_t current = 0u;
-  uint8_t next = 0u;
-
-  T_ProxIR proxIR = STM32_GetProxIRValue();
-
-  static int16_t angleTarget = 0;
-
-  if (!Fifo8bits_IsEmpty(SequenceFifo))
+  switch (PlayState)
   {
-    if (!MovementIsInProgress && !MovementTimerIsRunning && !StopTimerIsRunning && !RotationIsInProgress)
-    {
-      Fifo8bits_Read(SequenceFifo, &current, 1);
-      Fifo8bits_Peek(SequenceFifo, &next, 1);
+    case E_PlayState_Replay:
+      HandleReplay();
+      break;
 
-      if (current == (1u << E_Button_Backward))
-      {
-        TimerHw_Start(1, 0);
-        MovementIsInProgress = true;
-        MovementTimerIsRunning = true;
+    case E_PlayState_Movement:
+      HandleMovement();
+      break;
 
-        vmVariables.target[0] = -MOVEMENT_SPEED;  // TODO Check why the speed in backward direction is slower
-        vmVariables.target[1] = -MOVEMENT_SPEED;
-      }
+    case E_PlayState_Rotation:
+      HandleRotation();
+      break;
 
-      if (current == (1u << E_Button_Forward))
-      {
-        //TimerSw_StartTimerOnce(MovementTimer, MOVEMENT_DURATION_us);
-        TimerHw_Start(1, 0);
-        MovementIsInProgress = true;
-        MovementTimerIsRunning = true;
+    case E_PlayState_Collision:
+      HandleCollision();
+      break;
 
-        vmVariables.target[0] = MOVEMENT_SPEED;
-        vmVariables.target[1] = MOVEMENT_SPEED;
-      }
-
-      if (current == (1u << E_Button_Left))
-      {
-        RotationIsInProgress = true;
-        angleTarget = ROTATION_ANGLE;  // + 90°
-        Gyroscope_ResetAngle();
-      }
-
-      if (current == (1u << E_Button_Right))
-      {
-        RotationIsInProgress = true;
-        angleTarget = -ROTATION_ANGLE;  // -90°
-        Gyroscope_ResetAngle();
-      }
-
-      RunPlayAnimation(next);
-    }
-    else if (MovementIsInProgress && !MovementTimerIsRunning && !StopTimerIsRunning)
-    {
-      TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
-      StopTimerIsRunning = true;
-    }
-    else if (MovementIsInProgress && MovementTimerIsRunning)
-    {
-      if (proxIR.FrontCenter > 700)
-      {
-        TimerHw_Stop(1, 0);
-        vmVariables.target[0] = 0;
-        vmVariables.target[1] = 0;
-
-        State = E_State_Wait;
-      }
-      else if (ObstacleIsDetected)
-      {
-        TimerHw_Start(1, 0);
-
-        if (current == (1u << E_Button_Forward))
-        {
-          vmVariables.target[0] = MOVEMENT_SPEED;
-          vmVariables.target[1] = MOVEMENT_SPEED;
-        }
-        else if (current == (1u << E_Button_Backward))
-        {
-          vmVariables.target[0] = -MOVEMENT_SPEED;
-          vmVariables.target[1] = -MOVEMENT_SPEED;
-        }
-
-        ObstacleIsDetected = false;
-      }
-    }
-    else if (RotationIsInProgress)
-    {
-      if (proxIR.FrontCenter > 700)
-      {
-        vmVariables.target[0] = 0;
-        vmVariables.target[1] = 0;
-
-        State = E_State_Wait;
-      }
-      else if (AngleController_Update(angleTarget, MAX_ROTATION_SPEED) == 0)
-      {
-        ObstacleIsDetected = false;
-        RotationIsInProgress = false;
-      }
-    }
-    else
-    {
+    default:
       // Do nothing
-    }
-  }
-  else if (MovementTimerIsRunning)
-  {
-    if (proxIR.FrontCenter > 700)
-    {
-      TimerHw_Stop(1, 0);
-      vmVariables.target[0] = 0;
-      vmVariables.target[1] = 0;
-
-      State = E_State_Wait;
-    }
-    else if (ObstacleIsDetected)
-    {
-      TimerHw_Start(1, 0);
-
-      if (current == (1u << E_Button_Forward))
-      {
-        vmVariables.target[0] = MOVEMENT_SPEED;
-        vmVariables.target[1] = MOVEMENT_SPEED;
-      }
-      else if (current == (1u << E_Button_Backward))
-      {
-        vmVariables.target[0] = -MOVEMENT_SPEED;
-        vmVariables.target[1] = -MOVEMENT_SPEED;
-      }
-      else
-      {
-        // Do nothing
-      }
-
-      ObstacleIsDetected = false;
-    }
-  }
-  else if (!MovementTimerIsRunning && !RotationIsInProgress)  // Handle the last stop delay
-  {
-    RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence
-    State = E_State_Record;
-    ESP_LOGE(Tag, "Last movement finished");
-  }
-  else if (RotationIsInProgress)  // Handle the rotation at the end of the sequence
-  {
-    if (proxIR.FrontCenter > 700)
-    {
-      vmVariables.target[0] = 0;
-      vmVariables.target[1] = 0;
-
-      State = E_State_Wait;
-    }
-    else if (AngleController_Update(angleTarget, MAX_ROTATION_SPEED) == 0)
-    {
-      RotationIsInProgress = false;
-      RecordSequenceIsFinished = false;  // Allow a new recording sequence
-      State = E_State_Record;
-      ESP_LOGE(Tag, "Last rotation finished");
-    }
-    else
-    {
-      // Do nothing
-    }
-  }
-  else
-  {
-    // Do nothing
+      break;
   }
 }
 
 //_____________________________________________________________________________
 
-static void PauseSequence(void)
+static void HandleReplay(void)
 {
+  uint8_t next = 0u;
+
+  if (!Fifo8bits_IsEmpty(SequenceFifo))
+  {
+    if (!MovementIsInProgress && !RotationIsInProgress)
+    {
+      Fifo8bits_Read(SequenceFifo, &Current, 1);
+      Fifo8bits_Peek(SequenceFifo, &next, 1);
+
+      if (Current == (1u << E_Button_Backward))
+      {
+        TimerHw_Start(1, 0);
+        MovementIsInProgress = true;
+        vmVariables.target[0] = -MOVEMENT_SPEED;  // TODO Check why the speed in backward direction is slower
+        vmVariables.target[1] = -MOVEMENT_SPEED;
+        PlayState = E_PlayState_Movement;
+      }
+
+      if (Current == (1u << E_Button_Forward))
+      {
+        TimerHw_Start(1, 0);
+        MovementIsInProgress = true;
+        vmVariables.target[0] = MOVEMENT_SPEED;
+        vmVariables.target[1] = MOVEMENT_SPEED;
+        PlayState = E_PlayState_Movement;
+      }
+
+      if (Current == (1u << E_Button_Left))
+      {
+        RotationIsInProgress = true;
+        AngleTarget = ROTATION_ANGLE;  // + 90°
+        Gyroscope_ResetAngle();
+        PlayState = E_PlayState_Rotation;
+      }
+
+      if (Current == (1u << E_Button_Right))
+      {
+        RotationIsInProgress = true;
+        AngleTarget = -ROTATION_ANGLE;  // -90°
+        Gyroscope_ResetAngle();
+        PlayState = E_PlayState_Rotation;
+      }
+
+      RunPlayAnimation(next);
+    }
+  }
+  else  // Handle the last movement or rotation of the sequence
+  {
+    ESP_LOGE(Tag, "Last movement in progress");
+    //if (!MovementIsInProgress)
+    {
+      RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence
+      State = E_State_Record;
+      ESP_LOGE(Tag, "Last movement finished");
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
+static void HandleMovement(void)
+{
+  T_ProxIR proxIR = STM32_GetProxIRValue();
+
+  if (proxIR.FrontCenter > COLLISION_THRESHOLD)
+  {
+    TimerHw_Stop(1, 0);
+    vmVariables.target[0] = 0;
+    vmVariables.target[1] = 0;
+
+    PlayState = E_PlayState_Collision;
+  }
+  else if (ObstacleIsDetected)
+  {
+    TimerHw_Start(1, 0);
+
+    if (Current == (1u << E_Button_Forward))
+    {
+      vmVariables.target[0] = MOVEMENT_SPEED;
+      vmVariables.target[1] = MOVEMENT_SPEED;
+    }
+    else if (Current == (1u << E_Button_Backward))
+    {
+      vmVariables.target[0] = -MOVEMENT_SPEED;
+      vmVariables.target[1] = -MOVEMENT_SPEED;
+    }
+
+    ObstacleIsDetected = false;
+  }
+  else
+  {
+    // Wait the end of the movement
+  }
+}
+
+//_____________________________________________________________________________
+
+static void HandleRotation(void)
+{
+  T_ProxIR proxIR = STM32_GetProxIRValue();
+
+  if (proxIR.FrontCenter > COLLISION_THRESHOLD)
+  {
+    vmVariables.target[0] = 0;
+    vmVariables.target[1] = 0;
+
+    PlayState = E_PlayState_Collision;
+  }
+  else if (AngleController_Update(AngleTarget, MAX_ROTATION_SPEED) == 0)
+  {
+    ObstacleIsDetected = false;
+    RotationIsInProgress = false;
+
+    PlayState = E_PlayState_Replay;
+  }
+}
+
+//_____________________________________________________________________________
+
+static void HandleCollision(void)
+{
+  static bool first = true;
+
   T_ProxIR proxIR = STM32_GetProxIRValue();
 
   ObstacleIsDetected = true;
   RunPauseAnimation();
 
-  if (proxIR.FrontCenter < 600)
+  if (first)
   {
-    State = E_State_Play;
+    Codec_PlayMP3FileFromFlash(E_SystemSound_Detection);
+    first = false;
+  }
+
+  if (proxIR.FrontCenter < 10)
+  {
     Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
+    first = true;
+
+    if (MovementIsInProgress)
+    {
+      PlayState = E_PlayState_Movement;
+    }
+    else if (RotationIsInProgress)
+    {
+      PlayState = E_PlayState_Rotation;
+    }
+    else
+    {
+      // Do nothing
+    }
   }
 }
 
@@ -562,19 +562,6 @@ static void RunPauseAnimation(void)
 
 //_____________________________________________________________________________
 
-static void Callback_TimerMovement(void* arg)
-{
-  if (MovementIsInProgress)
-  {
-    vmVariables.target[0] = 0;
-    vmVariables.target[1] = 0;
-
-    MovementTimerIsRunning = false;
-  }
-}
-
-//_____________________________________________________________________________
-
 static void IRAM_ATTR ISR_EndOfMovement(void* para)
 {
   // Retrieve the interrupt status and the counter value
@@ -585,13 +572,11 @@ static void IRAM_ATTR ISR_EndOfMovement(void* para)
   // Clear the interrupt and update the alarm time for the timer with without reload
   if (intr_status & BIT(0))
   {
-    if (MovementIsInProgress)
-    {
-      vmVariables.target[0] = 0;
-      vmVariables.target[1] = 0;
+    vmVariables.target[0] = 0;
+    vmVariables.target[1] = 0;
 
-      MovementTimerIsRunning = false;
-    }
+    //PlayState = E_PlayState_Delay;
+    TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
 
     TIMERG1.int_clr_timers.t0 = 1;
     timer_pause(1, 0);
@@ -606,5 +591,5 @@ static void IRAM_ATTR ISR_EndOfMovement(void* para)
 static void Callback_TimerStop(void* arg)
 {
   MovementIsInProgress = false;
-  StopTimerIsRunning = false;
+  PlayState = E_PlayState_Replay;
 }

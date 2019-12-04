@@ -21,7 +21,7 @@
 #include <string.h>
 
 //#include <driver/spi_master.h>
-#include <esp_log.h>
+#include "esp_log.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -35,7 +35,9 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define SPI_CLK_FREQENCY_Hz    1000000  //8000000
+#define HSPI_CLK_FREQENCY_Hz    1000000  //8000000
+
+#define VSPI_CLK_FREQENCY_Hz    100000  //8000000
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -116,10 +118,10 @@ void Spi_AddDeviceHSPI(spi_device_handle_t* device, int csPin)
     .command_bits     = 0,
     .dummy_bits       = 0,
     .mode             = 0,
-    .duty_cycle_pos   = 0,
+    .duty_cycle_pos   = 0,  // 50%
     .cs_ena_posttrans = 0,
     .cs_ena_pretrans  = 0,
-    .clock_speed_hz   = SPI_CLK_FREQENCY_Hz,
+    .clock_speed_hz   = HSPI_CLK_FREQENCY_Hz,
     .spics_io_num     = csPin,
     .flags            = 0,
     .queue_size       = 1,
@@ -141,13 +143,13 @@ void Spi_AddDeviceVSPI(spi_device_handle_t* device, int csPin)
     .command_bits     = 0,
     .dummy_bits       = 0,
     .mode             = 0,
-    .duty_cycle_pos   = 0,
+    .duty_cycle_pos   = 0,  // 50%
     .cs_ena_posttrans = 0,
     .cs_ena_pretrans  = 0,
-    .clock_speed_hz   = SPI_CLK_FREQENCY_Hz,
+    .clock_speed_hz   = VSPI_CLK_FREQENCY_Hz,
     .spics_io_num     = csPin,
     .flags            = 0, //SPI_DEVICE_HALFDUPLEX,
-    .queue_size       = 1,
+    .queue_size       = 3,
     .pre_cb           = NULL,
     .post_cb          = NULL, //Callback_EndTransmissionVSPI
   };
@@ -191,7 +193,7 @@ void Spi_Write(spi_device_handle_t device, uint8_t* data, uint16_t size)
 //_____________________________________________________________________________
 
 //void Spi_WriteVSPI(spi_device_handle_t device, uint16_t* txBuffer, uint16_t size)
-void Spi_WriteVSPI(spi_device_handle_t device, uint16_t* txBuffer, uint16_t size)
+void Spi_WriteVSPI(spi_device_handle_t device, uint16_t* txBuffer, uint16_t* rxBuffer, uint16_t size)
 //void Spi_Write(uint8_t* data, uint16_t size)
 {
   spi_transaction_t transaction;
@@ -202,6 +204,7 @@ void Spi_WriteVSPI(spi_device_handle_t device, uint16_t* txBuffer, uint16_t size
   transaction.length = 16 * size;
   transaction.flags = 0;
   transaction.tx_buffer = txBuffer;
+  transaction.rx_buffer = rxBuffer;
 
   spi_device_transmit(device, &transaction);
 

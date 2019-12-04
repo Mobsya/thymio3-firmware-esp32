@@ -78,13 +78,20 @@ void UART_Init(void)
     .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
   };
 
-  uart_param_config(UART_NUM, &config);
-  uart_set_pin(UART_NUM, TXD_ESP32_PIN, RXD_ESP32_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+  ESP_ERROR_CHECK(uart_param_config(UART_NUM, &config));
+  ESP_ERROR_CHECK(uart_set_pin(UART_NUM, TXD_ESP32_PIN, RXD_ESP32_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
   //uart_driver_install(UART_NUM, RX_BUFFER_SIZE * 2, 0, 0, NULL, 0);
-  uart_driver_install(UART_NUM, RX_BUFFER_SIZE, TX_BUFFER_SIZE, 0, NULL, 0);
+  ESP_ERROR_CHECK(uart_driver_install(UART_NUM, RX_BUFFER_SIZE, TX_BUFFER_SIZE, 0, NULL, 0));
   //uart_driver_install(UART_NUM, RX_BUFFER_SIZE * 2, TX_BUFFER_SIZE * 2, 20, &UartQueue, 0);
 
   uart_flush(UART_NUM);  // FIXME In conflict with I2S
+
+
+
+  //ESP_ERROR_CHECK(uart_param_config(UART_NUM_1, &config));
+  //ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, SPI_MOSI_PIN, SPI_MISO_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+
+  //ESP_ERROR_CHECK(uart_driver_install(UART_NUM_1, RX_BUFFER_SIZE, TX_BUFFER_SIZE, 0, NULL, 0));
 
   ESP_LOGI(Tag, "UART is initialized");
 }
