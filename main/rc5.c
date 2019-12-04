@@ -132,6 +132,8 @@ void RC5_Init(void)
 
   TaskIsStarted = false;
 
+  ESP_ERROR_CHECK(rmt_driver_install(rmt_rx.channel, 1000, 0));
+
   ESP_LOGI(Tag, "IR receiver is initialized");
 }
 
@@ -210,18 +212,20 @@ static void RunRXTask(void* arg)
 
   while (1)
   {
-    rmt_driver_install(rmt_rx.channel, 1000, 0);
+    //ESP_ERROR_CHECK(rmt_driver_install(rmt_rx.channel, 1000, 0));
 
     //get RMT RX ring buffer
     RingbufHandle_t buffer = NULL;
-    rmt_get_ringbuf_handle(RMT_RX_CHANNEL, &buffer);
+    ESP_ERROR_CHECK(rmt_get_ringbuf_handle(RMT_RX_CHANNEL, &buffer));
 
-    rmt_rx_start(RMT_RX_CHANNEL, true);
+    ESP_ERROR_CHECK(rmt_rx_start(RMT_RX_CHANNEL, true));
 
     while (buffer)
     {
       size_t rx_size = 0;
       rmt_item16_t* item = (rmt_item16_t*) xRingbufferReceive(buffer, &rx_size, 1000);
+
+      //ESP_LOGE(Tag, "rx_size = %d", rx_size);
 
       if (item)
       {
@@ -249,13 +253,13 @@ static void RunRXTask(void* arg)
 
         vRingbufferReturnItem(buffer, (void*) item);
       }
-      else
+      //else
       {
-        break;
+        //break;
       }
     }
 
-    rmt_driver_uninstall(RMT_RX_CHANNEL);
+    //rmt_driver_uninstall(RMT_RX_CHANNEL);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
