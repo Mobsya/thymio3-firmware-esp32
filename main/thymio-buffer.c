@@ -25,7 +25,7 @@
 #include "aseba_esp32.h"
 #include "fifo.h"
 #include "leds.h"
-#include "stm32_i2c.h"
+#include "stm32_spi.h"
 #include "tcp_server.h"
 #include "uart.h"
 #include "wifi.h"

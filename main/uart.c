@@ -26,7 +26,7 @@
 #include "uart.h"
 
 #include "board.h"
-#include "stm32_i2c.h"
+#include "stm32_spi.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions

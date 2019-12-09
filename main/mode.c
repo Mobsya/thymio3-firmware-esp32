@@ -29,7 +29,7 @@
 #include "common.h"
 #include "gpio.h"
 #include "leds.h"
-#include "stm32_i2c.h"
+#include "stm32_spi.h"
 #include "tcp_server.h"
 
 // Include of the modes

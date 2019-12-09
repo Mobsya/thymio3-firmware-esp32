@@ -27,19 +27,18 @@
 #include "aseba.h"
 #include "aseba_esp32.h"
 #include "behavior.h"
+#include "bluetooth.h"
 #include "buttons.h"
 #include "codec.h"
 #include "comm.h"
 #include "fifo.h"
 #include "file_system.h"
 #include "gpio.h"
-#include "i2c.h"
 #include "leds.h"
 #include "mode.h"
 #include "power.h"
 #include "rc5.h"
 #include "sensors.h"
-#include "stm32_i2c.h"
 #include "tcp_server.h"
 #include "test.h"
 #include "timer_sw.h"
@@ -111,17 +110,13 @@ int app_main(void)
 
   Leds_Init();
 
-  //Buttons_Init();
+  // FIXME When RC5 is initialized, the interruption of TimerHW is not reached
+  //RC5_Init();
 
-  RC5_Init();
-
-  I2C_Init();
   Sensors_Init();
   Comm_Init();
 
   Fifo8bits_Init();
-  //Fifo16bits_Init();
-  //FifoFloat_Init();
 
   //Test_Run();
 
@@ -132,6 +127,8 @@ int app_main(void)
 
   WIFI_Init();
   //AsebaESP32_Init();
+
+  //Bluetooth_Init();
 
   Codec_SetVolume(100);
   Codec_PlayMP3FileFromFlash(E_SystemSound_Startup);
@@ -170,7 +167,7 @@ int app_main(void)
 
   Behavior_Start();
 
-  RC5_Start();
+  //RC5_Start();
 
   Sensors_Start();
   Comm_Start();

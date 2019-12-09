@@ -29,14 +29,21 @@
 #include "aseba_esp32.h"
 #include "behavior.h"
 #include "board.h"
-#include "i2c.h"
 #include "power.h"
-#include "stm32_i2c.h"
+#include "spi.h"
+#include "stm32_spi.h"
 #include "uart.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
+
+#define DATA_SIZE              32u
+
+#define PROX_IR_POSITION       15u
+#define GROUND_IR_POSITION     22u
+
+#define STM32_ID               0x4321
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -58,7 +65,7 @@ static TaskHandle_t CommTask = NULL;
 
 static bool TaskIsStarted = false;
 
-//static spi_device_handle_t Microcontroller;
+static spi_device_handle_t Microcontroller;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -83,6 +90,9 @@ void Comm_Init(void)
   UART_Init();
 
   STM32_Init();
+
+  Spi_InitVSPI();
+  Spi_AddDeviceVSPI(&Microcontroller, SPI_CS_PIN);
 
   TaskIsStarted = false;
 
@@ -124,69 +134,68 @@ static void RunCommTask(void* arg)
 {
   static uint8_t counter = 0;
 
-  //static uint8_t tx[5] = {0x0A, 0x0C, 0x0E, 0x01, 0x03};
-  //static uint16_t rx[13] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-  //static uint16_t rx[5] = {0x00, 0x00, 0x00, 0x00, 0x00};
+  static int16_t tx[DATA_SIZE] = {0x0000};
+  static int16_t rx[DATA_SIZE] = {0x0000};
 
   ESP_LOGI(Tag, "Start Comm Task");
 
-  if (STM32_CheckId() != E_Error_None)
-  {
-    ESP_LOGE(Tag, "STM32 error");
-  }
-
   while (1)
   {
-    xSemaphoreTake(I2CMutex, portMAX_DELAY);
+    STM32_UpdateSettings();
+    STM32_UpdateMotorTargets();
 
-    //STM32_Communicate();
+    // Transmit values to the STM32
+    // tx[0] is not used
+    tx[1] = STM32_GetStatus();
+    tx[2] = STM32_GetLeftMotorSettings();
+    tx[3] = STM32_GetRightMotorSettings();
+    tx[4] = STM32_GetLeftMotorTarget();
+    tx[5] = STM32_GetRightMotorTarget();
+    tx[6] = STM32_GetSoundThreshold();
+    tx[7] = Behavior_GetStatus();
 
-    STM32_ReadStatus();
-//#if 0
-    STM32_ReadBatteryVoltage();
-    STM32_ReadProxIRValue();
-    STM32_ReadGroundIRValue();
-    STM32_ReadSoundValue();
-    STM32_ReadInducedVoltage();
-    STM32_ReadBatteryMotorVoltage();
-    STM32_ReadMotorCurrent();
-    STM32_ReadPwmDutyCycle();
-//#endif
+    Spi_WriteVSPI(Microcontroller, tx, rx, DATA_SIZE);
 
-    SET_EVENT(EVENT_STM32);
+    //STM32_SetIdentifier(rx[0]);
 
-    //Spi_WriteVSPI(Microcontroller, tx, 5);
-
-//    Spi_ReadVSPI(Microcontroller, rx, 13);
-
-    //if ((tx[0] != 0x0A) || (tx[1] != 0x0B) || (tx[2] != 0x0C) || (tx[3] != 0x0D) || (tx[4] != 0x0E))
+    if (rx[0] == STM32_ID)
     {
-      //ESP_LOGI(Tag, "%d, %d, %d, %d, %d", tx[0], tx[1], tx[2], tx[3], tx[4]);
-    }
+      //ESP_LOGE(Tag, "Data is valid");
+      STM32_SetStatus(rx[1]);
+      STM32_SetLeftMotorSettings(rx[2]);
+      STM32_SetRightMotorSettings(rx[3]);
+      STM32_SetBatteryVoltage(rx[4]);
+      STM32_SetLeftBatteryMotorVoltage(rx[5]);
+      STM32_SetRightBatteryMotorVoltage(rx[6]);
+      STM32_SetLeftInducedVoltage(rx[7]);
+      STM32_SetRightInducedVoltage(rx[8]);
+      STM32_SetLeftMotorCurrent(rx[9]);
+      STM32_SetRightMotorCurrent(rx[10]);
+      STM32_SetLeftPwmDutyCycle(rx[11]);
+      STM32_SetRightPwmDutyCycle(rx[12]);
+      STM32_SetSoundLevel(rx[13]);
+      //STM32_SetSoundThreshold(rx[13]);
+      STM32_SetSoundMean(rx[14]);
+      STM32_SetProxIRValues(rx, PROX_IR_POSITION);
+      STM32_SetGroundIRValues(rx, GROUND_IR_POSITION);
 
-    //if ((rx[0] != 0x70) || (rx[1] != 0x71) || (rx[2] != 0x72) || (rx[3] != 0x73) || (rx[4] != 0x74))
-    //if ((rx[0] != 0x6A) || (rx[1] != 0x70) || (rx[2] != 0x71) || (rx[3] != 0x72) || (rx[4] != 0x73) || (rx[5] != 0x74))
-#if 0
-    if ((rx[0] != 0x0201) || (rx[1] != 0x0403) || (rx[2] != 0x0605) || (rx[3] != 0x0807) || (rx[4] != 0x0A09) ||
-        (rx[5] != 0x0C0B) || (rx[6] != 0x0E0D) || (rx[7] != 0x000F) || (rx[8] != 0x0201) || (rx[9] != 0x0403) ||
-        (rx[10] != 0x0605))
-    {
-      ESP_LOGI(Tag, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d", rx[0], rx[1], rx[2], rx[3], rx[4], rx[5], rx[6], rx[7],
-               rx[8], rx[9], rx[10]);
-    }
-#endif
+      //if ((rx[1] != 0x0001) || (tx[1] != 0x0001))
+      if (rx[1] != 0x0001)
+      {
+        ESP_LOGE(Tag, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
+      		     rx[1], rx[2], rx[3], rx[4], rx[5], rx[6], rx[7], rx[8], rx[9], rx[10],
+			     rx[11], rx[12], rx[13], rx[14], rx[15], rx[16], rx[17], rx[18], rx[19], rx[20]);
+      }
 
-    //ESP_LOGI(Tag, "%d, %d, %d, %d, %d", rx[0], rx[1], rx[2], rx[3], rx[4]);
-    //Spi_ReadVSPI();
-//#if 0
-    if ((counter % 5u) == 0u)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 20 [ms])
-    {
-      Power_HandlePowerModeRequest();
-    }
-//#endif
-    counter++;
+      if ((counter % 5u) == 0u)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 20 [ms])
+      {
+        Power_HandlePowerModeRequest();
+      }
 
-    xSemaphoreGive(I2CMutex);
+      counter++;
+
+      SET_EVENT(EVENT_STM32);
+    }
 
     vTaskDelay(20 / portTICK_PERIOD_MS);
   }

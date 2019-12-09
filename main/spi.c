@@ -193,7 +193,7 @@ void Spi_Write(spi_device_handle_t device, uint8_t* data, uint16_t size)
 //_____________________________________________________________________________
 
 //void Spi_WriteVSPI(spi_device_handle_t device, uint16_t* txBuffer, uint16_t size)
-void Spi_WriteVSPI(spi_device_handle_t device, uint16_t* txBuffer, uint16_t* rxBuffer, uint16_t size)
+void Spi_WriteVSPI(spi_device_handle_t device, int16_t* txBuffer, int16_t* rxBuffer, uint16_t size)
 //void Spi_Write(uint8_t* data, uint16_t size)
 {
   spi_transaction_t transaction;

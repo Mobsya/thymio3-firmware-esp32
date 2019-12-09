@@ -83,9 +83,7 @@ void Sensors_Init(void)
 {
   TaskIsStarted = false;
 
-  // FIXME If the I2C is only used by the sensors, the initialization can be done here.
-  // Else, it must be done in the main.c
-  //I2C_Init();
+  I2C_Init();
 
   I2CMutex = xSemaphoreCreateMutex();
 

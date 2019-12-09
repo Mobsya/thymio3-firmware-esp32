@@ -64,7 +64,7 @@ static const char* Tag = "timer_hw";
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, double interval, void (*fn)(void*))
+void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, double interval, TimerCallback callback)
 {
   // Select and initialize basic parameters of the timer
   timer_config_t config;
@@ -89,7 +89,7 @@ void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, double in
     timer_enable_intr(timerGroup, timerIndex);
 
 
-    timer_isr_register(timerGroup, timerIndex, fn,
+    timer_isr_register(timerGroup, timerIndex, callback,
                        (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL);
 
     ESP_LOGI(Tag, "Group %d Timer %d is initialized", timerGroup, timerIndex);

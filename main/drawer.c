@@ -28,7 +28,7 @@
 #include "buttons.h"
 #include "common.h"
 #include "leds.h"
-#include "stm32_i2c.h"
+#include "stm32_spi.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions

@@ -76,7 +76,7 @@ void I2C_Init(void)
 
   ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
   ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, conf.mode, I2C_MASTER_RX_BUF_DISABLE,
-                                     I2C_MASTER_TX_BUF_DISABLE, ESP_INTR_FLAG_IRAM));
+                                     I2C_MASTER_TX_BUF_DISABLE, 0)); //ESP_INTR_FLAG_IRAM
 
   BusIsAvailable = true;
 

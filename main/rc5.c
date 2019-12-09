@@ -212,8 +212,6 @@ static void RunRXTask(void* arg)
 
   while (1)
   {
-    //ESP_ERROR_CHECK(rmt_driver_install(rmt_rx.channel, 1000, 0));
-
     //get RMT RX ring buffer
     RingbufHandle_t buffer = NULL;
     ESP_ERROR_CHECK(rmt_get_ringbuf_handle(RMT_RX_CHANNEL, &buffer));
@@ -253,13 +251,11 @@ static void RunRXTask(void* arg)
 
         vRingbufferReturnItem(buffer, (void*) item);
       }
-      //else
+      else
       {
-        //break;
+        break;
       }
     }
-
-    //rmt_driver_uninstall(RMT_RX_CHANNEL);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }

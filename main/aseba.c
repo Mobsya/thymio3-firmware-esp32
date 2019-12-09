@@ -30,7 +30,6 @@
 #include "comm.h"
 #include "leds.h"
 #include "sensors.h"
-#include "stm32_i2c.h"
 #include "timer_sw.h"
 
 #include "aseba_esp32.h"
@@ -75,8 +74,8 @@ static int16_t OldTarget[2] = {0, 0};
 static int16_t TimerDuration[2] = {0, 0};
 static int16_t OldTimerDuration[2] = {0, 0};
 
-static T_Settings Settings;
-static T_Settings OldSettings;
+//static T_Settings Settings;
+//static T_Settings OldSettings;
 
 static uint16_t OldBehavior = 0u;
 
@@ -84,13 +83,7 @@ static uint16_t OldBehavior = 0u;
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
-static void UpdateMotorTargets(void);
-
 static void UpdateTimers(void);
-
-static void UpdateSettings(void);
-
-static void UpdateBehaviors(void);
 
 static void UpdateLedsCircle(void);
 
@@ -126,12 +119,6 @@ static void Callback_AsebaTimer1(void* arg);
 
 void Aseba_Init(void)
 {
-  Settings.LeftMotor  = 256;
-  Settings.RightMotor = 256;
-
-  OldSettings.LeftMotor  = 0;
-  OldSettings.RightMotor = 0;
-
   AsebaTimer0 = TimerSw_Create(0, Callback_AsebaTimer0);
   AsebaTimer1 = TimerSw_Create(0, Callback_AsebaTimer1);
 
@@ -150,40 +137,15 @@ void Aseba_UpdateGroundIRLedsBrightness(uint16_t l0, uint16_t l1)
 
 void update_aseba_variables_write(void)
 {
-  xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  //UpdateLedsGroundIR();
-
-  UpdateMotorTargets();
-
-  UpdateSettings();
-
-  UpdateBehaviors();
-
-  UpdateSoundThreshold();
-
-  //UpdateTimers();
-
-  xSemaphoreGive(I2CMutex);
-
   UpdateTimers();
-//#if 0
   UpdateLedsCircle();
-
   UpdateLedsLegoFront();
-
   UpdateLedsLegoBack();
-
   UpdateLedFrontLeft();
-
   UpdateLedFrontRight();
-
   UpdateLedBackLeft();
-
   UpdateLedBackRight();
-
   UpdateLedColorSensor();
-//#endif
 }
 
 //_____________________________________________________________________________
@@ -309,26 +271,6 @@ void switch_off(void)
 
 //_____________________________________________________________________________
 
-static void UpdateMotorTargets(void)
-{
-  Target[0] = vmVariables.target[0];
-  Target[1] = vmVariables.target[1];
-
-  if (Target[0] != OldTarget[0])
-  {
-    STM32_UpdateLeftMotorTarget(Target);
-    OldTarget[0] = Target[0];
-  }
-
-  if (Target[1] != OldTarget[1])
-  {
-    STM32_UpdateRightMotorTarget(Target);
-    OldTarget[1] = Target[1];
-  }
-}
-
-//_____________________________________________________________________________
-
 static void UpdateTimers(void)
 {
   TimerDuration[0] = vmVariables.timers[0];
@@ -356,35 +298,6 @@ static void UpdateTimers(void)
     {
       TimerSw_StartTimerPeriodically(AsebaTimer1, TimerDuration[1] * 1000);
     }
-  }
-}
-
-//_____________________________________________________________________________
-
-static void UpdateSettings(void)
-{
-  Settings.LeftMotor  = vmVariables.settings[0];
-  Settings.RightMotor = vmVariables.settings[1];
-
-  if ((Settings.LeftMotor != OldSettings.LeftMotor) ||
-      (Settings.RightMotor != OldSettings.RightMotor))
-  {
-    STM32_UpdateSettings(Settings);
-    OldSettings.LeftMotor  = Settings.LeftMotor;
-    OldSettings.RightMotor = Settings.RightMotor;
-  }
-}
-
-//_____________________________________________________________________________
-
-static void UpdateBehaviors(void)
-{
-  uint16_t behavior = Behavior_GetStatus();
-
-  if (behavior != OldBehavior)
-  {
-    STM32_UpdateBehaviorStatus(behavior);
-    OldBehavior = behavior;
   }
 }
 
@@ -568,36 +481,6 @@ static void UpdateLedColorSensor(void)
       Behavior_Disable(B_LEDS_RGB);
       Leds_SetSingleBrightness((E_Led_R_Color_Sensor + index), brightness[index]);
     }
-  }
-}
-
-//_____________________________________________________________________________
-
-static void UpdateLedsGroundIR(void)
-{
-  static int16_t brightness[2] = {0, 0};
-
-  if ((brightness[0] != vmVariables.leds_ground[0]) || (brightness[1] != vmVariables.leds_ground[1]))
-  {
-    brightness[0] = vmVariables.leds_ground[0];
-    brightness[1] = vmVariables.leds_ground[1];
-
-    // TODO Behavior_Disable(B_LEDS_PROX);
-    STM32_UpdateGroundIRLedsBrightness(brightness);
-  }
-}
-
-//_____________________________________________________________________________
-
-static void UpdateSoundThreshold(void)
-{
-  static int16_t threshold = 0;
-
-  if (threshold != vmVariables.sound_tresh)
-  {
-    threshold = vmVariables.sound_tresh;
-
-    STM32_UpdateSoundThreshold(threshold);
   }
 }
 

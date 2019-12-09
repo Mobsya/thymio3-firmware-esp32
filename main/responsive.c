@@ -33,7 +33,7 @@
 #include "gyroscope.h"
 #include "leds.h"
 #include "rc5.h"
-#include "stm32_i2c.h"
+#include "stm32_spi.h"
 #include "timer_sw.h"
 #include "timer_hw.h"
 
@@ -45,7 +45,7 @@
 
 // Duration of the pulse = 1500000 [us] -> TIMER_SCALE * 1500000 [us] = 7500000 (timer_group)
 #define MOVEMENT_DURATION_us      7500000u
-//#define MOVEMENT_DURATION_us      1500000u  //!< Duration of a movement
+
 #define STOP_DURATION_us           500000u  //!< Delay at the end of a movement
 
 #define MOVEMENT_SPEED                300   //!< Movement speed
@@ -405,7 +405,7 @@ static void HandleReplay(void)
 
 static void HandleMovement(void)
 {
-  T_ProxIR proxIR = STM32_GetProxIRValue();
+  T_ProxIR proxIR = STM32_GetProxIRValues();
 
   if (proxIR.FrontCenter > COLLISION_THRESHOLD)
   {
@@ -442,7 +442,7 @@ static void HandleMovement(void)
 
 static void HandleRotation(void)
 {
-  T_ProxIR proxIR = STM32_GetProxIRValue();
+  T_ProxIR proxIR = STM32_GetProxIRValues();
 
   if (proxIR.FrontCenter > COLLISION_THRESHOLD)
   {
@@ -466,7 +466,7 @@ static void HandleCollision(void)
 {
   static bool first = true;
 
-  T_ProxIR proxIR = STM32_GetProxIRValue();
+  T_ProxIR proxIR = STM32_GetProxIRValues();
 
   ObstacleIsDetected = true;
   RunPauseAnimation();
@@ -575,11 +575,10 @@ static void IRAM_ATTR ISR_EndOfMovement(void* para)
     vmVariables.target[0] = 0;
     vmVariables.target[1] = 0;
 
-    //PlayState = E_PlayState_Delay;
     TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
 
     TIMERG1.int_clr_timers.t0 = 1;
-    timer_pause(1, 0);
+    TimerHw_Stop(1, 0);
   }
 
   // After the alarm has been triggered, we need enable it again, so it is triggered the next time

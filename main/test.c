@@ -32,13 +32,12 @@
 #include "color_sensor.h"
 #include "accelerometer.h"
 #include "error.h"
-#include "stm32_i2c.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define TESTS_NUM    3u  //!< Number of tests available
+#define TESTS_NUM    2u  //!< Number of tests available
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -63,7 +62,7 @@ static const char* Tag = "test";
 
 static const T_TestUse TestTable[TESTS_NUM] =
 {
-  {STM32_CheckId},
+  //{STM32_CheckId},
   {ColorSensor_CheckManufacturerId},
   {Accelerometer_CheckManufacturerId}
   //{ColorSensor_CheckManufacturerId,   false}

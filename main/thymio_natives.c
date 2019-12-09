@@ -31,7 +31,7 @@
 #include "behavior.h"
 #include "file_system.h"
 #include "gyroscope.h"
-#include "stm32_i2c.h"
+#include "stm32_spi.h"
 
 #include "aseba.h"
 
