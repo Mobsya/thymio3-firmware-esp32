@@ -6,8 +6,8 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    follower.c
-//! \brief   This module provides the useful functions to use the follower mode
+//! \file    friendly.c
+//! \brief   This module provides the useful functions to use the friendly mode
 //!
 //! \author  Vincent Gonet
 //!
@@ -22,12 +22,12 @@
 
 #include "esp_log.h"
 
-#include "follower.h"
-
 #include "aseba_esp32.h"
 #include "codec.h"
 #include "common.h"
 #include "leds.h"
+
+#include "friendly.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -47,7 +47,7 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
-static const char* Tag = "follower";
+static const char* Tag = "friendly";
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -61,21 +61,21 @@ static const char* Tag = "follower";
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void Follower_Init(void)
+void Friendly_Init(void)
 {
 
 }
 
 //_____________________________________________________________________________
 
-void Follower_Start(void)
+void Friendly_Start(void)
 {
 
 }
 
 //_____________________________________________________________________________
 
-void Follower_Stop(void)
+void Friendly_Stop(void)
 {
   vmVariables.target[0] = 0;
   vmVariables.target[1] = 0;
@@ -83,7 +83,7 @@ void Follower_Stop(void)
 
 //_____________________________________________________________________________
 
-void Follower_Run(void)
+void Friendly_Run(void)
 {
   int16_t max = vmVariables.prox[0];
   int16_t min = 0;

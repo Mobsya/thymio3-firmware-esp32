@@ -180,10 +180,7 @@ void AsebaVMResetCB(AsebaVMState* vm)
 #endif
   Behavior_Enable(B_LEDS_ACC);
   Behavior_Enable(B_LEDS_LEGO);
-#if 0 // FIXME
-  Behavior_Enable(B_LEDS_TEMPERATURE);
   Behavior_Enable(B_LED_MIC);
-#endif
   Behavior_Enable(B_LEDS_PROX);
   Behavior_Enable(B_SOUND_BUTTON);
 #if 0 // FIXME

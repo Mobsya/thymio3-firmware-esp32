@@ -32,10 +32,10 @@
 enum
 {
   E_Mode_Menu,
-  E_Mode_Follower,
+  E_Mode_Friendly,
   E_Mode_Explorer,
   E_Mode_Fearful,
-  E_Mode_Drawer,
+  E_Mode_Painter,
   E_Mode_LineTracker,
   E_Mode_Responsive,
   E_Mode_Musician,

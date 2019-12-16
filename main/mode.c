@@ -34,11 +34,12 @@
 
 // Include of the modes
 //#include "attentive.h"
-#include "drawer.h"
 #include "explorer.h"
 #include "fearful.h"
-#include "follower.h"
+#include "friendly.h"
 #include "line_tracker.h"
+#include "musician.h"
+#include "painter.h"
 #include "responsive.h"
 
 //-----------------------------------------------------------------------------
@@ -106,7 +107,7 @@ void Mode_Init(bool enableVM)
   }
   else
   {
-    SelectMode = E_Mode_Follower;
+    SelectMode = E_Mode_Friendly;
     SetModeColor(SelectMode);
   }
 
@@ -125,6 +126,7 @@ void Mode_InitVM(void)
   Behavior_Enable(B_LEDS_LEGO);
   Behavior_Enable(B_LEDS_PROX);
   Behavior_Enable(B_SOUND_BUTTON);
+  Behavior_Enable(B_LED_MIC);
 
   ESP_LOGI(Tag, "VM Mode is initialized");
 }
@@ -233,8 +235,8 @@ void Mode_Run(void)
       SetModeColor(SelectMode);
       break;
 
-    case E_Mode_Follower:
-      Follower_Run();
+    case E_Mode_Friendly:
+      Friendly_Run();
       break;
 
     case E_Mode_Explorer:
@@ -245,9 +247,9 @@ void Mode_Run(void)
       Fearful_Run();
       break;
 
-    case E_Mode_Drawer:
+    case E_Mode_Painter:
       //Attentive_Run();
-      Drawer_Run();
+      Painter_Run();
       break;
 
     case E_Mode_LineTracker:
@@ -259,6 +261,7 @@ void Mode_Run(void)
       break;
 
     case E_Mode_Musician:
+      Musician_Run();
       break;
 
     default:
@@ -279,7 +282,7 @@ static void StartMode(T_Mode mode)
       Behavior_Enable(B_SETTING);
       break;
 
-    case E_Mode_Follower:
+    case E_Mode_Friendly:
       Behavior_Enable(B_LEDS_PROX);
       break;
 
@@ -294,7 +297,7 @@ static void StartMode(T_Mode mode)
       Fearful_Start();
       break;
 
-    case E_Mode_Drawer:
+    case E_Mode_Painter:
       Behavior_Enable(B_LEDS_PROX);
       break;
 
@@ -333,8 +336,8 @@ static void ExitMode(T_Mode mode)
       Behavior_Disable(B_SETTING);
       break;
 
-    case E_Mode_Follower:
-      Follower_Stop();
+    case E_Mode_Friendly:
+      Friendly_Stop();
       Behavior_Disable(B_LEDS_PROX);
       break;
 
@@ -350,8 +353,8 @@ static void ExitMode(T_Mode mode)
       Behavior_Disable(B_LEDS_LEGO);
       break;
 
-    case E_Mode_Drawer:
-      //Attentive_Stop();
+    case E_Mode_Painter:
+      Painter_Stop();
       Behavior_Disable(B_LEDS_PROX);
       break;
 
@@ -367,6 +370,7 @@ static void ExitMode(T_Mode mode)
       break;
 
     case E_Mode_Musician:
+      Musician_Stop();
       Behavior_Disable(B_LEDS_PROX);
       break;
 
@@ -425,7 +429,7 @@ static void SetModeColor(T_Mode mode)
       Leds_SetBodyBrightness(0u, 0u, 0u);
       break;
 
-    case E_Mode_Follower:  // Green
+    case E_Mode_Friendly:  // Green
       Leds_SetBodyBrightness(0u, MAX_BRIGHTNESS, 0u);
       break;
 
@@ -437,7 +441,7 @@ static void SetModeColor(T_Mode mode)
       Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);
       break;
 
-    case E_Mode_Drawer:  // Dark blue
+    case E_Mode_Painter:  // Dark blue
       Leds_SetBodyBrightness(0u, 0u, MAX_BRIGHTNESS);
       break;
 

@@ -6,8 +6,8 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    drawer.c
-//! \brief   This module provides the useful functions to use the drawer mode
+//! \file    painter.c
+//! \brief   This module provides the useful functions to use the painter mode
 //!
 //! \author  Vincent Gonet
 //!
@@ -22,13 +22,13 @@
 
 #include "esp_log.h"
 
-#include "drawer.h"
-
 #include "aseba_esp32.h"
 #include "buttons.h"
 #include "common.h"
 #include "leds.h"
 #include "stm32_spi.h"
+
+#include "painter.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -41,10 +41,10 @@
 //! \details States of the state machine
 typedef enum
 {
-  E_DrawerState_Wait,
-  E_DrawerState_Record,
-  E_DrawerState_Play
-} T_DrawerState;
+  E_PainterState_Wait,
+  E_PainterState_Record,
+  E_PainterState_Play
+} T_PainterState;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -54,9 +54,9 @@ typedef enum
 // Private Data
 //-----------------------------------------------------------------------------
 
-static const char* Tag = "drawer";
+static const char* Tag = "painter";
 
-static T_DrawerState State = E_DrawerState_Wait;
+static T_PainterState State = E_PainterState_Wait;
 
 static uint8_t CurrentStep = 0u;
 static uint8_t CounterStep = 0u;
@@ -85,40 +85,41 @@ static void RunPlayState(void);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void Drawer_Init(void)
+void Painter_Init(void)
 {
 
 }
 
 //_____________________________________________________________________________
 
-void Drawer_Start(void)
+void Painter_Start(void)
 {
 
 }
 
 //_____________________________________________________________________________
 
-void Drawer_Stop(void)
+void Painter_Stop(void)
 {
-
+  vmVariables.target[0] = 0;
+  vmVariables.target[1] = 0;
 }
 
 //_____________________________________________________________________________
 
-void Drawer_Run(void)
+void Painter_Run(void)
 {
   switch (State)
   {
-    case E_DrawerState_Wait:
+    case E_PainterState_Wait:
       RunWaitState();
       break;
 
-    case E_DrawerState_Record:
+    case E_PainterState_Record:
       RunRecordState();
       break;
 
-    case E_DrawerState_Play:
+    case E_PainterState_Play:
       RunPlayState();
       break;
 
@@ -141,7 +142,7 @@ static void RunWaitState(void)
 
   if (abs(vind.Left + vind.Right) > 400)
   {
-    State = E_DrawerState_Record;
+    State = E_PainterState_Record;
 
     CurrentStep = 1u;
     CounterStep = 0u;
@@ -157,7 +158,7 @@ static void RunWaitState(void)
 
   when(buttonState[E_Button_Forward])
   {
-    State = E_DrawerState_Play;
+    State = E_PainterState_Play;
     Counter = 0u;
     Index = 1u;
   }
@@ -255,7 +256,7 @@ static void RunRecordState(void)
       CurrentStep = 0u;
       CounterStep = 0u;
 
-      State = E_DrawerState_Wait;
+      State = E_PainterState_Wait;
     }
   }
 }
@@ -291,6 +292,6 @@ static void RunPlayState(void)
     vmVariables.target[0] = 0;
     vmVariables.target[1] = 0;
 
-    State = E_DrawerState_Wait;
+    State = E_PainterState_Wait;
   }
 }

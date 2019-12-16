@@ -189,12 +189,12 @@ static void HandlePositiveSpeed(int16_t speed)
   temp2 += (int32_t)(vmVariables.prox[3] * 3);
   temp2 += (int32_t)(vmVariables.prox[4] * 4);
 
-  //printf("speed = %d, temp1 = %d, temp2 = %d\n", speed, temp1, temp2);
+  //ESP_LOGI(Tag, "speed = %d, temp1 = %d, temp2 = %d", speed, temp1, temp2);
 
   vmVariables.target[0] = speed - (((temp1 + temp2) * speed) / 200); //2000);
   vmVariables.target[1] = speed - (((temp1 - temp2) * speed) / 200); //2000);
 
-  //printf("target = %d\n", vmVariables.target[0]);
+  //ESP_LOGI(Tag, "target = %d %d", vmVariables.target[0], vmVariables.target[1]);
   Common_LimitSpeed(MIN_SPEED, MAX_SPEED);
 }
 

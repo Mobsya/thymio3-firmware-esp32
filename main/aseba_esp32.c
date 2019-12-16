@@ -155,8 +155,6 @@ static void RunAsebaTask(void* arg)
 {
   ESP_LOGI(Tag, "Start Aseba Task");
 
-  AsebaESP32_Init();
-
   while (1)
   {
     AsebaESP32_Run();

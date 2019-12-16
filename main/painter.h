@@ -6,16 +6,16 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    follower.h
-//! \brief   This module provides the useful functions to use the follower mode
+//! \file    painter.h
+//! \brief   This module provides the useful functions to use the painter mode
 //!
 //! \author  Vincent Gonet
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
-#ifndef FOLLOWER_H_
-#define FOLLOWER_H_
+#ifndef PAINTER_H_
+#define PAINTER_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
@@ -41,28 +41,28 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the follower mode
+//! \brief     Initialize the painter mode
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void Follower_Init(void);
+extern void Painter_Init(void);
 
-//! \brief     Start the follower mode
-//! \pre       First initialize the explorer mode
+//! \brief     Start the painter mode
+//! \pre       First initialize the painter mode
 //! \param     None
 //! \return    None
-extern void Follower_Start(void);
+extern void Painter_Start(void);
 
-//! \brief     Stop the follower mode
-//! \pre       First initialize the explorer mode
+//! \brief     Stop the painter mode
+//! \pre       First initialize the painter mode
 //! \param     None
 //! \return    None
-extern void Follower_Stop(void);
+extern void Painter_Stop(void);
 
-//! \brief     Run the follower mode
-//! \pre       First initialize the explorer mode
+//! \brief     Run the painter mode
+//! \pre       First initialize the painter mode
 //! \param     None
 //! \return    None
-extern void Follower_Run(void);
+extern void Painter_Run(void);
 
-#endif // FOLLOWER_H_
+#endif // PAINTER_H_

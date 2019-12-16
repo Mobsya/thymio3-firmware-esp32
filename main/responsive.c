@@ -55,6 +55,7 @@
 #define ROTATION_ANGLE              16383   //!< Rotation angle corresponding to 90° (0x3FFF)
 
 #define COLLISION_THRESHOLD           700   //!< Collision threshold
+#define NO_COLLISION_THRESHOLD         10   //!< No collision threshold
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -76,6 +77,14 @@ typedef enum
   E_PlayState_Rotation,
   E_PlayState_Collision
 } T_PlayState;
+
+//! \details States of the play state machine
+typedef enum
+{
+  E_Collision_None,
+  E_Collision_Detected,
+  E_Collision_Handled
+} T_Collision;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -139,6 +148,8 @@ static void HandleRotation(void);
 //! \return    None
 static void HandleCollision(void);
 
+static T_Collision CheckCollisionStatus(void);
+
 //! \brief     Run the record animation
 //! \pre       First initialize the mode
 //! \param     None
@@ -189,7 +200,7 @@ void Responsive_Init(void)
   MovementIsInProgress = false;
   RotationIsInProgress = false;
 
-  TimerHw_Init(1, 0, true, MOVEMENT_DURATION_us, ISR_EndOfMovement);
+  TimerHw_Init(0, 0, true, MOVEMENT_DURATION_us, ISR_EndOfMovement);
   StopTimer = TimerSw_Create(STOP_DURATION_us, Callback_TimerStop);
 }
 
@@ -213,6 +224,11 @@ void Responsive_Stop(void)
 
 void Responsive_Run(void)
 {
+  uint8_t brightness = Common_GetBodyColorPulse();
+
+  // Magenta pulse
+  Leds_SetBodyBrightness(brightness, 0u, brightness);
+
   switch (State)
   {
     case E_State_Record:
@@ -240,6 +256,7 @@ static void RecordSequence(void)
   uint8_t* buttonState;
   uint8_t  data = 0u;
   int16_t command = 0;
+  int16_t acceleration = Accelerometer_GetAccelerationY();
 
   static int16_t toggle = 0;
 
@@ -256,24 +273,28 @@ static void RecordSequence(void)
   {
     data |= (1 << E_Button_Backward);
     Fifo8bits_Write(SequenceFifo, &data, 1u);
+    ESP_LOGI(Tag, "Down");
   }
 
   when(buttonState[E_Button_Left] || (command == E_Command_LeftArrow))
   {
     data |= (1 << E_Button_Left);
     Fifo8bits_Write(SequenceFifo, &data, 1u);
+    ESP_LOGI(Tag, "Left");
   }
 
   when(buttonState[E_Button_Forward] || (command == E_Command_UpArrow))
   {
     data |= (1 << E_Button_Forward);
     Fifo8bits_Write(SequenceFifo, &data, 1u);
+    ESP_LOGI(Tag, "Up");
   }
 
   when(buttonState[E_Button_Right] || (command == E_Command_RightArrow))
   {
     data |= (1 << E_Button_Right);
     Fifo8bits_Write(SequenceFifo, &data, 1u);
+    ESP_LOGI(Tag, "Right");
   }
 
   when(Accelerometer_IsTapDetected() || (command == E_Command_Go))
@@ -282,6 +303,7 @@ static void RecordSequence(void)
 
     // Initialize the position to play the sequence
     Fifo8bits_SetConsumePosition(SequenceFifo, Position);
+    //ESP_LOGI(Tag, "Pos: %d", Position);
 
     if (!FirstRecording)
     {
@@ -291,10 +313,12 @@ static void RecordSequence(void)
 
     State = E_State_Play;
 
-    ESP_LOGE(Tag, "End of recording");
+    ESP_LOGI(Tag, "End of recording");
   }
 
-  when(command == E_Command_Stop)
+  // To erase the sequence, rotate the Thymio on the right side or
+  // press the stop button on the remote control
+  when((acceleration <= -15000) || (command == E_Command_Stop))
   {
     State = E_State_Erase;
   }
@@ -354,7 +378,7 @@ static void HandleReplay(void)
 
       if (Current == (1u << E_Button_Backward))
       {
-        TimerHw_Start(1, 0);
+        TimerHw_Start(0, 0);
         MovementIsInProgress = true;
         vmVariables.target[0] = -MOVEMENT_SPEED;  // TODO Check why the speed in backward direction is slower
         vmVariables.target[1] = -MOVEMENT_SPEED;
@@ -363,7 +387,7 @@ static void HandleReplay(void)
 
       if (Current == (1u << E_Button_Forward))
       {
-        TimerHw_Start(1, 0);
+        TimerHw_Start(0, 0);
         MovementIsInProgress = true;
         vmVariables.target[0] = MOVEMENT_SPEED;
         vmVariables.target[1] = MOVEMENT_SPEED;
@@ -391,12 +415,12 @@ static void HandleReplay(void)
   }
   else  // Handle the last movement or rotation of the sequence
   {
-    ESP_LOGE(Tag, "Last movement in progress");
+    //ESP_LOGI(Tag, "Last movement in progress");
     //if (!MovementIsInProgress)
     {
       RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence
       State = E_State_Record;
-      ESP_LOGE(Tag, "Last movement finished");
+      ESP_LOGI(Tag, "Last movement is finished");
     }
   }
 }
@@ -405,11 +429,12 @@ static void HandleReplay(void)
 
 static void HandleMovement(void)
 {
-  T_ProxIR proxIR = STM32_GetProxIRValues();
+  //T_ProxIR proxIR = STM32_GetProxIRValues();
 
-  if (proxIR.FrontCenter > COLLISION_THRESHOLD)
+  //if (proxIR.FrontCenter > COLLISION_THRESHOLD)
+  if (CheckCollisionStatus() == E_Collision_Detected)
   {
-    TimerHw_Stop(1, 0);
+    TimerHw_Stop(0, 0);
     vmVariables.target[0] = 0;
     vmVariables.target[1] = 0;
 
@@ -417,7 +442,7 @@ static void HandleMovement(void)
   }
   else if (ObstacleIsDetected)
   {
-    TimerHw_Start(1, 0);
+    TimerHw_Start(0, 0);
 
     if (Current == (1u << E_Button_Forward))
     {
@@ -442,9 +467,7 @@ static void HandleMovement(void)
 
 static void HandleRotation(void)
 {
-  T_ProxIR proxIR = STM32_GetProxIRValues();
-
-  if (proxIR.FrontCenter > COLLISION_THRESHOLD)
+  if (CheckCollisionStatus() == E_Collision_Detected)
   {
     vmVariables.target[0] = 0;
     vmVariables.target[1] = 0;
@@ -466,8 +489,6 @@ static void HandleCollision(void)
 {
   static bool first = true;
 
-  T_ProxIR proxIR = STM32_GetProxIRValues();
-
   ObstacleIsDetected = true;
   RunPauseAnimation();
 
@@ -477,7 +498,7 @@ static void HandleCollision(void)
     first = false;
   }
 
-  if (proxIR.FrontCenter < 10)
+  if (CheckCollisionStatus() == E_Collision_Handled)
   {
     Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
     first = true;
@@ -495,6 +516,33 @@ static void HandleCollision(void)
       // Do nothing
     }
   }
+}
+
+//_____________________________________________________________________________
+
+static T_Collision CheckCollisionStatus(void)
+{
+  T_ProxIR proxIR = STM32_GetProxIRValues();
+  T_Collision status = E_Collision_None;
+
+  if ((proxIR.FrontLeft > COLLISION_THRESHOLD) ||
+      (proxIR.FrontLeftCenter > COLLISION_THRESHOLD) ||
+      (proxIR.FrontCenter > COLLISION_THRESHOLD) ||
+      (proxIR.FrontRightCenter > COLLISION_THRESHOLD) ||
+      (proxIR.FrontRight > COLLISION_THRESHOLD))
+  {
+    status = E_Collision_Detected;
+  }
+  else if ((proxIR.FrontLeft < NO_COLLISION_THRESHOLD) &&
+           (proxIR.FrontLeftCenter < NO_COLLISION_THRESHOLD) &&
+           (proxIR.FrontCenter < NO_COLLISION_THRESHOLD) &&
+           (proxIR.FrontRightCenter < NO_COLLISION_THRESHOLD) &&
+           (proxIR.FrontRight < NO_COLLISION_THRESHOLD))
+  {
+    status = E_Collision_Handled;
+  }
+
+  return status;
 }
 
 //_____________________________________________________________________________
@@ -566,8 +614,8 @@ static void IRAM_ATTR ISR_EndOfMovement(void* para)
 {
   // Retrieve the interrupt status and the counter value
   // from the timer that reported the interrupt
-  uint32_t intr_status = TIMERG1.int_st_timers.val;
-  TIMERG1.hw_timer[0].update = 1;
+  uint32_t intr_status = TIMERG0.int_st_timers.val;
+  TIMERG0.hw_timer[0].update = 1;
 
   // Clear the interrupt and update the alarm time for the timer with without reload
   if (intr_status & BIT(0))
@@ -577,12 +625,12 @@ static void IRAM_ATTR ISR_EndOfMovement(void* para)
 
     TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
 
-    TIMERG1.int_clr_timers.t0 = 1;
-    TimerHw_Stop(1, 0);
+    TIMERG0.int_clr_timers.t0 = 1;
+    TimerHw_Stop(0, 0);
   }
 
   // After the alarm has been triggered, we need enable it again, so it is triggered the next time
-  TIMERG1.hw_timer[0].config.alarm_en = TIMER_ALARM_EN;
+  TIMERG0.hw_timer[0].config.alarm_en = TIMER_ALARM_EN;
 }
 
 //_____________________________________________________________________________
