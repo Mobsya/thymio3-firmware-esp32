@@ -28,6 +28,7 @@
 #include "aseba_esp32.h"
 #include "behavior.h"
 #include "bluetooth.h"
+//#include "ble.h"
 #include "buttons.h"
 #include "codec.h"
 #include "comm.h"
@@ -126,17 +127,21 @@ int app_main(void)
   //Mode_InitVM();
 
   WIFI_Init();
-  //AsebaESP32_Init();
+  AsebaESP32_Init();
 
   //Bluetooth_Init();
+  //BLE_Init();
 
-  Codec_SetVolume(100);
-  Codec_PlayMP3FileFromFlash(E_SystemSound_Startup);
+//  Codec_SetVolume(100);
+//  Codec_PlayMP3FileFromFlash(E_SystemSound_Startup);
 
   while (!WIFI_IsConnected())
   {}
 
   esp_log_level_set("*", ESP_LOG_ERROR);
+  //esp_log_level_set("spi_master", ESP_LOG_ERROR);
+  esp_log_level_set("responsive", ESP_LOG_INFO);
+  //esp_log_level_set("explorer", ESP_LOG_INFO);
 
   Codec_SetVolume(80);
   //Codec_PlayMP3FileFromFlash(E_SystemSound_Tick);
@@ -160,6 +165,7 @@ int app_main(void)
 
   //Tracking_Start();
 
+  //BLE_Start();
   WIFI_Start();
   AsebaESP32_Start();
 

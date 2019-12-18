@@ -44,7 +44,7 @@
 #define SEQUENCE_BUFFER_SIZE           50u  //!< Number of actions stored in the FIFO
 
 // Duration of the pulse = 1500000 [us] -> TIMER_SCALE * 1500000 [us] = 7500000 (timer_group)
-#define MOVEMENT_DURATION_us      7500000u
+#define MOVEMENT_DURATION_us      7500000uLL
 
 #define STOP_DURATION_us           500000u  //!< Delay at the end of a movement
 
@@ -107,7 +107,6 @@ static T_State State = E_State_Record;
 static T_PlayState PlayState = E_PlayState_Replay;
 
 static uint8_t Current = 0u;
-static uint8_t Next = 0u;
 static int16_t AngleTarget = 0;
 
 static uint8_t Sequence[SEQUENCE_BUFFER_SIZE] = {0u};
@@ -279,7 +278,7 @@ static void RecordSequence(void)
   static int16_t toggle = 0;
   static uint8_t brightness = 0u;
 
-  buttonState = Buttons_GetStatus(); //Buttons_GetBehaviorStatus();
+  buttonState = Buttons_GetStatus();
 
   if (RC5_IsNewMessageReceived(&toggle))
   {
@@ -292,7 +291,7 @@ static void RecordSequence(void)
 
     when(buttonState[E_Button_Backward] || (command == E_Command_DownArrow))
     {
-      data |= (1 << E_Button_Backward);
+      data |= (1u << E_Button_Backward);
       Sequence[WrPos] = data;
       ESP_LOGI(Tag, "Val: %d, Pos: %d", Sequence[WrPos], WrPos);
       WrPos++;
@@ -300,7 +299,7 @@ static void RecordSequence(void)
 
     when(buttonState[E_Button_Left] || (command == E_Command_LeftArrow))
     {
-      data |= (1 << E_Button_Left);
+      data |= (1u << E_Button_Left);
       Sequence[WrPos] = data;
       ESP_LOGI(Tag, "Val: %d, Pos: %d", Sequence[WrPos], WrPos);
       WrPos++;
@@ -308,7 +307,7 @@ static void RecordSequence(void)
 
     when(buttonState[E_Button_Forward] || (command == E_Command_UpArrow))
     {
-      data |= (1 << E_Button_Forward);
+      data |= (1u << E_Button_Forward);
       Sequence[WrPos] = data;
       ESP_LOGI(Tag, "Val: %d, Pos: %d", Sequence[WrPos], WrPos);
       WrPos++;
@@ -316,7 +315,7 @@ static void RecordSequence(void)
 
     when(buttonState[E_Button_Right] || (command == E_Command_RightArrow))
     {
-      data |= (1 << E_Button_Right);
+      data |= (1u << E_Button_Right);
       Sequence[WrPos] = data;
       ESP_LOGI(Tag, "Val: %d, Pos: %d", Sequence[WrPos], WrPos);
       WrPos++;
@@ -407,6 +406,7 @@ static void PlaySequence(void)
 
 static void HandleReplay(void)
 {
+  uint8_t next = 0u;
   //ESP_LOGE(Tag, "WrPos: %d, RdPos: %d", WrPos, RdPos);
 
   if (RdPos < WrPos)
@@ -416,7 +416,7 @@ static void HandleReplay(void)
     if (!MovementIsInProgress && !RotationIsInProgress)
     {
       Current = Sequence[RdPos];
-      Next = Sequence[RdPos + 1u];
+      next = Sequence[RdPos + 1u];
       RdPos++;
 
       if (Current == (1u << E_Button_Backward))
@@ -440,7 +440,7 @@ static void HandleReplay(void)
       if (Current == (1u << E_Button_Left))
       {
         RotationIsInProgress = true;
-        AngleTarget = ROTATION_ANGLE;  // + 90°
+        AngleTarget = ROTATION_ANGLE;  // +90°
         Gyroscope_ResetAngle();
         PlayState = E_PlayState_Rotation;
       }
@@ -453,7 +453,7 @@ static void HandleReplay(void)
         PlayState = E_PlayState_Rotation;
       }
 
-      RunPlayAnimation(Next);
+      RunPlayAnimation(next);
     }
   }
   else  // Handle the last movement or rotation of the sequence
@@ -491,6 +491,10 @@ static void HandleMovement(void)
     {
       vmVariables.target[0] = -MOVEMENT_SPEED;
       vmVariables.target[1] = -MOVEMENT_SPEED;
+    }
+    else
+    {
+      // Do nothing
     }
 
     ObstacleIsDetected = false;
@@ -579,6 +583,10 @@ static T_Collision CheckCollisionStatus(void)
            (proxIR.FrontRight < NO_COLLISION_THRESHOLD))
   {
     status = E_Collision_Handled;
+  }
+  else
+  {
+    // Do nothing
   }
 
   return status;

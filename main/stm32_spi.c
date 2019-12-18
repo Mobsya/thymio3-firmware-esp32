@@ -347,14 +347,14 @@ void STM32_SetProxIRValues(int16_t* buffer, uint16_t position)
 
   for (uint8_t index = 0u; index < PROX_IR_SENSORS_NUM; index++)
   {
-	vmVariables.prox[index] = buffer[position + index];
+    vmVariables.prox[index] = buffer[position + index];
   }
 
 #if 0
   for (uint8_t index = 0u; index < PROX_IR_SENSORS_NUM; index++)
   {
-	ProxIR[index] = buffer[index + position];
-	vmVariables.prox[index] = ProxIR[index];
+    ProxIR[index] = buffer[index + position];
+    vmVariables.prox[index] = ProxIR[index];
   }
 #endif
 }
