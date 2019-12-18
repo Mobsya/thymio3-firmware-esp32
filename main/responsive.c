@@ -96,15 +96,10 @@ typedef enum
 
 static const char* Tag = "responsive";
 
-static T_FifoBytes* SequenceFifo = NULL;
-
 static bool RecordSequenceIsFinished = false;
 static bool MovementIsInProgress = false;
 static bool RotationIsInProgress = false;
-static bool FirstRecording = false;
 static bool ObstacleIsDetected = false;
-
-static uint16_t Position = 0u;  //!< Consume position of the FIFO
 
 static T_TimerSw* StopTimer = NULL;      //!< Used to stop the robot in responsive mode
 
@@ -112,7 +107,12 @@ static T_State State = E_State_Record;
 static T_PlayState PlayState = E_PlayState_Replay;
 
 static uint8_t Current = 0u;
+static uint8_t Next = 0u;
 static int16_t AngleTarget = 0;
+
+static uint8_t Sequence[SEQUENCE_BUFFER_SIZE] = {0u};
+static uint8_t WrPos = 0u;
+static uint8_t RdPos = 0u;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -192,16 +192,15 @@ static void Callback_TimerStop(void* arg);
 
 void Responsive_Init(void)
 {
-  uint8_t buffer[SEQUENCE_BUFFER_SIZE];
-
-  SequenceFifo = Fifo8bits_Create(buffer, SEQUENCE_BUFFER_SIZE);
-
   RecordSequenceIsFinished = false;
   MovementIsInProgress = false;
   RotationIsInProgress = false;
 
-  TimerHw_Init(0, 0, true, MOVEMENT_DURATION_us, ISR_EndOfMovement);
+  TimerHw_Init(1, 0, true, MOVEMENT_DURATION_us, ISR_EndOfMovement);
   StopTimer = TimerSw_Create(STOP_DURATION_us, Callback_TimerStop);
+
+  WrPos = 0u;
+  RdPos = 0u;
 }
 
 //_____________________________________________________________________________
@@ -254,63 +253,78 @@ void Responsive_Run(void)
 static void RecordSequence(void)
 {
   uint8_t* buttonState;
-  uint8_t  data = 0u;
+  uint8_t data = 0u;
   int16_t command = 0;
   int16_t acceleration = Accelerometer_GetAccelerationY();
-
   static int16_t toggle = 0;
+  static uint8_t brightness = 0u;
 
-  RunRecordAnimation();
-
-  buttonState = Buttons_GetStatus();
+  buttonState = Buttons_GetBehaviorStatus();
 
   if (RC5_IsNewMessageReceived(&toggle))
   {
     command = RC5_GetCommand();
   }
 
-  when(buttonState[E_Button_Backward] || (command == E_Command_DownArrow))
+  if (WrPos < SEQUENCE_BUFFER_SIZE)
   {
-    data |= (1 << E_Button_Backward);
-    Fifo8bits_Write(SequenceFifo, &data, 1u);
-    ESP_LOGI(Tag, "Down");
+    RunRecordAnimation();
+
+    when(buttonState[E_Button_Backward] || (command == E_Command_DownArrow))
+    {
+      data |= (1 << E_Button_Backward);
+      Sequence[WrPos] = data;
+      WrPos++;
+    }
+
+    when(buttonState[E_Button_Left] || (command == E_Command_LeftArrow))
+    {
+      data |= (1 << E_Button_Left);
+      Sequence[WrPos] = data;
+      WrPos++;
+    }
+
+    when(buttonState[E_Button_Forward] || (command == E_Command_UpArrow))
+    {
+      data |= (1 << E_Button_Forward);
+      Sequence[WrPos] = data;
+      WrPos++;
+    }
+
+    when(buttonState[E_Button_Right] || (command == E_Command_RightArrow))
+    {
+      data |= (1 << E_Button_Right);
+      Sequence[WrPos] = data;
+      WrPos++;
+    }
+  }
+  else
+  {
+    when(buttonState[E_Button_Backward] || (command == E_Command_DownArrow) ||
+         buttonState[E_Button_Left]     || (command == E_Command_LeftArrow) ||
+         buttonState[E_Button_Forward]  || (command == E_Command_UpArrow)   ||
+         buttonState[E_Button_Right]    || (command == E_Command_RightArrow))
+    {
+      brightness = 1u;
+    }
   }
 
-  when(buttonState[E_Button_Left] || (command == E_Command_LeftArrow))
+  // Launch the animation when the user tries to add a movement while the table is already full
+  if (brightness > 0u)
   {
-    data |= (1 << E_Button_Left);
-    Fifo8bits_Write(SequenceFifo, &data, 1u);
-    ESP_LOGI(Tag, "Left");
-  }
+    brightness++;
 
-  when(buttonState[E_Button_Forward] || (command == E_Command_UpArrow))
-  {
-    data |= (1 << E_Button_Forward);
-    Fifo8bits_Write(SequenceFifo, &data, 1u);
-    ESP_LOGI(Tag, "Up");
-  }
+    Leds_SetBodyBrightness(brightness, 0u, 0u);
 
-  when(buttonState[E_Button_Right] || (command == E_Command_RightArrow))
-  {
-    data |= (1 << E_Button_Right);
-    Fifo8bits_Write(SequenceFifo, &data, 1u);
-    ESP_LOGI(Tag, "Right");
+    if (brightness == MAX_BRIGHTNESS)
+    {
+      brightness = 0u;
+    }
   }
 
   when(Accelerometer_IsTapDetected() || (command == E_Command_Go))
   {
     RecordSequenceIsFinished = true;
-
-    // Initialize the position to play the sequence
-    Fifo8bits_SetConsumePosition(SequenceFifo, Position);
-    //ESP_LOGI(Tag, "Pos: %d", Position);
-
-    if (!FirstRecording)
-    {
-      FirstRecording = true;
-      Position = Fifo8bits_GetConsumePosition(SequenceFifo);
-    }
-
     State = E_State_Play;
 
     ESP_LOGI(Tag, "End of recording");
@@ -328,10 +342,10 @@ static void RecordSequence(void)
 
 static void EraseSequence(void)
 {
-  Position = Fifo8bits_GetConsumePosition(SequenceFifo);
-  FirstRecording = false;
-  RunEraseAnimation();
+  WrPos = 0u;
+  RdPos = 0u;
 
+  RunEraseAnimation();
   State = E_State_Record;
 }
 
@@ -367,18 +381,21 @@ static void PlaySequence(void)
 
 static void HandleReplay(void)
 {
-  uint8_t next = 0u;
+  ESP_LOGE(Tag, "WrPos: %d, RdPos: %d", WrPos, RdPos);
 
-  if (!Fifo8bits_IsEmpty(SequenceFifo))
+  if (RdPos < WrPos)
   {
+    ESP_LOGE(Tag, "Val: %d, Pos: %d", Sequence[RdPos], RdPos);
+
     if (!MovementIsInProgress && !RotationIsInProgress)
     {
-      Fifo8bits_Read(SequenceFifo, &Current, 1);
-      Fifo8bits_Peek(SequenceFifo, &next, 1);
+      Current = Sequence[RdPos];
+      Next = Sequence[RdPos + 1u];
+      RdPos++;
 
       if (Current == (1u << E_Button_Backward))
       {
-        TimerHw_Start(0, 0);
+        TimerHw_Start(1, 0);
         MovementIsInProgress = true;
         vmVariables.target[0] = -MOVEMENT_SPEED;  // TODO Check why the speed in backward direction is slower
         vmVariables.target[1] = -MOVEMENT_SPEED;
@@ -387,7 +404,7 @@ static void HandleReplay(void)
 
       if (Current == (1u << E_Button_Forward))
       {
-        TimerHw_Start(0, 0);
+        TimerHw_Start(1, 0);
         MovementIsInProgress = true;
         vmVariables.target[0] = MOVEMENT_SPEED;
         vmVariables.target[1] = MOVEMENT_SPEED;
@@ -410,15 +427,15 @@ static void HandleReplay(void)
         PlayState = E_PlayState_Rotation;
       }
 
-      RunPlayAnimation(next);
+      RunPlayAnimation(Next);
     }
   }
   else  // Handle the last movement or rotation of the sequence
   {
-    //ESP_LOGI(Tag, "Last movement in progress");
     //if (!MovementIsInProgress)
     {
       RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence
+      RdPos = 0u;
       State = E_State_Record;
       ESP_LOGI(Tag, "Last movement is finished");
     }
@@ -434,7 +451,7 @@ static void HandleMovement(void)
   //if (proxIR.FrontCenter > COLLISION_THRESHOLD)
   if (CheckCollisionStatus() == E_Collision_Detected)
   {
-    TimerHw_Stop(0, 0);
+    TimerHw_Stop(1, 0);
     vmVariables.target[0] = 0;
     vmVariables.target[1] = 0;
 
@@ -442,7 +459,7 @@ static void HandleMovement(void)
   }
   else if (ObstacleIsDetected)
   {
-    TimerHw_Start(0, 0);
+    TimerHw_Start(1, 0);
 
     if (Current == (1u << E_Button_Forward))
     {
@@ -501,7 +518,6 @@ static void HandleCollision(void)
   if (CheckCollisionStatus() == E_Collision_Handled)
   {
     Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
-    first = true;
 
     if (MovementIsInProgress)
     {
@@ -515,6 +531,8 @@ static void HandleCollision(void)
     {
       // Do nothing
     }
+
+    first = true;
   }
 }
 
@@ -614,8 +632,8 @@ static void IRAM_ATTR ISR_EndOfMovement(void* para)
 {
   // Retrieve the interrupt status and the counter value
   // from the timer that reported the interrupt
-  uint32_t intr_status = TIMERG0.int_st_timers.val;
-  TIMERG0.hw_timer[0].update = 1;
+  uint32_t intr_status = TIMERG1.int_st_timers.val;
+  TIMERG1.hw_timer[0].update = 1;
 
   // Clear the interrupt and update the alarm time for the timer with without reload
   if (intr_status & BIT(0))
@@ -625,12 +643,12 @@ static void IRAM_ATTR ISR_EndOfMovement(void* para)
 
     TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
 
-    TIMERG0.int_clr_timers.t0 = 1;
-    TimerHw_Stop(0, 0);
+    TIMERG1.int_clr_timers.t0 = 1;
+    TimerHw_Stop(1, 0);
   }
 
   // After the alarm has been triggered, we need enable it again, so it is triggered the next time
-  TIMERG0.hw_timer[0].config.alarm_en = TIMER_ALARM_EN;
+  TIMERG1.hw_timer[0].config.alarm_en = TIMER_ALARM_EN;
 }
 
 //_____________________________________________________________________________
