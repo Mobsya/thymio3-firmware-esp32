@@ -194,6 +194,27 @@ uint16_t Behavior_GetStatus(void)
 
 //_____________________________________________________________________________
 
+void Behavior_PlaySoundButtons(uint8_t button)
+{
+  if ((button == E_Button_Backward) ||
+      (button == E_Button_Left)     ||
+      (button == E_Button_Forward)  ||
+      (button == E_Button_Right))
+  {
+    Codec_PlayMP3FileFromFlash(E_SystemSound_Tick);
+  }
+  else if (button == E_Button_Center)
+  {
+    Codec_PlayMP3FileFromFlash(E_SystemSound_Blop);
+  }
+  else
+  {
+    // Do nothing
+  }
+}
+
+//_____________________________________________________________________________
+
 static void RunBehaviorTask(void* arg)
 {
   ESP_LOGI(Tag, "Start Behavior Task");
@@ -221,7 +242,7 @@ static void RunBehaviors(void)
 
   if (ENABLED(B_SOUND_BUTTON))
   {
-    PlaySoundButtons();
+    //PlaySoundButtons();
   }
 
   if (ENABLED(B_MODE))
@@ -246,7 +267,7 @@ static void RunBehaviors(void)
   }
 //#endif
 
-  Buttons_ClearStatus();
+  //Buttons_ClearBehaviorStatus();
   Gpio_ClearButtonStatus();
 }
 

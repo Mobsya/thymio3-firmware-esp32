@@ -94,4 +94,6 @@ extern void Behavior_Disable(uint16_t b);
 //! \return    The status (bit = 0 -> behavior is disabled, bit = 1 -> behavior is enabled)
 extern uint16_t Behavior_GetStatus(void);
 
+extern void Behavior_PlaySoundButtons(uint8_t button);
+
 #endif // BEHAVIOR_H_

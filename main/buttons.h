@@ -67,7 +67,9 @@ extern void Buttons_Init(void);
 //! \return    The status of the buttons
 extern uint8_t* Buttons_GetStatus(void);
 
-extern void Buttons_ClearStatus(void);
+//extern uint8_t* Buttons_GetBehaviorStatus(void);
+
+//extern void Buttons_ClearBehaviorStatus(void);
 
 //! \brief     Update the button status
 //! \pre       None

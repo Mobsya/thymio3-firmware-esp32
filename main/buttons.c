@@ -30,15 +30,18 @@
 #include "buttons.h"
 
 #include "aseba_esp32.h"
+#include "behavior.h"
 #include "board.h"
 #include "gpio.h"
+
+#include "common.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
 #define TOUCH_THRESH_NO_USE   (0)
-#define TOUCH_THRESH_PERCENT  (80)
+#define PRESSED_THRESHOLD_PERCENT  (97)
 #define TOUCHPAD_FILTER_TOUCH_PERIOD (10)
 
 //-----------------------------------------------------------------------------
@@ -59,9 +62,9 @@ static touch_pad_t Buttons_Table[BUTTONS_NUM];
 
 static uint8_t ButtonStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
 static uint16_t ButtonRaw[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
-//static uint32_t s_pad_init_val[BUTTONS_NUM];
+static uint32_t Threshold[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
 
-static uint8_t ButtonBehaviorStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
+//static uint8_t ButtonBehaviorStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
 
 static const T_GpioPinConfig PinConfig = {BUTTON_SIDE_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_FallingEdge};
 
@@ -70,8 +73,6 @@ static const T_GpioPinConfig PinConfig = {BUTTON_SIDE_PIN, E_GpioMode_Input, E_G
 //-----------------------------------------------------------------------------
 
 static void InitTouchPad();
-
-static void Callback_DetectionTouchPad(void* arg);
 
 static void SetThresholds(void);
 
@@ -85,13 +86,11 @@ static void SetThresholds(void);
 
 void Buttons_Init(void)
 {
+  // Configure the GPIO of the side button
   Gpio_ConfigurePin(&PinConfig);
 
   // Initialize touch pad peripheral, it will start a timer to run a filter
   touch_pad_init();
-
-  // If use interrupt trigger mode, should set touch sensor FSM mode at 'TOUCH_FSM_MODE_TIMER'.
-  touch_pad_set_fsm_mode(TOUCH_FSM_MODE_TIMER);
 
   // Set reference voltage for charging/discharging
   // For most usage scenarios, we recommend using the following combination:
@@ -109,12 +108,6 @@ void Buttons_Init(void)
   // Set threshold
   SetThresholds();
 
-  // Register touch interrupt ISR
-  touch_pad_isr_register(Callback_DetectionTouchPad, NULL);
-
-  // Interrupt mode, enable touch interrupt
-  touch_pad_intr_enable();
-
   ESP_LOGI(Tag, "Buttons are initialized");
 }
 
@@ -122,19 +115,26 @@ void Buttons_Init(void)
 
 uint8_t* Buttons_GetStatus(void)
 {
+  return ButtonStatus;
+}
+
+//_____________________________________________________________________________
+#if 0
+uint8_t* Buttons_GetBehaviorStatus(void)
+{
   return ButtonBehaviorStatus;
 }
 
 //_____________________________________________________________________________
 
-void Buttons_ClearStatus(void)
+void Buttons_ClearBehaviorStatus(void)
 {
   for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
   {
-    ButtonBehaviorStatus[button] = 0;
+    ButtonBehaviorStatus[button] = 0u;
   }
 }
-
+#endif
 //_____________________________________________________________________________
 
 void Buttons_UpdateStatus(void)
@@ -146,13 +146,36 @@ void Buttons_UpdateStatus(void)
     //touch_pad_read_raw_data(Buttons_Table[button], &ButtonRaw[button]);
     touch_pad_read_filtered(Buttons_Table[button], &ButtonRaw[button]);
 
-    if (ButtonStatus[button] != 0u)
+    //ESP_LOGE(Tag, "Button[%d]: %d", button, ButtonRaw[button]);
+
+    if (ButtonRaw[button] < ((Threshold[button] * PRESSED_THRESHOLD_PERCENT) / 100))
     {
-      ButtonBehaviorStatus[button] = 1;
+      //if (button == 2)
+      {
+        //ESP_LOGE(Tag, "Pressed %d, %d", ButtonRaw[button], ButtonStatus[button]);
+      }
+
+      when(ButtonStatus[button] != 0u)
+      {
+        //ESP_LOGE(Tag, "Buttons %d pressed", button);
+        //ButtonBehaviorStatus[button] = 1u;
+        SET_EVENT(button);
+        Behavior_PlaySoundButtons(button);
+      }
+
+      ButtonStatus[button] = 1u;
+    }
+    else
+    {
       ButtonStatus[button] = 0u;
+
+      //if (button == 2)
+      {
+        //ESP_LOGE(Tag, "Released %d, %d", ButtonRaw[button], ButtonStatus[button]);
+      }
     }
 
-    vmVariables.buttons_state[button] = (int16_t)ButtonBehaviorStatus[button];
+    vmVariables.buttons_state[button] = (int16_t)ButtonStatus[button];
     vmVariables.buttons[button] = (int16_t)ButtonRaw[button];
   }
 }
@@ -176,27 +199,6 @@ static void InitTouchPad()
 
 //_____________________________________________________________________________
 
-static void Callback_DetectionTouchPad(void* arg)
-{
-  uint32_t pad_intr = touch_pad_get_status();
-
-  // Clear interrupt
-  touch_pad_clear_status();
-
-  for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
-  {
-    if ((pad_intr >> Buttons_Table[button]) & 0x01)
-    {
-      ButtonStatus[button] = 1u;
-      SET_EVENT(button);
-    }
-  }
-
-  //SET_EVENT(EVENT_BUTTONS);
-}
-
-//_____________________________________________________________________________
-
 static void SetThresholds(void)
 {
   uint16_t value;
@@ -206,33 +208,8 @@ static void SetThresholds(void)
     // Read filtered value
     touch_pad_read_filtered(Buttons_Table[button], &value);
 
-    ESP_LOGE(Tag, "test init: touch pad [%d] val is %d", button, value);
+    Threshold[button] = value;
 
-    // Set interrupt threshold
-    if (button == 0)
-    {
-      // Backward threshold
-      ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 19 / 20));
-    }
-    else if (button == 1)
-    {
-      // Left threshold
-      ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 19 / 20));
-    }
-    else if (button == 2)
-    {
-      // Center threshold
-      ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 19 / 20));
-    }
-    else if (button == 3)
-    {
-      // Forward threshold
-      ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 19 / 20));
-    }
-    else if (button == 4)
-    {
-      // Right threshold
-      ESP_ERROR_CHECK(touch_pad_set_thresh(Buttons_Table[button], value * 19 / 20));
-    }
+    ESP_LOGE(Tag, "test init: touch pad [%d] val is %d", button, value);
   }
 }

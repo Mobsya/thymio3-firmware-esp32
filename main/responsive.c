@@ -136,10 +136,22 @@ static void EraseSequence(void);
 //! \return    None
 static void PlaySequence(void);
 
+//! \brief     Handle the sequence replay
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
 static void HandleReplay(void);
 
+//! \brief     Handle the current movement
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
 static void HandleMovement(void);
 
+//! \brief     Handle the current rotation
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
 static void HandleRotation(void);
 
 //! \brief     Handle the collision
@@ -148,6 +160,10 @@ static void HandleRotation(void);
 //! \return    None
 static void HandleCollision(void);
 
+//! \brief     Check if a collision occurs
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
 static T_Collision CheckCollisionStatus(void);
 
 //! \brief     Run the record animation
@@ -164,7 +180,7 @@ static void RunEraseAnimation(void);
 
 //! \brief     Run the play animation
 //! \pre       First initialize the mode
-//! \param     None
+//! \param     next - Next movement or rotation
 //! \return    None
 static void RunPlayAnimation(uint8_t next);
 
@@ -174,6 +190,10 @@ static void RunPlayAnimation(uint8_t next);
 //! \return    None
 static void RunPauseAnimation(void);
 
+//! \brief     Interrupt called at the end of a movement
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
 static void IRAM_ATTR ISR_EndOfMovement(void* para);
 
 //! \brief     Callback called at the end of the delay added after a movement
@@ -259,7 +279,7 @@ static void RecordSequence(void)
   static int16_t toggle = 0;
   static uint8_t brightness = 0u;
 
-  buttonState = Buttons_GetBehaviorStatus();
+  buttonState = Buttons_GetStatus(); //Buttons_GetBehaviorStatus();
 
   if (RC5_IsNewMessageReceived(&toggle))
   {
@@ -274,6 +294,7 @@ static void RecordSequence(void)
     {
       data |= (1 << E_Button_Backward);
       Sequence[WrPos] = data;
+      ESP_LOGI(Tag, "Val: %d, Pos: %d", Sequence[WrPos], WrPos);
       WrPos++;
     }
 
@@ -281,6 +302,7 @@ static void RecordSequence(void)
     {
       data |= (1 << E_Button_Left);
       Sequence[WrPos] = data;
+      ESP_LOGI(Tag, "Val: %d, Pos: %d", Sequence[WrPos], WrPos);
       WrPos++;
     }
 
@@ -288,6 +310,7 @@ static void RecordSequence(void)
     {
       data |= (1 << E_Button_Forward);
       Sequence[WrPos] = data;
+      ESP_LOGI(Tag, "Val: %d, Pos: %d", Sequence[WrPos], WrPos);
       WrPos++;
     }
 
@@ -295,10 +318,11 @@ static void RecordSequence(void)
     {
       data |= (1 << E_Button_Right);
       Sequence[WrPos] = data;
+      ESP_LOGI(Tag, "Val: %d, Pos: %d", Sequence[WrPos], WrPos);
       WrPos++;
     }
   }
-  else
+  else  // Table is full
   {
     when(buttonState[E_Button_Backward] || (command == E_Command_DownArrow) ||
          buttonState[E_Button_Left]     || (command == E_Command_LeftArrow) ||
@@ -347,6 +371,8 @@ static void EraseSequence(void)
 
   RunEraseAnimation();
   State = E_State_Record;
+
+  ESP_LOGI(Tag, "Erase");
 }
 
 //_____________________________________________________________________________
@@ -381,7 +407,7 @@ static void PlaySequence(void)
 
 static void HandleReplay(void)
 {
-  ESP_LOGE(Tag, "WrPos: %d, RdPos: %d", WrPos, RdPos);
+  //ESP_LOGE(Tag, "WrPos: %d, RdPos: %d", WrPos, RdPos);
 
   if (RdPos < WrPos)
   {
@@ -432,13 +458,11 @@ static void HandleReplay(void)
   }
   else  // Handle the last movement or rotation of the sequence
   {
-    //if (!MovementIsInProgress)
-    {
-      RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence
-      RdPos = 0u;
-      State = E_State_Record;
-      ESP_LOGI(Tag, "Last movement is finished");
-    }
+    RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence
+    RdPos = 0u;
+    State = E_State_Record;
+    ESP_LOGI(Tag, "Last movement is finished");
+
   }
 }
 
@@ -446,9 +470,6 @@ static void HandleReplay(void)
 
 static void HandleMovement(void)
 {
-  //T_ProxIR proxIR = STM32_GetProxIRValues();
-
-  //if (proxIR.FrontCenter > COLLISION_THRESHOLD)
   if (CheckCollisionStatus() == E_Collision_Detected)
   {
     TimerHw_Stop(1, 0);
