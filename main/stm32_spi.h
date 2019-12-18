@@ -91,9 +91,7 @@ extern uint16_t STM32_GetStatus(void);
 
 extern void STM32_UpdateSettings(void);
 
-extern void STM32_SetLeftMotorSettings(int16_t settings);
-
-extern void STM32_SetRightMotorSettings(int16_t settings);
+extern void STM32_SetSettings(int16_t* buffer, uint16_t position);
 
 extern int16_t STM32_GetLeftMotorSettings(void);
 
@@ -107,27 +105,19 @@ extern void STM32_SetBatteryVoltage(int16_t voltage);
 //! \return    The battery voltage
 extern int16_t STM32_GetBatteryVoltage(void);
 
-extern void STM32_SetLeftBatteryMotorVoltage(int16_t voltage);
-
-extern void STM32_SetRightBatteryMotorVoltage(int16_t voltage);
+extern void STM32_SetBatteryMotorVoltages(int16_t* buffer, uint16_t position);
 
 extern int16_t STM32_GetBatteryMotorVoltage(void);
 
-extern void STM32_SetLeftInducedVoltage(int16_t voltage);
-
-extern void STM32_SetRightInducedVoltage(int16_t voltage);
+extern void STM32_SetInducedVoltages(int16_t* buffer, uint16_t position);
 
 extern T_Motor STM32_GetInducedVoltage(void);
 
-extern void STM32_SetLeftMotorCurrent(int16_t current);
-
-extern void STM32_SetRightMotorCurrent(int16_t current);
+extern void STM32_SetMotorCurrents(int16_t* buffer, uint16_t position);
 
 extern T_Motor STM32_GetMotorCurrent(void);
 
-extern void STM32_SetLeftPwmDutyCycle(int16_t dutycycle);
-
-extern void STM32_SetRightPwmDutyCycle(int16_t dutycycle);
+extern void STM32_SetPwmDutyCycles(int16_t* buffer, uint16_t position);
 
 extern void STM32_UpdateMotorTargets(void);
 
@@ -152,6 +142,10 @@ extern void STM32_SetProxIRValues(int16_t* buffer, uint16_t position);
 extern T_ProxIR STM32_GetProxIRValues(void);
 
 extern void STM32_SetGroundIRValues(int16_t* buffer, uint16_t position);
+
+extern void STM32_SetProxIRData(int16_t* buffer, uint16_t position);
+
+extern int16_t STM32_GetProxIRTxData(void);
 
 #if 0
 extern void STM32_SetFrontLeftProxIRValue(int16_t value);

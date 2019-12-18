@@ -38,12 +38,18 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define DATA_SIZE              32u
+#define DATA_SIZE                            40u
 
-#define PROX_IR_POSITION       15u
-#define GROUND_IR_POSITION     22u
+#define SETTINGS_POSITION                     2u
+#define BATTERY_MOTOR_VOLTAGES_POSITION       5u
+#define INDUCED_VOLTAGES_POSITION             7u
+#define MOTOR_CURRENTS_POSITION               9u
+#define PWM_DUTY_CYCLES_POSITION             11u
+#define PROX_IR_POSITION                     15u
+#define GROUND_IR_POSITION                   22u
+#define PROX_IR_DATA_POSITION                28u
 
-#define STM32_ID               0x4321
+#define STM32_ID                          0x4321
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -153,39 +159,25 @@ static void RunCommTask(void* arg)
     tx[5] = STM32_GetRightMotorTarget();
     tx[6] = STM32_GetSoundThreshold();
     tx[7] = Behavior_GetStatus();
+    tx[8] = STM32_GetProxIRTxData();
 
-    Spi_WriteVSPI(Microcontroller, tx, rx, DATA_SIZE);
-
-    //STM32_SetIdentifier(rx[0]);
+    Spi_CommunicateVSPI(Microcontroller, tx, rx, DATA_SIZE);
 
     if (rx[0] == STM32_ID)
     {
-      //ESP_LOGE(Tag, "Data is valid");
       STM32_SetStatus(rx[1]);
-      STM32_SetLeftMotorSettings(rx[2]);
-      STM32_SetRightMotorSettings(rx[3]);
+      STM32_SetSettings(rx, SETTINGS_POSITION);
       STM32_SetBatteryVoltage(rx[4]);
-      STM32_SetLeftBatteryMotorVoltage(rx[5]);
-      STM32_SetRightBatteryMotorVoltage(rx[6]);
-      STM32_SetLeftInducedVoltage(rx[7]);
-      STM32_SetRightInducedVoltage(rx[8]);
-      STM32_SetLeftMotorCurrent(rx[9]);
-      STM32_SetRightMotorCurrent(rx[10]);
-      STM32_SetLeftPwmDutyCycle(rx[11]);
-      STM32_SetRightPwmDutyCycle(rx[12]);
+      STM32_SetBatteryMotorVoltages(rx, BATTERY_MOTOR_VOLTAGES_POSITION);
+      STM32_SetInducedVoltages(rx, INDUCED_VOLTAGES_POSITION);
+      STM32_SetMotorCurrents(rx, MOTOR_CURRENTS_POSITION);
+      STM32_SetPwmDutyCycles(rx, PWM_DUTY_CYCLES_POSITION);
       STM32_SetSoundLevel(rx[13]);
       //STM32_SetSoundThreshold(rx[13]);
       STM32_SetSoundMean(rx[14]);
       STM32_SetProxIRValues(rx, PROX_IR_POSITION);
       STM32_SetGroundIRValues(rx, GROUND_IR_POSITION);
-
-      //if ((rx[1] != 0x0001) || (tx[1] != 0x0001))
-      if (rx[1] != 0x0001)
-      {
-        ESP_LOGE(Tag, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
-      		     rx[1], rx[2], rx[3], rx[4], rx[5], rx[6], rx[7], rx[8], rx[9], rx[10],
-			     rx[11], rx[12], rx[13], rx[14], rx[15], rx[16], rx[17], rx[18], rx[19], rx[20]);
-      }
+      STM32_SetProxIRData(rx, PROX_IR_DATA_POSITION);
 
       if ((counter % 5u) == 0u)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 20 [ms])
       {

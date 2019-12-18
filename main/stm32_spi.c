@@ -178,16 +178,10 @@ void STM32_UpdateSettings(void)
 
 //_____________________________________________________________________________
 
-void STM32_SetLeftMotorSettings(int16_t settings)
+void STM32_SetSettings(int16_t* buffer, uint16_t position)
 {
-  Settings.LeftMotor = settings;
-}
-
-//_____________________________________________________________________________
-
-void STM32_SetRightMotorSettings(int16_t settings)
-{
-  Settings.RightMotor = settings;
+  Settings.LeftMotor  = buffer[position];
+  Settings.RightMotor = buffer[position + 1u];
 }
 
 //_____________________________________________________________________________
@@ -221,17 +215,12 @@ int16_t STM32_GetBatteryVoltage(void)
 
 //_____________________________________________________________________________
 
-void STM32_SetLeftBatteryMotorVoltage(int16_t voltage)
+void STM32_SetBatteryMotorVoltages(int16_t* buffer, uint16_t position)
 {
-  VbatMotor.Left = voltage;
-  vmVariables.vbat_motor[E_Motor_Left] = VbatMotor.Left;
-}
+  VbatMotor.Left  = buffer[position];
+  VbatMotor.Right = buffer[position + 1u];
 
-//_____________________________________________________________________________
-
-void STM32_SetRightBatteryMotorVoltage(int16_t voltage)
-{
-  VbatMotor.Right = voltage;
+  vmVariables.vbat_motor[E_Motor_Left]  = VbatMotor.Left;
   vmVariables.vbat_motor[E_Motor_Right] = VbatMotor.Right;
 }
 
@@ -244,17 +233,12 @@ int16_t STM32_GetBatteryMotorVoltage(void)
 
 //_____________________________________________________________________________
 
-void STM32_SetLeftInducedVoltage(int16_t voltage)
+void STM32_SetInducedVoltages(int16_t* buffer, uint16_t position)
 {
-  Vind.Left = voltage;
-  vmVariables.uind[E_Motor_Left] = Vind.Left;
-}
+  Vind.Left  = buffer[position];
+  Vind.Right = buffer[position + 1u];
 
-//_____________________________________________________________________________
-
-void STM32_SetRightInducedVoltage(int16_t voltage)
-{
-  Vind.Right = voltage;
+  vmVariables.uind[E_Motor_Left]  = Vind.Left;
   vmVariables.uind[E_Motor_Right] = Vind.Right;
 }
 
@@ -267,17 +251,12 @@ T_Motor STM32_GetInducedVoltage(void)
 
 //_____________________________________________________________________________
 
-void STM32_SetLeftMotorCurrent(int16_t current)
+void STM32_SetMotorCurrents(int16_t* buffer, uint16_t position)
 {
-  Current.Left = current;
+  Current.Left  = buffer[position];
+  Current.Right = buffer[position + 1u];
+
   vmVariables.imot[E_Motor_Left] = Current.Left;
-}
-
-//_____________________________________________________________________________
-
-void STM32_SetRightMotorCurrent(int16_t current)
-{
-  Current.Right = current;
   vmVariables.imot[E_Motor_Right] = Current.Right;
 }
 
@@ -290,17 +269,12 @@ T_Motor STM32_GetMotorCurrent(void)
 
 //_____________________________________________________________________________
 
-void STM32_SetLeftPwmDutyCycle(int16_t dutycycle)
+void STM32_SetPwmDutyCycles(int16_t* buffer, uint16_t position)
 {
-  DutyCycle.Left = dutycycle;
-  vmVariables.pwm[E_Motor_Left] = DutyCycle.Left;
-}
+  DutyCycle.Left  = buffer[position];
+  DutyCycle.Right = buffer[position + 1u];
 
-//_____________________________________________________________________________
-
-void STM32_SetRightPwmDutyCycle(int16_t dutycycle)
-{
-  DutyCycle.Right = dutycycle;
+  vmVariables.pwm[E_Motor_Left]  = DutyCycle.Left;
   vmVariables.pwm[E_Motor_Right] = DutyCycle.Right;
 }
 
@@ -409,6 +383,23 @@ void STM32_SetGroundIRValues(int16_t* buffer, uint16_t position)
   vmVariables.ground_reflected[E_GroundIR_Left]  = GroundIR.RightReflected;
   vmVariables.ground_delta[E_GroundIR_Right]     = GroundIR.LeftDelta;
   vmVariables.ground_delta[E_GroundIR_Left]      = GroundIR.RightDelta;
+}
+
+//_____________________________________________________________________________
+
+void STM32_SetProxIRData(int16_t* buffer, uint16_t position)
+{
+  for (uint8_t index = 0u; index < PROX_IR_SENSORS_NUM; index++)
+  {
+    vmVariables.sensor_data[index] = buffer[position + index];
+  }
+}
+
+//_____________________________________________________________________________
+
+int16_t STM32_GetProxIRTxData(void)
+{
+  return vmVariables.ir_tx_data;
 }
 
 //_____________________________________________________________________________
