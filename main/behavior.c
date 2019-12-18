@@ -267,7 +267,6 @@ static void RunBehaviors(void)
   }
 //#endif
 
-  //Buttons_ClearBehaviorStatus();
   Gpio_ClearButtonStatus();
 }
 

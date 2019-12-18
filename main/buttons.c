@@ -61,10 +61,8 @@ static const char* Tag = "buttons";
 static touch_pad_t Buttons_Table[BUTTONS_NUM];
 
 static uint8_t ButtonStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
-static uint16_t ButtonRaw[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
+static uint16_t ButtonFiltered[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
 static uint32_t Threshold[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
-
-//static uint8_t ButtonBehaviorStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
 
 static const T_GpioPinConfig PinConfig = {BUTTON_SIDE_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_FallingEdge};
 
@@ -119,46 +117,18 @@ uint8_t* Buttons_GetStatus(void)
 }
 
 //_____________________________________________________________________________
-#if 0
-uint8_t* Buttons_GetBehaviorStatus(void)
-{
-  return ButtonBehaviorStatus;
-}
-
-//_____________________________________________________________________________
-
-void Buttons_ClearBehaviorStatus(void)
-{
-  for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
-  {
-    ButtonBehaviorStatus[button] = 0u;
-  }
-}
-#endif
-//_____________________________________________________________________________
 
 void Buttons_UpdateStatus(void)
 {
-  //SetThresholds();
-
   for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
   {
-    //touch_pad_read_raw_data(Buttons_Table[button], &ButtonRaw[button]);
-    touch_pad_read_filtered(Buttons_Table[button], &ButtonRaw[button]);
+    touch_pad_read_filtered(Buttons_Table[button], &ButtonFiltered[button]);
+    //touch_pad_read_raw_data(Buttons_Table[button], &ButtonFiltered[button]);
 
-    //ESP_LOGE(Tag, "Button[%d]: %d", button, ButtonRaw[button]);
-
-    if (ButtonRaw[button] < ((Threshold[button] * PRESSED_THRESHOLD_PERCENT) / 100))
+    if (ButtonFiltered[button] < ((Threshold[button] * PRESSED_THRESHOLD_PERCENT) / 100))
     {
-      //if (button == 2)
-      {
-        //ESP_LOGE(Tag, "Pressed %d, %d", ButtonRaw[button], ButtonStatus[button]);
-      }
-
       when(ButtonStatus[button] != 0u)
       {
-        //ESP_LOGE(Tag, "Buttons %d pressed", button);
-        //ButtonBehaviorStatus[button] = 1u;
         SET_EVENT(button);
         Behavior_PlaySoundButtons(button);
       }
@@ -168,15 +138,11 @@ void Buttons_UpdateStatus(void)
     else
     {
       ButtonStatus[button] = 0u;
-
-      //if (button == 2)
-      {
-        //ESP_LOGE(Tag, "Released %d, %d", ButtonRaw[button], ButtonStatus[button]);
-      }
+      //SetThresholds();
     }
 
     vmVariables.buttons_state[button] = (int16_t)ButtonStatus[button];
-    vmVariables.buttons[button] = (int16_t)ButtonRaw[button];
+    vmVariables.buttons[button] = (int16_t)ButtonFiltered[button];
   }
 }
 
@@ -207,6 +173,7 @@ static void SetThresholds(void)
   {
     // Read filtered value
     touch_pad_read_filtered(Buttons_Table[button], &value);
+    //touch_pad_read_raw_data(Buttons_Table[button], &value);
 
     Threshold[button] = value;
 
