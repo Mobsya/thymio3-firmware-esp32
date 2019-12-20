@@ -6,16 +6,16 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    responsive.h
-//! \brief   This module provides the useful functions to use the responsive mode
+//! \file    sequence.h
+//! \brief   This module provides the useful functions to use the sequence mode
 //!
 //! \author  Vincent Gonet
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
-#ifndef RESPONSIVE_H_
-#define RESPONSIVE_H_
+#ifndef SEQUENCE_H_
+#define SEQUENCE_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
@@ -41,28 +41,28 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the responsive mode
+//! \brief     Initialize the sequence mode
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void Responsive_Init(void);
+extern void Sequence_Init(void);
 
-//! \brief     Start the responsive mode
-//! \pre       First initialize the responsible mode
+//! \brief     Start the sequence mode
+//! \pre       First initialize the sequence mode
 //! \param     None
 //! \return    None
-extern void Responsive_Start(void);
+extern void Sequence_Start(void);
 
-//! \brief     Stop the responsive mode
-//! \pre       First initialize the responsible mode
+//! \brief     Stop the sequence mode
+//! \pre       First initialize the sequence mode
 //! \param     None
 //! \return    None
-extern void Responsive_Stop(void);
+extern void Sequence_Stop(void);
 
-//! \brief     Run the responsive mode
-//! \pre       First initialize the responsible mode
+//! \brief     Run the sequence mode
+//! \pre       First initialize the sequence mode
 //! \param     None
 //! \return    None
-extern void Responsive_Run(void);
+extern void Sequence_Run(void);
 
-#endif // RESPONSIVE_H_
+#endif // SEQUENCE_H_

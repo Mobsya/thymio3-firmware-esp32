@@ -29,20 +29,6 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
-enum
-{
-  E_Mode_Menu,
-  E_Mode_Friendly,
-  E_Mode_Explorer,
-  E_Mode_Fearful,
-  E_Mode_Painter,
-  E_Mode_LineTracker,
-  E_Mode_Responsive,
-  E_Mode_Musician,
-  E_Mode_Max = E_Mode_Musician
-};
-typedef int16_t T_Mode;  // Mode selection
-
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -57,12 +43,20 @@ typedef int16_t T_Mode;  // Mode selection
 
 //! \brief     Initialize the modes
 //! \pre       None
-//! \param     None
+//! \param     enableVM - Flag used to enable/disable the VM
 //! \return    None
 extern void Mode_Init(bool enableVM);
 
+//! \brief     Initialize the VM
+//! \pre       None
+//! \param     None
+//! \return    None
 extern void Mode_InitVM(void);
 
+//! \brief     Run the modes
+//! \pre       First initialize the modes
+//! \param     None
+//! \return    None
 extern void Mode_Run(void);
 
 #endif // MODE_H_

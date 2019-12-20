@@ -33,14 +33,13 @@
 #include "tcp_server.h"
 
 // Include of the modes
-//#include "attentive.h"
 #include "explorer.h"
 #include "fearful.h"
 #include "friendly.h"
 #include "line_tracker.h"
 #include "musician.h"
 #include "painter.h"
-#include "responsive.h"
+#include "sequence.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -49,6 +48,20 @@
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
+
+enum
+{
+  E_Mode_Menu,
+  E_Mode_Friendly,
+  E_Mode_Explorer,
+  E_Mode_Fearful,
+  E_Mode_Painter,
+  E_Mode_LineTracker,
+  E_Mode_Sequence,
+  E_Mode_Musician,
+  E_Mode_Max = E_Mode_Musician
+};
+typedef int16_t T_Mode;  // Mode selection
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -113,7 +126,7 @@ void Mode_Init(bool enableVM)
 
   Behavior_Enable(B_ALWAYS | B_MODE);
 
-  Responsive_Init();
+  Sequence_Init();
 
   ESP_LOGI(Tag, "Mode is initialized");
 }
@@ -256,8 +269,8 @@ void Mode_Run(void)
       LineTracker_Run();
       break;
 
-    case E_Mode_Responsive:
-      Responsive_Run();
+    case E_Mode_Sequence:
+      Sequence_Run();
       break;
 
     case E_Mode_Musician:
@@ -305,10 +318,10 @@ static void StartMode(T_Mode mode)
       Behavior_Enable(B_LEDS_PROX);
       break;
 
-    case E_Mode_Responsive:
+    case E_Mode_Sequence:
       Behavior_Enable(B_LEDS_PROX);
       Behavior_Enable(B_LEDS_LEGO);
-      Responsive_Start();
+      Sequence_Start();
       break;
 
     case E_Mode_Musician:
@@ -363,8 +376,8 @@ static void ExitMode(T_Mode mode)
       Behavior_Disable(B_LEDS_PROX);
       break;
 
-    case E_Mode_Responsive:
-      Responsive_Stop();
+    case E_Mode_Sequence:
+      Sequence_Stop();
       Behavior_Disable(B_LEDS_PROX);
       Behavior_Disable(B_LEDS_LEGO);
       break;
@@ -449,7 +462,7 @@ static void SetModeColor(T_Mode mode)
       Leds_SetBodyBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
       break;
 
-    case E_Mode_Responsive:  // Magenta
+    case E_Mode_Sequence:  // Magenta
       Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
       break;
 

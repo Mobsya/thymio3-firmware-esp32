@@ -140,7 +140,7 @@ int app_main(void)
 
   esp_log_level_set("*", ESP_LOG_ERROR);
   //esp_log_level_set("spi_master", ESP_LOG_ERROR);
-  esp_log_level_set("responsive", ESP_LOG_INFO);
+  esp_log_level_set("sequence", ESP_LOG_INFO);
   //esp_log_level_set("explorer", ESP_LOG_INFO);
 
   Codec_SetVolume(80);
