@@ -40,9 +40,11 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define TOUCH_THRESH_NO_USE   (0)
-#define PRESSED_THRESHOLD_PERCENT  (97)
-#define TOUCHPAD_FILTER_TOUCH_PERIOD (10)
+#define TOUCH_THRESH_NO_USE              0u
+#define PRESSED_THRESHOLD_PERCENT       98u
+#define TOUCHPAD_FILTER_TOUCH_PERIOD    10u
+#define THRESHOLD_AVERAGE_SIZE          16u
+#define DEBOUNCE                         3
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -62,7 +64,10 @@ static touch_pad_t Buttons_Table[BUTTONS_NUM];
 
 static uint8_t ButtonStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
 static uint16_t ButtonFiltered[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
-static uint32_t Threshold[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
+static uint16_t ButtonRaw[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
+static uint16_t Threshold[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
+static uint16_t Sum[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
+static int16_t Count[BUTTONS_NUM] = {-3, -3, -3, -3, -3};
 
 static const T_GpioPinConfig PinConfig = {BUTTON_SIDE_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_FallingEdge};
 
@@ -72,7 +77,9 @@ static const T_GpioPinConfig PinConfig = {BUTTON_SIDE_PIN, E_GpioMode_Input, E_G
 
 static void InitTouchPad();
 
-static void SetThresholds(void);
+static void InitThresholds(void);
+
+static void UpdateThresholds(uint8_t button);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -95,16 +102,14 @@ void Buttons_Init(void)
   // the high reference voltage will be 2.7V - 1V = 1.7V, The low reference voltage will be 0.5V.
   touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
 
-  //touch_pad_set_trigger_mode(TOUCH_TRIGGER_BELOW);
-
   // Init touch pad IO
   InitTouchPad();
 
   // Initialize and start a software filter to detect slight change of capacitance.
   touch_pad_filter_start(TOUCHPAD_FILTER_TOUCH_PERIOD);
 
-  // Set threshold
-  SetThresholds();
+  // Set initial threshold
+  InitThresholds();
 
   ESP_LOGI(Tag, "Buttons are initialized");
 }
@@ -120,29 +125,45 @@ uint8_t* Buttons_GetStatus(void)
 
 void Buttons_UpdateStatus(void)
 {
+  static uint8_t oldButtonStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
+
   for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
   {
     touch_pad_read_filtered(Buttons_Table[button], &ButtonFiltered[button]);
-    //touch_pad_read_raw_data(Buttons_Table[button], &ButtonFiltered[button]);
+    touch_pad_read_raw_data(Buttons_Table[button], &ButtonRaw[button]);
 
-    if (ButtonFiltered[button] < ((Threshold[button] * PRESSED_THRESHOLD_PERCENT) / 100))
+    if (ButtonFiltered[button] < Threshold[button])
     {
-      when(ButtonStatus[button] != 0u)
-      {
-        SET_EVENT(button);
-        Behavior_PlaySoundButtons(button);
-      }
+      //when(ButtonStatus[button] != 0u)
+      //{
+        //SET_EVENT(button);
+        //Behavior_PlaySoundButtons(button);
+      //}
 
       ButtonStatus[button] = 1u;
+
+      if (ButtonStatus[button] != oldButtonStatus[button])
+      {
+        SET_EVENT(button);
+        //Behavior_PlaySoundButtons(button);
+      }
+
+      Sum[button] = 0u;
+      Count[button] = -DEBOUNCE;
     }
     else
     {
       ButtonStatus[button] = 0u;
-      //SetThresholds();
+
+      UpdateThresholds(button);
     }
 
+    oldButtonStatus[button] = ButtonStatus[button];
+
     vmVariables.buttons_state[button] = (int16_t)ButtonStatus[button];
-    vmVariables.buttons[button] = (int16_t)ButtonFiltered[button];
+    vmVariables.buttons[button] = (int16_t)ButtonRaw[button];
+    vmVariables.buttons_mean[button] = (int16_t)ButtonFiltered[button];
+    vmVariables.buttons_noise[button] = (int16_t)Threshold[button];
   }
 }
 
@@ -165,7 +186,7 @@ static void InitTouchPad()
 
 //_____________________________________________________________________________
 
-static void SetThresholds(void)
+static void InitThresholds(void)
 {
   uint16_t value;
 
@@ -173,10 +194,27 @@ static void SetThresholds(void)
   {
     // Read filtered value
     touch_pad_read_filtered(Buttons_Table[button], &value);
-    //touch_pad_read_raw_data(Buttons_Table[button], &value);
+    Threshold[button] = (value * PRESSED_THRESHOLD_PERCENT / 100u);
+  }
+}
 
-    Threshold[button] = value;
+//_____________________________________________________________________________
 
-    ESP_LOGE(Tag, "test init: touch pad [%d] val is %d", button, value);
+static void UpdateThresholds(uint8_t button)
+{
+  Count[button]++;
+
+  // The first 3 samples are skipped before calculating the new threshold
+  if (Count[button] > 0)
+  {
+	Sum[button] += ButtonFiltered[button];
+
+    if (Count[button] == THRESHOLD_AVERAGE_SIZE)
+    {
+      Threshold[button] = ((Sum[button] / THRESHOLD_AVERAGE_SIZE) * PRESSED_THRESHOLD_PERCENT / 100u);
+
+      Sum[button] = 0u;
+      Count[button] = 0u;
+    }
   }
 }

@@ -242,7 +242,7 @@ static void RunBehaviors(void)
 
   if (ENABLED(B_SOUND_BUTTON))
   {
-    //PlaySoundButtons();
+    PlaySoundButtons();
   }
 
   if (ENABLED(B_MODE))
@@ -397,7 +397,7 @@ static void SetAccelerometerLeds(void)
     {
       led = E_Led_Circle_SE;
     }
-    else if ((tilt  < -14000) || (tilt >= 14000))
+    else if ((tilt < -14000) || (tilt >= 14000))
     {
       led = E_Led_Circle_S;
     }
