@@ -269,7 +269,7 @@ const AsebaVMDescription vmDescription =
     {1, "button.right"},
 
     {5, "buttons._mean"},
-    {5, "buttons._noise"},
+    {5, "buttons._threshold"},
 
     {7, "prox.horizontal"},
 

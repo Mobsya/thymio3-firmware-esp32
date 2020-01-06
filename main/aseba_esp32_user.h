@@ -59,7 +59,7 @@ struct _vmVariables
   int16_t buttons[5];
   int16_t buttons_state[5];
   int16_t buttons_mean[5];
-  int16_t buttons_noise[5];
+  int16_t buttons_threshold[5];
   int16_t prox[7];
   int16_t sensor_data[7];
   int16_t intensity[7];

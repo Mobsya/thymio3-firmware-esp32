@@ -54,12 +54,12 @@ static const char* Tag = "buttons";
 
 static touch_pad_t Buttons_Table[BUTTONS_NUM];
 
-static uint8_t ButtonStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
+static uint8_t ButtonStatus[BUTTONS_NUM]    = {0u, 0u, 0u, 0u, 0u};
 static uint16_t ButtonFiltered[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
-static uint16_t ButtonRaw[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
-static uint16_t Threshold[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
-static uint16_t Sum[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
-static int16_t Count[BUTTONS_NUM] = {-3, -3, -3, -3, -3};
+static uint16_t ButtonRaw[BUTTONS_NUM]      = {0u, 0u, 0u, 0u, 0u};
+static uint16_t Threshold[BUTTONS_NUM]      = {0u, 0u, 0u, 0u, 0u};
+static uint16_t Sum[BUTTONS_NUM]            = {0u, 0u, 0u, 0u, 0u};
+static int16_t Count[BUTTONS_NUM]           = {-3, -3, -3, -3, -3};
 
 static const T_GpioPinConfig PinConfig = {BUTTON_SIDE_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_FallingEdge};
 
@@ -148,7 +148,7 @@ void Buttons_UpdateStatus(void)
     vmVariables.buttons_state[button] = (int16_t)ButtonStatus[button];
     vmVariables.buttons[button] = (int16_t)ButtonRaw[button];
     vmVariables.buttons_mean[button] = (int16_t)ButtonFiltered[button];
-    vmVariables.buttons_noise[button] = (int16_t)Threshold[button];
+    vmVariables.buttons_threshold[button] = (int16_t)Threshold[button];
   }
 }
 
