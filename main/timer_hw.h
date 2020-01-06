@@ -31,7 +31,8 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
-typedef void (*TimerCallback)(void*);
+//! \details Declaration of the timer HW pointer function
+typedef void (*TimerHWFunctionPtr)(void*);
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -49,7 +50,7 @@ typedef void (*TimerCallback)(void*);
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, uint64_t interval, void (*fn)(void*));
+extern void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, uint64_t interval, const TimerHWFunctionPtr callback);
 
 //! \brief     Start the timer
 //! \pre       First initialize the timer

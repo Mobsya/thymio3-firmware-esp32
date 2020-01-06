@@ -34,8 +34,8 @@
 struct PrivateTimer;
 typedef struct PrivateTimer T_TimerSw;  //!< Definition of T_TimerSw type
 
-//! \details Declaration of the timer callback
-typedef void (*T_TimerCallback)(void*);
+//! \details Declaration of the timer SW pointer function
+typedef void (*TimerSWFunctionPtr)(void*);
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -60,8 +60,7 @@ extern void TimerSw_Init(void);
 //! \param     duration_us - Duration in [us]
 //! \param     callback - Callback function called when duration is reached
 //! \return    Timer created
-//extern T_TimerSw* TimerSw_Create(uint32_t duration_us, void (*callback)(void*));
-extern T_TimerSw* TimerSw_Create(uint32_t duration_us, T_TimerCallback callback);
+extern T_TimerSw* TimerSw_Create(uint32_t duration_us, const TimerSWFunctionPtr callback);
 
 //! \brief     Start the timer once
 //! \pre       First initialize the timer

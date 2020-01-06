@@ -29,7 +29,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define MAX_TIMERS_ALLOWED    15u  //!< Maximum number of timers allowed
+#define MAX_TIMERS_ALLOWED    10u  //!< Maximum number of timers allowed
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -72,11 +72,11 @@ static struct PrivateTimer TableTimers[MAX_TIMERS_ALLOWED];  //!< Table containi
 void TimerSw_Init(void)
 {
   // Initialize the table timers
-  for (uint8_t i = 0U; i < MAX_TIMERS_ALLOWED; i++)
+  for (uint8_t index = 0u; index < MAX_TIMERS_ALLOWED; index++)
   {
-    TableTimers[i].IsUsed      = false;
-    TableTimers[i].IsRunning   = false;
-    TableTimers[i].Duration_us = 0ul;
+    TableTimers[index].IsUsed      = false;
+    TableTimers[index].IsRunning   = false;
+    TableTimers[index].Duration_us = 0uL;
   }
 
   ESP_LOGI(Tag, "Software Timer is initialized");
@@ -84,16 +84,16 @@ void TimerSw_Init(void)
 
 //_____________________________________________________________________________
 
-T_TimerSw* TimerSw_Create(uint32_t duration_us, T_TimerCallback callback)
+T_TimerSw* TimerSw_Create(uint32_t duration_us, const TimerSWFunctionPtr callback)
 {
   T_TimerSw* timer = NULL;
-  uint8_t i;
+  uint8_t index = 0u;
 
-  for (i = 0U; i < MAX_TIMERS_ALLOWED; i++)
+  for (index = 0u; index < MAX_TIMERS_ALLOWED; index++)
   {
-    if (!TableTimers[i].IsUsed)
+    if (!TableTimers[index].IsUsed)
     {
-      timer = &TableTimers[i];
+      timer = &TableTimers[index];
       timer->IsUsed          = true;
       timer->IsRunning       = false;
       timer->Duration_us     = duration_us;
@@ -105,7 +105,7 @@ T_TimerSw* TimerSw_Create(uint32_t duration_us, T_TimerCallback callback)
     }
   }
 
-  ESP_LOGI(Tag, "Software Timer %d is created", i);
+  ESP_LOGI(Tag, "Software Timer %d is created", index);
 
   return timer;
 }
