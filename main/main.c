@@ -112,7 +112,7 @@ int app_main(void)
   Leds_Init();
 
   // FIXME When RC5 is initialized, the interruption of TimerHW is not reached
-  //RC5_Init();
+  RC5_Init();
 
   Sensors_Init();
   Comm_Init();
@@ -172,7 +172,7 @@ int app_main(void)
 
   Behavior_Start();
 
-  //RC5_Start();
+  RC5_Start();
 
   Sensors_Start();
   Comm_Start();
