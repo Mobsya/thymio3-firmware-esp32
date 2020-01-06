@@ -91,7 +91,7 @@ void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, uint64_t 
     ESP_ERROR_CHECK(timer_enable_intr(timerGroup, timerIndex));
 
     ESP_ERROR_CHECK(timer_isr_register(timerGroup, timerIndex, callback,
-                    (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL));
+                                       (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL));
 
     ESP_LOGI(Tag, "Group %d Timer %d is initialized", timerGroup, timerIndex);
   }

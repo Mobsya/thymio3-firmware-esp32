@@ -359,13 +359,13 @@ static void ProcessEraseAction(uint8_t command)
 
   if (acceleration <= -15000)
   {
-	count++;
+    count++;
 
-	if (count > DEBOUNCE)
-	{
+    if (count > DEBOUNCE)
+    {
       isEraseAllowed = true;
       count = 0u;
-	}
+    }
   }
   else if (command == E_Command_Stop)
   {
@@ -374,13 +374,13 @@ static void ProcessEraseAction(uint8_t command)
   }
   else
   {
-	isEraseAllowed = false;
+    isEraseAllowed = false;
     count = 0u;
   }
 
   // To erase the sequence, place the Thymio on the right side or
   // press the stop button on the remote control
-  when (isEraseAllowed)
+  when(isEraseAllowed)
   {
     State = E_State_Erase;
   }

@@ -192,7 +192,7 @@ static void UpdateThresholds(uint8_t button)
   // The first 3 samples are skipped before calculating the new threshold
   if (Count[button] > 0)
   {
-	Sum[button] += ButtonFiltered[button];
+    Sum[button] += ButtonFiltered[button];
 
     if (Count[button] == THRESHOLD_AVERAGE_SIZE)
     {
