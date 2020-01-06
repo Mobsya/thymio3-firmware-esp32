@@ -18,23 +18,15 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-
 #include "driver/touch_pad.h"
-#include "soc/rtc_periph.h"
-//#include "soc/sens_periph.h"
 
 #include "esp_log.h"
 
 #include "buttons.h"
 
 #include "aseba_esp32.h"
-#include "behavior.h"
 #include "board.h"
 #include "gpio.h"
-
-#include "common.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -134,18 +126,11 @@ void Buttons_UpdateStatus(void)
 
     if (ButtonFiltered[button] < Threshold[button])
     {
-      //when(ButtonStatus[button] != 0u)
-      //{
-        //SET_EVENT(button);
-        //Behavior_PlaySoundButtons(button);
-      //}
-
       ButtonStatus[button] = 1u;
 
       if (ButtonStatus[button] != oldButtonStatus[button])
       {
         SET_EVENT(button);
-        //Behavior_PlaySoundButtons(button);
       }
 
       Sum[button] = 0u;
