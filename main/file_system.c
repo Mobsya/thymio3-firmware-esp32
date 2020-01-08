@@ -50,12 +50,6 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
-typedef struct
-{
-  int16_t LeftMotor;   //!< Correction factor of the left motor
-  int16_t RightMotor;  //!< Correction factor of the right motor
-} T_AsebaSettings;
-
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -65,8 +59,6 @@ typedef struct
 //-----------------------------------------------------------------------------
 
 static const char* Tag = "file_system";
-
-T_AsebaSettings Input;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -137,42 +129,39 @@ void FileSystem_Init(void)
 
 //_____________________________________________________________________________
 
-void FileSystem_CreateSettingsFile(void)
+bool FileSystem_CreateFile(const char* filename)
 {
-  char filename[30] = "/spiffs/settings.dat";
   FILE* file = fopen(filename, "r");
+  bool isCreated = false;
 
   if (file == NULL)  // If file does not exist, create it
   {
     file = fopen(filename, "w");
-
-    FileSystem_UpdateSettings(256, 256);
-
-    fwrite(&Input, sizeof(T_AsebaSettings), 1, file);
-
-    ESP_LOGI(Tag, "settings.dat file is created with default values");
+    isCreated = true;
+    ESP_LOGI(Tag, "File %s is created", filename);
   }
   else
   {
-    ESP_LOGI(Tag, "settings.dat file already exists");
+    ESP_LOGI(Tag, "File %s already exists", filename);
   }
 
   fclose(file);
+
+  return isCreated;
 }
 
 //_____________________________________________________________________________
 
-void FileSystem_WriteSettingsFile(void)
+void FileSystem_Write(const char* filename, void* input, int16_t size)
 {
-  char filename[30] = "/spiffs/settings.dat";
-
   ESP_LOGI(Tag, "Opening file");
 
   FILE* file = fopen(filename, "w");
 
   if (file != NULL)
   {
-    fwrite(&Input, sizeof(T_AsebaSettings), 1, file);
+    fwrite(input, size, 1, file);
+    ESP_LOGI(Tag, "File %s written", filename);
   }
   else
   {
@@ -181,16 +170,12 @@ void FileSystem_WriteSettingsFile(void)
 
   fclose(file);
 
-  ESP_LOGI(Tag, "File %s written", filename);
 }
 
 //_____________________________________________________________________________
 
-void FileSystem_ReadSettingsFile(void)
+void FileSystem_Read(const char* filename, void* output, int16_t size)
 {
-  char filename[30] = "/spiffs/settings.dat";
-  T_AsebaSettings output;
-
   uint16_t fileSize = 0;
 
   ESP_LOGI(Tag, "Reading file");
@@ -202,26 +187,16 @@ void FileSystem_ReadSettingsFile(void)
     fseek(file, 0, SEEK_END);
     fileSize = ftell(file);
     fseek(file, 0, SEEK_SET);
-    ESP_LOGI(Tag, "File open \"/spiffs/settings.dat\". File size: %d Bytes", fileSize);
+    ESP_LOGI(Tag, "File %s open. File size: %d Bytes", filename, fileSize);
 
     // Read file contents till end of file
-    while (fread(&output, sizeof(T_AsebaSettings), 1, file))
-    {
-      ESP_LOGI(Tag, "Left = %d, Right = %d", output.LeftMotor, output.RightMotor);
-    }
+    while (fread(output, size, 1, file))
+    {}
   }
   else
   {
     ESP_LOGE(Tag, "Failed to open file for reading");
   }
-}
-
-//_____________________________________________________________________________
-
-void FileSystem_UpdateSettings(int16_t leftMotor, int16_t rightMotor)
-{
-  Input.LeftMotor  = leftMotor;
-  Input.RightMotor = rightMotor;
 }
 
 //_____________________________________________________________________________
@@ -279,7 +254,7 @@ void FileSystem_SelectFile(char** fileName, int16_t index, T_Extension extension
 
 //_____________________________________________________________________________
 
-void FileSystem_EraseFile(char* fileName)
+void FileSystem_EraseFile(const char* fileName)
 {
   // Check that the file exists
   if (FileSystem_DoesFileExist(fileName))

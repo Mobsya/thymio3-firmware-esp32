@@ -34,6 +34,7 @@
 #include "color_sensor.h"
 #include "gyroscope.h"
 #include "i2c.h"
+#include "settings.h"
 
 #include "es8374.h"
 
@@ -88,6 +89,9 @@ void Sensors_Init(void)
   I2CMutex = xSemaphoreCreateMutex();
 
   Codec_Init();
+
+  Settings_Init();
+  Settings_CreateFile();
 
   Buttons_Init();
 

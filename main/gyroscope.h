@@ -89,4 +89,10 @@ extern void Gyroscope_ResetAngle(void);
 //! \return    None
 extern void Gyroscope_ResetCalibration(void);
 
+//! \brief     Set the offset
+//! \pre       First initialize the gyroscope
+//! \param     offset - Offset
+//! \return    None
+extern void Gyroscope_SetOffset(int32_t offset);
+
 #endif // GYROSCOPE_H_

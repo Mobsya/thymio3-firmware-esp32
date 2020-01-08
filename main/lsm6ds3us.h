@@ -75,7 +75,7 @@ extern void LSM6DS3US_GetTapSource(uint8_t* source);
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void LSM6DS3US_InitGyroscope(void);
+extern void LSM6DS3US_InitGyroscope(int16_t offset);
 
 //! \brief     Get the angular velocity in [???]
 //! \pre       First initialize the LSM6DS3US device
@@ -88,6 +88,8 @@ extern void LSM6DS3US_GetAngle(int16_t* angle);
 extern void LSM6DS3US_ResetAngle(void);
 
 extern void LSM6DS3US_ResetCalibration(void);
+
+extern void LSM6DS3US_SetOffset(int32_t offset);
 
 //! \brief     Check the manufacturer ID
 //! \pre       None

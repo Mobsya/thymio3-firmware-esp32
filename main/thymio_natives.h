@@ -151,6 +151,9 @@ void gyro_reset_angle(AsebaVMState* vm);
 extern AsebaNativeFunctionDescription AsebaNativeDescription_gyro_reset_calib_angle;
 void gyro_reset_calib_angle(AsebaVMState* vm);
 
+extern AsebaNativeFunctionDescription AsebaNativeDescription_gyro_set_offset;
+void gyro_set_offset(AsebaVMState* vm);
+
 #define THYMIO_NATIVES_DESCRIPTIONS \
   &AsebaNativeDescription_record_wav, \
   &AsebaNativeDescription_create_wav, \
@@ -187,7 +190,8 @@ void gyro_reset_calib_angle(AsebaVMState* vm);
   &AsebaNativeDescription_prox_network, \
   &AsebaNativeDescription_rf_nodeid, \
   &AsebaNativeDescription_gyro_reset_angle, \
-  &AsebaNativeDescription_gyro_reset_calib_angle
+  &AsebaNativeDescription_gyro_reset_calib_angle, \
+  &AsebaNativeDescription_gyro_set_offset
 
 #define THYMIO_NATIVES_FUNCTIONS \
   record_wav, \
@@ -225,7 +229,8 @@ void gyro_reset_calib_angle(AsebaVMState* vm);
   prox_network, \
   set_rf_nodeid, \
   gyro_reset_angle, \
-  gyro_reset_calib_angle
+  gyro_reset_calib_angle, \
+  gyro_set_offset
 
 #endif // THYMIO_NATIVES_H_
 

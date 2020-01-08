@@ -903,6 +903,25 @@ void gyro_reset_calib_angle(AsebaVMState* vm)
 
 //_____________________________________________________________________________
 
+AsebaNativeFunctionDescription AsebaNativeDescription_gyro_set_offset =
+{
+  "gyro.set_offset",
+  "Set the offset",
+  {
+    {1, "offset"},
+    {0, 0},
+  }
+};
+
+void gyro_set_offset(AsebaVMState* vm)
+{
+  int offset = vm->variables[AsebaNativePopArg(vm)];
+
+  Gyroscope_SetOffset(offset);
+}
+
+//_____________________________________________________________________________
+
 static char* _prepare_name(unsigned int n, char* buf)
 {
   unsigned int div;

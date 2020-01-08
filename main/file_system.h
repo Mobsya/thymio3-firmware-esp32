@@ -55,29 +55,27 @@ typedef enum
 //! \return    None
 extern void FileSystem_Init(void);
 
-//! \brief     Create the settings file
+//! \brief     Create the file
 //! \pre       First initialize the file system
-//! \param     None
-//! \return    None
-extern void FileSystem_CreateSettingsFile(void);
+//! \param     fileName - File name
+//! \return    True if the file has been created, false otherwise
+extern bool FileSystem_CreateFile(const char* filename);
 
-//! \brief     Write to the settings file
+//! \brief     Write to the file
 //! \pre       First initialize the file system
-//! \param     None
+//! \param     fileName - File name
+//! \param     input - Data to write
+//! \param     size - Size of the data
 //! \return    None
-extern void FileSystem_WriteSettingsFile(void);
+extern void FileSystem_Write(const char* filename, void* input, int16_t size);
 
-//! \brief     Read from the settings file
+//! \brief     Read from the file
 //! \pre       First initialize the file system
-//! \param     None
+//! \param     fileName - File name
+//! \param     output - Read Data
+//! \param     size - Size of the data
 //! \return    None
-extern void FileSystem_ReadSettingsFile(void);
-
-//! \brief     Update the settings (not in the file)
-//! \pre       None
-//! \param     None
-//! \return    None
-extern void FileSystem_UpdateSettings(int16_t leftMotor, int16_t rightMotor);
+extern void FileSystem_Read(const char* filename, void* output, int16_t size);
 
 //! \brief     Does the file exist ?
 //! \pre       None
@@ -97,7 +95,7 @@ extern void FileSystem_SelectFile(char** fileName, int16_t index, T_Extension ex
 //! \pre       None
 //! \param     fileName - File name
 //! \return    None
-extern void FileSystem_EraseFile(char* fileName);
+extern void FileSystem_EraseFile(const char* fileName);
 
 //! \brief     Write a WAV file
 //! \pre       None

@@ -304,6 +304,7 @@ static int16_t Teta[3] = {0, 0, 0};
 
 static int32_t Mul = 0;
 static int32_t Div = 0;
+static int32_t Offset = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -630,7 +631,7 @@ static void ConvertAcceleration(int16_t input)
 // Gyroscope
 //-----------------------------------------------------------------------------
 
-void LSM6DS3US_InitGyroscope(void)
+void LSM6DS3US_InitGyroscope(int16_t offset)
 {
   EnableGyroAxis(E_Gyro_Enable_All);
   UpdateGyroOutputDataRate(E_Gyro_OutputDataRate_104Hz);
@@ -641,7 +642,9 @@ void LSM6DS3US_InitGyroscope(void)
   UpdateGyroFifoDecimationSetting(E_Decimation_1);
   //UpdateFifoThreshold(1500);
 
-  ESP_LOGI(Tag, "LSM6DS3US gyroscope is initialized");
+  Offset = offset;
+
+  ESP_LOGI(Tag, "LSM6DS3US gyroscope is initialized with offset = %d", Offset);
 }
 
 //_____________________________________________________________________________
@@ -687,6 +690,14 @@ void LSM6DS3US_ResetCalibration(void)
   }
 
   IsCalibrated = false;
+}
+
+//_____________________________________________________________________________
+
+void LSM6DS3US_SetOffset(int32_t offset)
+{
+  Offset = offset;
+  ESP_LOGI(Tag, "Set Offset: %d", Offset);
 }
 
 //_____________________________________________________________________________
@@ -1058,7 +1069,7 @@ static void CalculateAngle(int16_t* angle, uint16_t number)
     }
 
     gyroCorr[i] = (sum[i] - (number * ZeroGyro[i]));
-    Teta[i] += ((Mul * gyroCorr[i]) / Div);
+    Teta[i] += (((Mul + Offset) * gyroCorr[i]) / Div);
     angle[i] = Teta[i];
   }
 }

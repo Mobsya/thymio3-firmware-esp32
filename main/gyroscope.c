@@ -23,6 +23,7 @@
 #include "gyroscope.h"
 
 #include "aseba_esp32.h"
+#include "settings.h"
 #include "lsm6ds3us.h"
 
 //-----------------------------------------------------------------------------
@@ -61,7 +62,9 @@ static int16_t Angle_deg[3];
 
 void Gyroscope_Init(void)
 {
-  LSM6DS3US_InitGyroscope();
+  int16_t offset = Settings_ReadOffsetGyro();
+
+  LSM6DS3US_InitGyroscope(offset);
 
   ESP_LOGI(Tag, "Gyroscope is initialized");
 }
@@ -140,4 +143,14 @@ void Gyroscope_ResetAngle(void)
 void Gyroscope_ResetCalibration(void)
 {
   LSM6DS3US_ResetCalibration();
+}
+
+//_____________________________________________________________________________
+
+void Gyroscope_SetOffset(int32_t offset)
+{
+  LSM6DS3US_SetOffset(offset);
+
+  // Write to the settings file
+  Settings_Write(DEFAULT_LEFT_MOTOR, DEFAULT_RIGHT_MOTOR, offset);
 }
