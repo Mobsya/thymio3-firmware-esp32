@@ -174,17 +174,11 @@ extern bool STM32_IsUSBCablePresent(void);
 //! \return    True if the USB port is open, false otherwise
 extern bool STM32_IsUSBPortOpen(void);
 
-//! \brief     Check that a mode update has been requested
+//! \brief     Check that the standby mode has been requested
 //! \pre       None
 //! \param     None
-//! \return    True if a mode update has been requested, false otherwise
-extern bool STM32_IsModeUpdateRequested(void);
-
-//! \brief     Check that the STM32 is ready to switch off
-//! \pre       None
-//! \param     None
-//! \return    True if the STM32 is ready to switch off, false otherwise
-extern bool STM32_IsReadyToSwitchOff(void);
+//! \return    True if the standby mode has been requested, false otherwise
+extern bool STM32_IsStandbyRequested(void);
 
 //! \brief     Allow the STM32 to switch off (sleep mode)
 //! \pre       None

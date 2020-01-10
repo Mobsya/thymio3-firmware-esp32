@@ -38,18 +38,16 @@
 #define STM32_ID                            0xBCu  //!< ID of the STM32
 
 // Status register bit mask
-#define USB_CABLE_IS_PRESENT_BIT_MASK       0x01u
-#define USB_PORT_IS_OPEN_BIT_MASK           0x02u
-#define MODE_UPDATE_BIT_MASK                0x04u
-#define READY_TO_SWITCH_OFF_BIT_MASK        0x08u
-#define OK_TO_SWITCH_OFF_BIT_MASK           0x10u
+#define USB_CABLE_IS_PRESENT_BIT_MASK       0x01u  //!< Bit mask of USB_CABLE_IS_PRESENT
+#define USB_PORT_IS_OPEN_BIT_MASK           0x02u  //!< Bit mask of USB_PORT_IS_OPEN
+#define STANDBY_REQUESTED_BIT_MASK          0x04u  //!< Bit mask of STANDBY_REQUESTED
+#define OK_TO_SWITCH_OFF_BIT_MASK           0x08u  //!< Bit mask of OK_TO_SWITCH_OFF
 
 // Status register bit position
-#define USB_CABLE_IS_PRESENT_BIT_POS       0u  // This bit is set by the STM32
-#define USB_PORT_IS_OPEN_BIT_POS           1u  // This bit is set by the STM32
-#define MODE_UPDATE_BIT_POS                2u  // This bit is set by the STM32
-#define READY_TO_SWITCH_OFF_BIT_POS        3u  // This bit is set by the STM32
-#define OK_TO_SWITCH_OFF_BIT_POS           4u  // This bit is set by the ESP32
+#define USB_CABLE_IS_PRESENT_BIT_POS           0u  //!< This bit is set by the STM32
+#define USB_PORT_IS_OPEN_BIT_POS               1u  //!< This bit is set by the STM32
+#define STANDBY_REQUESTED_BIT_POS              2u  //!< This bit is set by the STM32
+#define OK_TO_SWITCH_OFF_BIT_POS               3u  //!< This bit is set by the ESP32
 
 #define SETTINGS_MESSAGE_LENGTH                4u  //!< Settings message length in bytes
 #define STATUS_MESSAGE_LENGTH                  1u  //!< Status message length in bytes
@@ -476,16 +474,9 @@ bool STM32_IsUSBPortOpen(void)
 
 //_____________________________________________________________________________
 
-bool STM32_IsModeUpdateRequested(void)
+bool STM32_IsStandbyRequested(void)
 {
-  return ((Status & (1u << MODE_UPDATE_BIT_POS)) == MODE_UPDATE_BIT_MASK);
-}
-
-//_____________________________________________________________________________
-
-bool STM32_IsReadyToSwitchOff(void)
-{
-  return ((Status & (1u << READY_TO_SWITCH_OFF_BIT_POS)) == READY_TO_SWITCH_OFF_BIT_MASK);
+  return ((Status & (1u << STANDBY_REQUESTED_BIT_POS)) == STANDBY_REQUESTED_BIT_MASK);
 }
 
 //_____________________________________________________________________________

@@ -83,19 +83,12 @@ void Power_HandlePowerModeRequest(void)
 {
   static bool soundStarted = false;
 
-  if (STM32_IsModeUpdateRequested())
+  if (STM32_IsStandbyRequested() && !STM32_IsAllowedToSwitchOff())
   {
-    if (STM32_IsReadyToSwitchOff())
+    if (!soundStarted)
     {
-      if (!STM32_IsAllowedToSwitchOff())
-      {
-        if (!soundStarted)
-        {
-          Codec_PlayMP3FileFromFlash(E_SystemSound_Bye);
-          //STM32_AllowToSwitchOff();  // Give the permission to the STM32 to switch off
-          soundStarted = true;
-        }
-      }
+      Codec_PlayMP3FileFromFlash(E_SystemSound_Bye);
+      soundStarted = true;
     }
   }
 
