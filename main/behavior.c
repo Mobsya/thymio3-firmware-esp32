@@ -507,8 +507,6 @@ static void UpdateSettings(void)
       break;
 
     case E_Setting_Motor:
-      //Leds_SetBodyBrightness(15u, MAX_BRIGHTNESS, 0u);
-      //Leds_SetBodyBrightness(0u, 0u, MAX_BRIGHTNESS);
       break;
 
     default:

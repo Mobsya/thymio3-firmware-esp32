@@ -1,13 +1,13 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2020                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
 //! \file    buttons.c
-//! \brief   This module provides the useful functions to use the capacitive buttons
+//! \brief   This module provides the useful functions to use the buttons
 //!
 //! \author  Vincent Gonet
 //!
@@ -59,7 +59,7 @@ static uint16_t ButtonFiltered[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
 static uint16_t ButtonRaw[BUTTONS_NUM]      = {0u, 0u, 0u, 0u, 0u};
 static uint16_t Threshold[BUTTONS_NUM]      = {0u, 0u, 0u, 0u, 0u};
 static uint16_t Sum[BUTTONS_NUM]            = {0u, 0u, 0u, 0u, 0u};
-static int16_t Count[BUTTONS_NUM]           = {-3, -3, -3, -3, -3};
+static int16_t Count[BUTTONS_NUM]           = {-DEBOUNCE, -DEBOUNCE, -DEBOUNCE, -DEBOUNCE, -DEBOUNCE};
 
 static const T_GpioPinConfig PinConfig = {BUTTON_SIDE_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_FallingEdge};
 
@@ -67,10 +67,22 @@ static const T_GpioPinConfig PinConfig = {BUTTON_SIDE_PIN, E_GpioMode_Input, E_G
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
+//! \brief     Initialize the touch pad
+//! \pre       First initialize the buttons
+//! \param     None
+//! \return    None
 static void InitTouchPad();
 
+//! \brief     Initialize the detection threshold
+//! \pre       First initialize the buttons
+//! \param     None
+//! \return    None
 static void InitThresholds(void);
 
+//! \brief     Update the detection threshold
+//! \pre       First initialize the buttons
+//! \param     button - Button on which the threshold is updated
+//! \return    None
 static void UpdateThresholds(uint8_t button);
 
 //-----------------------------------------------------------------------------
@@ -124,10 +136,12 @@ void Buttons_UpdateStatus(void)
     touch_pad_read_filtered(Buttons_Table[button], &ButtonFiltered[button]);
     touch_pad_read_raw_data(Buttons_Table[button], &ButtonRaw[button]);
 
+    // The button is pressed
     if (ButtonFiltered[button] < Threshold[button])
     {
       ButtonStatus[button] = 1u;
 
+      // Only if the button was previously not pressed
       if (ButtonStatus[button] != oldButtonStatus[button])
       {
         SET_EVENT(button);
@@ -140,14 +154,15 @@ void Buttons_UpdateStatus(void)
     {
       ButtonStatus[button] = 0u;
 
+      // The threshold is updated only when the button is not pressed
       UpdateThresholds(button);
     }
 
     oldButtonStatus[button] = ButtonStatus[button];
 
-    vmVariables.buttons_state[button] = (int16_t)ButtonStatus[button];
-    vmVariables.buttons[button] = (int16_t)ButtonRaw[button];
-    vmVariables.buttons_mean[button] = (int16_t)ButtonFiltered[button];
+    vmVariables.buttons_state[button]     = (int16_t)ButtonStatus[button];
+    vmVariables.buttons[button]           = (int16_t)ButtonRaw[button];
+    vmVariables.buttons_mean[button]      = (int16_t)ButtonFiltered[button];
     vmVariables.buttons_threshold[button] = (int16_t)Threshold[button];
   }
 }

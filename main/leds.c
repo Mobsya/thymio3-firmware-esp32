@@ -313,8 +313,9 @@ void Leds_SetBackRightBrightness(uint8_t red, uint8_t green, uint8_t blue)
 
 //_____________________________________________________________________________
 
-void Leds_SetDebugBrightness(uint8_t green, uint8_t blue)
+void Leds_SetDebugBrightness(uint8_t red, uint8_t green, uint8_t blue)
 {
+  Leds_SetSingleBrightness(E_Led_R_Debug, red);
   Leds_SetSingleBrightness(E_Led_G_Debug, green);
   Leds_SetSingleBrightness(E_Led_B_Debug, blue);
 }

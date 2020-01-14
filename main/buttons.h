@@ -1,13 +1,13 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2020                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
 //! \file    buttons.h
-//! \brief   This module provides the useful functions to use the capacitive buttons
+//! \brief   This module provides the useful functions to use the buttons
 //!
 //! \author  Vincent Gonet
 //!
@@ -27,7 +27,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define BUTTONS_NUM       5u  //!< Number of buttons
+#define BUTTONS_NUM       5u  //!< Number of capacitive buttons
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -35,11 +35,11 @@
 
 enum
 {
-  E_Button_Backward,  // Button 1
-  E_Button_Left,      // Button 2
-  E_Button_Center,    // Button 3
-  E_Button_Forward,   // Button 4
-  E_Button_Right      // Button 5
+  E_Button_Backward,  // Capacitive button 1
+  E_Button_Left,      // Capacitive button 2
+  E_Button_Center,    // Capacitive button 3
+  E_Button_Forward,   // Capacitive button 4
+  E_Button_Right      // Capacitive button 5
 };
 typedef uint8_t T_Button;
 
@@ -55,24 +55,20 @@ typedef uint8_t T_Button;
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the internal ADC
+//! \brief     Initialize the touch buttons and the mechanical buttons
 //! \pre       None
 //! \param     None
 //! \return    None
 extern void Buttons_Init(void);
 
 //! \brief     Get the button status
-//! \pre       None
+//! \pre       First initialize the buttons
 //! \param     None
 //! \return    The status of the buttons
 extern uint8_t* Buttons_GetStatus(void);
 
-//extern uint8_t* Buttons_GetBehaviorStatus(void);
-
-//extern void Buttons_ClearBehaviorStatus(void);
-
 //! \brief     Update the button status
-//! \pre       None
+//! \pre       First initialize the buttons
 //! \param     None
 //! \return    None
 extern void Buttons_UpdateStatus(void);

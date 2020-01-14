@@ -212,10 +212,11 @@ extern void Leds_SetBackRightBrightness(uint8_t red, uint8_t green, uint8_t blue
 
 //! \brief     Set the brightness of the debug RGB LED
 //! \pre       First initialize the LEDs
+//! \param     red - Red component of the RGB LED
 //! \param     green - Green component of the RGB LED
 //! \param     blue - Blue component of the RGB LED
 //! \return    None
-extern void Leds_SetDebugBrightness(uint8_t green, uint8_t blue);
+extern void Leds_SetDebugBrightness(uint8_t red, uint8_t green, uint8_t blue);
 
 //! \brief     Set the brightness of the body RGB LED
 //! \pre       First initialize the LEDs
