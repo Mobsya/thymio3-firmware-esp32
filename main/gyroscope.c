@@ -152,5 +152,5 @@ void Gyroscope_SetOffset(int32_t offset)
   LSM6DS3US_SetOffset(offset);
 
   // Write to the settings file
-  Settings_Write(DEFAULT_LEFT_MOTOR, DEFAULT_RIGHT_MOTOR, offset);
+  Settings_WriteOffsetGyro(offset);
 }

@@ -22,11 +22,16 @@
 
 #include "settings.h"
 
+#include "aseba_esp32.h"
 #include "file_system.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
+
+#define DEFAULT_LEFT_MOTOR      256
+#define DEFAULT_RIGHT_MOTOR     256
+#define DEFAULT_OFFSET_GYRO       0
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -43,8 +48,7 @@ typedef struct
 // Exported Global Data
 //-----------------------------------------------------------------------------
 
-static T_Settings Input;
-static T_Settings Output;
+static T_Settings Settings;
 
 //-----------------------------------------------------------------------------
 // Private Data
@@ -52,13 +56,19 @@ static T_Settings Output;
 
 static const char* Tag = "settings";
 
-static const char* Filename = "/spiffs/settings.dat";
+static const char* FileLeftMotor  = "/spiffs/left_motor.dat";
+static const char* FileRightMotor = "/spiffs/right_motor.dat";
+static const char* FileOffsetGyro = "/spiffs/offset_gyro.dat";
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
-static void WriteFactorySettings(void);
+static void WriteFactoryLeftMotor(void);
+
+static void WriteFactoryRightMotor(void);
+
+static void WriteFactoryOffsetGyro(void);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -70,63 +80,179 @@ static void WriteFactorySettings(void);
 
 void Settings_Init(void)
 {
-  Input.LeftMotor  = DEFAULT_LEFT_MOTOR;
-  Input.RightMotor = DEFAULT_RIGHT_MOTOR;
-  Input.OffsetGyro = DEFAULT_OFFSET_GYRO;
+  Settings.LeftMotor  = DEFAULT_LEFT_MOTOR;
+  Settings.RightMotor = DEFAULT_RIGHT_MOTOR;
+  Settings.OffsetGyro = DEFAULT_OFFSET_GYRO;
 
   ESP_LOGI(Tag, "Settings are initialized");
 }
 
 //_____________________________________________________________________________
 
-void Settings_CreateFile(void)
+void Settings_UpdateSettings(void)
 {
-  if (FileSystem_CreateFile(Filename))
+  Settings.LeftMotor  = vmVariables.settings[0];
+  Settings.RightMotor = vmVariables.settings[1];
+  //Settings.OffsetGyro = vmVariables.settings[2];
+}
+
+//_____________________________________________________________________________
+#if 0
+void Settings_SetSettings(int16_t value, uint16_t position)
+{
+  if (position == 0u)
   {
-    WriteFactorySettings();
+    Settings.LeftMotor = value;
+  }
+  else if (position == 1u)
+  {
+    Settings.RightMotor = value;
+  }
+  else if (position == 2u)
+  {
+    Settings.OffsetGyro = value;
+  }
+  else
+  {
+    // Do nothing
+  }
+}
+#endif
+//_____________________________________________________________________________
+#if 0
+void Settings_SetSettings(int16_t* buffer, uint16_t position)
+{
+  Settings.LeftMotor  = buffer[position];
+  Settings.RightMotor = buffer[position + 1u];
+  //Settings.OffsetGyro = buffer[position + 2u];
+}
+#endif
+//_____________________________________________________________________________
+
+int16_t Settings_GetLeftMotorSettings(void)
+{
+  return Settings.LeftMotor;
+}
+
+//_____________________________________________________________________________
+
+int16_t Settings_GetRightMotorSettings(void)
+{
+  return Settings.RightMotor;
+}
+
+//_____________________________________________________________________________
+
+void Settings_CreateLeftMotorFile(void)
+{
+  if (FileSystem_CreateFile(FileLeftMotor))
+  {
+    WriteFactoryLeftMotor();
   }
 }
 
 //_____________________________________________________________________________
 
-void Settings_Write(int16_t leftMotor, int16_t rightMotor, int16_t offsetGyro)
+void Settings_CreateRightMotorFile(void)
 {
-  int16_t size = sizeof(T_Settings);
+  if (FileSystem_CreateFile(FileRightMotor))
+  {
+    WriteFactoryRightMotor();
+  }
+}
 
-  Input.LeftMotor  = leftMotor;
-  Input.RightMotor = rightMotor;
-  Input.OffsetGyro = offsetGyro;
+//_____________________________________________________________________________
 
-  FileSystem_Write(Filename, &Input, size);
+void Settings_CreateOffsetGyroFile(void)
+{
+  if (FileSystem_CreateFile(FileOffsetGyro))
+  {
+    WriteFactoryOffsetGyro();
+  }
+}
+
+//_____________________________________________________________________________
+
+void Settings_WriteLeftMotor(int16_t leftMotor)
+{
+  int16_t input = leftMotor;
+
+  FileSystem_Write(FileLeftMotor, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+void Settings_WriteRightMotor(int16_t rightMotor)
+{
+  int16_t input = rightMotor;
+
+  FileSystem_Write(FileRightMotor, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+void Settings_WriteOffsetGyro(int16_t offsetGyro)
+{
+  int16_t input = offsetGyro;
+
+  FileSystem_Write(FileOffsetGyro, &input, sizeof(int16_t));
 }
 
 //_____________________________________________________________________________
 
 int16_t Settings_ReadOffsetGyro(void)
 {
-  int16_t size = sizeof(T_Settings);
+  int16_t output = 0;
 
-  FileSystem_Read(Filename, &Output, size);
+  FileSystem_Read(FileOffsetGyro, &output, sizeof(int16_t));
 
-  return Output.OffsetGyro;
+  return output;
 }
 
 //_____________________________________________________________________________
 
-void Settings_Erase(void)
+void Settings_EraseLeftMotor(void)
 {
-  FileSystem_EraseFile(Filename);
+  FileSystem_EraseFile(FileLeftMotor);
 }
 
 //_____________________________________________________________________________
 
-static void WriteFactorySettings(void)
+void Settings_EraseRightMotor(void)
 {
-  int16_t size = sizeof(T_Settings);
+  FileSystem_EraseFile(FileRightMotor);
+}
 
-  Input.LeftMotor  = DEFAULT_LEFT_MOTOR;
-  Input.RightMotor = DEFAULT_RIGHT_MOTOR;
-  Input.OffsetGyro = DEFAULT_OFFSET_GYRO;
+//_____________________________________________________________________________
 
-  FileSystem_Write(Filename, &Input, size);
+void Settings_EraseOffsetGyro(void)
+{
+  FileSystem_EraseFile(FileOffsetGyro);
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryLeftMotor(void)
+{
+  int16_t input = DEFAULT_LEFT_MOTOR;
+
+  FileSystem_Write(FileLeftMotor, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryRightMotor(void)
+{
+  int16_t input = DEFAULT_RIGHT_MOTOR;
+
+  FileSystem_Write(FileRightMotor, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryOffsetGyro(void)
+{
+  int16_t input = DEFAULT_OFFSET_GYRO;
+
+  FileSystem_Write(FileOffsetGyro, &input, sizeof(int16_t));
 }

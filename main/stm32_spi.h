@@ -35,13 +35,6 @@
 
 typedef struct
 {
-  int16_t LeftMotor;   //!< Correction factor of the left motor
-  int16_t RightMotor;  //!< Correction factor of the right motor
-} T_Settings;
-//#endif
-
-typedef struct
-{
   int16_t Left;
   int16_t Right;
 } T_Motor;  //!< Motor description
@@ -88,14 +81,6 @@ extern void STM32_Init(void);
 extern void STM32_SetStatus(uint16_t status);
 
 extern uint16_t STM32_GetStatus(void);
-
-extern void STM32_UpdateSettings(void);
-
-extern void STM32_SetSettings(int16_t* buffer, uint16_t position);
-
-extern int16_t STM32_GetLeftMotorSettings(void);
-
-extern int16_t STM32_GetRightMotorSettings(void);
 
 extern void STM32_SetBatteryVoltage(int16_t voltage);
 

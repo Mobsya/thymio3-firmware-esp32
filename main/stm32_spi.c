@@ -118,8 +118,6 @@ static T_ProxIR ProxIR;
 
 static T_GroundIR GroundIR;
 
-static T_Settings Settings;
-
 static int16_t Vbat = 0;
 
 //-----------------------------------------------------------------------------
@@ -147,9 +145,6 @@ void STM32_Init(void)
 
   Current.Left = 0;
   Current.Right = 0;
-
-  Settings.LeftMotor  = 256;
-  Settings.RightMotor = 256;
 }
 
 //_____________________________________________________________________________
@@ -164,36 +159,6 @@ void STM32_SetStatus(uint16_t status)
 uint16_t STM32_GetStatus(void)
 {
   return Status;
-}
-
-//_____________________________________________________________________________
-
-void STM32_UpdateSettings(void)
-{
-  Settings.LeftMotor  = vmVariables.settings[0];
-  Settings.RightMotor = vmVariables.settings[1];
-}
-
-//_____________________________________________________________________________
-
-void STM32_SetSettings(int16_t* buffer, uint16_t position)
-{
-  Settings.LeftMotor  = buffer[position];
-  Settings.RightMotor = buffer[position + 1u];
-}
-
-//_____________________________________________________________________________
-
-int16_t STM32_GetLeftMotorSettings(void)
-{
-  return Settings.LeftMotor;
-}
-
-//_____________________________________________________________________________
-
-int16_t STM32_GetRightMotorSettings(void)
-{
-  return Settings.RightMotor;
 }
 
 //_____________________________________________________________________________

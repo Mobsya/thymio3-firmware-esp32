@@ -91,7 +91,9 @@ void Sensors_Init(void)
   Codec_Init();
 
   Settings_Init();
-  Settings_CreateFile();
+  Settings_CreateLeftMotorFile();
+  Settings_CreateRightMotorFile();
+  Settings_CreateOffsetGyroFile();
 
   Buttons_Init();
 

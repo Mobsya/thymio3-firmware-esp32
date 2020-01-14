@@ -21,10 +21,6 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#define DEFAULT_LEFT_MOTOR      256
-#define DEFAULT_RIGHT_MOTOR     256
-#define DEFAULT_OFFSET_GYRO       0
-
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -51,6 +47,42 @@
 //! \return    None
 extern void Settings_Init(void);
 
+extern void Settings_UpdateSettings(void);
+
+//extern void Settings_SetSettings(int16_t* buffer, uint16_t position);
+
+extern int16_t Settings_GetLeftMotorSettings(void);
+
+extern int16_t Settings_GetRightMotorSettings(void);
+
+//! \brief     Create the settings file for the left motor
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_CreateLeftMotorFile(void);
+
+//! \brief     Create the settings file for the right motor
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_CreateRightMotorFile(void);
+
+//! \brief     Create the settings file for the offset gyro
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_CreateOffsetGyroFile(void);
+
+//! \brief     Write the settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_WriteLeftMotor(int16_t leftMotor);
+
+extern void Settings_WriteRightMotor(int16_t rightMotor);
+
+extern void Settings_WriteOffsetGyro(int16_t offsetGyro);
+
 //! \brief     Create the settings file
 //! \pre       First initialize the settings
 //! \param     None
@@ -61,6 +93,10 @@ extern void Settings_Write(int16_t leftMotor, int16_t rightMotor, int16_t offset
 
 extern int16_t Settings_ReadOffsetGyro(void);
 
-extern void Settings_Erase(void);
+extern void Settings_EraseLeftMotor(void);
+
+extern void Settings_EraseRightMotor(void);
+
+extern void Settings_EraseOffsetGyro(void);
 
 #endif // SETTINGS_H_

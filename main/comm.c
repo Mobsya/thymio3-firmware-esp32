@@ -30,6 +30,7 @@
 #include "behavior.h"
 #include "board.h"
 #include "power.h"
+#include "settings.h"
 #include "spi.h"
 #include "stm32_spi.h"
 #include "uart.h"
@@ -40,14 +41,14 @@
 
 #define DATA_SIZE                            40u
 
-#define SETTINGS_POSITION                     2u
-#define BATTERY_MOTOR_VOLTAGES_POSITION       5u
-#define INDUCED_VOLTAGES_POSITION             7u
-#define MOTOR_CURRENTS_POSITION               9u
-#define PWM_DUTY_CYCLES_POSITION             11u
-#define PROX_IR_POSITION                     15u
-#define GROUND_IR_POSITION                   22u
-#define PROX_IR_DATA_POSITION                28u
+//#define SETTINGS_POSITION                     2u
+#define BATTERY_MOTOR_VOLTAGES_POSITION       3u
+#define INDUCED_VOLTAGES_POSITION             5u
+#define MOTOR_CURRENTS_POSITION               7u
+#define PWM_DUTY_CYCLES_POSITION              9u
+#define PROX_IR_POSITION                     13u
+#define GROUND_IR_POSITION                   20u
+#define PROX_IR_DATA_POSITION                26u
 
 #define STM32_ID                          0x4321
 
@@ -147,14 +148,14 @@ static void RunCommTask(void* arg)
 
   while (1)
   {
-    STM32_UpdateSettings();
+    Settings_UpdateSettings();
     STM32_UpdateMotorTargets();
 
     // Transmit values to the STM32
     // tx[0] is not used
     tx[1] = STM32_GetStatus();
-    tx[2] = STM32_GetLeftMotorSettings();
-    tx[3] = STM32_GetRightMotorSettings();
+    tx[2] = Settings_GetLeftMotorSettings();
+    tx[3] = Settings_GetRightMotorSettings();
     tx[4] = STM32_GetLeftMotorTarget();
     tx[5] = STM32_GetRightMotorTarget();
     tx[6] = STM32_GetSoundThreshold();
@@ -166,15 +167,15 @@ static void RunCommTask(void* arg)
     if (rx[0] == STM32_ID)
     {
       STM32_SetStatus(rx[1]);
-      STM32_SetSettings(rx, SETTINGS_POSITION);
-      STM32_SetBatteryVoltage(rx[4]);
+      //Settings_SetSettings(rx, SETTINGS_POSITION);
+      STM32_SetBatteryVoltage(rx[2]);
       STM32_SetBatteryMotorVoltages(rx, BATTERY_MOTOR_VOLTAGES_POSITION);
       STM32_SetInducedVoltages(rx, INDUCED_VOLTAGES_POSITION);
       STM32_SetMotorCurrents(rx, MOTOR_CURRENTS_POSITION);
       STM32_SetPwmDutyCycles(rx, PWM_DUTY_CYCLES_POSITION);
-      STM32_SetSoundLevel(rx[13]);
+      STM32_SetSoundLevel(rx[11]);
       //STM32_SetSoundThreshold(rx[13]);
-      STM32_SetSoundMean(rx[14]);
+      STM32_SetSoundMean(rx[12]);
       STM32_SetProxIRValues(rx, PROX_IR_POSITION);
       STM32_SetGroundIRValues(rx, GROUND_IR_POSITION);
       STM32_SetProxIRData(rx, PROX_IR_DATA_POSITION);
