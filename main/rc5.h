@@ -21,7 +21,6 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <stdint.h>
 #include <stdbool.h>
 
 //-----------------------------------------------------------------------------
@@ -52,7 +51,8 @@ enum
   E_Command_LeftArrow  = 85,
   E_Command_RightArrow = 86,
   E_Command_Stop       = 87
-} typedef T_Command;  //!< The command received
+};
+typedef int16_t T_Command;  //!< The command received
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -86,15 +86,9 @@ extern void RC5_Stop(void);
 
 //! \brief     Get the last received command
 //! \pre       First initialize the RC5 driver
-//! \param     None
+//! \param     lastToggle - Last toggle bit received
 //! \return    The last received command
-extern int16_t RC5_GetCommand(void);
-
-//! \brief     Has a new message been received
-//! \pre       First initialize the RC5 driver
-//! \param     last - Last toggle bit received
-//! \return    True if a new message has been received, false otherwise
-extern bool RC5_IsNewMessageReceived(int16_t* last);
+extern int16_t RC5_GetCommand(int16_t* lastToggle);
 
 //! \brief     Is the frame valid
 //! \pre       First initialize the RC5 driver

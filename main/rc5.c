@@ -69,6 +69,13 @@ typedef struct
   };
 } rmt_item16_t;
 
+typedef struct
+{
+  int16_t Address;  // 5 bits
+  int16_t Command;  // 6 bits + 1 start bit (S2)
+  int16_t Toggle;   // 1 bit
+} T_Message;
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -87,11 +94,9 @@ static rmt_config_t rmt_rx;
 
 static bool FrameIsValid = false;
 
-static int16_t Toggle = 0;   // 1 bit
-static int16_t OldToggle = 0;
+static int16_t OldToggle = -1;
 
-static int16_t Address = 0;  // 5 bits
-static int16_t Command = 0;  // 6 bits + 1 start bit (S2)
+static T_Message Message;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -134,6 +139,10 @@ void RC5_Init(void)
 
   ESP_ERROR_CHECK(rmt_driver_install(rmt_rx.channel, 1000, 0));
 
+  Message.Address = -1;
+  Message.Command = -1;
+  Message.Toggle  = -1;
+
   ESP_LOGI(Tag, "IR receiver is initialized");
 }
 
@@ -169,25 +178,18 @@ void RC5_Stop(void)
 
 //_____________________________________________________________________________
 
-int16_t RC5_GetCommand(void)
+int16_t RC5_GetCommand(int16_t* lastToggle)
 {
-  return Command;
-}
+  int16_t command = -1;
 
-//_____________________________________________________________________________
-
-bool RC5_IsNewMessageReceived(int16_t* last)
-{
-  bool result = false;
-
-  if (*last != Toggle)
+  if (*lastToggle != Message.Toggle)
   {
-    result = true;
+    command = Message.Command;
   }
 
-  *last = Toggle;
+  *lastToggle = Message.Toggle;
 
-  return result;
+  return command;
 }
 
 //_____________________________________________________________________________
@@ -212,7 +214,7 @@ static void RunRXTask(void* arg)
 
   while (1)
   {
-    //get RMT RX ring buffer
+    // Get RMT RX ring buffer
     RingbufHandle_t buffer = NULL;
     ESP_ERROR_CHECK(rmt_get_ringbuf_handle(RMT_RX_CHANNEL, &buffer));
 
@@ -223,28 +225,22 @@ static void RunRXTask(void* arg)
       size_t rx_size = 0;
       rmt_item16_t* item = (rmt_item16_t*) xRingbufferReceive(buffer, &rx_size, 1000);
 
-      //ESP_LOGE(Tag, "rx_size = %d", rx_size);
-
       if (item)
       {
-        //ESP_LOGI(Tag, "rx_size = %d", rx_size);
-        //ESP_LOGI(Tag, "Received waveform - buffer size: %d (%d items)", rx_size, rx_size / 2);
-
-        //rmt_dump_items(item, rx_size / 2);
-
         if (ParseItems(item))
         {
-          if (Address == VALID_ADDRESS)
+          if (Message.Address == VALID_ADDRESS)
           {
             FrameIsValid = true;
 
-            if (Toggle != OldToggle)
+            if (Message.Toggle != OldToggle)
             {
-              vmVariables.rc5_address = Address;
-              vmVariables.rc5_command = Command;
+              vmVariables.rc5_address = Message.Address;
+              vmVariables.rc5_command = Message.Command;
               SET_EVENT(EVENT_RC5);
 
-              OldToggle = Toggle;
+              ESP_LOGE(Tag, "Toggle: %d, Command: %d", Message.Toggle, Message.Command);
+              OldToggle = Message.Toggle;
             }
           }
         }
@@ -265,8 +261,9 @@ static void RunRXTask(void* arg)
 
 static inline bool ParseItems(rmt_item16_t* item)
 {
-  int16_t value = 0x2000;  // binary = 10000000000000 -> MSB is S1
-  int16_t mask = 0x2000;
+  // binary = 10000000000000 -> MSB is S1
+  int16_t value = 0x2000;
+  int16_t mask  = 0x2000;
 
   bool frameIsReceived = false;
 
@@ -274,19 +271,15 @@ static inline bool ParseItems(rmt_item16_t* item)
   {
     for (int16_t pos = 0; pos < (RC5_BITS_NUM - 1); pos++) // Only 13 bits are decoded because S1 is already done
     {
-      //ESP_LOGE(Tag, "item = %d", i);
-
       if (item->level == RMT_RX_ACTIVE_LEVEL)
       {
         if ((item->duration > RC5_MIN_SHORT_DURATION) && (item->duration < RC5_MAX_SHORT_DURATION))
         {
-          //ESP_LOGE(Tag, "Bit = 1");
           value |= (mask >> (pos + 1));
           item += 2;
         }
         else
         {
-          //ESP_LOGE(Tag, "Bit = 0");
           item++;
         }
       }
@@ -294,12 +287,10 @@ static inline bool ParseItems(rmt_item16_t* item)
       {
         if ((item->duration > RC5_MIN_SHORT_DURATION) && (item->duration < RC5_MAX_SHORT_DURATION))
         {
-          //ESP_LOGE(Tag, "Bit = 0");
           item += 2;
         }
         else
         {
-          //ESP_LOGE(Tag, "Bit = 1");
           value |= (mask >> (pos + 1));
           item++;
         }
@@ -313,17 +304,9 @@ static inline bool ParseItems(rmt_item16_t* item)
     // Bit  11    -> Toggle bit
     // Bits 10..6 -> Address bits
     // Bits  5..0 -> Command bits
-    Toggle = (value >> 11) & 0x01;
-    Address = (value >> 6) & 0x1F;
-    // S2 (inverted) | Command
-    Command = (~(value >> 6) & 0x40) | (value & 0x3F);
-
-    //ESP_LOGI(Tag, "IR CODE: 0x%04x", value);
-    //ESP_LOGI(Tag, "Address: 0x%04x", address);
-    //ESP_LOGI(Tag, "Data: 0x%04x", data);
-    //ESP_LOGI(Tag, "Toggle: %d", toggle);
-    //ESP_LOGI(Tag, "Address: %d", address);
-    //ESP_LOGI(Tag, "Command: %d", command);
+    Message.Toggle  = (value >> 11) & 0x01;
+    Message.Address = (value >> 6) & 0x1F;
+    Message.Command = (~(value >> 6) & 0x40) | (value & 0x3F);  // S2 (inverted) | Command
   }
 
   return frameIsReceived;

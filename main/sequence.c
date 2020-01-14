@@ -284,17 +284,12 @@ void Sequence_Run(void)
 
 static void RecordSequence(void)
 {
+  static int16_t toggle = -1;
   uint8_t* buttonState;
   uint8_t data = 0u;
-  int16_t command = 0;
-  static int16_t toggle = 0;
+  int16_t command = RC5_GetCommand(&toggle);
 
   buttonState = Buttons_GetStatus();
-
-  if (RC5_IsNewMessageReceived(&toggle))
-  {
-    command = RC5_GetCommand();
-  }
 
   if (WrPos < SEQUENCE_BUFFER_SIZE)
   {
