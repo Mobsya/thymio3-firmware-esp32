@@ -903,8 +903,6 @@ static uint16_t ReadBufferedAngularPosition(void)
   uint8_t position[2u] = {0u, 0u};
   uint16_t length = 0x00u;
   uint16_t pattern = 0x00u;
-  //uint8_t isFull = 0u;
-  //uint8_t isComplete = 0u;
 
   uint8_t i = 0u;
   uint8_t j = 0u;
@@ -926,16 +924,6 @@ static uint16_t ReadBufferedAngularPosition(void)
   I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_STATUS1_REG_ADDRESS, len, 2u);
 
   length = (uint16_t)((uint16_t)(len[1] & 0x0F) << 8) | len[0];
-
-  //isFull = ((len[1] & 0x20) >> 5);
-
-  //isComplete = ((len[1] & 0x80) >> 7);
-
-  //if (isFull == 1)
-  {
-    //UpdateFifoMode(E_FifoMode_Bypass);
-    //UpdateFifoMode(E_FifoMode_Fifo);
-  }
 
   if (length > 0u)
   {
@@ -1033,19 +1021,19 @@ static void CalibrateZeroGyro(uint16_t number)
 
   num += number;
 
-  for (uint8_t i = 0u; i < 3u; i++)
+  for (uint8_t axis = 0u; axis < 3u; axis++)
   {
-    for (uint16_t j = 0u; j < number; j++)
+    for (uint16_t index = 0u; index < number; index++)
     {
-      ZeroGyro[i] += Buffer[i][j];
+      ZeroGyro[axis] += Buffer[axis][index];
     }
   }
 
   if (num >= 16)
   {
-    for (uint8_t i = 0u; i < 3u; i++)
+    for (uint8_t axis = 0u; axis < 3u; axis++)
     {
-      ZeroGyro[i] /= num;
+      ZeroGyro[axis] /= num;
       //ESP_LOGI(Tag, "Index : %d, ZeroGyro: %d", i, ZeroGyro[i]);
     }
 
@@ -1061,16 +1049,16 @@ static void CalculateAngle(int16_t* angle, uint16_t number)
   int32_t sum[3] = {0, 0, 0};
   int64_t gyroCorr[3] = {0, 0, 0};
 
-  for (uint8_t i = 0u; i < 3u; i++)
+  for (uint8_t axis = 0u; axis < 3u; axis++)
   {
-    for (uint8_t j = 0u; j < number; j++)
+    for (uint8_t index = 0u; index < number; index++)
     {
-      sum[i] += Buffer[i][j];
+      sum[axis] += Buffer[axis][index];
     }
 
-    gyroCorr[i] = (sum[i] - (number * ZeroGyro[i]));
-    Teta[i] += (((Mul + Offset) * gyroCorr[i]) / Div);
-    angle[i] = Teta[i];
+    gyroCorr[axis] = (sum[axis] - (number * ZeroGyro[axis]));
+    Teta[axis] += (((Mul + Offset) * gyroCorr[axis]) / Div);
+    angle[axis] = Teta[axis];
   }
 }
 

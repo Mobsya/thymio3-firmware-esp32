@@ -20,11 +20,7 @@
 
 #include <string.h>
 
-//#include <driver/spi_master.h>
 #include "esp_log.h"
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 
 #include "spi.h"
 #include "board.h"
@@ -52,15 +48,6 @@
 //-----------------------------------------------------------------------------
 
 static const char* Tag = "spi";
-
-//static spi_device_handle_t sn74hc595;
-
-static void Callback_EndTransmissionVSPI(spi_transaction_t* t);
-
-static uint8_t* Rx = NULL;
-static uint16_t Cmd = 0;
-
-static bool Ready = false;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -148,10 +135,10 @@ void Spi_AddDeviceVSPI(spi_device_handle_t* device, int csPin)
     .cs_ena_pretrans  = 0,
     .clock_speed_hz   = VSPI_CLK_FREQENCY_Hz,
     .spics_io_num     = csPin,
-    .flags            = 0, //SPI_DEVICE_HALFDUPLEX,
+    .flags            = 0,
     .queue_size       = 3,
     .pre_cb           = NULL,
-    .post_cb          = NULL, //Callback_EndTransmissionVSPI
+    .post_cb          = NULL
   };
 
   ESP_LOGI(Tag, "Add device on VSPI bus");
@@ -160,13 +147,11 @@ void Spi_AddDeviceVSPI(spi_device_handle_t* device, int csPin)
 
 //_____________________________________________________________________________
 
-void Spi_Write(spi_device_handle_t device, uint8_t* data, uint16_t size)
-//void Spi_Write(uint8_t* data, uint16_t size)
+void Spi_WriteHSPI(spi_device_handle_t device, uint8_t* data, uint16_t size)
 {
   spi_transaction_t trans_desc =
   {
     .flags = 0,
-    //.flags = SPI_TRANS_USE_TXDATA,
     .cmd = 0,
     .addr = 0,
     .length = size * 8,
@@ -175,19 +160,7 @@ void Spi_Write(spi_device_handle_t device, uint8_t* data, uint16_t size)
     .rx_buffer = NULL
   };
 
-  //ESP_LOGI(Tag, "... Transmitting.");
-  //ESP_ERROR_CHECK(spi_device_transmit(device, &trans_desc));
   ESP_ERROR_CHECK(spi_device_queue_trans(device, &trans_desc, portMAX_DELAY));
-  //spi_device_polling_transmit(device, &trans_desc);
-  //spi_device_transmit(device, &trans_desc);
-  //spi_device_queue_trans(device, &trans_desc, portMAX_DELAY);
-
-  //ESP_LOGI(Tag, "... Removing device.");
-  //ESP_ERROR_CHECK(spi_bus_remove_device(device));
-
-  //ESP_LOGI(Tag, "... Freeing bus.");
-  //ESP_ERROR_CHECK(spi_bus_free(HSPI_HOST));
-  //vTaskDelete(NULL);
 }
 
 //_____________________________________________________________________________

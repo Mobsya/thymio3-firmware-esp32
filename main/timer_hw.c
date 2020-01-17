@@ -18,12 +18,6 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/portmacro.h"
-#include "freertos/queue.h"
-#include "freertos/semphr.h"
-
 #include "esp_log.h"
 
 #include "timer_hw.h"
@@ -35,8 +29,8 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define TIMER_DIVIDER 16 //  Hardware timer clock divider
-#define TIMER_SCALE (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
+#define TIMER_DIVIDER 16  //  Hardware timer clock divider
+#define TIMER_SCALE   (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
 
 #define TIMER_INITIAL_VALUE      0x00000000uLL
 

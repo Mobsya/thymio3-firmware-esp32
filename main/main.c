@@ -90,19 +90,6 @@ int app_main(void)
   ESP_LOGI(Tag, "** Initializations **");
   ESP_LOGI(Tag, "*********************");
 
-//  Settings_Init();
-#if 0
-  FileSystem_Init();
-  FileSystem_CreateSettingsFile();
-  //FileSystem_ReadFile();
-  FileSystem_ReadSettingsFile();
-  FileSystem_WriteSettingsFile();
-  FileSystem_ReadSettingsFile();
-  FileSystem_UpdateSettings(29, 56);
-  FileSystem_WriteSettingsFile();
-  FileSystem_ReadSettingsFile();
-#endif
-
   TimerSw_Init();
 
   Gpio_Init();
@@ -111,7 +98,6 @@ int app_main(void)
 
   Leds_Init();
 
-  // FIXME When RC5 is initialized, the interruption of TimerHW is not reached
   RC5_Init();
 
   Sensors_Init();
@@ -138,11 +124,6 @@ int app_main(void)
   while (!WIFI_IsConnected())
   {}
 
-  esp_log_level_set("*", ESP_LOG_ERROR);
-  //esp_log_level_set("spi_master", ESP_LOG_ERROR);
-  esp_log_level_set("sequence", ESP_LOG_INFO);
-  //esp_log_level_set("explorer", ESP_LOG_INFO);
-
   //Codec_SetVolume(80);
   //Codec_PlayMP3File(2);
   //Codec_RecordWAVFile(0);
@@ -156,13 +137,12 @@ int app_main(void)
   ESP_LOGI(Tag, "******* Tasks *******");
   ESP_LOGI(Tag, "*********************");
 
+  esp_log_level_set("*", ESP_LOG_ERROR);
+  //esp_log_level_set("spi_master", ESP_LOG_ERROR);
+  esp_log_level_set("sequence", ESP_LOG_INFO);
+  esp_log_level_set("mode", ESP_LOG_INFO);
+
   ESP_LOGI(Tag, "OTA");
-
-  //Create semaphores to synchronize
-  //sync_spin_task = xSemaphoreCreateCounting(1, 0);
-  //sync_stats_task = xSemaphoreCreateBinary();
-
-  //Tracking_Start();
 
   //BLE_Start();
   WIFI_Start();

@@ -41,8 +41,8 @@
 
 #define SEQUENCE_BUFFER_SIZE           50u  //!< Number of actions stored in the FIFO
 
-// Duration of the pulse = 1500000 [us] -> TIMER_SCALE * 1500000 [us] = 7500000 (timer_group)
-#define MOVEMENT_DURATION_us    7500000uLL  //!< Duration of a movement
+// Duration of the movement = 1500000 [us] -> TIMER_SCALE * 1500000 [us] = 7500000 (timer_group)
+#define MOVEMENT_DURATION       7500000uLL  //!< Duration of a movement
 
 #define STOP_DURATION_us           500000u  //!< Delay at the end of a movement
 
@@ -228,7 +228,7 @@ void Sequence_Init(void)
   MovementIsInProgress = false;
   RotationIsInProgress = false;
 
-  TimerHw_Init(1, 0, true, MOVEMENT_DURATION_us, ISR_EndOfMovement);
+  TimerHw_Init(1, 0, true, MOVEMENT_DURATION, ISR_EndOfMovement);
   StopTimer = TimerSw_Create(STOP_DURATION_us, Callback_TimerStop);
 
   WrPos = 0u;
@@ -496,6 +496,7 @@ static void HandleMovement(void)
 
     PlayState = E_PlayState_Collision;
   }
+  // An obstacle has been detected but it no longer obstructs the passage
   else if (ObstacleIsDetected)
   {
     TimerHw_Start(1, 0);

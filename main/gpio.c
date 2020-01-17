@@ -21,9 +21,6 @@
 #include <driver/gpio.h>
 #include "driver/timer.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
 #include "esp_log.h"
 
 #include "aseba_esp32.h"
@@ -318,17 +315,6 @@ static void IRAM_ATTR ISR_GPIOHandler(void* arg)
   {
     FreeFall = true;
     SET_EVENT(EVENT_FREEFALL);
-
-#if 0
-    if (Gpio_GetPinLevel(gpio_num) == E_GpioLevel_High)
-    {
-
-    }
-    else
-    {
-
-    }
-#endif
   }
 
   if (gpio_num == ACC_INT2_PIN)

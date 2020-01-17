@@ -120,16 +120,40 @@ extern void Gpio_TogglePinLevel(uint16_t pinNumber);
 //! \return    Logical level of a GPIO
 extern T_GpioLevel Gpio_GetPinLevel(uint16_t pinNumber);
 
+//! \brief     Is a free fall detected ?
+//! \pre       First configure the GPIO
+//! \param     None
+//! \return    True if a free fall is detected, false otherwise
 extern bool Gpio_IsFreeFallDetected(void);
 
+//! \brief     Clear the free fall status
+//! \pre       First configure the GPIO
+//! \param     None
+//! \return    None
 extern void Gpio_ClearFreeFallStatus(void);
 
+//! \brief     Is a tap detected ?
+//! \pre       First configure the GPIO
+//! \param     None
+//! \return    True if a tap is detected, false otherwise
 extern bool Gpio_IsTapDetected(void);
 
+//! \brief     Clear the tap status
+//! \pre       First configure the GPIO
+//! \param     None
+//! \return    None
 extern void Gpio_ClearTapStatus(void);
 
+//! \brief     Is the side button pressed ?
+//! \pre       First configure the GPIO
+//! \param     None
+//! \return    True if the side button is pressed, false otherwise
 extern bool Gpio_IsButtonPressed(void);
 
+//! \brief     Clear the side button status
+//! \pre       First configure the GPIO
+//! \param     None
+//! \return    None
 extern void Gpio_ClearButtonStatus(void);
 
 #endif // GPIO_H_

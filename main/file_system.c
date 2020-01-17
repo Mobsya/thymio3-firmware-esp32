@@ -79,7 +79,7 @@ static const char* rangematch(const char* pattern, char test, int flags);
 //-----------------------------------------------------------------------------
 // Functions Implementation
 //-----------------------------------------------------------------------------
-
+#if 0
 void FileSystem_Init(void)
 {
   esp_vfs_spiffs_conf_t conf =
@@ -126,7 +126,7 @@ void FileSystem_Init(void)
 
   ESP_LOGI(Tag, "File system is initialized");
 }
-
+#endif
 //_____________________________________________________________________________
 
 bool FileSystem_CreateFile(const char* filename)
@@ -217,6 +217,24 @@ bool FileSystem_DoesFileExist(char* fileName)
 
 //_____________________________________________________________________________
 
+void FileSystem_EraseFile(const char* fileName)
+{
+  // Check that the file exists
+  if (FileSystem_DoesFileExist(fileName))
+  {
+    if (unlink(fileName) == 0)
+    {
+      printf("Erased file: %s\n", fileName);
+    }
+    else
+    {
+      ESP_LOGE(Tag, "File unsuccessfully erased: %s", fileName);
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
 void FileSystem_SelectFile(char** fileName, int16_t index, T_Extension extension)
 {
   char path[18] = "/spiffs/";
@@ -250,24 +268,6 @@ void FileSystem_SelectFile(char** fileName, int16_t index, T_Extension extension
   strcpy(*fileName, path);
 
   printf("Selected file: %s\n", *fileName);
-}
-
-//_____________________________________________________________________________
-
-void FileSystem_EraseFile(const char* fileName)
-{
-  // Check that the file exists
-  if (FileSystem_DoesFileExist(fileName))
-  {
-    if (unlink(fileName) == 0)
-    {
-      printf("Erased file: %s\n", fileName);
-    }
-    else
-    {
-      ESP_LOGE(Tag, "File unsuccessfully erased: %s", fileName);
-    }
-  }
 }
 
 //_____________________________________________________________________________

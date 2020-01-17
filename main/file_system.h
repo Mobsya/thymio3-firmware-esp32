@@ -53,7 +53,7 @@ typedef enum
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void FileSystem_Init(void);
+//extern void FileSystem_Init(void);
 
 //! \brief     Create the file
 //! \pre       First initialize the file system
@@ -83,6 +83,12 @@ extern void FileSystem_Read(const char* filename, void* output, int16_t size);
 //! \return    True if the file exists, false otherwise
 extern bool FileSystem_DoesFileExist(char* fileName);
 
+//! \brief     Erase a file
+//! \pre       None
+//! \param     fileName - File name
+//! \return    None
+extern void FileSystem_EraseFile(const char* fileName);
+
 //! \brief     Select a file
 //! \pre       None
 //! \param     fileName - File name
@@ -90,12 +96,6 @@ extern bool FileSystem_DoesFileExist(char* fileName);
 //! \param     extension - Extension of the file
 //! \return    None
 extern void FileSystem_SelectFile(char** fileName, int16_t index, T_Extension extension);
-
-//! \brief     Erase a file
-//! \pre       None
-//! \param     fileName - File name
-//! \return    None
-extern void FileSystem_EraseFile(const char* fileName);
 
 //! \brief     Write a WAV file
 //! \pre       None

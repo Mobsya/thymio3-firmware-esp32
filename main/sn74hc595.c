@@ -122,7 +122,7 @@ void SN74HC595_Fill(uint8_t* data, uint16_t size)
   //ESP_LOGI(Tag, "data = %d, size = %d", *data, size);
 
   // SRCLK = Rising edge, /SRCLR = High
-  Spi_Write(ShiftRegisters, data, size);
+  Spi_WriteHSPI(ShiftRegisters, data, size);
 }
 
 //_____________________________________________________________________________
