@@ -29,6 +29,8 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
+#define GROUND_IR_THRESHOLD    130
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -107,5 +109,27 @@ void Common_LimitSpeed(int16_t min, int16_t max)
   else
   {
     // Do nothing
+  }
+}
+
+//_____________________________________________________________________________
+
+void Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue)
+{
+  if ((vmVariables.ground_delta[0] < GROUND_IR_THRESHOLD) ||
+      (vmVariables.ground_delta[1] < GROUND_IR_THRESHOLD))
+  {
+    vmVariables.target[0] = 0;
+    vmVariables.target[1] = 0;
+
+    Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, 0u, 0u);
+    Leds_SetFrontRightBrightness(MAX_BRIGHTNESS, 0u, 0u);
+    Leds_SetBackLeftBrightness(red, green, blue);
+    Leds_SetBackRightBrightness(red, green, blue);
+  }
+  else
+  {
+    // Yellow pulse
+	Leds_SetBodyBrightness(red, green, blue);
   }
 }

@@ -33,7 +33,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define DETECT    85
+#define DETECT                  85
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -93,9 +93,6 @@ void Friendly_Run(void)
   int16_t speed_l = 0;
 
   static int16_t speed = 300;
-
-  // Green pulse
-  Leds_SetBodyBrightness(0u, brightness, 0u);
 
   for (uint8_t index = 1u; index < 5u; index++)
   {
@@ -165,6 +162,8 @@ void Friendly_Run(void)
   {
     Codec_PlayMP3FileFromFlash(E_SystemSound_Detection);
   }
+
+  Common_HandleTableEdgeDetection(0u, brightness, 0u);
 
 #if 0
   static char sound_done;

@@ -31,6 +31,8 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
+#define INITIAL_SPEED          150
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -89,12 +91,9 @@ void Explorer_Stop(void)
 
 void Explorer_Run(void)
 {
-  static int16_t speed = 150;
+  static int16_t speed = INITIAL_SPEED;
 
   uint8_t brightness = Common_GetBodyColorPulse();
-
-  // Yellow pulse
-  Leds_SetBodyBrightness(brightness, brightness, 0u);
 
   RunCircleLedRotation();
 
@@ -110,18 +109,7 @@ void Explorer_Run(void)
     HandleNegativeSpeed(speed);
   }
 
-  if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
-  {
-// FIXME    vmVariables.target[0] = 0;
-// FIXME    vmVariables.target[1] = 0;
-    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, MAX_BRIGHTNESS);
-    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, MAX_BRIGHTNESS);
-  }
-  else
-  {
-    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0u);
-    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0u);
-  }
+  Common_HandleTableEdgeDetection(brightness, brightness, 0u);
 }
 
 //_____________________________________________________________________________

@@ -54,4 +54,12 @@ extern uint8_t Common_GetBodyColorPulse(void);
 
 extern void Common_LimitSpeed(int16_t min, int16_t max);
 
+//! \brief     Handle the edge table detection
+//! \pre       None
+//! \param     red - Red brightness of the body LEDs
+//! \param     green - Green brightness of the body LEDs
+//! \param     blue - Blue brightness of the body LEDs
+//! \return    None
+extern void Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue);
+
 #endif // COMMON_H_
