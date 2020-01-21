@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2020                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -95,8 +95,7 @@ void LineTracker_Start(void)
 
 void LineTracker_Stop(void)
 {
-  vmVariables.target[0] = 0;
-  vmVariables.target[1] = 0;
+  Common_SetTargetSpeed(0, 0);
 }
 
 //_____________________________________________________________________________
@@ -105,72 +104,24 @@ void LineTracker_Run(void)
 {
   static uint8_t state[2] = {STATE_WHITE, STATE_WHITE};
   static int16_t dir = DIR_LOST;
-  static uint16_t bs_black_level = 650; //400;
-  static uint16_t bs_white_level = 700; //450;
+  static uint16_t bs_black_level = 200;  //650; //400;
+  static uint16_t bs_white_level = 300;  //700; //450;
 
   uint8_t brightness = Common_GetBodyColorPulse();
 
   // Cyan pulse
   Leds_SetBodyBrightness(0u, brightness, brightness);
 
-#if 0
   if (!CalibrateLevelUsingButtons(&bs_black_level, &bs_white_level))
   {
     // Calibration is not in progress
 
     GetLineSensorsState(&bs_black_level, &bs_white_level, state);
-#if 0
-    T_Color color = ColorSensor_GetColor();
-
-    switch (color)
-    {
-      case E_Color_Red:
-        Leds_SetTopBrightness(MAX_BRIGHTNESS, 0u, 0u);
-        break;
-
-      case E_Color_Orange:
-        Leds_SetTopBrightness(MAX_BRIGHTNESS, 20u, 0u);
-        break;
-
-      case E_Color_Yellow:
-        Leds_SetTopBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
-        break;
-
-      case E_Color_Green:
-        Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, 0u);
-        break;
-
-      case E_Color_Cyan:
-        Leds_SetTopBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        break;
-
-      case E_Color_Blue:
-        Leds_SetTopBrightness(0u, 0u, MAX_BRIGHTNESS);
-        break;
-
-      case E_Color_Purple:
-        Leds_SetTopBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
-        break;
-
-      case E_Color_White:
-        Leds_SetTopBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        break;
-
-      case E_Color_Unknown:
-        Leds_SetTopBrightness(0u, 0u, 0u);
-        break;
-
-      default:
-        Leds_SetTopBrightness(0u, 0u, 0u);
-        break;
-    }
-#endif
 
     GetLineDirection(state, &dir);
 
     SetTargetAccordingToDirection(&dir);
   }
-#endif
 }
 
 //_____________________________________________________________________________
@@ -209,8 +160,7 @@ static bool CalibrateLevelUsingButtons(uint16_t* blackLevel, uint16_t* whiteLeve
   if (calibrationIsInProgress)
   {
     Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-    vmVariables.target[0] = 0;
-    vmVariables.target[1] = 0;
+    Common_SetTargetSpeed(0, 0);
   }
 
   return calibrationIsInProgress;
@@ -282,38 +232,32 @@ static void SetTargetAccordingToDirection(int16_t* direction)
 {
   if (*direction == DIR_FRONT)
   {
-    vmVariables.target[0] = SPEED_LINE;
-    vmVariables.target[1] = SPEED_LINE;
+    Common_SetTargetSpeed(SPEED_LINE, SPEED_LINE);
     Leds_SetCircleBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u);
   }
   else if (*direction == DIR_RIGHT)
   {
-    vmVariables.target[0] = SPEED_LINE;
-    vmVariables.target[1] = 0;
+    Common_SetTargetSpeed(SPEED_LINE, 0);
     Leds_SetCircleBrightness(0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
   }
   else if (*direction == DIR_LEFT)
   {
-    vmVariables.target[0] = 0;
-    vmVariables.target[1] = SPEED_LINE;
+    Common_SetTargetSpeed(0, SPEED_LINE);
     Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
   }
   else if (*direction == DIR_L_LEFT)
   {
-    vmVariables.target[0] = -SPEED_LINE;
-    vmVariables.target[1] = SPEED_LINE;
+    Common_SetTargetSpeed(-SPEED_LINE, SPEED_LINE);
     Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u);
   }
   else if (*direction == DIR_L_RIGHT)
   {
-    vmVariables.target[0] = SPEED_LINE;
-    vmVariables.target[1] = -SPEED_LINE;
+    Common_SetTargetSpeed(SPEED_LINE, -SPEED_LINE);
     Leds_SetCircleBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u);
   }
   else if (*direction == DIR_LOST)
   {
-    vmVariables.target[0] = SPEED_LINE;
-    vmVariables.target[1] = -SPEED_LINE;
+    Common_SetTargetSpeed(SPEED_LINE, -SPEED_LINE);
     //leds_set_circle(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
   }
   else

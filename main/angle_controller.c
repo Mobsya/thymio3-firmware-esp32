@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2020                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -22,7 +22,7 @@
 
 #include "angle_controller.h"
 
-#include "aseba_esp32.h"
+#include "common.h"
 #include "gyroscope.h"
 
 //-----------------------------------------------------------------------------
@@ -88,8 +88,7 @@ int16_t AngleController_Update(int16_t target_deg, int16_t maxSpeed)
     output = -maxSpeed;
   }
 
-  vmVariables.target[0] = -output;
-  vmVariables.target[1] = output;
+  Common_SetTargetSpeed(-output, output);
 
   //ESP_LOGI(Tag, "error: %d, measure: %d, output: %d", error, measure, output);
 
@@ -121,8 +120,7 @@ int16_t AngleController_Update(int16_t target, int16_t maxSpeed)
     output = -maxSpeed;
   }
 
-  vmVariables.target[0] = -output;
-  vmVariables.target[1] = output;
+  Common_SetTargetSpeed(-output, output);
 
   //ESP_LOGI(Tag, "error: %d, measure: %d, output: %d", error, measure, output);
 

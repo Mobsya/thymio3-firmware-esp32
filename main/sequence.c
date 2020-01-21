@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2020                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -24,7 +24,6 @@
 
 #include "accelerometer.h"
 #include "angle_controller.h"
-#include "aseba_esp32.h"
 #include "buttons.h"
 #include "codec.h"
 #include "common.h"
@@ -247,8 +246,7 @@ void Sequence_Start(void)
 
 void Sequence_Stop(void)
 {
-  vmVariables.target[0] = 0;
-  vmVariables.target[1] = 0;
+  Common_SetTargetSpeed(0, 0);
 }
 
 //_____________________________________________________________________________
@@ -442,8 +440,7 @@ static void HandleReplay(void)
       {
         TimerHw_Start(1, 0);
         MovementIsInProgress = true;
-        vmVariables.target[0] = -MOVEMENT_SPEED;  // TODO Check why the speed in backward direction is slower
-        vmVariables.target[1] = -MOVEMENT_SPEED;
+        Common_SetTargetSpeed(-MOVEMENT_SPEED, -MOVEMENT_SPEED);  // TODO Check why the speed in backward direction is slower
         PlayState = E_PlayState_Movement;
       }
 
@@ -451,8 +448,7 @@ static void HandleReplay(void)
       {
         TimerHw_Start(1, 0);
         MovementIsInProgress = true;
-        vmVariables.target[0] = MOVEMENT_SPEED;
-        vmVariables.target[1] = MOVEMENT_SPEED;
+        Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
         PlayState = E_PlayState_Movement;
       }
 
@@ -491,8 +487,7 @@ static void HandleMovement(void)
   if (CheckCollisionStatus() == E_Collision_Detected)
   {
     TimerHw_Stop(1, 0);
-    vmVariables.target[0] = 0;
-    vmVariables.target[1] = 0;
+    Common_SetTargetSpeed(0, 0);
 
     PlayState = E_PlayState_Collision;
   }
@@ -503,13 +498,11 @@ static void HandleMovement(void)
 
     if (Current == (1u << E_Button_Forward))
     {
-      vmVariables.target[0] = MOVEMENT_SPEED;
-      vmVariables.target[1] = MOVEMENT_SPEED;
+      Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
     }
     else if (Current == (1u << E_Button_Backward))
     {
-      vmVariables.target[0] = -MOVEMENT_SPEED;
-      vmVariables.target[1] = -MOVEMENT_SPEED;
+      Common_SetTargetSpeed(-MOVEMENT_SPEED, -MOVEMENT_SPEED);
     }
     else
     {
@@ -530,8 +523,7 @@ static void HandleRotation(void)
 {
   if (CheckCollisionStatus() == E_Collision_Detected)
   {
-    vmVariables.target[0] = 0;
-    vmVariables.target[1] = 0;
+    Common_SetTargetSpeed(0, 0);
 
     PlayState = E_PlayState_Collision;
   }
@@ -716,8 +708,7 @@ static void IRAM_ATTR ISR_EndOfMovement(void* arg)
   // Clear the interrupt and update the alarm time for the timer with without reload
   if (intr_status & BIT(0))
   {
-    vmVariables.target[0] = 0;
-    vmVariables.target[1] = 0;
+    Common_SetTargetSpeed(0, 0);
 
     TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
 

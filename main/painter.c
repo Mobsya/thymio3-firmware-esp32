@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2020                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -101,8 +101,7 @@ void Painter_Start(void)
 
 void Painter_Stop(void)
 {
-  vmVariables.target[0] = 0;
-  vmVariables.target[1] = 0;
+  Common_SetTargetSpeed(0, 0);
 }
 
 //_____________________________________________________________________________
@@ -269,8 +268,7 @@ static void RunPlayState(void)
 
   Leds_SetBodyBrightness(0u, MAX_BRIGHTNESS, 0u);
 
-  vmVariables.target[0] = LeftSpeed[Index - 1u];
-  vmVariables.target[1] = RightSpeed[Index - 1u];
+  Common_SetTargetSpeed(LeftSpeed[Index - 1u], RightSpeed[Index - 1u]);
   Counter++;
 
   if (Counter >= Duration[Index - 1u])
@@ -289,8 +287,7 @@ static void RunPlayState(void)
 
   when(buttonState[E_Button_Forward])
   {
-    vmVariables.target[0] = 0;
-    vmVariables.target[1] = 0;
+    Common_SetTargetSpeed(0, 0);
 
     State = E_PainterState_Wait;
   }

@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2020                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -77,8 +77,7 @@ void Friendly_Start(void)
 
 void Friendly_Stop(void)
 {
-  vmVariables.target[0] = 0;
-  vmVariables.target[1] = 0;
+  Common_SetTargetSpeed(0, 0);
 }
 
 //_____________________________________________________________________________
@@ -142,20 +141,17 @@ void Friendly_Run(void)
 #if 0  // FIXME
     if (does_see_friend)
     {
-      vmVariables.target[0] = speed;
-      vmVariables.target[1] = speed;
+      Common_SetTargetSpeed(speed, speed);
     }
     else
 #endif
     {
-      vmVariables.target[0] = 0;
-      vmVariables.target[1] = 0;
+      Common_SetTargetSpeed(0, 0);
     }
   }
   else
   {
-    vmVariables.target[1] = (speedDiff + speed_l);
-    vmVariables.target[0] = (speed_l - speedDiff);
+    Common_SetTargetSpeed((speed_l - speedDiff), (speedDiff + speed_l));
   }
 
   when(max > DETECT)
@@ -229,21 +225,18 @@ void Friendly_Run(void)
   {
     //if (does_see_friend)
     {
-      vmVariables.target[0] = speed;
-      vmVariables.target[1] = speed;
+      Common_SetTargetSpeed(speed, speed);
     }
 #if 0  // FIXME
     else
     {
-      vmVariables.target[0] = 0;
-      vmVariables.target[1] = 0;
+      Common_SetTargetSpeed(0, 0);
     }
 #endif
   }
   else
   {
-    vmVariables.target[1] = (speed_diff + speed_l);
-    vmVariables.target[0] = (speed_l - speed_diff);
+    Common_SetTargetSpeed((speed_l - speed_diff), (speed_diff + speed_l));
   }
 
   if ((does_see_friend > 0) && sound_done)
@@ -307,8 +300,7 @@ void Friendly_Run(void)
 
   if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
   {
-    vmVariables.target[0] = 0;
-    vmVariables.target[1] = 0;
+    Common_SetTargetSpeed(0, 0);
     // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, MAX_BRIGHTNESS);
     // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, MAX_BRIGHTNESS);
   }

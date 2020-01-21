@@ -1,6 +1,6 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2020                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
@@ -78,8 +78,7 @@ void Fearful_Start(void)
 
 void Fearful_Stop(void)
 {
-  vmVariables.target[0] = 0;
-  vmVariables.target[1] = 0;
+  Common_SetTargetSpeed(0, 0);
 }
 
 //_____________________________________________________________________________
@@ -151,8 +150,7 @@ void Fearful_Run(void)
       ((vmVariables.prox[5] > ACC_OBSTACLE) || (vmVariables.prox[6] > ACC_OBSTACLE))) //&&
     //(vmVariables.ground_delta[0] > 130 && vmVariables.ground_delta[1] > 130))
   {
-    vmVariables.target[0] = 0;
-    vmVariables.target[1] = 0;
+    Common_SetTargetSpeed(0, 0);
     play = true;
   }
   else if ((vmVariables.prox[0] > ACC_OBSTACLE) || (vmVariables.prox[1] > ACC_OBSTACLE) ||
@@ -167,26 +165,20 @@ void Fearful_Run(void)
     int16_t temp2 = (vmVariables.prox[0] / 4) + (vmVariables.prox[1] / 3);
     temp2 -= (vmVariables.prox[3] / 3) + (vmVariables.prox[4] / 4);
 
-    vmVariables.target[0] = -(temp + temp2);
-    vmVariables.target[1] = temp2 - temp;
-
-    //ESP_LOGE(Tag, "target_left = %d, target_right = %d", vmVariables.target[0], vmVariables.target[1]);
+    Common_SetTargetSpeed((-(temp + temp2)), (temp2 - temp));
   }
   else if ((vmVariables.prox[5] > ACC_OBSTACLE) || (vmVariables.prox[6] > ACC_OBSTACLE))
   {
-    vmVariables.target[0] = vmVariables.prox[5] / 2;
-    vmVariables.target[1] = vmVariables.prox[6] / 2;
+    Common_SetTargetSpeed((vmVariables.prox[5] / 2), (vmVariables.prox[6] / 2));
   }
   else
   {
-    vmVariables.target[0] = 0;
-    vmVariables.target[1] = 0;
+    Common_SetTargetSpeed(0, 0);
   }
 #if 0
   if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
   {
-    vmVariables.target[0] = 0;
-    vmVariables.target[1] = 0;
+    Common_SetTargetSpeed(0, 0);
     leds_set_br(32, 0, 0);
     leds_set_bl(32, 0, 0);
   }
@@ -196,7 +188,9 @@ void Fearful_Run(void)
     leds_set_bl(0, 0, 0);
   }
 #endif
-  Common_LimitSpeed(MIN_SPEED, MAX_SPEED);
+  Common_HandleTableEdgeDetection(brightness, 0u, 0u);
+
+  Common_LimitSpeed(MIN_LIMIT_SPEED, MAX_LIMIT_SPEED);
 //#endif
   when(play)
   {
