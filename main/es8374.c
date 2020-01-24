@@ -367,10 +367,7 @@ static esp_err_t UpdateBitsPerSample(T_Mode mode, T_BitsPerSample number);
 
 static esp_err_t SetADCDACVolume(T_Mode mode, int16_t volume_dB, int16_t dot);
 
-// TODO static esp_err_t ConfigureDACOutput(es_dac_output_t output);
 static esp_err_t ConfigureDACOutput(void);
-
-// TODO static esp_err_t ConfigureADCInput(es_adc_input_t input);
 
 static esp_err_t SetMicrophoneGain(T_MicroGain gain_dB);
 
@@ -378,7 +375,6 @@ static esp_err_t ConfigurePGAGain(T_PGAGain config);
 
 static esp_err_t ConfigureClock(void);
 
-//static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T_I2SClock cfg, es_dac_output_t out_channel, es_adc_input_t in_channel);
 static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T_I2SClock cfg);
 
 //-----------------------------------------------------------------------------
@@ -395,8 +391,6 @@ esp_err_t ES8374_Init(audio_hal_codec_config_t* cfg)
 
   T_I2SClock clkdiv;
 
-  //ESP_LOGE(Tag, "ES8374_Init");
-
   if (!InitFlag)
   {
     clkdiv.lclk_div = LCLK_DIV_256;
@@ -405,8 +399,6 @@ esp_err_t ES8374_Init(audio_hal_codec_config_t* cfg)
     // I2C shall be initialized in master mode
 
     result |= Stop(cfg->codec_mode);
-    //result |= InitRegisters(cfg->i2s_iface.mode, ((E_BitsPerSample_16bits << 4) | cfg->i2s_iface.fmt), clkdiv,
-    //                        cfg->dac_output, cfg->adc_input);
     result |= InitRegisters(cfg->i2s_iface.mode, ((E_BitsPerSample_16bits << 4) | cfg->i2s_iface.fmt), clkdiv);
     result |= SetMicrophoneGain(E_MicroGain_21dB);
     result |= ConfigurePGAGain(E_PGAGain_Enable);
@@ -429,8 +421,6 @@ esp_err_t ES8374_Init(audio_hal_codec_config_t* cfg)
 
 esp_err_t ES8374_Deinit(void)
 {
-  //ESP_LOGE(Tag, "ES8374_Deinit");
-
   //xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
   uint8_t data = 0x7Fu;
@@ -447,8 +437,6 @@ esp_err_t ES8374_Deinit(void)
 
 esp_err_t ES8374_ConfigureI2S(audio_hal_codec_mode_t mode, audio_hal_codec_i2s_iface_t* iface)
 {
-  //ESP_LOGE(Tag, "ES8374_ConfigureI2S");
-
   esp_err_t result = ESP_OK;
   T_BitsPerSample bitsPerSample = E_BitsPerSample_32bits;
 
@@ -476,11 +464,7 @@ esp_err_t ES8374_ConfigureI2S(audio_hal_codec_mode_t mode, audio_hal_codec_i2s_i
 
 esp_err_t ES8374_SetVoiceVolume(int volume)
 {
-  //ESP_LOGE(Tag, "ES8374_SetVoiceVolume");
-
   uint8_t vol = 0;
-
-  //uint8_t read = 0;
 
   if (volume < 0)
   {
@@ -501,9 +485,6 @@ esp_err_t ES8374_SetVoiceVolume(int volume)
 
   I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_C_REG_ADDRESS, &vol, 1u);
 
-  //I2C_ReadFromAddress(SLAVE_ADDRESS, DAC_CONTROL_C_REG_ADDRESS, &read, 1u);
-  //ESP_LOGI(Tag, "volume = %d, vol = %d, READ 0x38 VOLUME = %d", volume, vol, read);
-
   //xSemaphoreGive(I2CMutex);
 
   return ESP_OK;
@@ -513,7 +494,6 @@ esp_err_t ES8374_SetVoiceVolume(int volume)
 
 esp_err_t ES8374_GetVoiceVolume(int* volume)
 {
-  //ESP_LOGE(Tag, "ES8374_GetVoiceVolume");
   uint8_t data = 0u;
 
   //xSemaphoreTake(I2CMutex, portMAX_DELAY);
@@ -538,7 +518,6 @@ esp_err_t ES8374_GetVoiceVolume(int* volume)
 
 esp_err_t ES8374_ControlState(audio_hal_codec_mode_t mode, audio_hal_ctrl_t ctrl_state)
 {
-  //ESP_LOGE(Tag, "ES8374_ControlState");
   esp_err_t result = ESP_OK;
   T_Mode config = E_Mode_DAC;
 
@@ -581,8 +560,6 @@ static esp_err_t Start(T_Mode mode)
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
   uint8_t constant = 0x00u;
-
-  //ESP_LOGE(Tag, "Start");
 
   //xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
@@ -661,8 +638,6 @@ static esp_err_t Start(T_Mode mode)
 
 static esp_err_t Stop(T_Mode mode)
 {
-  //ESP_LOGE(Tag, "Stop");
-
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
   uint8_t constant = 0x00;
@@ -740,8 +715,6 @@ static esp_err_t Stop(T_Mode mode)
 
 static esp_err_t ConfigureDACMute(T_DACMute config)
 {
-  //ESP_LOGE(Tag, "ConfigureDACMute");
-
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
 
@@ -771,8 +744,6 @@ static esp_err_t ConfigureDACMute(T_DACMute config)
 
 static esp_err_t ConfigureI2SClock(T_I2SClock clock)
 {
-  //ESP_LOGE(Tag, "ConfigureI2SClock");
-
   esp_err_t result = ESP_OK;
   uint8_t data = 0u;
 
@@ -1010,50 +981,37 @@ static esp_err_t ConfigureI2SClock(T_I2SClock clock)
 
 static esp_err_t ConfigureI2SFormat(T_Mode mode, uint8_t format)
 {
-  //ESP_LOGE(Tag, "ConfigureI2SFormat");
-
   esp_err_t result = ESP_OK;
   uint8_t data = 0;
-  uint8_t fmt_tmp;
-  uint8_t fmt_i2s;
+  uint8_t fmt_tmp = ((format & 0xF0u) >> 4);
+  uint8_t fmt_i2s = format & 0x0Fu;
 
-  //if (format <= E_I2SFormat_DSP)
+  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
+
+  if (mode <= E_Mode_Line)
   {
-    fmt_tmp = ((format & 0xF0u) >> 4);
-    fmt_i2s =  format & 0x0Fu;
-
-    //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-    if (mode <= E_Mode_Line)
+    if ((mode == E_Mode_ADC) || (mode == E_Mode_ADC_DAC))
     {
-      if ((mode == E_Mode_ADC) || (mode == E_Mode_ADC_DAC))
-      {
-        I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_B_REG_ADDRESS, &data, 1u);
-        data &= 0xFCu;              // Slave serial port mode
-        data |= fmt_i2s;
-        I2C_WriteToAddress(SLAVE_ADDRESS, SDP_B_REG_ADDRESS, &data, 1u);
-        result |= UpdateBitsPerSample(mode, fmt_tmp);
-      }
-
-      if (mode == E_Mode_DAC || mode == E_Mode_ADC_DAC)
-      {
-        I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_C_REG_ADDRESS, &data, 1u);
-        data &= 0xFCu;              // I2S serial audio data format
-        data |= fmt_i2s;
-        I2C_WriteToAddress(SLAVE_ADDRESS, SDP_C_REG_ADDRESS, &data, 1u);
-        result |= UpdateBitsPerSample(mode, fmt_tmp);
-      }
+      I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_B_REG_ADDRESS, &data, 1u);
+      data &= 0xFCu;              // Slave serial port mode
+      data |= fmt_i2s;
+      I2C_WriteToAddress(SLAVE_ADDRESS, SDP_B_REG_ADDRESS, &data, 1u);
+      result |= UpdateBitsPerSample(mode, fmt_tmp);
     }
-    else
+
+    if (mode == E_Mode_DAC || mode == E_Mode_ADC_DAC)
     {
-      result = ESP_ERR_INVALID_ARG;
-      ESP_LOGE(Tag, "Invalid mode: %d", mode);
+      I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_C_REG_ADDRESS, &data, 1u);
+      data &= 0xFCu;              // I2S serial audio data format
+      data |= fmt_i2s;
+      I2C_WriteToAddress(SLAVE_ADDRESS, SDP_C_REG_ADDRESS, &data, 1u);
+      result |= UpdateBitsPerSample(mode, fmt_tmp);
     }
   }
-  //else
+  else
   {
-    //result = ESP_ERR_INVALID_ARG;
-    //ESP_LOGE(Tag, "Invalid format: %d", format);
+    result = ESP_ERR_INVALID_ARG;
+    ESP_LOGE(Tag, "Invalid mode: %d", mode);
   }
 
   //xSemaphoreGive(I2CMutex);
@@ -1065,8 +1023,6 @@ static esp_err_t ConfigureI2SFormat(T_Mode mode, uint8_t format)
 
 static esp_err_t UpdateBitsPerSample(T_Mode mode, T_BitsPerSample number)
 {
-  //ESP_LOGE(Tag, "UpdateBitsPerSample");
-
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
 
@@ -1121,8 +1077,6 @@ static esp_err_t UpdateBitsPerSample(T_Mode mode, T_BitsPerSample number)
 
 static esp_err_t SetADCDACVolume(T_Mode mode, int16_t volume_dB, int16_t dot)
 {
-  //ESP_LOGE(Tag, "SetADCDACVolume");
-
   esp_err_t result = ESP_OK;
   uint8_t data[2] = {0u, 0u};
   int16_t vol = volume_dB;
@@ -1153,7 +1107,6 @@ static esp_err_t SetADCDACVolume(T_Mode mode, int16_t volume_dB, int16_t dot)
 
     if ((mode == E_Mode_ADC) || (mode == E_Mode_ADC_DAC))
     {
-      //ESP_LOGE(Tag, "Volume_dB = %d, data = %d %d", vol, data[0], data[1]);
       I2C_WriteToAddress(SLAVE_ADDRESS, ADC_CONTROL_B_REG_ADDRESS, data, 2u);
     }
 
@@ -1174,15 +1127,12 @@ static esp_err_t SetADCDACVolume(T_Mode mode, int16_t volume_dB, int16_t dot)
 }
 
 //_____________________________________________________________________________
-//#if 0  // TODO
-//static esp_err_t ConfigureDACOutput(es_dac_output_t output)
+
 static esp_err_t ConfigureDACOutput(void)
 {
-  //ESP_LOGE(Tag, "ConfigureDACOutput");
-
   esp_err_t result = ESP_OK;
   uint8_t data = 0x02u;
-  uint8_t constant = 0x00u;
+  uint8_t constant;
 
   //xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
@@ -1206,14 +1156,11 @@ static esp_err_t ConfigureDACOutput(void)
 
   return result;
 }
-//#endif
+
 //_____________________________________________________________________________
-//#if 0  // TODO
-//static esp_err_t ConfigureADCInput(es_adc_input_t input)
+
 static esp_err_t ConfigureADCInput(void)
 {
-  //ESP_LOGE(Tag, "ConfigureADCInput");
-
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
 
@@ -1227,13 +1174,11 @@ static esp_err_t ConfigureADCInput(void)
 
   return result;
 }
-//#endif
+
 //_____________________________________________________________________________
 
 static esp_err_t SetMicrophoneGain(T_MicroGain gain_dB)
 {
-  //ESP_LOGE(Tag, "SetMicrophoneGain");
-
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
 
@@ -1259,8 +1204,6 @@ static esp_err_t SetMicrophoneGain(T_MicroGain gain_dB)
 
 static esp_err_t ConfigurePGAGain(T_PGAGain config)
 {
-  //ESP_LOGE(Tag, "ConfigurePGAGain");
-
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
 
@@ -1288,10 +1231,8 @@ static esp_err_t ConfigurePGAGain(T_PGAGain config)
 
 static esp_err_t ConfigureClock(void)
 {
-  //ESP_LOGE(Tag, "ConfigureClock");
-
   esp_err_t result = ESP_OK;
-  uint8_t constant = 0x00u;
+  uint8_t constant;
 
   //xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
@@ -1401,16 +1342,11 @@ static esp_err_t ConfigureClock(void)
 
 //_____________________________________________________________________________
 
-//static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T_I2SClock cfg, es_dac_output_t out_channel, es_adc_input_t in_channel)
 static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T_I2SClock cfg)
 {
-  //ESP_LOGE(Tag, "InitRegisters");
-
   esp_err_t result = ESP_OK;
   uint8_t data = 0x00u;
-  uint8_t constant = 0x00u;
-
-  uint8_t read = 0x00u;
+  uint8_t constant;
 
   //xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
@@ -1443,50 +1379,20 @@ static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T
   data |= (ms_mode << MSC_BIT_POS);
   I2C_WriteToAddress(SLAVE_ADDRESS, SDP_A_REG_ADDRESS, &data, 1u);
 
-//  I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_A_REG_ADDRESS, &read, 1u);
-//  ESP_LOGI(Tag, "data = %d, ms_mode = %d, READ 0x0F = %d", data, ms_mode, read);
-
   result |= ConfigureClock();
-
-  //constant = 0x01u;                      // Enable PLL analog, vcoout divide by 8
-  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &constant, 1u);
-
-//  I2C_ReadFromAddress(SLAVE_ADDRESS, 0x09, &read, 1u);
-//  ESP_LOGI(Tag, "READ 0x09 = %d", read);
-
-  //constant = 0x22u;
-  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_L_REG_ADDRESS, &constant, 1u);
-
-//  I2C_ReadFromAddress(SLAVE_ADDRESS, 0x0C, &read, 1u);
-//  ESP_LOGI(Tag, "READ 0x0C = %d", read);
-
-  //constant = 0x2Eu;
-  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_M_REG_ADDRESS, &constant, 1u);
-
-  //constant = 0xC6u;
-  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_N_REG_ADDRESS, &constant, 1u);
-
-  //constant = 0x8Au;  // 0x3A FIXME In the user guide 0x8Au
-  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_J_REG_ADDRESS, &constant, 1u);
-
-  //constant = 0x07u;
-  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_K_REG_ADDRESS, &constant, 1u);
-
-  //constant = 0x41u;
-  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &constant, 1u);
 
   result |= ConfigureI2SClock(cfg);
 
   constant = 0x08u;  //(1u << ADCHPF_BIT_POS);     // Enable ADC left channel high pass filter
   I2C_WriteToAddress(SLAVE_ADDRESS, ADC_CONTROL_A_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x00;
+  constant = 0x00u;
   I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_A_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x30;
+  constant = 0x30u;
   I2C_WriteToAddress(SLAVE_ADDRESS, SYSTEM_A_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x20;
+  constant = 0x20u;
   I2C_WriteToAddress(SLAVE_ADDRESS, SYSTEM_B_REG_ADDRESS, &constant, 1u);
 
   result |= ConfigureI2SFormat(E_Mode_ADC, format);
@@ -1502,10 +1408,10 @@ static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T
   //              ---------
   //              0110 0000 = 0x60
   // --------------------------------------------------------------------
-  constant = 0x60;
+  constant = 0x60u;
   I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &constant, 1u);
 
-  constant = 0xFF;  // PGA gain = -3.5 [dB]
+  constant = 0xFFu;  // PGA gain = -3.5 [dB]
   I2C_WriteToAddress(SLAVE_ADDRESS, PGA_GAIN_REG_ADDRESS, &constant, 1u);
 
   // PGA Register
@@ -1518,22 +1424,16 @@ static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T
   //              ---------
   //              0010 0000 = 0x20
   // --------------------------------------------------------------------
-  constant = 0x20; //0x14;
+  constant = 0x20u;
   I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &constant, 1u);
 
-  //constant = 0x55;
-  //I2C_WriteToAddress(SLAVE_ADDRESS, PGA_GAIN_REG_ADDRESS, &constant, 1u);
-
-  //constant = 0x21;    // Set class D divider = 33, to avoid the high frequency tone on laudspeaker
-  //I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_H_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x80;  // IC START
+  constant = 0x80u;  // IC START
   I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &constant, 1u);
 
   result |= SetADCDACVolume(E_Mode_ADC, 0, 0);      // 0db
   result |= SetADCDACVolume(E_Mode_DAC, 0, 0);      // 0db
 
-  constant = 0x8A;
+  constant = 0x8Au;
   I2C_WriteToAddress(SLAVE_ADDRESS, ANALOG_REF_REG_ADDRESS, &constant, 1u);
 
   // ANALOG POWER DOWN Register
@@ -1548,61 +1448,51 @@ static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T
   //                  ---------
   //                  0100 0000 = 0x40
   // --------------------------------------------------------------------
-  constant = 0x40;
+  constant = 0x40u;
   I2C_WriteToAddress(SLAVE_ADDRESS, ANALOG_POWER_DOWN_REG_ADDRESS, &constant, 1u);
 
-  constant = 0xA0;
+  constant = 0xA0u;
   I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x19;
+  constant = 0x19u;
   I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_GAIN_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x90;
+  constant = 0x90u;
   I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x02; //0x01;
+  constant = 0x02u;
   I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x00;
+  constant = 0x00u;
   I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &constant, 1u);
 
-  constant = 0xA0; //0x20;
+  constant = 0xA0u;
   I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x00;
+  constant = 0x00u;
   I2C_WriteToAddress(SLAVE_ADDRESS, ALC_CONTROL_C_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x00;
+  constant = 0x00u;
   I2C_WriteToAddress(SLAVE_ADDRESS, ADC_CONTROL_B_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x00;
+  constant = 0x00u;
   I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_C_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x30;
+  constant = 0x30u;
   I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_B_REG_ADDRESS, &constant, 1u);
 
-  constant = 0x60;
+  constant = 0x60u;
   I2C_WriteToAddress(SLAVE_ADDRESS, GPIO_AND_INT_CONTROL_REG_ADDRESS, &constant, 1u);
 
   // It's for testing
-  constant = 0x0C;
+  constant = 0x0Cu;
   I2C_WriteToAddress(SLAVE_ADDRESS, SDP_C_REG_ADDRESS, &constant, 1u);
 
-  // FIXME unknown register
-  //constant = 0x05u;
-  //I2C_WriteToAddress(SLAVE_ADDRESS, 0x71, &constant, 1u);
-
-  // FIXME unknown register
-  //constant = 0x70u;
-  //I2C_WriteToAddress(SLAVE_ADDRESS, 0x73, &constant, 1u);
-
-  // TODO res |= ConfigureDACOutput(out_channel);  //0x3c Enable DAC and Enable Lout/Rout/1/2
   result |= ConfigureDACOutput();
-  // TODO res |= ConfigureADCInput(in_channel);  //0x00 LINSEL & RINSEL, LIN1/RIN1 as ADC Input; DSSEL,use one DS Reg11; DSR, LINPUT1-RINPUT1
   result |= ConfigureADCInput();
   result |= ES8374_SetVoiceVolume(0);
 
-  constant = 0x30;
+  constant = 0x30u;
   I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_B_REG_ADDRESS, &constant, 1u);
 
   //xSemaphoreGive(I2CMutex);
