@@ -252,9 +252,7 @@ static void ReadClearDataMsbRegister(uint8_t* data);
 void BH1745NUC_Init(void)
 {
   UpdateMeasurementTime(E_MeasurementTime_160ms);
-  UpdateADCGain(E_ADCGain_1x);
-  UpdatePersistence(E_Persistence_UpdateAfter4);
-  UpdateThreshold(Threshold);
+  UpdateADCGain(E_ADCGain_16x);
   UpdateModeControl3();
   EnableMeasurement();
 
@@ -322,7 +320,7 @@ void BH1745NUC_ReadIlluminance(T_Illuminance* illuminance)
   illuminance->Blue  = (uint16_t)((uint16_t)colors[5u] << 8u) | colors[4u];
   illuminance->Clear = (uint16_t)((uint16_t)colors[7u] << 8u) | colors[6u];
 
-  //ESP_LOGI(Tag, "Red: %d, Green: %d, Blue: %d, Clear: %d", Illuminance.Red, Illuminance.Green, Illuminance.Blue, Illuminance.Clear);
+  //ESP_LOGI(Tag, "Red: %d, Green: %d, Blue: %d, Clear: %d", illuminance->Red, illuminance->Green, illuminance->Blue, illuminance->Clear);
 }
 
 //_____________________________________________________________________________
