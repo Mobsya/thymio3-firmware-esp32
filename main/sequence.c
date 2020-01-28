@@ -513,7 +513,7 @@ static void HandleMovement(void)
   }
   else
   {
-    // Wait the end of the movement
+    // Continue the movement
   }
 }
 
@@ -533,6 +533,10 @@ static void HandleRotation(void)
     RotationIsInProgress = false;
 
     PlayState = E_PlayState_Replay;
+  }
+  else
+  {
+    // Continue the rotation
   }
 }
 

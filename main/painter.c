@@ -22,7 +22,6 @@
 
 #include "esp_log.h"
 
-#include "aseba_esp32.h"
 #include "buttons.h"
 #include "common.h"
 #include "leds.h"

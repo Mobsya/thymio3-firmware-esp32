@@ -68,16 +68,8 @@ static const char* Tag = "aseba";
 static T_TimerSw* AsebaTimer0 = NULL;  //!< Used to schedule the Aseba timer 0
 static T_TimerSw* AsebaTimer1 = NULL;  //!< Used to schedule the Aseba timer 0
 
-static int16_t Target[2] = {0, 0};
-static int16_t OldTarget[2] = {0, 0};
-
 static int16_t TimerDuration[2] = {0, 0};
 static int16_t OldTimerDuration[2] = {0, 0};
-
-//static T_Settings Settings;
-//static T_Settings OldSettings;
-
-static uint16_t OldBehavior = 0u;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -100,10 +92,6 @@ static void UpdateLedBackLeft(void);
 static void UpdateLedBackRight(void);
 
 static void UpdateLedColorSensor(void);
-
-static void UpdateLedsGroundIR(void);
-
-static void UpdateSoundThreshold(void);
 
 static void Callback_AsebaTimer0(void* arg);
 
@@ -183,6 +171,7 @@ void AsebaVMResetCB(AsebaVMState* vm)
   Behavior_Enable(B_LED_MIC);
   Behavior_Enable(B_LEDS_PROX);
   Behavior_Enable(B_SOUND_BUTTON);
+  Behavior_Enable(B_LED_RC5);
 #if 0 // FIXME
   Behavior_Enable(B_LED_MIC);
   Behavior_Enable(B_LED_RC5);

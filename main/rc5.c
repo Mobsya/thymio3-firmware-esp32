@@ -239,7 +239,7 @@ static void RunRXTask(void* arg)
               vmVariables.rc5_command = Message.Command;
               SET_EVENT(EVENT_RC5);
 
-              ESP_LOGE(Tag, "Toggle: %d, Command: %d", Message.Toggle, Message.Command);
+              ESP_LOGI(Tag, "Toggle: %d, Command: %d", Message.Toggle, Message.Command);
               OldToggle = Message.Toggle;
             }
           }
