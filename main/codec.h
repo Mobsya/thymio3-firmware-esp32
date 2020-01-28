@@ -36,7 +36,14 @@ enum
   E_SystemSound_Blop,
   E_SystemSound_Fall,
   E_SystemSound_Detection,
-  E_SystemSound_Bye
+  E_SystemSound_Bye,
+  E_SystemSound_C3,
+  E_SystemSound_D3,
+  E_SystemSound_E3,
+  E_SystemSound_F3,
+  E_SystemSound_G3,
+  E_SystemSound_A3,
+  E_SystemSound_B3
 };
 typedef int16_t T_SystemSound;  //!< Accelerometer tap recognition
 

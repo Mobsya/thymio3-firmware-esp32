@@ -312,7 +312,8 @@ const AsebaVMDescription vmDescription =
     second value is the name of the variable which will be displayed in aseba studio
     ******/
 
-    {4, "color"},
+    {4, "color.raw"},
+    {3, "color.hsv"},
     {3, "gyro"},
     {3, "angle"},
     {3, "angle_deg"},

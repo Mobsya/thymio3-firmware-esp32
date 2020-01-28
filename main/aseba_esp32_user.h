@@ -85,7 +85,8 @@ struct _vmVariables
   /*****
     ---> PUT YOUR VARIABLES HERE <---
   ******/
-  int16_t color[4];
+  int16_t color_raw[4];
+  int16_t color_hsv[3];
   int16_t gyro[3];
   int16_t angle[3];
   int16_t angle_deg[3];

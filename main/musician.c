@@ -90,22 +90,13 @@ void Musician_Run(void)
 
   T_Color color = ColorSensor_GetColor();
 
-  uint8_t brightness = Common_GetBodyColorPulse();
+  //uint8_t brightness = Common_GetBodyColorPulse();
 
   // White pulse
-  Leds_SetBodyBrightness(brightness, brightness, brightness);
-
-  //RunCircleLedRotation();
+  //Leds_SetBodyBrightness(brightness, brightness, brightness);
 
   // Buttons management
   Common_SetSpeedUsingButtons(&speed, SPEED_INCREMENT, MAX_SPEED, MIN_SPEED);
-
-  //ESP_LOGE(Tag, "Color: %d", color);
-
-  when (color == E_Color_Red)
-  {
-    Codec_PlayMP3FileFromFlash(E_SystemSound_Startup);
-  }
 
   if (speed >= 0)
   {
@@ -114,5 +105,59 @@ void Musician_Run(void)
   else
   {
     Common_HandleNegativeSpeed(speed);
+  }
+
+  when (color == E_Color_Red)
+  {
+    Codec_PlayMP3FileFromFlash(E_SystemSound_C3);
+    Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);
+  }
+
+  when (color == E_Color_Orange)
+  {
+    Codec_PlayMP3FileFromFlash(E_SystemSound_D3);
+    Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS / 2u, 0u);
+  }
+
+  when (color == E_Color_Yellow)
+  {
+    Codec_PlayMP3FileFromFlash(E_SystemSound_E3);
+    Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
+  }
+
+  when (color == E_Color_Green)
+  {
+    Codec_PlayMP3FileFromFlash(E_SystemSound_F3);
+    Leds_SetBodyBrightness(0u, MAX_BRIGHTNESS, 0u);
+  }
+
+  when (color == E_Color_Cyan)
+  {
+    Codec_PlayMP3FileFromFlash(E_SystemSound_G3);
+    Leds_SetBodyBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+  }
+
+  when (color == E_Color_Blue)
+  {
+    Codec_PlayMP3FileFromFlash(E_SystemSound_A3);
+    Leds_SetBodyBrightness(0u, 0u, MAX_BRIGHTNESS);
+  }
+
+  when (color == E_Color_Purple)
+  {
+    Codec_PlayMP3FileFromFlash(E_SystemSound_B3);
+    Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
+  }
+
+  when (color == E_Color_White)
+  {
+    //Codec_PlayMP3FileFromFlash(E_SystemSound_Startup);
+    Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+  }
+
+  when (color == E_Color_Unknown)
+  {
+    //Codec_PlayMP3FileFromFlash(E_SystemSound_Startup);
+    Leds_SetBodyBrightness(0u, 0u, 0u);
   }
 }
