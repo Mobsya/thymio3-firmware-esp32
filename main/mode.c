@@ -110,6 +110,8 @@ static void RunLegoLedAnimation(void);
 
 void Mode_Init(bool enableVM)
 {
+  static bool first = false;
+
   VMIsActive = enableVM;
 
   StartMode(E_Mode_Menu);
@@ -126,7 +128,11 @@ void Mode_Init(bool enableVM)
 
   Behavior_Enable(B_ALWAYS | B_MODE);
 
-  Sequence_Init();
+  if (!first)
+  {
+    first = true;
+    Sequence_Init();
+  }
 
   ESP_LOGI(Tag, "Mode is initialized");
 }
@@ -140,6 +146,7 @@ void Mode_InitVM(void)
   Behavior_Enable(B_LEDS_PROX);
   Behavior_Enable(B_SOUND_BUTTON);
   Behavior_Enable(B_LED_MIC);
+  Behavior_Enable(B_LED_RC5);
 
   ESP_LOGI(Tag, "VM Mode is initialized");
 }
@@ -151,9 +158,9 @@ void Mode_Run(void)
   uint8_t* buttonState;
 
   static uint8_t ignore;
+  static bool vmIsRunning = false;
 
   buttonState = Buttons_GetStatus();
-  //uint8_t sideState = Buttons_GetSideStatus();
   bool sideState = Gpio_IsButtonPressed();
 
   ignore++;
@@ -173,7 +180,6 @@ void Mode_Run(void)
         // Special case, if we select the mode menu stuff
         Behavior_Disable(B_MODE | B_SETTING);
         Mode_InitVM();
-        ESP_LOGE(Tag, "B");
         return;
       }
 
@@ -187,6 +193,12 @@ void Mode_Run(void)
     // Exit from a mode
     when(sideState)
     {
+      if (!TCPServer_IsSocketAccepted() && vmIsRunning)
+      {
+        vmIsRunning = false;
+        ESP_LOGE(Tag, "BYE Aseba");
+      }
+
       ExitMode(CurrentMode);
 
       if (SelectMode == E_Mode_Menu)
@@ -194,7 +206,6 @@ void Mode_Run(void)
         // Special case, if we select the mode menu stuff
         Behavior_Disable(B_MODE | B_SETTING);
         Mode_InitVM();
-        ESP_LOGE(Tag, "E");
         return;
       }
 
@@ -219,6 +230,12 @@ void Mode_Run(void)
     ExitMode(CurrentMode);
     Behavior_Disable(B_MODE);
     Mode_InitVM();
+    vmIsRunning = true;
+    return;
+  }
+  else if (!TCPServer_IsSocketAccepted() && vmIsRunning)
+  {
+    ExitMode(CurrentMode);
     return;
   }
 
@@ -248,32 +265,31 @@ void Mode_Run(void)
       SetModeColor(SelectMode);
       break;
 
-    case E_Mode_Friendly:
+    case E_Mode_Friendly:     // Green
       Friendly_Run();
       break;
 
-    case E_Mode_Explorer:
+    case E_Mode_Explorer:     // Yellow
       Explorer_Run();
       break;
 
-    case E_Mode_Fearful:
+    case E_Mode_Fearful:      // Red
       Fearful_Run();
       break;
 
-    case E_Mode_Painter:
-      //Attentive_Run();
+    case E_Mode_Painter:      // Blue
       Painter_Run();
       break;
 
-    case E_Mode_LineTracker:
+    case E_Mode_LineTracker:  // Cyan
       LineTracker_Run();
       break;
 
-    case E_Mode_Sequence:
+    case E_Mode_Sequence:     // Magenta
       Sequence_Run();
       break;
 
-    case E_Mode_Musician:
+    case E_Mode_Musician:     // White
       Musician_Run();
       break;
 
@@ -321,6 +337,7 @@ static void StartMode(T_Mode mode)
     case E_Mode_Sequence:
       Behavior_Enable(B_LEDS_PROX);
       Behavior_Enable(B_LEDS_LEGO);
+      Behavior_Enable(B_LED_RC5);
       Sequence_Start();
       break;
 
@@ -380,6 +397,7 @@ static void ExitMode(T_Mode mode)
       Sequence_Stop();
       Behavior_Disable(B_LEDS_PROX);
       Behavior_Disable(B_LEDS_LEGO);
+      Behavior_Disable(B_LED_RC5);
       break;
 
     case E_Mode_Musician:
