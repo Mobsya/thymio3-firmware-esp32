@@ -75,21 +75,21 @@ static const char* Tag = "file_server";
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
-static esp_err_t index_html_get_handler(httpd_req_t *req);
+static esp_err_t index_html_get_handler(httpd_req_t* req);
 
-static esp_err_t favicon_get_handler(httpd_req_t *req);
+static esp_err_t favicon_get_handler(httpd_req_t* req);
 
-static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath);
+static esp_err_t http_resp_dir_html(httpd_req_t* req, const char* dirpath);
 
-static esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filename);
+static esp_err_t set_content_type_from_file(httpd_req_t* req, const char* filename);
 
-static const char* get_path_from_uri(char *dest, const char *base_path, const char *uri, size_t destsize);
+static const char* get_path_from_uri(char* dest, const char* base_path, const char* uri, size_t destsize);
 
 static esp_err_t download_get_handler(httpd_req_t* req);
 
-static esp_err_t upload_post_handler(httpd_req_t *req);
+static esp_err_t upload_post_handler(httpd_req_t* req);
 
-static esp_err_t delete_post_handler(httpd_req_t *req);
+static esp_err_t delete_post_handler(httpd_req_t* req);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -189,7 +189,7 @@ esp_err_t FileServer_Start(const char* basePath)
 
 //_____________________________________________________________________________
 
-static esp_err_t index_html_get_handler(httpd_req_t *req)
+static esp_err_t index_html_get_handler(httpd_req_t* req)
 {
   httpd_resp_set_status(req, "307 Temporary Redirect");
   httpd_resp_set_hdr(req, "Location", "/");
@@ -200,29 +200,29 @@ static esp_err_t index_html_get_handler(httpd_req_t *req)
 
 //_____________________________________________________________________________
 
-static esp_err_t favicon_get_handler(httpd_req_t *req)
+static esp_err_t favicon_get_handler(httpd_req_t* req)
 {
   extern const unsigned char favicon_ico_start[] asm("_binary_favicon_ico_start");
   extern const unsigned char favicon_ico_end[]   asm("_binary_favicon_ico_end");
   const size_t favicon_ico_size = (favicon_ico_end - favicon_ico_start);
   httpd_resp_set_type(req, "image/x-icon");
-  httpd_resp_send(req, (const char *)favicon_ico_start, favicon_ico_size);
+  httpd_resp_send(req, (const char*)favicon_ico_start, favicon_ico_size);
 
   return ESP_OK;
 }
 
 //_____________________________________________________________________________
 
-static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath)
+static esp_err_t http_resp_dir_html(httpd_req_t* req, const char* dirpath)
 {
   char entrypath[FILE_PATH_MAX];
   char entrysize[16];
-  const char *entrytype;
+  const char* entrytype;
 
-  struct dirent *entry;
+  struct dirent* entry;
   struct stat entry_stat;
 
-  DIR *dir = opendir(dirpath);
+  DIR* dir = opendir(dirpath);
   const size_t dirpath_len = strlen(dirpath);
 
   // Retrieve the base path of file storage to construct the full path
@@ -245,14 +245,14 @@ static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath)
   const size_t upload_script_size = (upload_script_end - upload_script_start);
 
   // Add file upload form and script which on execution sends a POST request to /upload
-  httpd_resp_send_chunk(req, (const char *)upload_script_start, upload_script_size);
+  httpd_resp_send_chunk(req, (const char*)upload_script_start, upload_script_size);
 
   // Send file-list table definition and column labels
   httpd_resp_sendstr_chunk(req,
-      "<table class=\"fixed\" border=\"1\">"
-      "<col width=\"800px\" /><col width=\"300px\" /><col width=\"300px\" /><col width=\"100px\" />"
-      "<thead><tr><th>Name</th><th>Type</th><th>Size (Bytes)</th><th>Delete</th></tr></thead>"
-      "<tbody>");
+                           "<table class=\"fixed\" border=\"1\">"
+                           "<col width=\"800px\" /><col width=\"300px\" /><col width=\"300px\" /><col width=\"100px\" />"
+                           "<thead><tr><th>Name</th><th>Type</th><th>Size (Bytes)</th><th>Delete</th></tr></thead>"
+                           "<tbody>");
 
   // Iterate over all files / folders and fetch their names and sizes
   while ((entry = readdir(dir)) != NULL)
@@ -312,7 +312,7 @@ static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath)
 #define IS_FILE_EXT(filename, ext) \
     (strcasecmp(&filename[strlen(filename) - sizeof(ext) + 1], ext) == 0)
 
-static esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filename)
+static esp_err_t set_content_type_from_file(httpd_req_t* req, const char* filename)
 {
   if (IS_FILE_EXT(filename, ".pdf"))
   {
@@ -338,19 +338,19 @@ static esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filena
 
 //_____________________________________________________________________________
 
-static const char* get_path_from_uri(char *dest, const char *base_path, const char *uri, size_t destsize)
+static const char* get_path_from_uri(char* dest, const char* base_path, const char* uri, size_t destsize)
 {
   const size_t base_pathlen = strlen(base_path);
   size_t pathlen = strlen(uri);
 
-  const char *quest = strchr(uri, '?');
+  const char* quest = strchr(uri, '?');
 
   if (quest)
   {
     pathlen = MIN(pathlen, quest - uri);
   }
 
-  const char *hash = strchr(uri, '#');
+  const char* hash = strchr(uri, '#');
 
   if (hash)
   {
@@ -464,16 +464,16 @@ static esp_err_t download_get_handler(httpd_req_t* req)
 
 //_____________________________________________________________________________
 
-static esp_err_t upload_post_handler(httpd_req_t *req)
+static esp_err_t upload_post_handler(httpd_req_t* req)
 {
   char filepath[FILE_PATH_MAX];
-  FILE *fd = NULL;
+  FILE* fd = NULL;
   struct stat file_stat;
 
   // Skip leading "/upload" from URI to get filename
   // Note sizeof() counts NULL termination hence the -1
-  const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path,
-                                           req->uri + sizeof("/upload") - 1, sizeof(filepath));
+  const char* filename = get_path_from_uri(filepath, ((struct file_server_data*)req->user_ctx)->base_path,
+                         req->uri + sizeof("/upload") - 1, sizeof(filepath));
 
   if (!filename)
   {
@@ -526,7 +526,7 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
   ESP_LOGI(Tag, "Receiving file : %s...", filename);
 
   // Retrieve the pointer to scratch buffer for temporary storage
-  char *buf = ((struct file_server_data *)req->user_ctx)->scratch;
+  char* buf = ((struct file_server_data*)req->user_ctx)->scratch;
   int received;
 
   // Content length of the request gives
@@ -591,15 +591,15 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
 
 //_____________________________________________________________________________
 
-static esp_err_t delete_post_handler(httpd_req_t *req)
+static esp_err_t delete_post_handler(httpd_req_t* req)
 {
   char filepath[FILE_PATH_MAX];
   struct stat file_stat;
 
   // Skip leading "/delete" from URI to get filename
   // Note sizeof() counts NULL termination hence the -1
-  const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path,
-                                           req->uri  + sizeof("/delete") - 1, sizeof(filepath));
+  const char* filename = get_path_from_uri(filepath, ((struct file_server_data*)req->user_ctx)->base_path,
+                         req->uri  + sizeof("/delete") - 1, sizeof(filepath));
   if (!filename)
   {
     // Respond with 500 Internal Server Error

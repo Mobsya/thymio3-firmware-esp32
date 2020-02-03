@@ -54,7 +54,8 @@ typedef void (*TimerHWFunctionPtr)(void*);
 //! \param     interval - Duration of the timer
 //! \param     callback - Pointer to function called when interval is reached
 //! \return    None
-extern void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, uint64_t interval, const TimerHWFunctionPtr callback);
+extern void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, uint64_t interval,
+                         const TimerHWFunctionPtr callback);
 
 //! \brief     Start the HW timer
 //! \pre       First initialize the HW timer module

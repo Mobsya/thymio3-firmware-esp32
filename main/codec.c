@@ -403,7 +403,8 @@ static audio_element_handle_t CreateI2SStream(int sampleRates, int bits, int cha
 //! \param     mode - Resampling mode
 //! \return    None
 //static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel, int mode);
-static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel, audio_codec_type_t type);
+static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel,
+    audio_codec_type_t type);
 
 //! \brief     Create the MP3 decoder
 //! \pre       First initialize the codec
@@ -618,7 +619,7 @@ void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz)
   phase = 0;
   freq_radians_per_sample = ((554.37 * 2 * M_PI) / SAVE_FILE_RATE);
 
-  for (uint16_t i = BUF_SIZE; i < 2*BUF_SIZE; i++)
+  for (uint16_t i = BUF_SIZE; i < 2 * BUF_SIZE; i++)
   {
     phase += freq_radians_per_sample;
     buffer[i] = (int16_t)(amplitude * sin(phase));
@@ -627,7 +628,7 @@ void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz)
   phase = 0;
   freq_radians_per_sample = ((659.25 * 2 * M_PI) / SAVE_FILE_RATE);
 
-  for (uint16_t i = 2*BUF_SIZE; i < 3*BUF_SIZE; i++)
+  for (uint16_t i = 2 * BUF_SIZE; i < 3 * BUF_SIZE; i++)
   {
     phase += freq_radians_per_sample;
     buffer[i] = (int16_t)(amplitude * sin(phase));
@@ -636,7 +637,7 @@ void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz)
   phase = 0;
   freq_radians_per_sample = ((880.00 * 2 * M_PI) / SAVE_FILE_RATE);
 
-  for (uint16_t i = 3*BUF_SIZE; i < 4*BUF_SIZE; i++)
+  for (uint16_t i = 3 * BUF_SIZE; i < 4 * BUF_SIZE; i++)
   {
     phase += freq_radians_per_sample;
     buffer[i] = (int16_t)(amplitude * sin(phase));
@@ -866,7 +867,9 @@ static T_MP3PlayerFromFlashHandle InitMP3PlayerFromFlash(void)
   audio_pipeline_register(ap->Pipeline, ap->I2SStream, "i2s_writer");
 
   ESP_LOGI(Tag, "[2.6] Link it together [mp3_music_read_cb]-->mp3_flash_decoder-->i2s_stream-->[codec_chip]");
-  audio_pipeline_link(ap->Pipeline, (const char *[]) {"mp3_flash_decoder", "i2s_writer"}, 2);
+  audio_pipeline_link(ap->Pipeline, (const char* [])
+  {"mp3_flash_decoder", "i2s_writer"
+  }, 2);
 
   ESP_LOGI(Tag, "[3.0] Setup event listener");
   audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
@@ -936,7 +939,9 @@ static T_MP3PlayerHandle InitMP3Player(void)
   //ESP_LOGI(Tag, "[2.6] Link it together [flash]-->spiffs_stream-->mp3_decoder-->filter-->i2s_stream-->[codec_chip]");
   //audio_pipeline_link(ap->Pipeline, (const char *[]) {"mp3_file_reader", "mp3_decoder", "filter_upsample", "i2s_writer"}, 4);
   ESP_LOGI(Tag, "[2.6] Link it together [flash]-->spiffs_stream-->mp3_decoder-->i2s_stream-->[codec_chip]");
-  audio_pipeline_link(ap->Pipeline, (const char *[]) {"mp3_file_reader", "mp3_decoder", "i2s_writer"}, 3);
+  audio_pipeline_link(ap->Pipeline, (const char* [])
+  {"mp3_file_reader", "mp3_decoder", "i2s_writer"
+  }, 3);
 
   ESP_LOGI(Tag, "[3.0] Setup event listener");
   audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
@@ -994,7 +999,8 @@ static T_WAVPlayerHandle InitWAVPlayer(void)
   AUDIO_MEM_CHECK(Tag, ap->Decoder, goto _audio_init_failed);
 
   ESP_LOGI(Tag, "[2.3] Create filter to convert to 48 [kHz]");
-  ap->Filter = CreateFilter(SAVE_FILE_RATE, SAVE_FILE_CHANNEL, WAV_PLAYER_RATE, WAV_PLAYER_CHANNEL, AUDIO_CODEC_TYPE_DECODER);
+  ap->Filter = CreateFilter(SAVE_FILE_RATE, SAVE_FILE_CHANNEL, WAV_PLAYER_RATE, WAV_PLAYER_CHANNEL,
+                            AUDIO_CODEC_TYPE_DECODER);
   AUDIO_MEM_CHECK(Tag, ap->Filter, goto _audio_init_failed);
 
   ESP_LOGI(Tag, "[2.4] Create I2S stream to write audio data to codec chip");
@@ -1007,7 +1013,9 @@ static T_WAVPlayerHandle InitWAVPlayer(void)
   audio_pipeline_register(ap->Pipeline, ap->I2SStream, "i2s_writer");
 
   ESP_LOGI(Tag, "[2.6] Link it together [flash]-->spiffs_stream-->wav_decoder-->filter-->i2s_stream-->[codec_chip]");
-  audio_pipeline_link(ap->Pipeline, (const char *[]) {"file_reader", "wav_decoder", "filter_upsample", "i2s_writer"}, 4);
+  audio_pipeline_link(ap->Pipeline, (const char* [])
+  {"file_reader", "wav_decoder", "filter_upsample", "i2s_writer"
+  }, 4);
   //ESP_LOGI(Tag, "[2.6] Link it together [flash]-->spiffs_stream-->wav_decoder-->i2s_stream-->[codec_chip]");
   //audio_pipeline_link(ap->Pipeline, (const char *[]) {"file_reader", "wav_decoder", "i2s_writer"}, 3);
 
@@ -1079,7 +1087,9 @@ static T_WAVRecorderHandle InitWAVRecorder(void)
   audio_pipeline_register(ap->Pipeline, ap->SPIFFSStream, "file_writer");
 
   ESP_LOGI(Tag, "[2.6] Link it together [codec_chip]-->i2s_stream-->wav_encoder-->spiffs_stream-->[flash]");
-  audio_pipeline_link(ap->Pipeline, (const char *[]) {"i2s_reader", "filter_downsample", "wav_encoder", "file_writer"}, 4);
+  audio_pipeline_link(ap->Pipeline, (const char* [])
+  {"i2s_reader", "filter_downsample", "wav_encoder", "file_writer"
+  }, 4);
 
   ESP_LOGI(Tag, "[3.0] Setup event listener");
   audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
@@ -1157,7 +1167,8 @@ static audio_element_handle_t CreateI2SStream(int sampleRates, int bits, int cha
 //_____________________________________________________________________________
 
 //static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel, int mode)
-static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel, audio_codec_type_t type)
+static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, int destRate, int destChannel,
+    audio_codec_type_t type)
 {
   rsp_filter_cfg_t rsp_cfg = DEFAULT_RESAMPLE_FILTER_CONFIG();
   rsp_cfg.src_rate = sourceRate;
@@ -1424,7 +1435,7 @@ static void RunMP3PlayerFromFlashTask(void* arg)
       }
       else
       {
-    	ClosingSoundIsFinished = false;
+        ClosingSoundIsFinished = false;
       }
     }
   }
@@ -1615,9 +1626,9 @@ static void RunWAVRecorderTask(void* arg)
     }
 #if 0
     /* Stop when the last pipeline element (i2s_stream_reader in this case) receives stop event */
-    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *) ap->I2SStream
-          && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
-          && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
+    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*) ap->I2SStream
+        && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
+        && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
     {
       ESP_LOGE(Tag, "[ * ] Stop event received");
       break;

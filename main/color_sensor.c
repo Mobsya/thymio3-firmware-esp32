@@ -160,13 +160,13 @@ void ColorSensor_Calibrate(uint8_t choice)
 
   if (choice == 0)
   {
-	White.Red   = RawColor.Red;
-	White.Green = RawColor.Green;
-	White.Blue  = RawColor.Blue;
+    White.Red   = RawColor.Red;
+    White.Green = RawColor.Green;
+    White.Blue  = RawColor.Blue;
 
     ESP_LOGE(Tag, "White calibration done: %d, %d, %d", White.Red, White.Green, White.Blue);
 
-	isWhiteCalibrationDone = true;
+    isWhiteCalibrationDone = true;
   }
   else if (choice == 1)
   {

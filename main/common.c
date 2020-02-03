@@ -216,6 +216,6 @@ void Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue)
   else
   {
     // Yellow pulse
-	Leds_SetBodyBrightness(red, green, blue);
+    Leds_SetBodyBrightness(red, green, blue);
   }
 }

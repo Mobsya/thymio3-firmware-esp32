@@ -579,16 +579,16 @@ static void UpdateSettings(void)
 
   if (start)
   {
-	RunLegoLedAnimation();
+    RunLegoLedAnimation();
 
     // Enter into a setting
-	when(buttonState[E_Button_Center])
-	{
-	  if (select != CurrentSetting)
-	  {
-		CurrentSetting = select;
-	  }
-	}
+    when(buttonState[E_Button_Center])
+    {
+      if (select != CurrentSetting)
+      {
+        CurrentSetting = select;
+      }
+    }
 
     // Exit from a setting
     when(sideState)
@@ -597,64 +597,64 @@ static void UpdateSettings(void)
 
       if (select == CurrentSetting)
       {
-    	CurrentSetting = E_Setting_Menu;
+        CurrentSetting = E_Setting_Menu;
       }
     }
 
-	switch (CurrentSetting)
-	{
-	  case E_Setting_Menu:
-	    when(buttonState[E_Button_Backward])
-	    {
-	      select = SelectNextSetting(select, -1);
-	    }
+    switch (CurrentSetting)
+    {
+      case E_Setting_Menu:
+        when(buttonState[E_Button_Backward])
+        {
+          select = SelectNextSetting(select, -1);
+        }
 
-	    when(buttonState[E_Button_Left])
-	    {
-	      select = SelectNextSetting(select, -1);
-	    }
+        when(buttonState[E_Button_Left])
+        {
+          select = SelectNextSetting(select, -1);
+        }
 
         when(buttonState[E_Button_Forward])
         {
           select = SelectNextSetting(select, 1);
-	    }
+        }
 
-	    when(buttonState[E_Button_Right])
-	    {
-	      select = SelectNextSetting(select, 1);
-	    }
+        when(buttonState[E_Button_Right])
+        {
+          select = SelectNextSetting(select, 1);
+        }
 
-	    SetSettingColor(select);
-	    break;
+        SetSettingColor(select);
+        break;
 
-	  case E_Setting_Volume:  // Orange
-		AdjustVolume();
-	    break;
+      case E_Setting_Volume:  // Orange
+        AdjustVolume();
+        break;
 
-	  case E_Setting_Motor:   // Green-Yellow
+      case E_Setting_Motor:   // Green-Yellow
         TuneMotors();
-	    break;
+        break;
 
-	  case E_Setting_Color:   // Purple
+      case E_Setting_Color:   // Purple
         CalibrateColor();
-	    break;
+        break;
 
-	  default:
-		// Do nothing
-	    break;
-	}
+      default:
+        // Do nothing
+        break;
+    }
   }
   else if (buttonState[E_Button_Left] && buttonState[E_Button_Right])
   {
-	count++;
+    count++;
 
-	if (count > 75)  // 75 * 40 [ms] = 3 [s]
-	{
+    if (count > 75)  // 75 * 40 [ms] = 3 [s]
+    {
       Behavior_Disable(B_MODE);
       count = 0u;
       start = true;
       CurrentSetting = E_Setting_Menu;
-	}
+    }
   }
 }
 
@@ -716,7 +716,7 @@ static void SetSettingColor(T_Setting setting)
       break;
 
     case E_Setting_Color:  // Purple
-    	Leds_SetBodyBrightness((MAX_BRIGHTNESS / 2u), 0u, MAX_BRIGHTNESS);
+      Leds_SetBodyBrightness((MAX_BRIGHTNESS / 2u), 0u, MAX_BRIGHTNESS);
       break;
 
     default:
@@ -748,13 +748,13 @@ static void ExitSetting(T_Setting setting)
       break;
 
     case E_Setting_Motor:
-	  Common_SetTargetSpeed(0, 0);
+      Common_SetTargetSpeed(0, 0);
 
-	  // Write to the settings file
-	  Settings_WriteLeftMotor(Setting.LeftMotor);
-	  Settings_WriteRightMotor(Setting.RightMotor);
+      // Write to the settings file
+      Settings_WriteLeftMotor(Setting.LeftMotor);
+      Settings_WriteRightMotor(Setting.RightMotor);
 
-	  ESP_LOGE(Tag, "Write motor: %d %d", Setting.LeftMotor, Setting.RightMotor);
+      ESP_LOGE(Tag, "Write motor: %d %d", Setting.LeftMotor, Setting.RightMotor);
       break;
 
     case E_Setting_Color:
@@ -796,7 +796,7 @@ static void AdjustVolume(void)
   }
   else if (Setting.Volume > 100)
   {
-	Setting.Volume = 100;
+    Setting.Volume = 100;
   }
 
   //ESP_LOGE(Tag, "volume: %d", Volume);
@@ -806,7 +806,7 @@ static void AdjustVolume(void)
 
   if (Setting.Volume <= 40)
   {
-	Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+    Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
   }
   else if (Setting.Volume <= 48)
   {
@@ -830,15 +830,18 @@ static void AdjustVolume(void)
   }
   else if (Setting.Volume <= 88)
   {
-    Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u);
+    Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS,
+                             0u, 0u);
   }
   else if (Setting.Volume <= 96)
   {
-    Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
+    Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS,
+                             MAX_BRIGHTNESS, 0u);
   }
   else if (Setting.Volume <= 104)
   {
-    Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS,
+                             MAX_BRIGHTNESS, MAX_BRIGHTNESS);
   }
 
 #if 0
@@ -859,15 +862,16 @@ static void AdjustVolume(void)
     }
   }
 
-  Leds_SetCircleBrightness(led_circle[7], led_circle[6], led_circle[5], led_circle[4], led_circle[3], led_circle[2], led_circle[1], led_circle[0]);
+  Leds_SetCircleBrightness(led_circle[7], led_circle[6], led_circle[5], led_circle[4], led_circle[3], led_circle[2],
+                           led_circle[1], led_circle[0]);
 
   when(buttonState[E_Button_Center] != 0u) // && !dbnc)
   {
     CurrentSetting = E_Setting_Menu;
-	Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+    Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
 
-	// Write to the settings file
-	Settings_WriteVolume(volume);
+    // Write to the settings file
+    Settings_WriteVolume(volume);
   }
 #endif
 }
@@ -889,13 +893,13 @@ static void TuneMotors(void)
     when(buttonState[E_Button_Right])
     {
       correction += 1;
-	  //set_save_settings();
+      //set_save_settings();
     }
 
     when(buttonState[E_Button_Left])
     {
       correction -= 1;
-	  //set_save_settings();
+      //set_save_settings();
     }
 
     if (correction >= 0)
@@ -916,26 +920,26 @@ static void TuneMotors(void)
     }
     else
     {
-	  if (correction < -15)
-	  {
+      if (correction < -15)
+      {
         Leds_SetCircleBrightness(0, 0, 0, 0, 0, 0, (-correction - 15), 15);
 
         if (correction < -50)
-		{
-		  correction = -50;
-		}
+        {
+          correction = -50;
+        }
       }
-	  else
-	  {
+      else
+      {
         Leds_SetCircleBrightness(0, 0, 0, 0, 0, 0, 0, -correction);
-	  }
+      }
     }
 
-	Setting.LeftMotor  = (256 + correction);
-	Setting.RightMotor = (256 - correction);
+    Setting.LeftMotor  = (256 + correction);
+    Setting.RightMotor = (256 - correction);
 
-	Settings_SetLeftMotorSettings(Setting.LeftMotor);    // Used to send the value to STM32
-	Settings_SetRightMotorSettings(Setting.RightMotor);  // Used to send the value to STM32
+    Settings_SetLeftMotorSettings(Setting.LeftMotor);    // Used to send the value to STM32
+    Settings_SetRightMotorSettings(Setting.RightMotor);  // Used to send the value to STM32
   }
 
   when(buttonState[E_Button_Backward])
@@ -944,18 +948,18 @@ static void TuneMotors(void)
 
     if (vmVariables.target[0] <= (-3 * SPEED_STEP))
     {
-	  Common_SetTargetSpeed((-3 * SPEED_STEP), (-3 * SPEED_STEP));
-	}
+      Common_SetTargetSpeed((-3 * SPEED_STEP), (-3 * SPEED_STEP));
+    }
   }
 
   when(buttonState[E_Button_Forward])
   {
-	Common_IncrementTargetSpeed(SPEED_STEP, SPEED_STEP);
+    Common_IncrementTargetSpeed(SPEED_STEP, SPEED_STEP);
 
-	if (vmVariables.target[0] >= 3 * SPEED_STEP)
-	{
+    if (vmVariables.target[0] >= 3 * SPEED_STEP)
+    {
       Common_SetTargetSpeed((3 * SPEED_STEP), (3 * SPEED_STEP));
-	}
+    }
   }
 }
 
@@ -974,23 +978,23 @@ static void CalibrateColor(void)
 
   when(buttonState[E_Button_Forward] != 0u)
   {
-	ColorSensor_Calibrate(0);  // White calibration
+    ColorSensor_Calibrate(0);  // White calibration
 
-	IsColorCalibrationInProgress = true;
+    IsColorCalibrationInProgress = true;
 
-	Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-	Leds_SetFrontRightBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    Leds_SetFrontRightBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
     Leds_SetBackLeftBrightness((brightness / 2u), 0u, brightness);
     Leds_SetBackRightBrightness((brightness / 2u), 0u, brightness);
   }
 
   when(buttonState[E_Button_Backward] != 0u)
   {
-	ColorSensor_Calibrate(1);  // Black calibration
+    ColorSensor_Calibrate(1);  // Black calibration
 
-	IsColorCalibrationInProgress = true;
+    IsColorCalibrationInProgress = true;
 
-	Leds_SetFrontLeftBrightness(0u, 0u, 0u);
+    Leds_SetFrontLeftBrightness(0u, 0u, 0u);
     Leds_SetFrontRightBrightness(0u, 0u, 0u);
     Leds_SetBackLeftBrightness((brightness / 2u), 0u, brightness);
     Leds_SetBackRightBrightness((brightness / 2u), 0u, brightness);

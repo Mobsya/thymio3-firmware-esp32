@@ -60,7 +60,8 @@ static const char* Tag = "timer_hw";
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, uint64_t interval, const TimerHWFunctionPtr callback)
+void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, uint64_t interval,
+                  const TimerHWFunctionPtr callback)
 {
   // Select and initialize basic parameters of the timer
   timer_config_t config;
