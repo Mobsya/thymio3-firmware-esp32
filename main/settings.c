@@ -32,17 +32,17 @@
 #define DEFAULT_LEFT_MOTOR      256
 #define DEFAULT_RIGHT_MOTOR     256
 #define DEFAULT_OFFSET_GYRO       0
+#define DEFAULT_VOLUME           80
+#define DEFAULT_WHITE_RED      1140
+#define DEFAULT_WHITE_GREEN    1350
+#define DEFAULT_WHITE_BLUE     1110
+#define DEFAULT_BLACK_RED       710
+#define DEFAULT_BLACK_GREEN     940
+#define DEFAULT_BLACK_BLUE      700
 
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
-
-typedef struct
-{
-  int16_t LeftMotor;   //!< Correction factor of the left motor
-  int16_t RightMotor;  //!< Correction factor of the right motor
-  int16_t OffsetGyro;  //!< Offset factor of the gyroscope
-} T_Settings;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -59,16 +59,77 @@ static const char* Tag = "settings";
 static const char* FileLeftMotor  = "/spiffs/left_motor.dat";
 static const char* FileRightMotor = "/spiffs/right_motor.dat";
 static const char* FileOffsetGyro = "/spiffs/offset_gyro.dat";
+static const char* FileVolume     = "/spiffs/volume.dat";
+static const char* FileWhiteRed   = "/spiffs/white_red.dat";
+static const char* FileWhiteGreen = "/spiffs/white_green.dat";
+static const char* FileWhiteBlue  = "/spiffs/white_blue.dat";
+static const char* FileBlackRed   = "/spiffs/black_red.dat";
+static const char* FileBlackGreen = "/spiffs/black_green.dat";
+static const char* FileBlackBlue  = "/spiffs/black_blue.dat";
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
+//! \brief     Write the default left motor correction to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
 static void WriteFactoryLeftMotor(void);
 
+//! \brief     Write the default right motor correction to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
 static void WriteFactoryRightMotor(void);
 
+//! \brief     Write the default gyroscope offset value to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
 static void WriteFactoryOffsetGyro(void);
+
+//! \brief     Write the default volume value to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+static void WriteFactoryVolume(void);
+
+//! \brief     Write the default white (red) value to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+static void WriteFactoryWhiteRed(void);
+
+//! \brief     Write the default white (green) value to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+static void WriteFactoryWhiteGreen(void);
+
+//! \brief     Write the default white (blue) value to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+static void WriteFactoryWhiteBlue(void);
+
+//! \brief     Write the default black (red) value to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+static void WriteFactoryBlackRed(void);
+
+//! \brief     Write the default black (green) value to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+static void WriteFactoryBlackGreen(void);
+
+//! \brief     Write the default black (blue) value to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+static void WriteFactoryBlackBlue(void);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -97,36 +158,19 @@ void Settings_UpdateSettings(void)
 }
 
 //_____________________________________________________________________________
-#if 0
-void Settings_SetSettings(int16_t value, uint16_t position)
+
+void Settings_SetLeftMotorSettings(int16_t leftMotor)
 {
-  if (position == 0u)
-  {
-    Settings.LeftMotor = value;
-  }
-  else if (position == 1u)
-  {
-    Settings.RightMotor = value;
-  }
-  else if (position == 2u)
-  {
-    Settings.OffsetGyro = value;
-  }
-  else
-  {
-    // Do nothing
-  }
+  Settings.LeftMotor = leftMotor;
 }
-#endif
+
 //_____________________________________________________________________________
-#if 0
-void Settings_SetSettings(int16_t* buffer, uint16_t position)
+
+void Settings_SetRightMotorSettings(int16_t rightMotor)
 {
-  Settings.LeftMotor  = buffer[position];
-  Settings.RightMotor = buffer[position + 1u];
-  //Settings.OffsetGyro = buffer[position + 2u];
+  Settings.RightMotor = rightMotor;
 }
-#endif
+
 //_____________________________________________________________________________
 
 int16_t Settings_GetLeftMotorSettings(void)
@@ -173,6 +217,76 @@ void Settings_CreateOffsetGyroFile(void)
 
 //_____________________________________________________________________________
 
+void Settings_CreateVolumeFile(void)
+{
+  if (FileSystem_CreateFile(FileVolume))
+  {
+    WriteFactoryVolume();
+  }
+}
+
+//_____________________________________________________________________________
+
+void Settings_CreateWhiteRedFile(void)
+{
+  if (FileSystem_CreateFile(FileWhiteRed))
+  {
+    WriteFactoryWhiteRed();
+  }
+}
+
+//_____________________________________________________________________________
+
+void Settings_CreateWhiteGreenFile(void)
+{
+  if (FileSystem_CreateFile(FileWhiteGreen))
+  {
+    WriteFactoryWhiteGreen();
+  }
+}
+
+//_____________________________________________________________________________
+
+void Settings_CreateWhiteBlueFile(void)
+{
+  if (FileSystem_CreateFile(FileWhiteBlue))
+  {
+    WriteFactoryWhiteBlue();
+  }
+}
+
+//_____________________________________________________________________________
+
+void Settings_CreateBlackRedFile(void)
+{
+  if (FileSystem_CreateFile(FileBlackRed))
+  {
+    WriteFactoryBlackRed();
+  }
+}
+
+//_____________________________________________________________________________
+
+void Settings_CreateBlackGreenFile(void)
+{
+  if (FileSystem_CreateFile(FileBlackGreen))
+  {
+    WriteFactoryBlackGreen();
+  }
+}
+
+//_____________________________________________________________________________
+
+void Settings_CreateBlackBlueFile(void)
+{
+  if (FileSystem_CreateFile(FileBlackBlue))
+  {
+    WriteFactoryBlackBlue();
+  }
+}
+
+//_____________________________________________________________________________
+
 void Settings_WriteLeftMotor(int16_t leftMotor)
 {
   int16_t input = leftMotor;
@@ -200,11 +314,173 @@ void Settings_WriteOffsetGyro(int16_t offsetGyro)
 
 //_____________________________________________________________________________
 
+void Settings_WriteVolume(int16_t volume)
+{
+  int16_t input = volume;
+
+  FileSystem_Write(FileVolume, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+void Settings_WriteWhiteRed(int16_t whiteRed)
+{
+  int16_t input = whiteRed;
+
+  FileSystem_Write(FileWhiteRed, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+void Settings_WriteWhiteGreen(int16_t whiteGreen)
+{
+  int16_t input = whiteGreen;
+
+  FileSystem_Write(FileWhiteGreen, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+void Settings_WriteWhiteBlue(int16_t whiteBlue)
+{
+  int16_t input = whiteBlue;
+
+  FileSystem_Write(FileWhiteBlue, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+void Settings_WriteBlackRed(int16_t blackRed)
+{
+  int16_t input = blackRed;
+
+  FileSystem_Write(FileBlackRed, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+void Settings_WriteBlackGreen(int16_t blackGreen)
+{
+  int16_t input = blackGreen;
+
+  FileSystem_Write(FileBlackGreen, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+void Settings_WriteBlackBlue(int16_t blackBlue)
+{
+  int16_t input = blackBlue;
+
+  FileSystem_Write(FileBlackBlue, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+int16_t Settings_ReadLeftMotor(void)
+{
+  int16_t output = 0;
+
+  FileSystem_Read(FileLeftMotor, &output, sizeof(int16_t));
+
+  return output;
+}
+
+//_____________________________________________________________________________
+
+int16_t Settings_ReadRightMotor(void)
+{
+  int16_t output = 0;
+
+  FileSystem_Read(FileRightMotor, &output, sizeof(int16_t));
+
+  return output;
+}
+
+//_____________________________________________________________________________
+
 int16_t Settings_ReadOffsetGyro(void)
 {
   int16_t output = 0;
 
   FileSystem_Read(FileOffsetGyro, &output, sizeof(int16_t));
+
+  return output;
+}
+
+//_____________________________________________________________________________
+
+int16_t Settings_ReadVolume(void)
+{
+  int16_t output = 0;
+
+  FileSystem_Read(FileVolume, &output, sizeof(int16_t));
+
+  return output;
+}
+
+//_____________________________________________________________________________
+
+int16_t Settings_ReadWhiteRed(void)
+{
+  int16_t output = 0;
+
+  FileSystem_Read(FileWhiteRed, &output, sizeof(int16_t));
+
+  return output;
+}
+
+//_____________________________________________________________________________
+
+int16_t Settings_ReadWhiteGreen(void)
+{
+  int16_t output = 0;
+
+  FileSystem_Read(FileWhiteGreen, &output, sizeof(int16_t));
+
+  return output;
+}
+
+//_____________________________________________________________________________
+
+int16_t Settings_ReadWhiteBlue(void)
+{
+  int16_t output = 0;
+
+  FileSystem_Read(FileWhiteBlue, &output, sizeof(int16_t));
+
+  return output;
+}
+
+//_____________________________________________________________________________
+
+int16_t Settings_ReadBlackRed(void)
+{
+  int16_t output = 0;
+
+  FileSystem_Read(FileBlackRed, &output, sizeof(int16_t));
+
+  return output;
+}
+
+//_____________________________________________________________________________
+
+int16_t Settings_ReadBlackGreen(void)
+{
+  int16_t output = 0;
+
+  FileSystem_Read(FileBlackGreen, &output, sizeof(int16_t));
+
+  return output;
+}
+
+//_____________________________________________________________________________
+
+int16_t Settings_ReadBlackBlue(void)
+{
+  int16_t output = 0;
+
+  FileSystem_Read(FileBlackBlue, &output, sizeof(int16_t));
 
   return output;
 }
@@ -232,6 +508,55 @@ void Settings_EraseOffsetGyro(void)
 
 //_____________________________________________________________________________
 
+void Settings_EraseVolume(void)
+{
+  FileSystem_EraseFile(FileVolume);
+}
+
+//_____________________________________________________________________________
+
+void Settings_EraseWhiteRed(void)
+{
+  FileSystem_EraseFile(FileWhiteRed);
+}
+
+//_____________________________________________________________________________
+
+void Settings_EraseWhiteGreen(void)
+{
+  FileSystem_EraseFile(FileWhiteGreen);
+}
+
+//_____________________________________________________________________________
+
+void Settings_EraseWhiteBlue(void)
+{
+  FileSystem_EraseFile(FileWhiteBlue);
+}
+
+//_____________________________________________________________________________
+
+void Settings_EraseBlackRed(void)
+{
+  FileSystem_EraseFile(FileBlackRed);
+}
+
+//_____________________________________________________________________________
+
+void Settings_EraseBlackGreen(void)
+{
+  FileSystem_EraseFile(FileBlackGreen);
+}
+
+//_____________________________________________________________________________
+
+void Settings_EraseBlackBlue(void)
+{
+  FileSystem_EraseFile(FileBlackBlue);
+}
+
+//_____________________________________________________________________________
+
 static void WriteFactoryLeftMotor(void)
 {
   int16_t input = DEFAULT_LEFT_MOTOR;
@@ -255,4 +580,67 @@ static void WriteFactoryOffsetGyro(void)
   int16_t input = DEFAULT_OFFSET_GYRO;
 
   FileSystem_Write(FileOffsetGyro, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryVolume(void)
+{
+  int16_t input = DEFAULT_VOLUME;
+
+  FileSystem_Write(FileVolume, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryWhiteRed(void)
+{
+  int16_t input = DEFAULT_WHITE_RED;
+
+  FileSystem_Write(FileWhiteRed, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryWhiteGreen(void)
+{
+  int16_t input = DEFAULT_WHITE_GREEN;
+
+  FileSystem_Write(FileWhiteGreen, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryWhiteBlue(void)
+{
+  int16_t input = DEFAULT_WHITE_BLUE;
+
+  FileSystem_Write(FileWhiteBlue, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryBlackRed(void)
+{
+  int16_t input = DEFAULT_BLACK_RED;
+
+  FileSystem_Write(FileBlackRed, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryBlackGreen(void)
+{
+  int16_t input = DEFAULT_BLACK_GREEN;
+
+  FileSystem_Write(FileBlackGreen, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryBlackBlue(void)
+{
+  int16_t input = DEFAULT_BLACK_BLUE;
+
+  FileSystem_Write(FileBlackBlue, &input, sizeof(int16_t));
 }

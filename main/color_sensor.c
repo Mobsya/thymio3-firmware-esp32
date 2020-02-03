@@ -25,6 +25,7 @@
 #include "aseba_esp32.h"
 #include "bh1745nuc.h"
 #include "leds.h"
+#include "settings.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -36,7 +37,9 @@
 #define MIN3(a,b,c)   MIN((a), MIN((b), (c)))
 #define MAX3(a,b,c)   MAX((a), MAX((b), (c)))
 
-#define HUE_DEGREE     1
+#define HUE_DEGREE         1
+
+#define MAX_HSV_COLOR    255
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -65,10 +68,10 @@ static T_HSV Hsv;
 
 static T_Color Color = E_Color_Unknown;
 
-static uint16_t White[4] = {790, 1330, 1080, 220};
-static uint16_t Black[4] = {460, 940, 690, 150};
-static uint16_t Range[4] = {0, 0, 0, 0};
-static uint16_t MaxColor[4] = {255, 255, 255, 255};
+static T_RawColor White;
+static T_RawColor Black;
+static T_RawColor Range;
+static T_RawColor MaxColor;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -99,9 +102,29 @@ void ColorSensor_Init(void)
   BH1745NUC_Init();
   Leds_SetSingleBrightness(E_Led_White_Sensor, MAX_BRIGHTNESS);
 
-  Range[0] = White[0] - Black[0];
-  Range[1] = White[1] - Black[1];
-  Range[2] = White[2] - Black[2];
+  White.Red   = Settings_ReadWhiteRed();
+  White.Green = Settings_ReadWhiteGreen();
+  White.Blue  = Settings_ReadWhiteBlue();
+  White.Clear = 220;
+
+  ESP_LOGI(Tag, "White values: %d, %d, %d", White.Red, White.Green, White.Blue);
+
+  Black.Red   = Settings_ReadBlackRed();
+  Black.Green = Settings_ReadBlackGreen();
+  Black.Blue  = Settings_ReadBlackBlue();
+  Black.Clear = 150;
+
+  ESP_LOGI(Tag, "Black values: %d, %d, %d", Black.Red, Black.Green, Black.Blue);
+
+  Range.Red   = (White.Red - Black.Red);
+  Range.Green = (White.Green - Black.Green);
+  Range.Blue  = (White.Blue - Black.Blue);
+  Range.Clear = (White.Clear - Black.Clear);
+
+  MaxColor.Red   = MAX_HSV_COLOR;
+  MaxColor.Green = MAX_HSV_COLOR;
+  MaxColor.Blue  = MAX_HSV_COLOR;
+  MaxColor.Clear = MAX_HSV_COLOR;
 
   ESP_LOGI(Tag, "Color sensor is initialized");
 }
@@ -130,6 +153,59 @@ T_Color ColorSensor_GetColor(void)
 
 //_____________________________________________________________________________
 
+void ColorSensor_Calibrate(uint8_t choice)
+{
+  static bool isWhiteCalibrationDone = false;
+  static bool isBlackCalibrationDone = false;
+
+  if (choice == 0)
+  {
+	White.Red   = RawColor.Red;
+	White.Green = RawColor.Green;
+	White.Blue  = RawColor.Blue;
+
+    ESP_LOGE(Tag, "White calibration done: %d, %d, %d", White.Red, White.Green, White.Blue);
+
+	isWhiteCalibrationDone = true;
+  }
+  else if (choice == 1)
+  {
+    Black.Red   = RawColor.Red;
+    Black.Green = RawColor.Green;
+    Black.Blue  = RawColor.Blue;
+
+    ESP_LOGE(Tag, "Black calibration done: %d, %d, %d", Black.Red, Black.Green, Black.Blue);
+
+    isBlackCalibrationDone = true;
+  }
+  else
+  {
+    // Do nothing
+  }
+
+  if (isWhiteCalibrationDone && isBlackCalibrationDone)
+  {
+    Range.Red   = (White.Red - Black.Red);
+    Range.Green = (White.Green - Black.Green);
+    Range.Blue  = (White.Blue - Black.Blue);
+
+    Settings_WriteWhiteRed(White.Red);
+    Settings_WriteWhiteGreen(White.Green);
+    Settings_WriteWhiteBlue(White.Blue);
+
+    Settings_WriteBlackRed(Black.Red);
+    Settings_WriteBlackGreen(Black.Green);
+    Settings_WriteBlackBlue(Black.Blue);
+
+    isWhiteCalibrationDone = false;
+    isBlackCalibrationDone = false;
+
+    ESP_LOGE(Tag, "Color calibration done");
+  }
+}
+
+//_____________________________________________________________________________
+
 T_Error ColorSensor_CheckManufacturerId(void)
 {
   T_Error err = E_Error_None;
@@ -148,17 +224,18 @@ T_Error ColorSensor_CheckManufacturerId(void)
 
 static void ConvertToHSV(void)
 {
-  int16_t red   = RawColor.Red - Black[0];
-  int16_t green = RawColor.Green - Black[1];
-  int16_t blue  = RawColor.Blue - Black[2];
+  int16_t red   = (RawColor.Red - Black.Red);
+  int16_t green = (RawColor.Green - Black.Green);
+  int16_t blue  = (RawColor.Blue - Black.Blue);
 
   uint16_t min;
   uint16_t max;
   uint16_t delta;
 
-  red   = (red * MaxColor[0]) / Range[0];
-  green = (green * MaxColor[1]) / Range[1];
-  blue  = (blue * MaxColor[2]) / Range[2];
+  // TODO Check division by 0
+  red   = (red * MaxColor.Red) / Range.Red;
+  green = (green * MaxColor.Green) / Range.Green;
+  blue  = (blue * MaxColor.Blue) / Range.Blue;
 
   min = MIN3(red, green, blue);
   max = MAX3(red, green, blue);

@@ -74,6 +74,12 @@ extern void ColorSensor_ReadColor(void);
 //! \return    Color
 extern T_Color ColorSensor_GetColor(void);
 
+//! \brief     Calibrate the colors
+//! \pre       First initialize the color sensor
+//! \param     choice - 0 = white, 1 = black
+//! \return    None
+extern void ColorSensor_Calibrate(uint8_t choice);
+
 //! \brief     Check the color sensor
 //! \pre       First initialize the color sensor
 //! \param     None

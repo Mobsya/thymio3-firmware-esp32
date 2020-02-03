@@ -192,6 +192,8 @@ void FileSystem_Read(const char* filename, void* output, int16_t size)
     // Read file contents till end of file
     while (fread(output, size, 1, file))
     {}
+
+    fclose(file);
   }
   else
   {

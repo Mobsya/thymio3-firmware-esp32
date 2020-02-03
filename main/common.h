@@ -63,6 +63,13 @@ extern uint8_t Common_GetBodyColorPulse(void);
 //! \return    None
 extern void Common_SetTargetSpeed(int16_t left, int16_t right);
 
+//! \brief     Increment/Decrement the target speed
+//! \pre       None
+//! \param     left - Left target speed
+//! \param     right - Right target speed
+//! \return    None
+extern void Common_IncrementTargetSpeed(int16_t left, int16_t right);
+
 //! \brief     Limit the speed applied
 //! \pre       None
 //! \param     min - Minimum speed allowed

@@ -94,6 +94,13 @@ void Sensors_Init(void)
   Settings_CreateLeftMotorFile();
   Settings_CreateRightMotorFile();
   Settings_CreateOffsetGyroFile();
+  Settings_CreateVolumeFile();
+  Settings_CreateWhiteRedFile();
+  Settings_CreateWhiteGreenFile();
+  Settings_CreateWhiteBlueFile();
+  Settings_CreateBlackRedFile();
+  Settings_CreateBlackGreenFile();
+  Settings_CreateBlackBlueFile();
 
   Buttons_Init();
 

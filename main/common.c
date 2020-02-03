@@ -92,6 +92,14 @@ void Common_SetTargetSpeed(int16_t left, int16_t right)
 
 //_____________________________________________________________________________
 
+void Common_IncrementTargetSpeed(int16_t left, int16_t right)
+{
+  vmVariables.target[0] += left;
+  vmVariables.target[1] += right;
+}
+
+//_____________________________________________________________________________
+
 void Common_LimitSpeed(int16_t min, int16_t max)
 {
   if (vmVariables.target[0] < min)

@@ -167,7 +167,6 @@ static void RunCommTask(void* arg)
     if (rx[0] == STM32_ID)
     {
       STM32_SetStatus(rx[1]);
-      //Settings_SetSettings(rx, SETTINGS_POSITION);
       STM32_SetBatteryVoltage(rx[2]);
       STM32_SetBatteryMotorVoltages(rx, BATTERY_MOTOR_VOLTAGES_POSITION);
       STM32_SetInducedVoltages(rx, INDUCED_VOLTAGES_POSITION);
