@@ -33,6 +33,7 @@
 #include "codec.h"
 #include "comm.h"
 #include "fifo.h"
+#include "file_server.h"
 #include "file_system.h"
 #include "gpio.h"
 #include "leds.h"
@@ -118,11 +119,14 @@ int app_main(void)
   //Bluetooth_Init();
   //BLE_Init();
 
-  Codec_SetVolume(80);
+  //Codec_SetVolume(100);
   //Codec_PlayMP3FileFromFlash(E_SystemSound_Startup);
 
   while (!WIFI_IsConnected())
   {}
+
+  // TODO Move to Behavior when entering into settings
+  ESP_ERROR_CHECK(FileServer_Start("/spiffs"));
 
   //Codec_SetVolume(80);
   //Codec_PlayMP3File(2);
