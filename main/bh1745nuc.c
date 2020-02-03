@@ -339,7 +339,7 @@ static void UpdateModeControl3(void)
 {
   uint8_t data = DEFAULT_MODE_CONTROL3_VAL;
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, MODE_CONTROL3_REG_ADDRESS, &data, 1u);
+  I2C_WriteToAddress(SLAVE_ADDRESS, MODE_CONTROL3_REG_ADDRESS, &data, 1u);
 }
 
 //_____________________________________________________________________________
