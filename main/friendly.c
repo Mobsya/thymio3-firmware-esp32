@@ -156,7 +156,7 @@ void Friendly_Run(void)
 
   when(max > DETECT)
   {
-    Codec_PlayMP3FileFromFlash(E_SystemSound_Detection);
+    Codec_PlayMP3FileFromFlash(E_SoundIndex_Detection);
   }
 
   Common_HandleTableEdgeDetection(0u, brightness, 0u);

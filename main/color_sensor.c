@@ -24,6 +24,7 @@
 
 #include "aseba_esp32.h"
 #include "bh1745nuc.h"
+#include "codec.h"
 #include "leds.h"
 #include "settings.h"
 
@@ -88,6 +89,8 @@ static void ConvertToHSV(void);
 //! \param     hsv - HSV color
 //! \return    None
 static void UpdateColor(T_HSV hsv);
+
+static void PlayAlarmSound(uint8_t type);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -189,18 +192,25 @@ void ColorSensor_Calibrate(uint8_t choice)
     Range.Green = (White.Green - Black.Green);
     Range.Blue  = (White.Blue - Black.Blue);
 
-    Settings_WriteWhiteRed(White.Red);
-    Settings_WriteWhiteGreen(White.Green);
-    Settings_WriteWhiteBlue(White.Blue);
+    if ((Range.Red != 0u) && (Range.Green != 0u) && (Range.Blue != 0u))
+    {
+      Settings_WriteWhiteRed(White.Red);
+      Settings_WriteWhiteGreen(White.Green);
+      Settings_WriteWhiteBlue(White.Blue);
 
-    Settings_WriteBlackRed(Black.Red);
-    Settings_WriteBlackGreen(Black.Green);
-    Settings_WriteBlackBlue(Black.Blue);
+      Settings_WriteBlackRed(Black.Red);
+      Settings_WriteBlackGreen(Black.Green);
+      Settings_WriteBlackBlue(Black.Blue);
+
+      ESP_LOGI(Tag, "Color calibration is OK");
+    }
+    else
+    {
+      ESP_LOGE(Tag, "Color calibration is bad");
+    }
 
     isWhiteCalibrationDone = false;
     isBlackCalibrationDone = false;
-
-    ESP_LOGE(Tag, "Color calibration done");
   }
 }
 
@@ -224,6 +234,8 @@ T_Error ColorSensor_CheckManufacturerId(void)
 
 static void ConvertToHSV(void)
 {
+  static bool alarm = false;
+
   int16_t red   = (RawColor.Red - Black.Red);
   int16_t green = (RawColor.Green - Black.Green);
   int16_t blue  = (RawColor.Blue - Black.Blue);
@@ -232,60 +244,77 @@ static void ConvertToHSV(void)
   uint16_t max;
   uint16_t delta;
 
-  // TODO Check division by 0
-  red   = (red * MaxColor.Red) / Range.Red;
-  green = (green * MaxColor.Green) / Range.Green;
-  blue  = (blue * MaxColor.Blue) / Range.Blue;
-
-  min = MIN3(red, green, blue);
-  max = MAX3(red, green, blue);
-  delta = max - min;
-
-  if (delta == 0)
+  // Check division by 0
+  if ((Range.Red != 0u) && (Range.Green != 0u) && (Range.Blue != 0u))
   {
-    // Achromatic case (i.e. grayscale)
-    Hsv.Hue = -1;  // Undefined
-    Hsv.Saturation = 0;
-  }
-  else
-  {
-    int h;
+    alarm = false;
 
-    if (red == max)
-    {
-      h = ((green - blue) * 60 * HUE_DEGREE) / delta;
-    }
-    else if (green == max)
-    {
-      h = (((blue - red) * 60 * HUE_DEGREE) / delta) + (120 * HUE_DEGREE);
-    }
-    else  // blue == max
-    {
-      h = (((red - green) * 60 * HUE_DEGREE) / delta) + (240 * HUE_DEGREE);
-    }
+    red   = (red * MaxColor.Red) / Range.Red;
+    green = (green * MaxColor.Green) / Range.Green;
+    blue  = (blue * MaxColor.Blue) / Range.Blue;
 
-    if (h < 0)
-    {
-      h += 360 * HUE_DEGREE;
-    }
+    min = MIN3(red, green, blue);
+    max = MAX3(red, green, blue);
+    delta = max - min;
 
-    Hsv.Hue = h;
-
-    if (max != 0)
+    if (delta == 0)
     {
-      Hsv.Saturation = (128 * delta) / max;
+      // Achromatic case (i.e. grayscale)
+      Hsv.Hue = -1;  // Undefined
+      Hsv.Saturation = 0;
     }
     else
     {
-      Hsv.Saturation = 0;
+      int h;
+
+      if (red == max)
+      {
+        h = ((green - blue) * 60 * HUE_DEGREE) / delta;
+      }
+      else if (green == max)
+      {
+        h = (((blue - red) * 60 * HUE_DEGREE) / delta) + (120 * HUE_DEGREE);
+      }
+      else  // blue == max
+      {
+        h = (((red - green) * 60 * HUE_DEGREE) / delta) + (240 * HUE_DEGREE);
+      }
+
+      if (h < 0)
+      {
+        h += 360 * HUE_DEGREE;
+      }
+
+      Hsv.Hue = h;
+
+      if (max != 0)
+      {
+        Hsv.Saturation = (128 * delta) / max;
+      }
+      else
+      {
+        Hsv.Saturation = 0;
+      }
     }
+
+    Hsv.Value = max;
+
+    vmVariables.color_hsv[0] = Hsv.Hue;
+    vmVariables.color_hsv[1] = Hsv.Saturation;
+    vmVariables.color_hsv[2] = Hsv.Value;
+  }
+  else
+  {
+    // TODO Warn the user in case of division by 0
+    alarm = true;
   }
 
-  Hsv.Value = max;
-
-  vmVariables.color_hsv[0] = Hsv.Hue;
-  vmVariables.color_hsv[1] = Hsv.Saturation;
-  vmVariables.color_hsv[2] = Hsv.Value;
+  if(alarm)
+  {
+    //ESP_LOGE(Tag, "SOUND ALARM");
+    //Codec_PlayMP3FileFromFlash(E_SystemSound_Alarm);
+	PlayAlarmSound(0);
+  }
 
   //ESP_LOGI(Tag, "H: %d, S: %d, V: %d", Hsv.Hue, Hsv.Saturation, Hsv.Value);
 }
@@ -349,5 +378,37 @@ static void UpdateColor(T_HSV hsv)
   else
   {
     Color = E_Color_Unknown;
+  }
+}
+
+//_____________________________________________________________________________
+
+static void PlayAlarmSound(uint8_t type)
+{
+  static bool playSound = true;
+
+  if (playSound)
+  {
+    Codec_PlayMP3FileFromFlash(E_SoundIndex_Alarm);
+  }
+
+  if (type == 0)//E_AlarmType_Once)
+  {
+    playSound = false;
+  }
+  else if (type == 1)//E_AlarmType_Continuous)
+  {
+    if (Codec_IsSoundFinished(E_SoundIndex_Alarm))
+    {
+      playSound = true;
+    }
+    else
+    {
+      playSound = false;
+    }
+  }
+  else
+  {
+    // Do nothing
   }
 }

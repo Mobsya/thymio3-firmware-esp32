@@ -215,6 +215,12 @@ typedef struct WAVAudioRecorder
   bool Recording;
 } T_WAVRecorder;
 
+typedef enum
+{
+  E_SoundStatus_Started,
+  E_SoundStatus_Finished
+} T_SoundStatus;
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -258,37 +264,8 @@ extern const uint8_t a3_44100_mp3_end[]         asm("_binary_a3_44100_mp3_end");
 extern const uint8_t b3_44100_mp3_start[]       asm("_binary_b3_44100_mp3_start");
 extern const uint8_t b3_44100_mp3_end[]         asm("_binary_b3_44100_mp3_end");
 
-#if 0
-extern const uint8_t bell_mp3_start[]       asm("_binary_bell_mp3_start");
-extern const uint8_t bell_mp3_end[]         asm("_binary_bell_mp3_end");
-
-extern const uint8_t blopblop_mp3_start[]      asm("_binary_blopblop_mp3_start");
-extern const uint8_t blopblop_mp3_end[]        asm("_binary_blopblop_mp3_end");
-
-extern const uint8_t tuck_mp3_start[]      asm("_binary_tuck_mp3_start");
-extern const uint8_t tuck_mp3_end[]        asm("_binary_tuck_mp3_end");
-
-extern const uint8_t blop2_mp3_start[]      asm("_binary_blop2_mp3_start");
-extern const uint8_t blop2_mp3_end[]        asm("_binary_blop2_mp3_end");
-
-extern const uint8_t tick_8000_mp3_start[]      asm("_binary_tick_8000_mp3_start");
-extern const uint8_t tick_8000_mp3_end[]        asm("_binary_tick_8000_mp3_end");
-
-extern const uint8_t tick_11025_mp3_start[]      asm("_binary_tick_11025_mp3_start");
-extern const uint8_t tick_11025_mp3_end[]        asm("_binary_tick_11025_mp3_end");
-
-extern const uint8_t tick_16000_mp3_start[]      asm("_binary_tick_16000_mp3_start");
-extern const uint8_t tick_16000_mp3_end[]        asm("_binary_tick_16000_mp3_end");
-
-extern const uint8_t tick_22050_mp3_start[]      asm("_binary_tick_22050_mp3_start");
-extern const uint8_t tick_22050_mp3_end[]        asm("_binary_tick_22050_mp3_end");
-
-extern const uint8_t tick_32000_mp3_start[]      asm("_binary_tick_32000_mp3_start");
-extern const uint8_t tick_32000_mp3_end[]        asm("_binary_tick_32000_mp3_end");
-
-extern const uint8_t tick_48000_mp3_start[]      asm("_binary_tick_48000_mp3_start");
-extern const uint8_t tick_48000_mp3_end[]        asm("_binary_tick_48000_mp3_end");
-#endif
+extern const uint8_t alarm_44100_mp3_start[]    asm("_binary_alarm_44100_mp3_start");
+extern const uint8_t alarm_44100_mp3_end[]      asm("_binary_alarm_44100_mp3_end");
 
 //-----------------------------------------------------------------------------
 // Private Data
@@ -328,7 +305,7 @@ static T_WAVRecorderHandle        WAVRecorder        = NULL;
 
 static int16_t buffer[4 * BUF_SIZE];
 
-static bool ClosingSoundIsFinished = false;
+static T_SoundStatus SoundStatus[13];
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -434,7 +411,7 @@ static void GenerateMasterClock(uint32_t clock_Hz);
 //! \pre       First initialize the codec
 //! \param     index - Index of the selected file
 //! \return    None
-static void SelectFile(T_SystemSound index);
+static void SelectFile(T_SoundIndex index);
 
 //! \brief     Run the MP3 player (from the flash) task
 //! \pre       First initialize the codec
@@ -650,7 +627,7 @@ void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz)
 
 //_____________________________________________________________________________
 
-void Codec_PlayMP3FileFromFlash(T_SystemSound index)
+void Codec_PlayMP3FileFromFlash(T_SoundIndex index)
 {
   FileIndexFromFlash = index;
 
@@ -773,9 +750,9 @@ void Codec_SetVolume(int16_t volume)
 
 //_____________________________________________________________________________
 
-bool Codec_IsClosingSoundFinished(void)
+bool Codec_IsSoundFinished(T_SoundIndex index)
 {
-  return ClosingSoundIsFinished;
+  return (SoundStatus[index] == E_SoundStatus_Finished);
 }
 
 //_____________________________________________________________________________
@@ -1235,126 +1212,79 @@ static void GenerateMasterClock(uint32_t clock_Hz)
 
 //_____________________________________________________________________________
 
-static void SelectFile(T_SystemSound index)
+static void SelectFile(T_SoundIndex index)
 {
   switch (index)
   {
-    case 0:
+    case E_SoundIndex_Startup:
       File.Start = magic_44100_mp3_start;
       File.End   = magic_44100_mp3_end;
       break;
 
-    case 1:
+    case E_SoundIndex_Tick:
       File.Start = tick_44100_mp3_start;
       File.End   = tick_44100_mp3_end;
       break;
 
-    case 2:
+    case E_SoundIndex_Blop:
       File.Start = blop_44100_mp3_start;
       File.End   = blop_44100_mp3_end;
       break;
 
-    case 3:
+    case E_SoundIndex_Fall:
       File.Start = fall_44100_mp3_start;
       File.End   = fall_44100_mp3_end;
       break;
 
-    case 4:
+    case E_SoundIndex_Detection:
       File.Start = detect_44100_mp3_start;
       File.End   = detect_44100_mp3_end;
       break;
 
-    case 5:
+    case E_SoundIndex_Bye:
       File.Start = bye_44100_mp3_start;
       File.End   = bye_44100_mp3_end;
       break;
 
-    case 6:
+    case E_SoundIndex_C3:
       File.Start = c3_44100_mp3_start;
       File.End   = c3_44100_mp3_end;
       break;
 
-    case 7:
+    case E_SoundIndex_D3:
       File.Start = d3_44100_mp3_start;
       File.End   = d3_44100_mp3_end;
       break;
 
-    case 8:
+    case E_SoundIndex_E3:
       File.Start = e3_44100_mp3_start;
       File.End   = e3_44100_mp3_end;
       break;
 
-    case 9:
+    case E_SoundIndex_F3:
       File.Start = f3_44100_mp3_start;
       File.End   = f3_44100_mp3_end;
       break;
 
-    case 10:
+    case E_SoundIndex_G3:
       File.Start = g3_44100_mp3_start;
       File.End   = g3_44100_mp3_end;
       break;
 
-    case 11:
+    case E_SoundIndex_A3:
       File.Start = a3_44100_mp3_start;
       File.End   = a3_44100_mp3_end;
       break;
 
-    case 12:
+    case E_SoundIndex_B3:
       File.Start = b3_44100_mp3_start;
       File.End   = b3_44100_mp3_end;
       break;
 
-#if 0
-    case 6:
-      File.Start = bell_mp3_start;
-      File.End   = bell_mp3_end;
+    case E_SoundIndex_Alarm:
+      File.Start = alarm_44100_mp3_start;
+      File.End   = alarm_44100_mp3_end;
       break;
-
-    case 7:
-      File.Start = blopblop_mp3_start;
-      File.End   = blopblop_mp3_end;
-      break;
-
-    case 8:
-      File.Start = tuck_mp3_start;
-      File.End   = tuck_mp3_end;
-      break;
-
-    case 9:
-      File.Start = blop2_mp3_start;
-      File.End   = blop2_mp3_end;
-      break;
-
-    case 6:
-      File.Start = tick_8000_mp3_start;
-      File.End   = tick_8000_mp3_end;
-      break;
-
-    case 7:
-      File.Start = tick_11025_mp3_start;
-      File.End   = tick_11025_mp3_end;
-      break;
-
-    case 8:
-      File.Start = tick_16000_mp3_start;
-      File.End   = tick_16000_mp3_end;
-      break;
-
-    case 9:
-      File.Start = tick_22050_mp3_start;
-      File.End   = tick_22050_mp3_end;
-      break;
-
-    case 10:
-      File.Start = tick_32000_mp3_start;
-      File.End   = tick_32000_mp3_end;
-      break;
-
-    case 11:
-      File.Start = tick_48000_mp3_start;
-      File.End   = tick_48000_mp3_end;
-      break;
-#endif
 
     default:
       ESP_LOGW(Tag, "Not supported index = %d", index);
@@ -1362,6 +1292,7 @@ static void SelectFile(T_SystemSound index)
   }
 
   File.Position = 0;
+  SoundStatus[index] = E_SoundStatus_Started;
 }
 
 //_____________________________________________________________________________
@@ -1429,14 +1360,7 @@ static void RunMP3PlayerFromFlashTask(void* arg)
       ap->Playing = false;
       //audio_pipeline_terminate(ap->Pipeline);
 
-      if (FileIndexFromFlash == 5)
-      {
-        ClosingSoundIsFinished = true;
-      }
-      else
-      {
-        ClosingSoundIsFinished = false;
-      }
+      SoundStatus[FileIndexFromFlash] = E_SoundStatus_Finished;
     }
   }
 

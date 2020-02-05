@@ -29,23 +29,23 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
-enum
+typedef enum
 {
-  E_SystemSound_Startup,
-  E_SystemSound_Tick,
-  E_SystemSound_Blop,
-  E_SystemSound_Fall,
-  E_SystemSound_Detection,
-  E_SystemSound_Bye,
-  E_SystemSound_C3,
-  E_SystemSound_D3,
-  E_SystemSound_E3,
-  E_SystemSound_F3,
-  E_SystemSound_G3,
-  E_SystemSound_A3,
-  E_SystemSound_B3
-};
-typedef int16_t T_SystemSound;  //!< Accelerometer tap recognition
+  E_SoundIndex_Startup,
+  E_SoundIndex_Tick,
+  E_SoundIndex_Blop,
+  E_SoundIndex_Fall,
+  E_SoundIndex_Detection,
+  E_SoundIndex_Bye,
+  E_SoundIndex_C3,
+  E_SoundIndex_D3,
+  E_SoundIndex_E3,
+  E_SoundIndex_F3,
+  E_SoundIndex_G3,
+  E_SoundIndex_A3,
+  E_SoundIndex_B3,
+  E_SoundIndex_Alarm
+} T_SoundIndex;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -71,7 +71,7 @@ extern void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz);
 //! \pre       First initialize the codec
 //! \param     None
 //! \return    None
-extern void Codec_PlayMP3FileFromFlash(T_SystemSound index);
+extern void Codec_PlayMP3FileFromFlash(T_SoundIndex index);
 
 //! \brief     Play a MP3 file from the file system
 //! \pre       First initialize the codec
@@ -138,10 +138,10 @@ extern void Codec_RecordWAVFile(int16_t index, uint16_t duration_s);
 //! \return    None
 extern void Codec_SetVolume(int16_t volume);
 
-//! \brief     Is the closing sound finished?
+//! \brief     Is the sound finished?
 //! \pre       First initialize the codec
 //! \param     None
-//! \return    True if the closing sound is finished, false otherwise
-extern bool Codec_IsClosingSoundFinished(void);
+//! \return    True if the sound is finished, false otherwise
+extern bool Codec_IsSoundFinished(T_SoundIndex index);
 
 #endif // CODEC_H_

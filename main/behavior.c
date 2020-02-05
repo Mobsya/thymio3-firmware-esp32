@@ -240,11 +240,11 @@ void Behavior_PlaySoundButtons(uint8_t button)
       (button == E_Button_Forward)  ||
       (button == E_Button_Right))
   {
-    Codec_PlayMP3FileFromFlash(E_SystemSound_Tick);
+    Codec_PlayMP3FileFromFlash(E_SoundIndex_Tick);
   }
   else if (button == E_Button_Center)
   {
-    Codec_PlayMP3FileFromFlash(E_SystemSound_Blop);
+    Codec_PlayMP3FileFromFlash(E_SoundIndex_Blop);
   }
   else
   {
@@ -542,27 +542,27 @@ static void PlaySoundButtons(void)
 
   when(buttonState[E_Button_Backward] != 0u)
   {
-    Codec_PlayMP3FileFromFlash(E_SystemSound_Tick);
+    Codec_PlayMP3FileFromFlash(E_SoundIndex_Tick);
   }
 
   when(buttonState[E_Button_Left] != 0u)
   {
-    Codec_PlayMP3FileFromFlash(E_SystemSound_Tick);
+    Codec_PlayMP3FileFromFlash(E_SoundIndex_Tick);
   }
 
   when(buttonState[E_Button_Center] != 0u)
   {
-    Codec_PlayMP3FileFromFlash(E_SystemSound_Blop);
+    Codec_PlayMP3FileFromFlash(E_SoundIndex_Blop);
   }
 
   when(buttonState[E_Button_Forward] != 0u)
   {
-    Codec_PlayMP3FileFromFlash(E_SystemSound_Tick);
+    Codec_PlayMP3FileFromFlash(E_SoundIndex_Tick);
   }
 
   when(buttonState[E_Button_Right] != 0u)
   {
-    Codec_PlayMP3FileFromFlash(E_SystemSound_Tick);
+    Codec_PlayMP3FileFromFlash(E_SoundIndex_Tick);
   }
 }
 

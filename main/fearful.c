@@ -143,10 +143,9 @@ void Fearful_Run(void)
   }
 #endif
 
-//#if 0
   // Moving part.
-  if ((vmVariables.prox[1] > ACC_OBSTACLE) && (vmVariables.prox[2] > ACC_OBSTACLE)
-      && (vmVariables.prox[3] > ACC_OBSTACLE) &&
+  if ((vmVariables.prox[1] > ACC_OBSTACLE) && (vmVariables.prox[2] > ACC_OBSTACLE) &&
+      (vmVariables.prox[3] > ACC_OBSTACLE) &&
       ((vmVariables.prox[5] > ACC_OBSTACLE) || (vmVariables.prox[6] > ACC_OBSTACLE))) //&&
     //(vmVariables.ground_delta[0] > 130 && vmVariables.ground_delta[1] > 130))
   {
@@ -175,25 +174,13 @@ void Fearful_Run(void)
   {
     Common_SetTargetSpeed(0, 0);
   }
-#if 0
-  if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
-  {
-    Common_SetTargetSpeed(0, 0);
-    leds_set_br(32, 0, 0);
-    leds_set_bl(32, 0, 0);
-  }
-  else
-  {
-    leds_set_br(0, 0, 0);
-    leds_set_bl(0, 0, 0);
-  }
-#endif
+
   Common_HandleTableEdgeDetection(brightness, 0u, 0u);
 
   Common_LimitSpeed(MIN_LIMIT_SPEED, MAX_LIMIT_SPEED);
-//#endif
+
   when(play)
   {
-    Codec_PlayMP3FileFromFlash(E_SystemSound_Fall);
+    Codec_PlayMP3FileFromFlash(E_SoundIndex_Fall);
   }
 }
