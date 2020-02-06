@@ -225,23 +225,23 @@ typedef enum
 // Exported Global Data
 //-----------------------------------------------------------------------------
 
-extern const uint8_t magic_44100_mp3_start[]     asm("_binary_magic_44100_mp3_start");
-extern const uint8_t magic_44100_mp3_end[]       asm("_binary_magic_44100_mp3_end");
+extern const uint8_t magic_44100_mp3_start[]    asm("_binary_magic_44100_mp3_start");
+extern const uint8_t magic_44100_mp3_end[]      asm("_binary_magic_44100_mp3_end");
 
-extern const uint8_t tick_44100_mp3_start[]      asm("_binary_tick_44100_mp3_start");
-extern const uint8_t tick_44100_mp3_end[]        asm("_binary_tick_44100_mp3_end");
+extern const uint8_t tick_44100_mp3_start[]     asm("_binary_tick_44100_mp3_start");
+extern const uint8_t tick_44100_mp3_end[]       asm("_binary_tick_44100_mp3_end");
 
-extern const uint8_t blop_44100_mp3_start[]      asm("_binary_blop_44100_mp3_start");
-extern const uint8_t blop_44100_mp3_end[]        asm("_binary_blop_44100_mp3_end");
+extern const uint8_t blop_44100_mp3_start[]     asm("_binary_blop_44100_mp3_start");
+extern const uint8_t blop_44100_mp3_end[]       asm("_binary_blop_44100_mp3_end");
 
-extern const uint8_t fall_44100_mp3_start[]      asm("_binary_fall_44100_mp3_start");
-extern const uint8_t fall_44100_mp3_end[]        asm("_binary_fall_44100_mp3_end");
+extern const uint8_t fall_44100_mp3_start[]     asm("_binary_fall_44100_mp3_start");
+extern const uint8_t fall_44100_mp3_end[]       asm("_binary_fall_44100_mp3_end");
 
-extern const uint8_t detect_44100_mp3_start[]    asm("_binary_detect_44100_mp3_start");
-extern const uint8_t detect_44100_mp3_end[]      asm("_binary_detect_44100_mp3_end");
+extern const uint8_t detect_44100_mp3_start[]   asm("_binary_detect_44100_mp3_start");
+extern const uint8_t detect_44100_mp3_end[]     asm("_binary_detect_44100_mp3_end");
 
-extern const uint8_t bye_44100_mp3_start[]       asm("_binary_bye_44100_mp3_start");
-extern const uint8_t bye_44100_mp3_end[]         asm("_binary_bye_44100_mp3_end");
+extern const uint8_t bye_44100_mp3_start[]      asm("_binary_bye_44100_mp3_start");
+extern const uint8_t bye_44100_mp3_end[]        asm("_binary_bye_44100_mp3_end");
 
 extern const uint8_t c3_44100_mp3_start[]       asm("_binary_c3_44100_mp3_start");
 extern const uint8_t c3_44100_mp3_end[]         asm("_binary_c3_44100_mp3_end");
@@ -266,6 +266,12 @@ extern const uint8_t b3_44100_mp3_end[]         asm("_binary_b3_44100_mp3_end");
 
 extern const uint8_t alarm_44100_mp3_start[]    asm("_binary_alarm_44100_mp3_start");
 extern const uint8_t alarm_44100_mp3_end[]      asm("_binary_alarm_44100_mp3_end");
+
+extern const uint8_t good_44100_mp3_start[]     asm("_binary_good_44100_mp3_start");
+extern const uint8_t good_44100_mp3_end[]       asm("_binary_good_44100_mp3_end");
+
+extern const uint8_t bad_44100_mp3_start[]      asm("_binary_bad_44100_mp3_start");
+extern const uint8_t bad_44100_mp3_end[]        asm("_binary_bad_44100_mp3_end");
 
 //-----------------------------------------------------------------------------
 // Private Data
@@ -305,7 +311,7 @@ static T_WAVRecorderHandle        WAVRecorder        = NULL;
 
 static int16_t buffer[4 * BUF_SIZE];
 
-static T_SoundStatus SoundStatus[13];
+static T_SoundStatus SoundStatus[15];
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -1284,6 +1290,16 @@ static void SelectFile(T_SoundIndex index)
     case E_SoundIndex_Alarm:
       File.Start = alarm_44100_mp3_start;
       File.End   = alarm_44100_mp3_end;
+      break;
+
+    case E_SoundIndex_Good:
+      File.Start = good_44100_mp3_start;
+      File.End   = good_44100_mp3_end;
+      break;
+
+    case E_SoundIndex_Bad:
+      File.Start = bad_44100_mp3_start;
+      File.End   = bad_44100_mp3_end;
       break;
 
     default:

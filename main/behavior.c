@@ -254,6 +254,38 @@ void Behavior_PlaySoundButtons(uint8_t button)
 
 //_____________________________________________________________________________
 
+void Behavior_PlaySoundAlarm(uint8_t type)
+{
+  static bool playSound = true;
+
+  if (playSound)
+  {
+    Codec_PlayMP3FileFromFlash(E_SoundIndex_Alarm);
+  }
+
+  if (type == 0u)//E_AlarmType_Once)
+  {
+    playSound = false;
+  }
+  else if (type == 1u)//E_AlarmType_Continuous)
+  {
+    if (Codec_IsSoundFinished(E_SoundIndex_Alarm))
+    {
+      playSound = true;
+    }
+    else
+    {
+      playSound = false;
+    }
+  }
+  else
+  {
+    // Do nothing
+  }
+}
+
+//_____________________________________________________________________________
+
 static void RunBehaviorTask(void* arg)
 {
   ESP_LOGI(Tag, "Start Behavior Task");
@@ -579,7 +611,7 @@ static void UpdateSettings(void)
 
   if (start)
   {
-    RunLegoLedAnimation();
+    //RunLegoLedAnimation();
 
     // Enter into a setting
     when(buttonState[E_Button_Center])
@@ -969,6 +1001,7 @@ static void CalibrateColor(void)
 {
   uint8_t* buttonState = Buttons_GetStatus();
   uint8_t brightness = Common_GetBodyColorPulse();
+  uint8_t calibrationStatus = false;
 
   if (!IsColorCalibrationInProgress)
   {
@@ -978,7 +1011,27 @@ static void CalibrateColor(void)
 
   when(buttonState[E_Button_Forward] != 0u)
   {
-    ColorSensor_Calibrate(0);  // White calibration
+    if (ColorSensor_Calibrate(0, &calibrationStatus))  // White calibration
+    {
+      Codec_PlayMP3FileFromFlash(E_SoundIndex_Good);
+    }
+    else
+    {
+      Codec_PlayMP3FileFromFlash(E_SoundIndex_Bad);
+    }
+
+    if (calibrationStatus == 2)
+    {
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
+    }
+    else if (calibrationStatus == 1)
+    {
+      Leds_SetLegoFrontBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u);
+    }
+    else
+    {
+      Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
+    }
 
     IsColorCalibrationInProgress = true;
 
@@ -990,7 +1043,27 @@ static void CalibrateColor(void)
 
   when(buttonState[E_Button_Backward] != 0u)
   {
-    ColorSensor_Calibrate(1);  // Black calibration
+    if (ColorSensor_Calibrate(1, &calibrationStatus))  // Black calibration
+    {
+      Codec_PlayMP3FileFromFlash(E_SoundIndex_Good);
+    }
+    else
+    {
+      Codec_PlayMP3FileFromFlash(E_SoundIndex_Bad);
+    }
+
+    if (calibrationStatus == 2)
+    {
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
+    }
+    else if (calibrationStatus == 1)
+    {
+      Leds_SetLegoFrontBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u);
+    }
+    else
+    {
+      Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
+    }
 
     IsColorCalibrationInProgress = true;
 

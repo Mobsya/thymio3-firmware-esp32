@@ -44,7 +44,9 @@ typedef enum
   E_SoundIndex_G3,
   E_SoundIndex_A3,
   E_SoundIndex_B3,
-  E_SoundIndex_Alarm
+  E_SoundIndex_Alarm,
+  E_SoundIndex_Good,
+  E_SoundIndex_Bad
 } T_SoundIndex;
 
 //-----------------------------------------------------------------------------

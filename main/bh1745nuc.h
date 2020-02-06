@@ -35,10 +35,10 @@
 
 typedef struct
 {
-  uint16_t Red;
-  uint16_t Green;
-  uint16_t Blue;
-  uint16_t Clear;
+  int16_t Red;
+  int16_t Green;
+  int16_t Blue;
+  int16_t Clear;
 } T_RawColor;  //!< RGBC raw color
 
 //-----------------------------------------------------------------------------

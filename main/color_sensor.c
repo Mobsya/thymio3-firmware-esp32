@@ -23,8 +23,8 @@
 #include "color_sensor.h"
 
 #include "aseba_esp32.h"
+#include "behavior.h"
 #include "bh1745nuc.h"
-#include "codec.h"
 #include "leds.h"
 #include "settings.h"
 
@@ -32,15 +32,11 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define MIN(a,b)      ((a) < (b) ? (a) : (b))
-#define MAX(a,b)      ((a) > (b) ? (a) : (b))
+#define HUE_DEGREE               1
 
-#define MIN3(a,b,c)   MIN((a), MIN((b), (c)))
-#define MAX3(a,b,c)   MAX((a), MAX((b), (c)))
+#define MAX_HSV_COLOR          255
 
-#define HUE_DEGREE         1
-
-#define MAX_HSV_COLOR    255
+#define MIN_WHITE_BLACK_GAP    200
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -90,11 +86,33 @@ static void ConvertToHSV(void);
 //! \return    None
 static void UpdateColor(T_HSV hsv);
 
-static void PlayAlarmSound(uint8_t type);
-
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
+
+//! \brief     Get the lowest value
+//! \pre       None
+//! \param     None
+//! \return    Smallest value
+static inline int16_t Min(int16_t a, int16_t b);
+
+//! \brief     Get the highest value
+//! \pre       None
+//! \param     None
+//! \return    Highest value
+static inline int16_t Max(int16_t a, int16_t b);
+
+//! \brief     Get the lowest value
+//! \pre       None
+//! \param     None
+//! \return    Smallest value
+static inline int16_t Min3(int16_t a, int16_t b, int16_t c);
+
+//! \brief     Get the highest value
+//! \pre       None
+//! \param     None
+//! \return    Highest value
+static inline int16_t Max3(int16_t a, int16_t b, int16_t c);
 
 //-----------------------------------------------------------------------------
 // Functions Implementation
@@ -156,43 +174,102 @@ T_Color ColorSensor_GetColor(void)
 
 //_____________________________________________________________________________
 
-void ColorSensor_Calibrate(uint8_t choice)
+bool ColorSensor_Calibrate(uint8_t choice, uint8_t* calibrationStatus)
 {
   static bool isWhiteCalibrationDone = false;
   static bool isBlackCalibrationDone = false;
+  bool status = false;
 
-  if (choice == 0)
+  if (choice == 0)  // White calibration
   {
-    White.Red   = RawColor.Red;
-    White.Green = RawColor.Green;
-    White.Blue  = RawColor.Blue;
+	// If black calibration is not already performed, white calibration
+	// is accepted unconditionally. Otherwise, the black calibration
+	// is taken into account to accept or reject the white calibration.
+    if (!isBlackCalibrationDone)
+    {
+      White.Red   = RawColor.Red;
+      White.Green = RawColor.Green;
+      White.Blue  = RawColor.Blue;
 
-    ESP_LOGE(Tag, "White calibration done: %d, %d, %d", White.Red, White.Green, White.Blue);
+      status = true;
+      isWhiteCalibrationDone = true;
+    }
+    else
+    {
+      if ((RawColor.Red > (Black.Red + MIN_WHITE_BLACK_GAP)) && (RawColor.Green > (Black.Green + MIN_WHITE_BLACK_GAP)) &&
+    	  (RawColor.Blue > (Black.Blue + MIN_WHITE_BLACK_GAP)))
+      {
+        White.Red   = RawColor.Red;
+        White.Green = RawColor.Green;
+        White.Blue  = RawColor.Blue;
 
-    isWhiteCalibrationDone = true;
+        status = true;
+        isWhiteCalibrationDone = true;
+      }
+      else
+      {
+        isWhiteCalibrationDone = false;
+      }
+    }
+
+    ESP_LOGE(Tag, "White calibration: %d, %d, %d", RawColor.Red, RawColor.Green, RawColor.Blue);
   }
-  else if (choice == 1)
+  else if (choice == 1)  // Black calibration
   {
-    Black.Red   = RawColor.Red;
-    Black.Green = RawColor.Green;
-    Black.Blue  = RawColor.Blue;
+    // If white calibration is not already performed, black calibration
+    // is accepted unconditionally. Otherwise, the white calibration
+	// is taken into account to accept or reject the black calibration.
+    if (!isWhiteCalibrationDone)
+	{
+	  Black.Red   = RawColor.Red;
+	  Black.Green = RawColor.Green;
+	  Black.Blue  = RawColor.Blue;
 
-    ESP_LOGE(Tag, "Black calibration done: %d, %d, %d", Black.Red, Black.Green, Black.Blue);
+	  status = true;
+	  isBlackCalibrationDone = true;
+	}
+	else
+	{
+	  if ((RawColor.Red < (White.Red - MIN_WHITE_BLACK_GAP)) && (RawColor.Green < (White.Green - MIN_WHITE_BLACK_GAP)) &&
+          (RawColor.Blue < (White.Blue - MIN_WHITE_BLACK_GAP)))
+	  {
+	    Black.Red   = RawColor.Red;
+		Black.Green = RawColor.Green;
+		Black.Blue  = RawColor.Blue;
 
-    isBlackCalibrationDone = true;
+	    status = true;
+	    isBlackCalibrationDone = true;
+	  }
+	  else
+	  {
+	    isBlackCalibrationDone = false;
+	  }
+	}
+
+	ESP_LOGE(Tag, "Black calibration: %d, %d, %d", RawColor.Red, RawColor.Green, RawColor.Blue);
   }
   else
   {
     // Do nothing
   }
 
-  if (isWhiteCalibrationDone && isBlackCalibrationDone)
+  //ESP_LOGE(Tag, "%d, %d, %d", isWhiteCalibrationDone, isBlackCalibrationDone, status);
+
+  if (!status)
+  {
+    *calibrationStatus = 0u;
+  }
+  else if ((isWhiteCalibrationDone && !isBlackCalibrationDone) || (!isWhiteCalibrationDone && isBlackCalibrationDone))
+  {
+    *calibrationStatus = 1u;
+  }
+  else if (isWhiteCalibrationDone && isBlackCalibrationDone)
   {
     Range.Red   = (White.Red - Black.Red);
     Range.Green = (White.Green - Black.Green);
     Range.Blue  = (White.Blue - Black.Blue);
 
-    if ((Range.Red != 0u) && (Range.Green != 0u) && (Range.Blue != 0u))
+    if ((Range.Red != 0) && (Range.Green != 0) && (Range.Blue != 0))
     {
       Settings_WriteWhiteRed(White.Red);
       Settings_WriteWhiteGreen(White.Green);
@@ -202,7 +279,8 @@ void ColorSensor_Calibrate(uint8_t choice)
       Settings_WriteBlackGreen(Black.Green);
       Settings_WriteBlackBlue(Black.Blue);
 
-      ESP_LOGI(Tag, "Color calibration is OK");
+      *calibrationStatus = 2u;
+      ESP_LOGE(Tag, "Color calibration is OK");
     }
     else
     {
@@ -212,6 +290,12 @@ void ColorSensor_Calibrate(uint8_t choice)
     isWhiteCalibrationDone = false;
     isBlackCalibrationDone = false;
   }
+  else
+  {
+	// Do nothing
+  }
+
+  return status;
 }
 
 //_____________________________________________________________________________
@@ -234,27 +318,23 @@ T_Error ColorSensor_CheckManufacturerId(void)
 
 static void ConvertToHSV(void)
 {
-  static bool alarm = false;
-
   int16_t red   = (RawColor.Red - Black.Red);
   int16_t green = (RawColor.Green - Black.Green);
   int16_t blue  = (RawColor.Blue - Black.Blue);
 
-  uint16_t min;
-  uint16_t max;
-  uint16_t delta;
+  int16_t min;
+  int16_t max;
+  int16_t delta;
 
   // Check division by 0
-  if ((Range.Red != 0u) && (Range.Green != 0u) && (Range.Blue != 0u))
+  if ((Range.Red != 0) && (Range.Green != 0) && (Range.Blue != 0))
   {
-    alarm = false;
-
     red   = (red * MaxColor.Red) / Range.Red;
     green = (green * MaxColor.Green) / Range.Green;
     blue  = (blue * MaxColor.Blue) / Range.Blue;
 
-    min = MIN3(red, green, blue);
-    max = MAX3(red, green, blue);
+    min = Min3(red, green, blue);
+    max = Max3(red, green, blue);
     delta = max - min;
 
     if (delta == 0)
@@ -265,7 +345,7 @@ static void ConvertToHSV(void)
     }
     else
     {
-      int h;
+      int16_t h;
 
       if (red == max)
       {
@@ -305,15 +385,7 @@ static void ConvertToHSV(void)
   }
   else
   {
-    // TODO Warn the user in case of division by 0
-    alarm = true;
-  }
-
-  if(alarm)
-  {
-    //ESP_LOGE(Tag, "SOUND ALARM");
-    //Codec_PlayMP3FileFromFlash(E_SystemSound_Alarm);
-	PlayAlarmSound(0);
+    Behavior_PlaySoundAlarm(0u);
   }
 
   //ESP_LOGI(Tag, "H: %d, S: %d, V: %d", Hsv.Hue, Hsv.Saturation, Hsv.Value);
@@ -383,32 +455,28 @@ static void UpdateColor(T_HSV hsv)
 
 //_____________________________________________________________________________
 
-static void PlayAlarmSound(uint8_t type)
+static inline int16_t Min(int16_t a, int16_t b)
 {
-  static bool playSound = true;
+  return ((a < b) ? a : b);
+}
 
-  if (playSound)
-  {
-    Codec_PlayMP3FileFromFlash(E_SoundIndex_Alarm);
-  }
+//_____________________________________________________________________________
 
-  if (type == 0)//E_AlarmType_Once)
-  {
-    playSound = false;
-  }
-  else if (type == 1)//E_AlarmType_Continuous)
-  {
-    if (Codec_IsSoundFinished(E_SoundIndex_Alarm))
-    {
-      playSound = true;
-    }
-    else
-    {
-      playSound = false;
-    }
-  }
-  else
-  {
-    // Do nothing
-  }
+static inline int16_t Max(int16_t a, int16_t b)
+{
+  return ((a > b) ? a : b);
+}
+
+//_____________________________________________________________________________
+
+static inline int16_t Min3(int16_t a, int16_t b, int16_t c)
+{
+  return Min(a, Min(b, c));
+}
+
+//_____________________________________________________________________________
+
+static inline int16_t Max3(int16_t a, int16_t b, int16_t c)
+{
+  return Max(a, Max(b, c));
 }

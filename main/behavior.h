@@ -96,4 +96,6 @@ extern uint16_t Behavior_GetStatus(void);
 
 extern void Behavior_PlaySoundButtons(uint8_t button);
 
+extern void Behavior_PlaySoundAlarm(uint8_t type);
+
 #endif // BEHAVIOR_H_
