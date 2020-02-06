@@ -293,8 +293,6 @@ const AsebaVMDescription vmDescription =
 
     {3, "acc"},
 
-    {1, "temperature"},
-
     {1, "rc5.address"},
     {1, "rc5.command"},
 
@@ -356,7 +354,6 @@ static const AsebaLocalEventDescription localEvents[] =
 //  { "gyro", "Gyroscope values updated"},
   { "mic", "Fired when microphone intensity is above threshold"},
   //{ "sound.finished", "Fired when the playback of a user initiated sound is finished"},
-  //{ "temperature", "Temperature value updated"},
   { "rc5", "RC5 message received"},
 //  { "motor", "Motor timer"},
 //  { "color", "Color values updated"},

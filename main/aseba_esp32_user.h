@@ -74,7 +74,6 @@ struct _vmVariables
   int16_t uind[2];
   int16_t pwm[2];
   int16_t acc[3];
-  int16_t temperature;
   int16_t rc5_address;
   int16_t rc5_command;
   int16_t sound_level;
