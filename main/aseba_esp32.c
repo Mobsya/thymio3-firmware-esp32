@@ -296,9 +296,9 @@ const AsebaVMDescription vmDescription =
     {1, "rc5.address"},
     {1, "rc5.command"},
 
-    {1, "mic.intensity"},
-    {1, "mic.threshold"},
-    {1, "mic._mean"},
+    {1, "micro.intensity"},
+    {1, "micro.threshold"},
+    {1, "micro._mean"},
 
     {2, "timer.period"},
 
@@ -318,6 +318,7 @@ const AsebaVMDescription vmDescription =
     {4, "ip"},
     {2, "settings"},
     {1, "vbat"},
+    {1, "sound_volume"},
     {8, "leds_circle"},
     {8, "leds_lego_front"},
     {8, "leds_lego_back"},

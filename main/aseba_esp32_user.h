@@ -76,9 +76,9 @@ struct _vmVariables
   int16_t acc[3];
   int16_t rc5_address;
   int16_t rc5_command;
-  int16_t sound_level;
-  int16_t sound_tresh;
-  int16_t sound_mean;
+  int16_t micro_intensity;
+  int16_t micro_tresh;
+  int16_t micro_mean;
   int16_t timers[2];
   int16_t acc_tap;
   /*****
@@ -92,6 +92,7 @@ struct _vmVariables
   int16_t ip[4];
   int16_t settings[2];
   int16_t vbat;
+  int16_t sound_volume;
   int16_t leds_circle[8];
   int16_t leds_lego_front[8];
   int16_t leds_lego_back[8];

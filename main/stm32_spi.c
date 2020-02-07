@@ -267,30 +267,30 @@ int16_t STM32_GetRightMotorTarget(void)
 
 //_____________________________________________________________________________
 
-void STM32_SetSoundLevel(int16_t level)
+void STM32_SetMicrophoneIntensity(int16_t intensity)
 {
-  vmVariables.sound_level = level;
+  vmVariables.micro_intensity = intensity;
 }
 
 //_____________________________________________________________________________
 
-void STM32_SetSoundThreshold(int16_t threshold)
+void STM32_SetMicrophoneThreshold(int16_t threshold)
 {
-  vmVariables.sound_tresh = threshold;
+  vmVariables.micro_tresh = threshold;
 }
 
 //_____________________________________________________________________________
 
-int16_t STM32_GetSoundThreshold(void)
+int16_t STM32_GetMicrophoneThreshold(void)
 {
-  return vmVariables.sound_tresh;
+  return vmVariables.micro_tresh;
 }
 
 //_____________________________________________________________________________
 
-void STM32_SetSoundMean(int16_t mean)
+void STM32_SetMicrophoneMean(int16_t mean)
 {
-  vmVariables.sound_mean = mean;
+  vmVariables.micro_mean = mean;
 }
 
 //_____________________________________________________________________________

@@ -158,7 +158,7 @@ static void RunCommTask(void* arg)
     tx[3] = Settings_GetRightMotorSettings();
     tx[4] = STM32_GetLeftMotorTarget();
     tx[5] = STM32_GetRightMotorTarget();
-    tx[6] = STM32_GetSoundThreshold();
+    tx[6] = STM32_GetMicrophoneThreshold();
     tx[7] = Behavior_GetStatus();
     tx[8] = STM32_GetProxIRTxData();
 
@@ -172,9 +172,9 @@ static void RunCommTask(void* arg)
       STM32_SetInducedVoltages(rx, INDUCED_VOLTAGES_POSITION);
       STM32_SetMotorCurrents(rx, MOTOR_CURRENTS_POSITION);
       STM32_SetPwmDutyCycles(rx, PWM_DUTY_CYCLES_POSITION);
-      STM32_SetSoundLevel(rx[11]);
-      //STM32_SetSoundThreshold(rx[13]);
-      STM32_SetSoundMean(rx[12]);
+      STM32_SetMicrophoneIntensity(rx[11]);
+      //STM32_SetMicrophoneThreshold(rx[13]);
+      STM32_SetMicrophoneMean(rx[12]);
       STM32_SetProxIRValues(rx, PROX_IR_POSITION);
       STM32_SetGroundIRValues(rx, GROUND_IR_POSITION);
       STM32_SetProxIRData(rx, PROX_IR_DATA_POSITION);

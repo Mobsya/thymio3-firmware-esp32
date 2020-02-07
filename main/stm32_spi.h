@@ -110,13 +110,13 @@ extern int16_t STM32_GetLeftMotorTarget(void);
 
 extern int16_t STM32_GetRightMotorTarget(void);
 
-extern void STM32_SetSoundLevel(int16_t level);
+extern void STM32_SetMicrophoneIntensity(int16_t intensity);
 
-extern void STM32_SetSoundThreshold(int16_t threshold);
+extern void STM32_SetMicrophoneThreshold(int16_t threshold);
 
-extern int16_t STM32_GetSoundThreshold(void);
+extern int16_t STM32_GetMicrophoneThreshold(void);
 
-extern void STM32_SetSoundMean(int16_t mean);
+extern void STM32_SetMicrophoneMean(int16_t mean);
 
 extern void STM32_SetProxIRValues(int16_t* buffer, uint16_t position);
 
