@@ -23,6 +23,7 @@
 #include "settings.h"
 
 #include "aseba_esp32.h"
+#include "codec.h"
 #include "file_system.h"
 
 //-----------------------------------------------------------------------------
@@ -39,6 +40,7 @@
 #define DEFAULT_BLACK_RED       710
 #define DEFAULT_BLACK_GREEN     940
 #define DEFAULT_BLACK_BLUE      700
+#define DEFAULT_RC5_ADDRESS       0
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -66,6 +68,7 @@ static const char* FileWhiteBlue  = "/spiffs/white_blue.dat";
 static const char* FileBlackRed   = "/spiffs/black_red.dat";
 static const char* FileBlackGreen = "/spiffs/black_green.dat";
 static const char* FileBlackBlue  = "/spiffs/black_blue.dat";
+static const char* FileRC5Address = "/spiffs/rc5_address.dat";
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -131,6 +134,12 @@ static void WriteFactoryBlackGreen(void);
 //! \return    None
 static void WriteFactoryBlackBlue(void);
 
+//! \brief     Write the default remote address to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+static void WriteFactoryRC5Address(void);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -152,9 +161,33 @@ void Settings_Init(void)
 
 void Settings_UpdateSettings(void)
 {
+  static int16_t oldSoundVolume = 0;
+
   Settings.LeftMotor  = vmVariables.settings[0];
   Settings.RightMotor = vmVariables.settings[1];
   //Settings.OffsetGyro = vmVariables.settings[2];
+
+  if (vmVariables.sound_volume != oldSoundVolume)
+  {
+    if (vmVariables.sound_volume > 100)
+    {
+      Settings.Volume = 100;
+    }
+    else if (vmVariables.sound_volume < 40)
+    {
+      Settings.Volume = 40;
+    }
+    else
+    {
+      Settings.Volume = vmVariables.sound_volume;
+    }
+
+    ESP_LOGE(Tag, "Volume: %d", Settings.Volume);
+
+    Codec_SetVolume(Settings.Volume);
+
+    oldSoundVolume = vmVariables.sound_volume;
+  }
 }
 
 //_____________________________________________________________________________
@@ -287,6 +320,16 @@ void Settings_CreateBlackBlueFile(void)
 
 //_____________________________________________________________________________
 
+void Settings_CreateRC5AddressFile(void)
+{
+  if (FileSystem_CreateFile(FileRC5Address))
+  {
+    WriteFactoryRC5Address();
+  }
+}
+
+//_____________________________________________________________________________
+
 void Settings_WriteLeftMotor(int16_t leftMotor)
 {
   int16_t input = leftMotor;
@@ -373,6 +416,15 @@ void Settings_WriteBlackBlue(int16_t blackBlue)
   int16_t input = blackBlue;
 
   FileSystem_Write(FileBlackBlue, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+void Settings_WriteRC5Address(int16_t address)
+{
+  int16_t input = address;
+
+  FileSystem_Write(FileRC5Address, &input, sizeof(int16_t));
 }
 
 //_____________________________________________________________________________
@@ -487,72 +539,91 @@ int16_t Settings_ReadBlackBlue(void)
 
 //_____________________________________________________________________________
 
-void Settings_EraseLeftMotor(void)
+int16_t Settings_ReadRC5Address(void)
+{
+  int16_t output = 0;
+
+  FileSystem_Read(FileRC5Address, &output, sizeof(int16_t));
+
+  return output;
+}
+
+
+//_____________________________________________________________________________
+
+void Settings_EraseLeftMotorFile(void)
 {
   FileSystem_EraseFile(FileLeftMotor);
 }
 
 //_____________________________________________________________________________
 
-void Settings_EraseRightMotor(void)
+void Settings_EraseRightMotorFile(void)
 {
   FileSystem_EraseFile(FileRightMotor);
 }
 
 //_____________________________________________________________________________
 
-void Settings_EraseOffsetGyro(void)
+void Settings_EraseOffsetGyroFile(void)
 {
   FileSystem_EraseFile(FileOffsetGyro);
 }
 
 //_____________________________________________________________________________
 
-void Settings_EraseVolume(void)
+void Settings_EraseVolumeFile(void)
 {
   FileSystem_EraseFile(FileVolume);
 }
 
 //_____________________________________________________________________________
 
-void Settings_EraseWhiteRed(void)
+void Settings_EraseWhiteRedFile(void)
 {
   FileSystem_EraseFile(FileWhiteRed);
 }
 
 //_____________________________________________________________________________
 
-void Settings_EraseWhiteGreen(void)
+void Settings_EraseWhiteGreenFile(void)
 {
   FileSystem_EraseFile(FileWhiteGreen);
 }
 
 //_____________________________________________________________________________
 
-void Settings_EraseWhiteBlue(void)
+void Settings_EraseWhiteBlueFile(void)
 {
   FileSystem_EraseFile(FileWhiteBlue);
 }
 
 //_____________________________________________________________________________
 
-void Settings_EraseBlackRed(void)
+void Settings_EraseBlackRedFile(void)
 {
   FileSystem_EraseFile(FileBlackRed);
 }
 
 //_____________________________________________________________________________
 
-void Settings_EraseBlackGreen(void)
+void Settings_EraseBlackGreenFile(void)
 {
   FileSystem_EraseFile(FileBlackGreen);
 }
 
 //_____________________________________________________________________________
 
-void Settings_EraseBlackBlue(void)
+void Settings_EraseBlackBlueFile(void)
 {
   FileSystem_EraseFile(FileBlackBlue);
+}
+
+//_____________________________________________________________________________
+
+void Settings_EraseRC5AddressFile(void)
+{
+  FileSystem_EraseFile(FileRC5Address);
 }
 
 //_____________________________________________________________________________
@@ -643,4 +714,13 @@ static void WriteFactoryBlackBlue(void)
   int16_t input = DEFAULT_BLACK_BLUE;
 
   FileSystem_Write(FileBlackBlue, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryRC5Address(void)
+{
+  int16_t input = DEFAULT_RC5_ADDRESS;
+
+  FileSystem_Write(FileRC5Address, &input, sizeof(int16_t));
 }

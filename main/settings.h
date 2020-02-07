@@ -145,6 +145,12 @@ extern void Settings_CreateBlackGreenFile(void);
 //! \return    None
 extern void Settings_CreateBlackBlueFile(void);
 
+//! \brief     Create the remote address settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_CreateRC5AddressFile(void);
+
 //! \brief     Write the left motor correction to the settings file
 //! \pre       First initialize the settings
 //! \param     leftMotor - Left motor correction
@@ -205,65 +211,77 @@ extern void Settings_WriteBlackGreen(int16_t blackGreen);
 //! \return    None
 extern void Settings_WriteBlackBlue(int16_t blackBlue);
 
-//! \brief     Write the left motor correction from the settings file
+//! \brief     Write the remote address to the settings file
+//! \pre       First initialize the settings
+//! \param     address - Remote address
+//! \return    None
+extern void Settings_WriteRC5Address(int16_t address);
+
+//! \brief     Read the left motor correction from the settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
 extern int16_t Settings_ReadLeftMotor(void);
 
-//! \brief     Write the right motor correction from the settings file
+//! \brief     Read the right motor correction from the settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
 extern int16_t Settings_ReadRightMotor(void);
 
-//! \brief     Write the offset gyroscope value from the settings file
+//! \brief     Read the offset gyroscope value from the settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
 extern int16_t Settings_ReadOffsetGyro(void);
 
-//! \brief     Write the volume value from the settings file
+//! \brief     Read the volume value from the settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
 extern int16_t Settings_ReadVolume(void);
 
-//! \brief     Write the white (red) value from the settings file
+//! \brief     Read the white (red) value from the settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
 extern int16_t Settings_ReadWhiteRed(void);
 
-//! \brief     Write the white (green) value from the settings file
+//! \brief     Read the white (green) value from the settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
 extern int16_t Settings_ReadWhiteGreen(void);
 
-//! \brief     Write the white (blue) value from the settings file
+//! \brief     Read the white (blue) value from the settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
 extern int16_t Settings_ReadWhiteBlue(void);
 
-//! \brief     Write the black (red) value from the settings file
+//! \brief     Read the black (red) value from the settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
 extern int16_t Settings_ReadBlackRed(void);
 
-//! \brief     Write the black (green) value from the settings file
+//! \brief     Read the black (green) value from the settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
 extern int16_t Settings_ReadBlackGreen(void);
 
-//! \brief     Write the black (blue) value from the settings file
+//! \brief     Read the black (blue) value from the settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
 extern int16_t Settings_ReadBlackBlue(void);
+
+//! \brief     Read the remote address from the settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern int16_t Settings_ReadRC5Address(void);
 
 //! \brief     Erase the left motor settings file
 //! \pre       First initialize the settings
@@ -324,5 +342,11 @@ extern void Settings_EraseBlackGreenFile(void);
 //! \param     None
 //! \return    None
 extern void Settings_EraseBlackBlueFile(void);
+
+//! \brief     Erase the remote address settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_EraseRC5AddressFile(void);
 
 #endif // SETTINGS_H_

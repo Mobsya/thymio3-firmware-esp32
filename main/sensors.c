@@ -101,6 +101,7 @@ void Sensors_Init(void)
   Settings_CreateBlackRedFile();
   Settings_CreateBlackGreenFile();
   Settings_CreateBlackBlueFile();
+  Settings_CreateRC5AddressFile();
 
   Buttons_Init();
 

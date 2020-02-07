@@ -29,6 +29,7 @@
 
 #include "aseba_esp32.h"
 #include "board.h"
+#include "settings.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -96,6 +97,8 @@ static bool FrameIsValid = false;
 
 static int16_t OldToggle = -1;
 
+static int16_t ValidAddress = 0;
+
 static T_Message Message;
 
 //-----------------------------------------------------------------------------
@@ -138,6 +141,8 @@ void RC5_Init(void)
   TaskIsStarted = false;
 
   ESP_ERROR_CHECK(rmt_driver_install(rmt_rx.channel, 1000, 0));
+
+  ValidAddress = Settings_ReadRC5Address();
 
   Message.Address = -1;
   Message.Command = -1;
@@ -229,7 +234,7 @@ static void RunRXTask(void* arg)
       {
         if (ParseItems(item))
         {
-          if (Message.Address == VALID_ADDRESS)
+          if (Message.Address == ValidAddress)
           {
             FrameIsValid = true;
 
