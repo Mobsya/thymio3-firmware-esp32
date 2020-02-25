@@ -1135,6 +1135,18 @@ static audio_element_handle_t CreateI2SStream(int sampleRates, int bits, int cha
   i2s_cfg.i2s_config.sample_rate = sampleRates;
 
   audio_element_handle_t i2s_stream = i2s_stream_init(&i2s_cfg);
+
+  // Define the pins of the I2S
+  i2s_pin_config_t i2s_pin_cfg =
+  {
+    .bck_io_num   = I2S_SCLK_PIN,
+    .ws_io_num    = I2S_LCLK_PIN,
+    .data_out_num = I2S_DSIN_PIN,
+    .data_in_num  = I2S_DOUT_PIN
+  };
+
+  i2s_set_pin(i2s_cfg.i2s_port, &i2s_pin_cfg);
+
   mem_assert(i2s_stream);
 
   audio_element_info_t i2s_info = {0};
