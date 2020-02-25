@@ -51,9 +51,9 @@
 #define SPI_CS_PIN                    5u  //!< SPI_CS pin is GPIO5
 
 // Capacitive buttons pins
-#define BUTTON_BACKWARD_PIN           4u  //!< BUTTON_BACKWARD pin is GPIO4 (Channel T0)
-#define BUTTON_LEFT_PIN               2u  //!< BUTTON_LEFT pin is GPIO2 (Channel T2)
-#define BUTTON_CENTER_PIN            12u  //!< BUTTON_CENTER pin is GPIO12 (Channel T5)
+#define BUTTON_BACKWARD_PIN           2u  //!< BUTTON_BACKWARD pin is GPIO2 (Channel T2)
+#define BUTTON_LEFT_PIN              12u  //!< BUTTON_LEFT pin is GPIO12 (Channel T5)
+#define BUTTON_CENTER_PIN             4u  //!< BUTTON_CENTER pin is GPIO4 (Channel T0)
 #define BUTTON_FORWARD_PIN           27u  //!< BUTTON_FORWARD pin is GPIO27 (Channel T7)
 #define BUTTON_RIGHT_PIN             33u  //!< BUTTON_RIGHT pin is GPIO33 (Channel T8)
 
