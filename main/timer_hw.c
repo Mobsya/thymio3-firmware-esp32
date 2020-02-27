@@ -18,12 +18,6 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/portmacro.h"
-#include "freertos/queue.h"
-#include "freertos/semphr.h"
-
 #include "esp_log.h"
 
 #include "timer_hw.h"
@@ -35,8 +29,10 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define TIMER_DIVIDER 16 //  Hardware timer clock divider
-#define TIMER_SCALE (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
+#define TIMER_DIVIDER 16  //  Hardware timer clock divider
+#define TIMER_SCALE   (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
+
+#define TIMER_INITIAL_VALUE      0x00000000uLL
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -64,7 +60,8 @@ static const char* Tag = "timer_hw";
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, double interval, void (*fn)(void*))
+void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, uint64_t interval,
+                  const TimerHWFunctionPtr callback)
 {
   // Select and initialize basic parameters of the timer
   timer_config_t config;
@@ -78,26 +75,25 @@ void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, double in
 
   if ((timerGroup < TIMER_GROUP_MAX) && (timerIndex < TIMER_MAX))
   {
-    timer_init(timerGroup, timerIndex, &config);
+    ESP_ERROR_CHECK(timer_init(timerGroup, timerIndex, &config));
 
     // Timer's counter will initially start from value below
     // Also, if auto_reload is set, this value will be automatically reload on alarm
-    timer_set_counter_value(timerGroup, timerIndex, 0x00000000ULL);
+    ESP_ERROR_CHECK(timer_set_counter_value(timerGroup, timerIndex, TIMER_INITIAL_VALUE));
 
     // Configure the alarm value and the interrupt on alarm
-    timer_set_alarm_value(timerGroup, timerIndex, interval);
-    timer_enable_intr(timerGroup, timerIndex);
+    ESP_ERROR_CHECK(timer_set_alarm_value(timerGroup, timerIndex, interval));
+    ESP_ERROR_CHECK(timer_enable_intr(timerGroup, timerIndex));
 
+    ESP_ERROR_CHECK(timer_isr_register(timerGroup, timerIndex, callback,
+                                       (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL));
 
-    timer_isr_register(timerGroup, timerIndex, fn,
-                      (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL);
-   
     ESP_LOGI(Tag, "Group %d Timer %d is initialized", timerGroup, timerIndex);
   }
   else
   {
     ESP_LOGE(Tag, "Invalid parameters, Group = %d, Index = %d", timerGroup, timerIndex);
-  }   
+  }
 }
 
 //_____________________________________________________________________________

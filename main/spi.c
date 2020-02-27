@@ -18,11 +18,9 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-//#include <driver/spi_master.h>
-#include <esp_log.h>
+#include <string.h>
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include "esp_log.h"
 
 #include "spi.h"
 #include "board.h"
@@ -33,7 +31,9 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define SPI_CLK_FREQENCY_Hz    10000000//8000000
+#define HSPI_CLK_FREQENCY_Hz    1000000  //8000000
+
+#define VSPI_CLK_FREQENCY_Hz    1000000  //8000000
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -49,8 +49,6 @@
 
 static const char* Tag = "spi";
 
-//static spi_device_handle_t sn74hc595;
-
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -63,9 +61,9 @@ static const char* Tag = "spi";
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-void Spi_Init(void)
+void Spi_InitHSPI(void)
 {
-  spi_bus_config_t bus_config =
+  spi_bus_config_t hspi_config =
   {
     .sclk_io_num   = LED_CLK_PIN,
     .mosi_io_num   = LED_SDI_PIN,
@@ -74,14 +72,32 @@ void Spi_Init(void)
     .quadhd_io_num = -1  // Not used
   };
 
-  ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &bus_config, 1));
+  ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &hspi_config, 1));
 
-  ESP_LOGI(Tag, "SPI is initialized");
+  ESP_LOGI(Tag, "HSPI SPI is initialized");
 }
 
 //_____________________________________________________________________________
 
-void Spi_AddDevice(spi_device_handle_t* device, int csPin)
+void Spi_InitVSPI(void)
+{
+  spi_bus_config_t vspi_config =
+  {
+    .sclk_io_num   = SPI_CLK_PIN,
+    .mosi_io_num   = SPI_MOSI_PIN,
+    .miso_io_num   = SPI_MISO_PIN,
+    .quadwp_io_num = -1, // Not used
+    .quadhd_io_num = -1  // Not used
+  };
+
+  ESP_ERROR_CHECK(spi_bus_initialize(VSPI_HOST, &vspi_config, 2));
+
+  ESP_LOGI(Tag, "VSPI SPI is initialized");
+}
+
+//_____________________________________________________________________________
+
+void Spi_AddDeviceHSPI(spi_device_handle_t* device, int csPin)
 {
   spi_device_interface_config_t dev_config =
   {
@@ -89,10 +105,10 @@ void Spi_AddDevice(spi_device_handle_t* device, int csPin)
     .command_bits     = 0,
     .dummy_bits       = 0,
     .mode             = 0,
-    .duty_cycle_pos   = 0,
+    .duty_cycle_pos   = 0,  // 50%
     .cs_ena_posttrans = 0,
     .cs_ena_pretrans  = 0,
-    .clock_speed_hz   = SPI_CLK_FREQENCY_Hz,
+    .clock_speed_hz   = HSPI_CLK_FREQENCY_Hz,
     .spics_io_num     = csPin,
     .flags            = 0,
     .queue_size       = 1,
@@ -100,19 +116,42 @@ void Spi_AddDevice(spi_device_handle_t* device, int csPin)
     .post_cb          = NULL
   };
 
-  ESP_LOGI(Tag, "... Adding device bus.");
+  ESP_LOGI(Tag, "Add device on HSPI bus");
   ESP_ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &dev_config, device));
 }
 
 //_____________________________________________________________________________
 
-void Spi_Write(spi_device_handle_t device, uint8_t* data, uint16_t size)
-//void Spi_Write(uint8_t* data, uint16_t size)
+void Spi_AddDeviceVSPI(spi_device_handle_t* device, int csPin)
+{
+  spi_device_interface_config_t dev_config =
+  {
+    .address_bits     = 0,
+    .command_bits     = 0,
+    .dummy_bits       = 0,
+    .mode             = 0,
+    .duty_cycle_pos   = 0,  // 50%
+    .cs_ena_posttrans = 0,
+    .cs_ena_pretrans  = 0,
+    .clock_speed_hz   = VSPI_CLK_FREQENCY_Hz,
+    .spics_io_num     = csPin,
+    .flags            = 0,
+    .queue_size       = 3,
+    .pre_cb           = NULL,
+    .post_cb          = NULL
+  };
+
+  ESP_LOGI(Tag, "Add device on VSPI bus");
+  ESP_ERROR_CHECK(spi_bus_add_device(VSPI_HOST, &dev_config, device));
+}
+
+//_____________________________________________________________________________
+
+void Spi_WriteHSPI(spi_device_handle_t device, uint8_t* data, uint16_t size)
 {
   spi_transaction_t trans_desc =
   {
     .flags = 0,
-    //.flags = SPI_TRANS_USE_TXDATA,
     .cmd = 0,
     .addr = 0,
     .length = size * 8,
@@ -121,17 +160,20 @@ void Spi_Write(spi_device_handle_t device, uint8_t* data, uint16_t size)
     .rx_buffer = NULL
   };
 
-  //ESP_LOGI(Tag, "... Transmitting.");
-  //ESP_ERROR_CHECK(spi_device_transmit(device, &trans_desc));
   ESP_ERROR_CHECK(spi_device_queue_trans(device, &trans_desc, portMAX_DELAY));
-  //spi_device_polling_transmit(device, &trans_desc);
-  //spi_device_transmit(device, &trans_desc);
-  //spi_device_queue_trans(device, &trans_desc, portMAX_DELAY);
+}
 
-  //ESP_LOGI(Tag, "... Removing device.");
-  //ESP_ERROR_CHECK(spi_bus_remove_device(device));
+//_____________________________________________________________________________
 
-  //ESP_LOGI(Tag, "... Freeing bus.");
-  //ESP_ERROR_CHECK(spi_bus_free(HSPI_HOST));
-  //vTaskDelete(NULL);
+void Spi_CommunicateVSPI(spi_device_handle_t device, int16_t* txBuffer, int16_t* rxBuffer, uint16_t size)
+{
+  spi_transaction_t transaction;
+
+  memset(&transaction, 0, sizeof(transaction));
+  transaction.length = 16 * size;
+  transaction.flags = 0;
+  transaction.tx_buffer = txBuffer;
+  transaction.rx_buffer = rxBuffer;
+
+  spi_device_transmit(device, &transaction);
 }

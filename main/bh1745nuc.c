@@ -146,35 +146,28 @@ static uint8_t Threshold[THRESHOLD_BYTE_NUM] =
 
 //! \brief     Update the RGBC measurement time
 //! \pre       None
-//! \param     time The measurement time
+//! \param     time - Measurement time
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdateMeasurementTime.svg
 static void UpdateMeasurementTime(T_MeasurementTime time);
 
 //! \brief     Update the ADC gain
 //! \pre       None
-//! \param     gain The selected ADC gain
+//! \param     gain - ADC gain
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdateADCGain.svg
 static void UpdateADCGain(T_ADCGain gain);
 
 //! \brief     Update the persistence
 //! \pre       None
-//! \param     persistence The selected persistence
+//! \param     persistence - Persistence
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdatePersistence.svg
 static void UpdatePersistence(T_Persistence persistence);
 
-//! \brief     Update the interrupt source
-//! \pre       None
-//! \param     source The selected interrupt source
-//! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\UpdateInterruptSource.svg
-static void UpdateInterruptSource(T_InterruptSource source);
-
 //! \brief     Update the threshold
 //! \pre       None
-//! \param     threshold The selected threshold
+//! \param     threshold - Threshold detection
 //! \return    None
 static void UpdateThreshold(uint8_t* threshold);
 
@@ -190,70 +183,12 @@ static void UpdateModeControl3(void);
 //! \return    None
 static void EnableMeasurement(void);
 
-//! \brief     Enable the interrupt pin
-//! \pre       None
-//! \param     None
-//! \return    None
-static void EnableInterruptPin(void);
-
-
 //! \brief     Read the manufacturer ID
 //! \pre       None
-//! \param     None
+//! \param     data - Data read from the manufacturer ID register
 //! \return    None
 //! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\ReadManufacturerId.svg
 static void ReadManufacturerId(uint8_t* data);
-
-#if 0
-//! \brief     Read the red illuminance
-//! \param     None
-//! \return    None
-static void ReadRedIlluminance(void);
-
-//! \brief     Read the green illuminance
-//! \pre       None
-//! \param     None
-//! \return    None
-static void ReadGreenIlluminance(void);
-
-//! \brief     Read the blue illuminance
-//! \pre       None
-//! \param     None
-//! \return    None
-static void ReadBlueIlluminance(void);
-
-//! \brief     Read the clear illuminance
-//! \pre       None
-//! \param     None
-//! \return    None
-static void ReadClearIlluminance(void);
-
-static void ReadSystemControlRegister(uint8_t* data);
-
-static void ReadModeControl1Register(uint8_t* data);
-
-static void ReadModeControl2Register(uint8_t* data);
-
-static void ReadModeControl2Register(uint8_t* data);
-
-static void ReadModeControl3Register(uint8_t* data);
-
-static void ReadRedDataLsbRegister(uint8_t* data);
-
-static void ReadRedDataMsbRegister(uint8_t* data);
-
-static void ReadGreenDataLsbRegister(uint8_t* data);
-
-static void ReadGreenDataMsbRegister(uint8_t* data);
-
-static void ReadBlueDataLsbRegister(uint8_t* data);
-
-static void ReadBlueDataMsbRegister(uint8_t* data);
-
-static void ReadClearDataLsbRegister(uint8_t* data);
-
-static void ReadClearDataMsbRegister(uint8_t* data);
-#endif
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -266,13 +201,9 @@ static void ReadClearDataMsbRegister(uint8_t* data);
 void BH1745NUC_Init(void)
 {
   UpdateMeasurementTime(E_MeasurementTime_160ms);
-  UpdateADCGain(E_ADCGain_1x);
-  UpdatePersistence(E_Persistence_UpdateAfter4);
-  UpdateInterruptSource(E_InterruptSource_Red);
-  UpdateThreshold(Threshold);
+  UpdateADCGain(E_ADCGain_16x);
   UpdateModeControl3();
   EnableMeasurement();
-  EnableInterruptPin();
 
   ESP_LOGI(Tag, "BH1745NUC is initialized");
 }
@@ -327,18 +258,18 @@ void BH1745NUC_ReadRegisters(void)
 
 //_____________________________________________________________________________
 
-void BH1745NUC_ReadIlluminance(T_Illuminance* illuminance)
+void BH1745NUC_ReadColor(T_RawColor* raw)
 {
   uint8_t colors[8u];
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, RED_DATA_LSB_REG_ADDRESS, colors, 8u);
 
-  illuminance->Red   = (uint16_t)((uint16_t)colors[1u] << 8u) | colors[0u];
-  illuminance->Green = (uint16_t)((uint16_t)colors[3u] << 8u) | colors[2u];
-  illuminance->Blue  = (uint16_t)((uint16_t)colors[5u] << 8u) | colors[4u];
-  illuminance->Clear = (uint16_t)((uint16_t)colors[7u] << 8u) | colors[6u];
+  raw->Red   = (uint16_t)((uint16_t)colors[1u] << 8u) | colors[0u];
+  raw->Green = (uint16_t)((uint16_t)colors[3u] << 8u) | colors[2u];
+  raw->Blue  = (uint16_t)((uint16_t)colors[5u] << 8u) | colors[4u];
+  raw->Clear = (uint16_t)((uint16_t)colors[7u] << 8u) | colors[6u];
 
-  //ESP_LOGI(Tag, "Red: %d, Green: %d, Blue: %d, Clear: %d", Illuminance.Red, Illuminance.Green, Illuminance.Blue, Illuminance.Clear);
+  //ESP_LOGI(Tag, "Red: %d, Green: %d, Blue: %d, Clear: %d", raw->Red, raw->Green, raw->Blue, raw->Clear);
 }
 
 //_____________________________________________________________________________
@@ -397,27 +328,6 @@ static void UpdatePersistence(T_Persistence persistence)
 
 //_____________________________________________________________________________
 
-static void UpdateInterruptSource(T_InterruptSource source)
-{
-  uint8_t data = 0x00u;
-
-  if (source <= E_InterruptSource_Clear)
-  {
-    I2C_ReadFromAddress(SLAVE_ADDRESS, INTERRUPT_REG_ADDRESS, &data, 1u);
-
-    data &= INT_SOURCE_BIT_MASK;
-    data |= (source << INT_SOURCE_BIT_POS);
-
-    I2C_WriteToAddress(SLAVE_ADDRESS, INTERRUPT_REG_ADDRESS, &data, 1u);
-  }
-  else
-  {
-    ESP_LOGE(Tag, "Invalid interrupt source: %d", source);
-  }
-}
-
-//_____________________________________________________________________________
-
 static void UpdateThreshold(uint8_t* threshold)
 {
   I2C_WriteToAddress(SLAVE_ADDRESS, TH_LSB_REG_ADDRESS, threshold, THRESHOLD_BYTE_NUM);
@@ -429,7 +339,7 @@ static void UpdateModeControl3(void)
 {
   uint8_t data = DEFAULT_MODE_CONTROL3_VAL;
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, MODE_CONTROL3_REG_ADDRESS, &data, 1u);
+  I2C_WriteToAddress(SLAVE_ADDRESS, MODE_CONTROL3_REG_ADDRESS, &data, 1u);
 }
 
 //_____________________________________________________________________________
@@ -447,151 +357,7 @@ static void EnableMeasurement(void)
 
 //_____________________________________________________________________________
 
-static void EnableInterruptPin(void)
-{
-  uint8_t data = 0x00u;
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, INTERRUPT_REG_ADDRESS, &data, 1u);
-
-  data |= 1u;
-
-  I2C_WriteToAddress(SLAVE_ADDRESS, INTERRUPT_REG_ADDRESS, &data, 1u);
-}
-
-//_____________________________________________________________________________
-
 static void ReadManufacturerId(uint8_t* data)
 {
   I2C_ReadFromAddress(SLAVE_ADDRESS, MANUFACTURER_ID_REG_ADDRESS, data, 1u);
 }
-
-//_____________________________________________________________________________
-#if 0
-static void ReadRedIlluminance(void)
-{
-  uint8_t red[2u];
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, RED_DATA_LSB_REG_ADDRESS, red, 2u);
-
-  Illuminance.Red = (uint16_t)((uint16_t)red[1u] << 8u) | red[0u];
-}
-
-//_____________________________________________________________________________
-
-static void ReadGreenIlluminance(void)
-{
-  uint8_t green[2u];
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, GREEN_DATA_LSB_REG_ADDRESS, green, 2u);
-
-  Illuminance.Green = (uint16_t)((uint16_t)green[1u] << 8u) | green[0u];
-}
-
-//_____________________________________________________________________________
-
-static void ReadBlueIlluminance(void)
-{
-  uint8_t blue[2u];
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, BLUE_DATA_LSB_REG_ADDRESS, blue, 2u);
-
-  Illuminance.Blue = (uint16_t)((uint16_t)blue[1u] << 8u) | blue[0u];
-}
-
-//_____________________________________________________________________________
-
-static void ReadClearIlluminance(void)
-{
-  uint8_t clear[2u];
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, CLEAR_DATA_LSB_REG_ADDRESS, clear, 2u);
-
-  Illuminance.Clear = (uint16_t)((uint16_t)clear[1u] << 8u) | clear[0u];
-
-  ESP_LOGI(Tag, "Clear: %d", Illuminance.Clear);
-}
-
-//_____________________________________________________________________________
-
-static void ReadSystemControlRegister(uint8_t* data)
-{
-  I2C_ReadFromAddress(SLAVE_ADDRESS, SYSTEM_CONTROL_REG_ADDRESS, data, 1u);
-}
-
-//_____________________________________________________________________________
-
-static void ReadModeControl1Register(uint8_t* data)
-{
-  I2C_ReadFromAddress(SLAVE_ADDRESS, MODE_CONTROL1_REG_ADDRESS, data, 1u);
-}
-
-//_____________________________________________________________________________
-
-static void ReadModeControl2Register(uint8_t* data)
-{
-  I2C_ReadFromAddress(SLAVE_ADDRESS, MODE_CONTROL2_REG_ADDRESS, data, 1u);
-}
-
-//_____________________________________________________________________________
-
-static void ReadModeControl3Register(uint8_t* data)
-{
-  I2C_ReadFromAddress(SLAVE_ADDRESS, MODE_CONTROL3_REG_ADDRESS, data, 1u);
-}
-
-//_____________________________________________________________________________
-
-static void ReadRedDataLsbRegister(uint8_t* data)
-{
-  I2C_ReadFromAddress(SLAVE_ADDRESS, RED_DATA_LSB_REG_ADDRESS, data, 1u);
-}
-
-//_____________________________________________________________________________
-
-static void ReadRedDataMsbRegister(uint8_t* data)
-{
-  I2C_ReadFromAddress(SLAVE_ADDRESS, RED_DATA_MSB_REG_ADDRESS, data, 1u);
-}
-
-//_____________________________________________________________________________
-
-static void ReadGreenDataLsbRegister(uint8_t* data)
-{
-  I2C_ReadFromAddress(SLAVE_ADDRESS, GREEN_DATA_LSB_REG_ADDRESS, data, 1u);
-}
-
-//_____________________________________________________________________________
-
-static void ReadGreenDataMsbRegister(uint8_t* data)
-{
-  I2C_ReadFromAddress(SLAVE_ADDRESS, GREEN_DATA_MSB_REG_ADDRESS, data, 1u);
-}
-
-//_____________________________________________________________________________
-
-static void ReadBlueDataLsbRegister(uint8_t* data)
-{
-  I2C_ReadFromAddress(SLAVE_ADDRESS, BLUE_DATA_LSB_REG_ADDRESS, data, 1u);
-}
-
-//_____________________________________________________________________________
-
-static void ReadBlueDataMsbRegister(uint8_t* data)
-{
-  I2C_ReadFromAddress(SLAVE_ADDRESS, BLUE_DATA_MSB_REG_ADDRESS, data, 1u);
-}
-
-//_____________________________________________________________________________
-
-static void ReadClearDataLsbRegister(uint8_t* data)
-{
-  I2C_ReadFromAddress(SLAVE_ADDRESS, CLEAR_DATA_LSB_REG_ADDRESS, data, 1u);
-}
-
-//_____________________________________________________________________________
-
-static void ReadClearDataMsbRegister(uint8_t* data)
-{
-  I2C_ReadFromAddress(SLAVE_ADDRESS, CLEAR_DATA_MSB_REG_ADDRESS, data, 1u);
-}
-#endif

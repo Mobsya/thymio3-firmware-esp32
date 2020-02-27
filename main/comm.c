@@ -26,17 +26,31 @@
 
 #include "comm.h"
 
-#include "accelerometer.h"
-#include "color_sensor.h"
-#include "gyroscope.h"
-#include "i2c.h"
+#include "aseba_esp32.h"
+#include "behavior.h"
+#include "board.h"
 #include "power.h"
-#include "stm32.h"
+#include "settings.h"
+#include "spi.h"
+#include "stm32_spi.h"
 #include "uart.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
+
+#define DATA_SIZE                            40u
+
+//#define SETTINGS_POSITION                     2u
+#define BATTERY_MOTOR_VOLTAGES_POSITION       3u
+#define INDUCED_VOLTAGES_POSITION             5u
+#define MOTOR_CURRENTS_POSITION               7u
+#define PWM_DUTY_CYCLES_POSITION              9u
+#define PROX_IR_POSITION                     13u
+#define GROUND_IR_POSITION                   20u
+#define PROX_IR_DATA_POSITION                26u
+
+#define STM32_ID                          0x4321
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -46,13 +60,19 @@
 // Exported Global Data
 //-----------------------------------------------------------------------------
 
+xSemaphoreHandle I2CMutex;
+
 //-----------------------------------------------------------------------------
 // Private Data
 //-----------------------------------------------------------------------------
 
 static const char* Tag = "comm";
 
-static bool BusIsAvailable = false;
+static TaskHandle_t CommTask = NULL;
+
+static bool TaskIsStarted = false;
+
+static spi_device_handle_t Microcontroller;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -74,14 +94,16 @@ static void RunCommTask(void* arg);
 
 void Comm_Init(void)
 {
-  I2C_Init();
-  UART_Init();
+  //UART_Init();
 
-  ColorSensor_Init();
-  Accelerometer_Init();
-  Gyroscope_Init();
+  STM32_Init();
 
-  BusIsAvailable = false;
+  Spi_InitVSPI();
+  Spi_AddDeviceVSPI(&Microcontroller, SPI_CS_PIN);
+
+  TaskIsStarted = false;
+
+  ESP_LOGI(Tag, "Communication is initialized");
 }
 
 //_____________________________________________________________________________
@@ -93,16 +115,24 @@ void Comm_Start(void)
     "comm",       // Name of the task
     2048,         // Stack size in words
     NULL,         // Task input parameter
-    3,            // Priority of the task
-    NULL,         // Task handle
+    7,            // Priority of the task
+    &CommTask,    // Task handle
     0);           // Core where the task should run
+
+  TaskIsStarted = true;
 }
 
 //_____________________________________________________________________________
 
-bool Comm_IsBusAvailable(void)
+void Comm_Stop(void)
 {
-  return BusIsAvailable;
+  if (TaskIsStarted)
+  {
+    ESP_LOGW(Tag, "Comm task is stopped");
+
+    TaskIsStarted = false;
+    vTaskDelete(CommTask);
+  }
 }
 
 //_____________________________________________________________________________
@@ -111,37 +141,53 @@ static void RunCommTask(void* arg)
 {
   static uint8_t counter = 0;
 
+  static int16_t tx[DATA_SIZE] = {0x0000};
+  static int16_t rx[DATA_SIZE] = {0x0000};
+
   ESP_LOGI(Tag, "Start Comm Task");
 
   while (1)
   {
-    BusIsAvailable = false;
+    Settings_UpdateSettings();
+    STM32_UpdateMotorTargets();
 
-    // Every 20 [ms], 50 [Hz] (vTaskDelay = 20 [ms])
-    Accelerometer_ReadTapSource();
-    Accelerometer_GetAcceleration();
-    Gyroscope_GetAngularPosition();
+    // Transmit values to the STM32
+    // tx[0] is not used
+    tx[1] = STM32_GetStatus();
+    tx[2] = Settings_GetLeftMotorSettings();
+    tx[3] = Settings_GetRightMotorSettings();
+    tx[4] = STM32_GetLeftMotorTarget();
+    tx[5] = STM32_GetRightMotorTarget();
+    tx[6] = STM32_GetMicrophoneThreshold();
+    tx[7] = Behavior_GetStatus();
+    tx[8] = STM32_GetProxIRTxData();
 
-    ColorSensor_ReadColor();
+    Spi_CommunicateVSPI(Microcontroller, tx, rx, DATA_SIZE);
 
-    STM32_ReadInducedVoltage();
-    STM32_ReadButtonStatus();
-    STM32_ReadStatus();
-    STM32_ReadMotorCurrent();
-    STM32_ReadBatteryVoltage();
-    STM32_ReadPwmDutyCycle();
-    STM32_ReadButtonRawData();
-    STM32_ReadButtonMean();
-    STM32_ReadButtonNoise();
-
-    if ((counter % 5u) == 0u)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 20 [ms])
+    if (rx[0] == STM32_ID)
     {
-      Power_HandlePowerModeRequest();
+      STM32_SetStatus(rx[1]);
+      STM32_SetBatteryVoltage(rx[2]);
+      STM32_SetBatteryMotorVoltages(rx, BATTERY_MOTOR_VOLTAGES_POSITION);
+      STM32_SetInducedVoltages(rx, INDUCED_VOLTAGES_POSITION);
+      STM32_SetMotorCurrents(rx, MOTOR_CURRENTS_POSITION);
+      STM32_SetPwmDutyCycles(rx, PWM_DUTY_CYCLES_POSITION);
+      STM32_SetMicrophoneIntensity(rx[11]);
+      //STM32_SetMicrophoneThreshold(rx[13]);
+      STM32_SetMicrophoneMean(rx[12]);
+      STM32_SetProxIRValues(rx, PROX_IR_POSITION);
+      STM32_SetGroundIRValues(rx, GROUND_IR_POSITION);
+      STM32_SetProxIRData(rx, PROX_IR_DATA_POSITION);
+
+      if ((counter % 5u) == 0u)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 20 [ms])
+      {
+        Power_HandlePowerModeRequest();
+      }
+
+      counter++;
+
+      SET_EVENT(EVENT_STM32);
     }
-
-    counter++;
-
-    BusIsAvailable = true;
 
     vTaskDelay(20 / portTICK_PERIOD_MS);
   }

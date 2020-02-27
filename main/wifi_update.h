@@ -57,9 +57,9 @@ extern void WIFIUpdate_RunTask(void* pvParameter);
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void WifiUpdate_Connect(const char* ssid, const char* password);
+extern void WIFIUpdate_Connect(const char* ssid, const char* password);
 
-extern void WifiUpdate_Disconnect(void);
+extern void WIFIUpdate_Disconnect(void);
 
 //! \brief     Check whether the module is currently connected to an access point.
 //! \pre       None

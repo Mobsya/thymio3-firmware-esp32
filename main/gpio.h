@@ -120,22 +120,40 @@ extern void Gpio_TogglePinLevel(uint16_t pinNumber);
 //! \return    Logical level of a GPIO
 extern T_GpioLevel Gpio_GetPinLevel(uint16_t pinNumber);
 
-//! \brief     Get the number of pulses detected
+//! \brief     Is a free fall detected ?
 //! \pre       First configure the GPIO
 //! \param     None
-//! \return    Number of pulses
-extern uint16_t Gpio_GetPulseCounter(void);
+//! \return    True if a free fall is detected, false otherwise
+extern bool Gpio_IsFreeFallDetected(void);
 
-//! \brief     Get the time captured at the rising edge of a pulse
+//! \brief     Clear the free fall status
 //! \pre       First configure the GPIO
 //! \param     None
-//! \return    Time captured at the rising edge of a pulse
-extern uint16_t Gpio_GetRisingEdgeTime(void);
+//! \return    None
+extern void Gpio_ClearFreeFallStatus(void);
 
-//! \brief     Get the time captured at the falling edge of a pulse
+//! \brief     Is a tap detected ?
 //! \pre       First configure the GPIO
 //! \param     None
-//! \return    Time captured at the falling edge of a pulse
-extern uint16_t Gpio_GetFallingEdgeTime(void);
+//! \return    True if a tap is detected, false otherwise
+extern bool Gpio_IsTapDetected(void);
+
+//! \brief     Clear the tap status
+//! \pre       First configure the GPIO
+//! \param     None
+//! \return    None
+extern void Gpio_ClearTapStatus(void);
+
+//! \brief     Is the side button pressed ?
+//! \pre       First configure the GPIO
+//! \param     None
+//! \return    True if the side button is pressed, false otherwise
+extern bool Gpio_IsButtonPressed(void);
+
+//! \brief     Clear the side button status
+//! \pre       First configure the GPIO
+//! \param     None
+//! \return    None
+extern void Gpio_ClearButtonStatus(void);
 
 #endif // GPIO_H_

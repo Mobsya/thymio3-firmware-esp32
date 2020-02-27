@@ -25,26 +25,9 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define when(cond) if(({static unsigned char prev; \
-                        unsigned char c = !!(cond); \
-                        unsigned char result = c && !prev; \
-                        prev = c; \
-                        result;}))
-
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
-
-typedef enum
-{
-  E_Mode_Menu,
-  E_Mode_Follower,
-  E_Mode_Explorer,
-  E_Mode_Attentive,
-  E_Mode_LineTracker,
-  E_Mode_Obedient,
-  E_Mode_Max = E_Mode_Obedient
-} T_Mode;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -60,12 +43,20 @@ typedef enum
 
 //! \brief     Initialize the modes
 //! \pre       None
+//! \param     enableVM - Flag used to enable/disable the VM
+//! \return    None
+extern void Mode_Init(bool enableVM);
+
+//! \brief     Initialize the VM
+//! \pre       None
 //! \param     None
 //! \return    None
-extern void Mode_Init(void);
-
 extern void Mode_InitVM(void);
 
+//! \brief     Run the modes
+//! \pre       First initialize the modes
+//! \param     None
+//! \return    None
 extern void Mode_Run(void);
 
 #endif // MODE_H_

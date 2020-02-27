@@ -22,6 +22,7 @@
 //-----------------------------------------------------------------------------
 
 #include "error.h"
+#include "lsm6ds3us.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -49,11 +50,19 @@
 //! \return    None
 extern void Accelerometer_Init(void);
 
-//! \brief     Get the acceleration
+//! \brief     Read the acceleration
 //! \pre       First initialize the accelerometer
 //! \param     None
 //! \return    None
-extern void Accelerometer_GetAcceleration(void);
+extern void Accelerometer_ReadAcceleration(void);
+
+extern T_Axis Accelerometer_GetAcceleration(void);
+
+//! \brief     Get the acceleration on Y-axis
+//! \pre       First initialize the accelerometer
+//! \param     None
+//! \return    Acceleration on the Y-axis
+extern int16_t Accelerometer_GetAccelerationY(void);
 
 //! \brief     Read the acceleration tap source
 //! \pre       First initialize the accelerometer
@@ -66,6 +75,24 @@ extern void Accelerometer_ReadTapSource(void);
 //! \param     None
 //! \return    None
 extern uint8_t Accelerometer_GetTapSource(void);
+
+//! \brief     Is a tap detected (from interrupt)
+//! \pre       First initialize the accelerometer
+//! \param     None
+//! \return    True if a tap has been detected by the interrupt, false otherwise
+extern bool Accelerometer_IsTapDetected(void);
+
+//! \brief     Clear the acceleration tap status
+//! \pre       First initialize the accelerometer
+//! \param     None
+//! \return    None
+extern void Accelerometer_ClearTapStatus(void);
+
+//! \brief     Is a free fall detected (from interrupt)
+//! \pre       First initialize the accelerometer
+//! \param     None
+//! \return    True if a free fall has been detected by the interrupt, false otherwise
+extern bool Accelerometer_IsFreeFallDetected(void);
 
 //! \brief     Check the accelerometer
 //! \pre       First initialize the accelerometer

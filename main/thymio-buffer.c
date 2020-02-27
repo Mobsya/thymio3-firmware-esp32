@@ -25,7 +25,7 @@
 #include "aseba_esp32.h"
 #include "fifo.h"
 #include "leds.h"
-#include "stm32.h"
+#include "stm32_spi.h"
 #include "tcp_server.h"
 #include "uart.h"
 #include "wifi.h"
@@ -67,7 +67,7 @@ static struct
 // Private Data
 //-----------------------------------------------------------------------------
 
-static uint8_t connection_mode;
+static uint8_t ConnectionMode;
 
 static uint8_t commError;
 
@@ -108,7 +108,7 @@ void AsebaFifoCheckConnectionMode(void)
 {
   if (STM32_IsUSBPortOpen())
   {
-    if (connection_mode != MODE_USB)
+    if (ConnectionMode != MODE_USB)
     {
       // Switch off the WIFI
       ESP_LOGI("thymio-buffer", "COUCOU Switch off WIFI");
@@ -117,13 +117,13 @@ void AsebaFifoCheckConnectionMode(void)
     }
 
     Fifo8bits_Reset(TCPFifoRx);
-    connection_mode = MODE_USB;
+    ConnectionMode = MODE_USB;
   }
   else if (WIFI_IsConnected())
   {
     if (TCPServer_IsSocketAccepted())
     {
-      connection_mode = MODE_WIFI;
+      ConnectionMode = MODE_WIFI;
     }
     else
     {
@@ -135,7 +135,7 @@ void AsebaFifoCheckConnectionMode(void)
     // No USB-UART, no WIFI
     Fifo8bits_Reset(TCPFifoRx);
 
-    connection_mode = MODE_DISCONNECTED;
+    ConnectionMode = MODE_DISCONNECTED;
   }
 
 #if 0
@@ -201,7 +201,7 @@ unsigned char AsebaTxReady(unsigned char* data)
   size_t size = Fifo8bits_GetNumberOfElements(&AsebaFifo.tx);
 
   // Do not send anything on usb if we are not in usb mode
-  if (size == 0 || connection_mode != MODE_USB)
+  if (size == 0 || ConnectionMode != MODE_USB)
   {
     tx_busy = 0;
     debug = 0;
@@ -225,7 +225,7 @@ int AsebaUsbBulkRecv(unsigned char* data, unsigned char size)
   // Ignore all data if we are not in usb mode
   AsebaFifoCheckConnectionMode();
 
-  if (connection_mode != MODE_USB)
+  if (ConnectionMode != MODE_USB)
   {
     return 0;
   }
@@ -308,7 +308,7 @@ void AsebaSendBuffer(AsebaVMState* vm, const uint8_t* data, uint16_t length)
 {
   //AsebaFifoCheckConnectionMode();
 
-  if (connection_mode == MODE_USB)
+  if (ConnectionMode == MODE_USB)
   {
     if (length >= 2)
     {
@@ -322,7 +322,7 @@ void AsebaSendBuffer(AsebaVMState* vm, const uint8_t* data, uint16_t length)
       }
     }
   }
-  else if (connection_mode == MODE_WIFI)
+  else if (ConnectionMode == MODE_WIFI)
   {
     if (length >= 2)
     {
@@ -458,33 +458,36 @@ uint16_t AsebaGetBuffer(AsebaVMState* vm, uint8_t* data, uint16_t maxLength, uin
   }
 #endif
 
-  if (connection_mode == MODE_USB)
+  if (ConnectionMode == MODE_USB)
   {
-    if (!UART_IsReceptionBufferEmpty())
+    if (!UART_IsRxBufferEmpty())
     {
-      len = uartGetUInt16() + 2;
-
-      if (len > maxLength)  // Wrong data received.
+      if (UART_GetRxBufferDataLength() >= 6)
       {
-        return 0;
-      }
+        len = uartGetUInt16() + 2;
 
-      *source = uartGetUInt16();
-
-      for (uint16_t i = 0; i < len; i++)
-      {
-        *data++ = uartGetUInt8();
-
-        if (commError)
+        if (len > maxLength)  // Wrong data received.
         {
           return 0;
         }
-      }
 
-      ret = len;
+        *source = uartGetUInt16();
+
+        for (uint16_t i = 0; i < len; i++)
+        {
+          *data++ = uartGetUInt8();
+
+          if (commError)
+          {
+            return 0;
+          }
+        }
+
+        ret = len;
+      }
     }
   }
-  else if (connection_mode == MODE_WIFI)
+  else if (ConnectionMode == MODE_WIFI)
   {
     if (used >= 6)
     {

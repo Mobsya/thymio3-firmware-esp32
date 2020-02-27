@@ -26,7 +26,7 @@
 #include "uart.h"
 
 #include "board.h"
-#include "stm32.h"
+#include "stm32_spi.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -36,8 +36,8 @@
 
 #define UART_BAUDRATE        115200u
 
-#define RX_BUFFER_SIZE         1024u
-#define TX_BUFFER_SIZE         1024u
+#define RX_BUFFER_SIZE         2048u
+#define TX_BUFFER_SIZE         2048u
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -78,15 +78,33 @@ void UART_Init(void)
     .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
   };
 
-  uart_param_config(UART_NUM, &config);
-  uart_set_pin(UART_NUM, TXD_ESP32_PIN, RXD_ESP32_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+  ESP_ERROR_CHECK(uart_param_config(UART_NUM, &config));
+  ESP_ERROR_CHECK(uart_set_pin(UART_NUM, TXD_ESP32_PIN, RXD_ESP32_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
   //uart_driver_install(UART_NUM, RX_BUFFER_SIZE * 2, 0, 0, NULL, 0);
-  uart_driver_install(UART_NUM, RX_BUFFER_SIZE, TX_BUFFER_SIZE, 0, NULL, 0);
+  ESP_ERROR_CHECK(uart_driver_install(UART_NUM, RX_BUFFER_SIZE, TX_BUFFER_SIZE, 0, NULL, 0));
   //uart_driver_install(UART_NUM, RX_BUFFER_SIZE * 2, TX_BUFFER_SIZE * 2, 20, &UartQueue, 0);
 
-  //uart_flush(UART_NUM);  // FIXME In conflict with I2S
+  uart_flush(UART_NUM);  // FIXME In conflict with I2S
+
+
+
+  //ESP_ERROR_CHECK(uart_param_config(UART_NUM_1, &config));
+  //ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, SPI_MOSI_PIN, SPI_MISO_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+
+  //ESP_ERROR_CHECK(uart_driver_install(UART_NUM_1, RX_BUFFER_SIZE, TX_BUFFER_SIZE, 0, NULL, 0));
 
   ESP_LOGI(Tag, "UART is initialized");
+}
+
+//_____________________________________________________________________________
+
+void UART_Flush(void)
+{
+  //ESP_LOGI(Tag, "UART is flushed");
+  uart_flush(UART_NUM);
+  //uart_driver_delete(UART_NUM);
+  //uart_driver_install(UART_NUM, RX_BUFFER_SIZE, TX_BUFFER_SIZE, 0, NULL, 0);
+  //UART_Init();
 }
 
 //_____________________________________________________________________________
@@ -125,13 +143,24 @@ int UART_ReadByte(uint8_t* data)
 
 //_____________________________________________________________________________
 
-bool UART_IsReceptionBufferEmpty(void)
+bool UART_IsRxBufferEmpty(void)
 {
-  int length = 0;
+  int16_t length = 0;
 
   ESP_ERROR_CHECK(uart_get_buffered_data_len(UART_NUM, (size_t*)&length));
 
   return (length == 0);
+}
+
+//_____________________________________________________________________________
+
+int16_t UART_GetRxBufferDataLength(void)
+{
+  int16_t length = 0;
+
+  ESP_ERROR_CHECK(uart_get_buffered_data_len(UART_NUM, (size_t*)&length));
+
+  return (int16_t)length;
 }
 
 //_____________________________________________________________________________

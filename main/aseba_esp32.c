@@ -103,9 +103,9 @@ void AsebaESP32_Start(void)
     "aseba",       // Name of the task
     4096,          // Stack size in words
     NULL,          // Task input parameter
-    2,             // Priority of the task
+    1,             // Priority of the task
     NULL,          // Task handle
-    1);            // Core where the task should run
+    0);            // Core where the task should run
 }
 
 //_____________________________________________________________________________
@@ -154,8 +154,6 @@ void AsebaResetIntoBootloader(AsebaVMState* vm)
 static void RunAsebaTask(void* arg)
 {
   ESP_LOGI(Tag, "Start Aseba Task");
-
-  AsebaESP32_Init();
 
   while (1)
   {
@@ -271,7 +269,7 @@ const AsebaVMDescription vmDescription =
     {1, "button.right"},
 
     {5, "buttons._mean"},
-    {5, "buttons._noise"},
+    {5, "buttons._threshold"},
 
     {7, "prox.horizontal"},
 
@@ -286,7 +284,7 @@ const AsebaVMDescription vmDescription =
 
     {1, "motor.left.target"},
     {1, "motor.right.target"},
-    {2, "_vbat"},
+    {2, "_vbat_motor"},
     {2, "_imot"},
     {1, "motor.left.speed"},
     {1, "motor.right.speed"},
@@ -295,14 +293,12 @@ const AsebaVMDescription vmDescription =
 
     {3, "acc"},
 
-    {1, "temperature"},
-
     {1, "rc5.address"},
     {1, "rc5.command"},
 
-    {1, "mic.intensity"},
-    {1, "mic.threshold"},
-    {1, "mic._mean"},
+    {1, "micro.intensity"},
+    {1, "micro.threshold"},
+    {1, "micro._mean"},
 
     {2, "timer.period"},
 
@@ -314,12 +310,24 @@ const AsebaVMDescription vmDescription =
     second value is the name of the variable which will be displayed in aseba studio
     ******/
 
-    {4, "color"},
+    {4, "color.raw"},
+    {3, "color.hsv"},
     {3, "gyro"},
     {3, "angle"},
     {3, "angle_deg"},
     {4, "ip"},
     {2, "settings"},
+    {1, "vbat"},
+    {1, "sound_volume"},
+    {8, "leds_circle"},
+    {8, "leds_lego_front"},
+    {8, "leds_lego_back"},
+    {3, "led_front_left"},
+    {3, "led_front_right"},
+    {3, "led_back_left"},
+    {3, "led_back_right"},
+    {3, "led_color_sensor"},
+    {2, "leds_ground"},
     {0, NULL} // Null terminated
   }
 };
@@ -336,18 +344,20 @@ static const AsebaLocalEventDescription localEvents[] =
   { "button.center", "Center button status changed"},
   { "button.forward", "Forward button status changed"},
   { "button.right", "Right button status changed"},
-  { "buttons", "Buttons values updated"},
-  { "prox", "Proximity values updated"},
+  { "sensors", "Sensors values updated"},
+  { "stm32", "STM32 values updated"},
+//  { "buttons", "Buttons values updated"},
+//  { "prox", "Proximity values updated"},
   //{ "prox.comm", "Data received on the proximity communication"},
   { "tap", "A tap is detected"},
-  { "acc", "Accelerometer values updated"},
-  { "gyro", "Gyroscope values updated"},
-  //{ "mic", "Fired when microphone intensity is above threshold"},
+  { "freefall", "A free fall is detected"},
+//  { "acc", "Accelerometer values updated"},
+//  { "gyro", "Gyroscope values updated"},
+  { "mic", "Fired when microphone intensity is above threshold"},
   //{ "sound.finished", "Fired when the playback of a user initiated sound is finished"},
-  //{ "temperature", "Temperature value updated"},
-  //{ "rc5", "RC5 message received"},
-  { "motor", "Motor timer"},
-  { "color", "Color values updated"},
+  { "rc5", "RC5 message received"},
+//  { "motor", "Motor timer"},
+//  { "color", "Color values updated"},
   { "timer0", "Timer 0"},
   { "timer1", "Timer 1"},
   { NULL, NULL }
@@ -835,7 +845,7 @@ void __attribute((noreturn)) run_aseba_main_loop(void)
 void save_settings(void)
 {
 // if calibration is new, and Vbat > 3.3V, then flash
-  if (update_calib && vmVariables.vbat[0] > 655)
+  if (update_calib && vmVariables.vbat_motor[0] > 655)
   {
     AsebaNative__system_settings_flash(NULL);
     update_calib = 0;

@@ -47,10 +47,52 @@
 //! \return    None
 extern void Gyroscope_Init(void);
 
-//! \brief     Get the angular position
+//! \brief     Read the angular velocity
 //! \pre       First initialize the gyroscope
 //! \param     None
 //! \return    None
-extern void Gyroscope_GetAngularPosition(void);
+extern void Gyroscope_ReadAngularVelocity(void);
+
+//! \brief     Read the angle
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    None
+extern void Gyroscope_ReadAngle(void);
+
+//! \brief     Get the angular velocity on Z-axis
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    Angular velocity on the Z-axis
+extern int16_t Gyroscope_GetAngularVelocityZ(void);
+
+//! \brief     Get the angle on Z-axis
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    Angle on the Z-axis
+extern int16_t Gyroscope_GetAngleZ(void);
+
+//! \brief     Get the angle in [degree] on Z-axis
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    Angle on the Z-axis
+extern int16_t Gyroscope_GetAngleZ_deg(void);
+
+//! \brief     Reset the angle
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    None
+extern void Gyroscope_ResetAngle(void);
+
+//! \brief     Reset the calibration
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    None
+extern void Gyroscope_ResetCalibration(void);
+
+//! \brief     Set the offset
+//! \pre       First initialize the gyroscope
+//! \param     offset - Offset
+//! \return    None
+extern void Gyroscope_SetOffset(int32_t offset);
 
 #endif // GYROSCOPE_H_

@@ -31,6 +31,9 @@
 // Types Definitions
 //-----------------------------------------------------------------------------
 
+//! \details Declaration of the timer HW pointer function
+typedef void (*TimerHWFunctionPtr)(void*);
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -43,18 +46,29 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the timer
+//! \brief     Initialize the HW timer
 //! \pre       None
-//! \param     None
+//! \param     timerGroup - Timer group (0 or 1)
+//! \param     timerIndex - Timer index (0 or 1)
+//! \param     autoReload - Allow auto reload
+//! \param     interval - Duration of the timer
+//! \param     callback - Pointer to function called when interval is reached
 //! \return    None
-extern void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, double interval, void (*fn)(void*));
+extern void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, uint64_t interval,
+                         const TimerHWFunctionPtr callback);
 
-//! \brief     Start the timer
-//! \pre       First initialize the timer
-//! \param     None
+//! \brief     Start the HW timer
+//! \pre       First initialize the HW timer module
+//! \param     timerGroup - Timer group (0 or 1)
+//! \param     timerIndex - Timer index (0 or 1)
 //! \return    None
 extern void TimerHw_Start(int16_t timerNum, int16_t timerIndex);
 
+//! \brief     Stop the HW timer
+//! \pre       First initialize the HW timer module
+//! \param     timerGroup - Timer group (0 or 1)
+//! \param     timerIndex - Timer index (0 or 1)
+//! \return    None
 extern void TimerHw_Stop(int16_t timerNum, int16_t timerIndex);
 
 #endif // TIMER_HW_H_

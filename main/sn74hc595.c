@@ -82,8 +82,8 @@ void SN74HC595_Init(void)
   }
 #endif
 
-  Spi_Init();
-  Spi_AddDevice(&ShiftRegisters, LED_CS_PIN);
+  Spi_InitHSPI();
+  Spi_AddDeviceHSPI(&ShiftRegisters, LED_CS_PIN);
 
   ESP_LOGI(Tag, "SN74HC595 are initialized");
 }
@@ -122,7 +122,7 @@ void SN74HC595_Fill(uint8_t* data, uint16_t size)
   //ESP_LOGI(Tag, "data = %d, size = %d", *data, size);
 
   // SRCLK = Rising edge, /SRCLR = High
-  Spi_Write(ShiftRegisters, data, size);
+  Spi_WriteHSPI(ShiftRegisters, data, size);
 }
 
 //_____________________________________________________________________________

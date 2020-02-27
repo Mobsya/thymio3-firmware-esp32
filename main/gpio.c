@@ -21,11 +21,9 @@
 #include <driver/gpio.h>
 #include "driver/timer.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
 #include "esp_log.h"
 
+#include "aseba_esp32.h"
 #include "gpio.h"
 #include "board.h"
 
@@ -55,10 +53,9 @@ typedef struct
 
 static const char* Tag = "gpio";
 
-static uint64_t RisingEdge = 0;
-static uint64_t FallingEdge = 0;
-
-static uint32_t PulseCounter = 0;
+static bool FreeFall = false;
+static bool Tap = false;
+static bool Side = false;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -161,23 +158,44 @@ T_GpioLevel Gpio_GetPinLevel(uint16_t pinNumber)
 
 //_____________________________________________________________________________
 
-uint16_t Gpio_GetPulseCounter(void)
+bool Gpio_IsFreeFallDetected(void)
 {
-  return PulseCounter;
+  return FreeFall;
 }
 
 //_____________________________________________________________________________
 
-uint16_t Gpio_GetRisingEdgeTime(void)
+void Gpio_ClearFreeFallStatus(void)
 {
-  return RisingEdge;
+  FreeFall = false;
 }
 
 //_____________________________________________________________________________
 
-uint16_t Gpio_GetFallingEdgeTime(void)
+bool Gpio_IsTapDetected(void)
 {
-  return FallingEdge;
+  return Tap;
+}
+
+//_____________________________________________________________________________
+
+void Gpio_ClearTapStatus(void)
+{
+  Tap = false;
+}
+
+//_____________________________________________________________________________
+
+bool Gpio_IsButtonPressed(void)
+{
+  return Side;
+}
+
+//_____________________________________________________________________________
+
+void Gpio_ClearButtonStatus(void)
+{
+  Side = false;
 }
 
 //_____________________________________________________________________________
@@ -293,28 +311,20 @@ static void IRAM_ATTR ISR_GPIOHandler(void* arg)
 {
   uint32_t gpio_num = (uint32_t) arg;
 
-  static uint64_t start = 0;
-  static uint64_t stop = 0;
-
-  static bool risingEdgeBackRightDone = false;
-
-  if (gpio_num == IR_SENSE_BACK_RIGHT_PIN)
+  if (gpio_num == ACC_INT1_PIN)
   {
-    if (Gpio_GetPinLevel(gpio_num) == E_GpioLevel_High)
-    {
-      start = esp_timer_get_time();
-      risingEdgeBackRightDone = true;
-    }
-    else
-    {
-      if (risingEdgeBackRightDone)
-      {
-        stop = esp_timer_get_time();
-        RisingEdge = start;
-        FallingEdge = stop;
-        PulseCounter++;
-        risingEdgeBackRightDone = false;
-      }
-    }
+    FreeFall = true;
+    SET_EVENT(EVENT_FREEFALL);
+  }
+
+  if (gpio_num == ACC_INT2_PIN)
+  {
+    Tap = true;
+    SET_EVENT(EVENT_TAP);
+  }
+
+  if (gpio_num == BUTTON_SIDE_PIN)
+  {
+    Side = true;
   }
 }

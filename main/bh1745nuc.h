@@ -35,11 +35,11 @@
 
 typedef struct
 {
-  uint16_t Red;
-  uint16_t Green;
-  uint16_t Blue;
-  uint16_t Clear;
-} T_Illuminance;  //!< RGBC illuminance
+  int16_t Red;
+  int16_t Green;
+  int16_t Blue;
+  int16_t Clear;
+} T_RawColor;  //!< RGBC raw color
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -71,11 +71,11 @@ extern T_Error BH1745NUC_CheckManufacturerId(void);
 //! \return    None
 extern void BH1745NUC_ReadRegisters(void);
 
-//! \brief     Read the RGBC illuminance
+//! \brief     Read the RGBC raw color
 //! \pre       First initialize the color sensor
-//! \param     illuminance - Illuminance RGBC in [lux]
+//! \param     raw - Raw color RGBC in [lux]
 //! \return    None
-//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\ReadIlluminance.svg
-extern void BH1745NUC_ReadIlluminance(T_Illuminance* illuminance);
+//! \image     html C:\Users\Vincent\Thymio3\ESP32\documentation\images\bh1745nuc\ReadColor.svg
+extern void BH1745NUC_ReadColor(T_RawColor* raw);
 
 #endif // BH1745NUC_H_

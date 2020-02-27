@@ -18,8 +18,6 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-//#include <types/types.h>
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/portmacro.h"
@@ -28,16 +26,14 @@
 
 #include "aseba_esp32.h"
 
+#include "codec.h"
 #include "leds.h"
-//#include "sd.h"
-//#include "playback.h"
 #include "behavior.h"
-//#include "tone.h"
-//#include "ir_prox.h"
-#include "sound.h"
-#include "mp3.h"
+#include "file_system.h"
+#include "gyroscope.h"
+#include "stm32_spi.h"
 
-#include "i2s.h"
+#include "aseba.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -57,9 +53,6 @@
 
 static const char* Tag = "thymio_natives";
 
-const T_Note JamesBond[21];
-static T_Melody MelodyAseba;
-
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -76,106 +69,22 @@ static void prepare_name(unsigned int n, char* buf);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-AsebaNativeFunctionDescription AsebaNativeDescription_set_led =
+AsebaNativeFunctionDescription AsebaNativeDescription_record_wav =
 {
-  "_leds.set",
-  "Set the led",
-  {
-    {1, "led"},
-    {1, "brightness"},
-    {0, 0}
-  }
-};
-
-void set_led(AsebaVMState* vm)
-{
-  int led = vm->variables[AsebaNativePopArg(vm)];
-  int b = vm->variables[AsebaNativePopArg(vm)];
-
-  if ((led < 0) || (led > 39))
-  {
-    return;
-  }
-
-  Leds_SetSingleBrightness(led, b);
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_play =
-{
-  "sound.play",
-  "Start playback of pN.wav",
+  "wav.record",
+  "Recording of rN.wav",
   {
     {1, "N"},
+    {1, "duration"},
     {0, 0},
   }
 };
 
-void sound_playback(AsebaVMState* vm)
-{
-  char name[13] = {'p'};
-  //int number = vm->variables[AsebaNativePopArg(vm)];
-  int number = vm->variables[AsebaNativePopArg(vm)];
-
-  ESP_LOGE(Tag, "Number = %d", number);
-
-  //uint8_t* const index = &number;
-  //static uint8_t index = number;
-
-#if 0 // FIXME
-  Behavior_Disable(B_SOUND_BUTTON);
-  playback_enable_event();
-
-  if (number == -1)
-  {
-    play_user_sound(NULL);
-  }
-  else
-  {
-    prepare_name(number, &name[1]);
-    play_user_sound(name);
-  }
-#endif
-
-  //MP3_StartPlayer(number);
-
-#if 0
-  MelodyAseba.Melody = JamesBond;
-  MelodyAseba.Tempo  = E_Tempo_Vivace;
-  MelodyAseba.Loop   = 1;
-  MelodyAseba.Size   = 21;
-
-  if (number == 1)
-  {
-    xTaskCreatePinnedToCore(
-      Sound_RunPlayerTask,
-      "sound",       // Name of the task
-      2048,          // Stack size in words
-      &MelodyAseba,  // Task input parameter
-      2,             // Priority of the task
-      NULL,          // Task handle
-      0);            // Core where the task should run
-  }
-#endif
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_record =
-{
-  "sound.record",
-  "Start recording of rN.wav",
-  {
-    {1, "N"},
-    {0, 0},
-  }
-};
-
-void sound_record(AsebaVMState* vm)
+void record_wav(AsebaVMState* vm)
 {
   char name[13] = {'r'};
-  int number = vm->variables[AsebaNativePopArg(vm)];
+  int index    = vm->variables[AsebaNativePopArg(vm)];
+  int duration = vm->variables[AsebaNativePopArg(vm)];
 #if 0 // FIXME
   if (number == -1)
   {
@@ -188,25 +97,87 @@ void sound_record(AsebaVMState* vm)
   sd_start_record(name);
 #endif
 
-  //Sound_StartRecording();
-  //I2S_Record();
-
-  //MP3_StartRecorder();
+  Codec_RecordWAVFile(index, duration);
 }
 
 //_____________________________________________________________________________
 
-AsebaNativeFunctionDescription AsebaNativeDescription_replay =
+AsebaNativeFunctionDescription AsebaNativeDescription_create_wav =
 {
-  "sound.replay",
-  "Start playback of rN.wav",
+  "wav.create",
+  "Create a rN.wav",
+  {
+    {1, "N"},
+    {1, "frequency"},
+    {0, 0},
+  }
+};
+
+void create_wav(AsebaVMState* vm)
+{
+  int index     = vm->variables[AsebaNativePopArg(vm)];
+  int frequency = vm->variables[AsebaNativePopArg(vm)];
+
+  Codec_CreateWAVFile(index, frequency);
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_play_mp3_sys =
+{
+  "mp3.sys.play",
+  "Playback of pN.mp3",
   {
     {1, "N"},
     {0, 0},
   }
 };
 
-void sound_replay(AsebaVMState* vm)
+void play_mp3_sys(AsebaVMState* vm)
+{
+  char name[13] = {'p'};
+  int number = vm->variables[AsebaNativePopArg(vm)];
+
+  //ESP_LOGE(Tag, "Number = %d", number);
+
+  Codec_PlayMP3FileFromFlash(number);
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_play_mp3 =
+{
+  "mp3.play",
+  "Playback of pN.mp3",
+  {
+    {1, "N"},
+    {0, 0},
+  }
+};
+
+void play_mp3(AsebaVMState* vm)
+{
+  char name[13] = {'p'};
+  int number = vm->variables[AsebaNativePopArg(vm)];
+
+  //ESP_LOGE(Tag, "Number = %d", number);
+
+  Codec_PlayMP3File(number);
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_play_wav =
+{
+  "wav.play",
+  "Playback of rN.wav",
+  {
+    {1, "N"},
+    {0, 0},
+  }
+};
+
+void play_wav(AsebaVMState* vm)
 {
   char name[13] = {'r'};
   int number = vm->variables[AsebaNativePopArg(vm)];
@@ -226,31 +197,204 @@ void sound_replay(AsebaVMState* vm)
 #endif
 
   //Sound_StartReplaying();
-  Sound_Replay();
+  //Sound_Replay();
+//  Codec_StartWAVPlayer(number);
+  Codec_PlayWAVFile(number);
 }
 
 //_____________________________________________________________________________
 
-AsebaNativeFunctionDescription AsebaNativeDescription_duration =
+AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3_sys =
 {
-  "sound.duration",
-  "Give duration in 1/10s of rN.wav",
+  "mp3.sys.pause",
+  "Pause of pN.mp3",
+  {
+    {0, 0},
+  }
+};
+
+void pause_mp3_sys(AsebaVMState* vm)
+{
+  Codec_PauseMP3FileFromFlash();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3 =
+{
+  "mp3.pause",
+  "Pause of pN.mp3",
+  {
+    {0, 0},
+  }
+};
+
+void pause_mp3(AsebaVMState* vm)
+{
+  Codec_PauseMP3File();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_pause_wav =
+{
+  "wav.pause",
+  "Pause of pN.wav",
+  {
+    {0, 0},
+  }
+};
+
+void pause_wav(AsebaVMState* vm)
+{
+  Codec_PauseWAVFile();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3_sys =
+{
+  "mp3.sys.resume",
+  "Resume of pN.mp3",
+  {
+    {0, 0},
+  }
+};
+
+void resume_mp3_sys(AsebaVMState* vm)
+{
+  Codec_ResumeMP3FileFromFlash();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3 =
+{
+  "mp3.resume",
+  "Resume of pN.mp3",
+  {
+    {0, 0},
+  }
+};
+
+void resume_mp3(AsebaVMState* vm)
+{
+  Codec_ResumeMP3File();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_resume_wav =
+{
+  "wav.resume",
+  "Resume of pN.wav",
+  {
+    {0, 0},
+  }
+};
+
+void resume_wav(AsebaVMState* vm)
+{
+  Codec_ResumeWAVFile();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_erase_mp3 =
+{
+  "mp3.erase",
+  "Erase of pN.mp3",
   {
     {1, "N"},
+    {0, 0},
+  }
+};
+
+void erase_mp3(AsebaVMState* vm)
+{
+  int number = vm->variables[AsebaNativePopArg(vm)];
+  char* fileName;
+
+  FileSystem_SelectFile(&fileName, number, E_Extension_MP3);
+  FileSystem_EraseFile(fileName);
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_erase_wav =
+{
+  "wav.erase",
+  "Erase of pN.wav",
+  {
+    {1, "N"},
+    {0, 0},
+  }
+};
+
+void erase_wav(AsebaVMState* vm)
+{
+  int number = vm->variables[AsebaNativePopArg(vm)];
+  char* fileName;
+
+  FileSystem_SelectFile(&fileName, number, E_Extension_WAV);
+  FileSystem_EraseFile(fileName);
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_get_duration_mp3 =
+{
+  "mp3.duration",
+  "Duration of pN.mp3",
+  {
     {1, "duration"},
     {0, 0},
   }
 };
 
-void sound_duration(AsebaVMState* vm)
+void get_duration_mp3(AsebaVMState* vm)
 {
-  char name[13] = {'r'};
-  int number = vm->variables[AsebaNativePopArg(vm)];
-  unsigned int durationIndex = AsebaNativePopArg(vm);
-#if 0
-  prepare_name(number, &name[1]);
-  vm->variables[durationIndex] = sd_read_duration(name);
-#endif
+  unsigned int duration = AsebaNativePopArg(vm);
+
+  vm->variables[duration] = Codec_GetMP3PlayedTime();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_get_duration_wav =
+{
+  "wav.duration",
+  "Duration of pN.wav",
+  {
+    {1, "duration"},
+    {0, 0},
+  }
+};
+
+void get_duration_wav(AsebaVMState* vm)
+{
+  unsigned int duration = AsebaNativePopArg(vm);
+
+  vm->variables[duration] = Codec_GetWAVPlayedTime();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_volume =
+{
+  "sound.volume",
+  "Set sound volume",
+  {
+    {1, "volume"},
+    {0, 0},
+  }
+};
+
+void sound_volume(AsebaVMState* vm)
+{
+  int volume = vm->variables[AsebaNativePopArg(vm)];
+
+  Codec_SetVolume(volume);
 }
 
 //_____________________________________________________________________________
@@ -279,6 +423,80 @@ void sound_system(AsebaVMState* vm)
     play_user_sound(name);
   }
 #endif
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_duration =
+{
+  "sound.duration",
+  "Give duration in 1/10s of rN.wav",
+  {
+    {1, "N"},
+    {1, "duration"},
+    {0, 0},
+  }
+};
+
+void sound_duration(AsebaVMState* vm)
+{
+  char name[13] = {'r'};
+  int number = vm->variables[AsebaNativePopArg(vm)];
+  unsigned int durationIndex = AsebaNativePopArg(vm);
+#if 0
+  prepare_name(number, &name[1]);
+  vm->variables[durationIndex] = sd_read_duration(name);
+#endif
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_erase_file =
+{
+  "file.erase",
+  "Erase file N.extension",
+  {
+    {1, "N"},
+    {1, "extension"},
+    {0, 0},
+  }
+};
+
+void erase_file(AsebaVMState* vm)
+{
+  int number = vm->variables[AsebaNativePopArg(vm)];
+  int extension = vm->variables[AsebaNativePopArg(vm)];
+
+  char* fileName;
+
+  FileSystem_SelectFile(&fileName, number, extension);
+  FileSystem_EraseFile(fileName);
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_set_led =
+{
+  "_leds.set",
+  "Set the led",
+  {
+    {1, "led"},
+    {1, "brightness"},
+    {0, 0}
+  }
+};
+
+void set_led(AsebaVMState* vm)
+{
+  int led = vm->variables[AsebaNativePopArg(vm)];
+  int b = vm->variables[AsebaNativePopArg(vm)];
+
+  if ((led < 0) || (led > 39))
+  {
+    return;
+  }
+
+  Leds_SetSingleBrightness(led, b);
 }
 
 //_____________________________________________________________________________
@@ -318,10 +536,10 @@ void set_led_circle(AsebaVMState* vm)
 
 //_____________________________________________________________________________
 
-AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_top =
+AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_fl =
 {
-  "leds.top",
-  "Set RGB top led",
+  "leds.front.left",
+  "Set RGB front left led",
   {
     {1, "red"},
     {1, "green"},
@@ -330,21 +548,21 @@ AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_top =
   }
 };
 
-void set_rgb_top(AsebaVMState* vm)
+void set_rgb_fl(AsebaVMState* vm)
 {
   int r = vm->variables[AsebaNativePopArg(vm)];
   int g = vm->variables[AsebaNativePopArg(vm)];
   int b = vm->variables[AsebaNativePopArg(vm)];
 
-  Leds_SetTopBrightness(r, g, b);
+  Leds_SetFrontLeftBrightness(r, g, b);
 }
 
 //_____________________________________________________________________________
 
-AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_br =
+AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_fr =
 {
-  "leds.bottom.right",
-  "Set RGB botom right led",
+  "leds.front.right",
+  "Set RGB front right led",
   {
     {1, "red"},
     {1, "green"},
@@ -353,21 +571,21 @@ AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_br =
   }
 };
 
-void set_rgb_br(AsebaVMState* vm)
+void set_rgb_fr(AsebaVMState* vm)
 {
   int r = vm->variables[AsebaNativePopArg(vm)];
   int g = vm->variables[AsebaNativePopArg(vm)];
   int b = vm->variables[AsebaNativePopArg(vm)];
 
-  Leds_SetBottomRightBrightness(r, g, b);
+  Leds_SetFrontRightBrightness(r, g, b);
 }
 
 //_____________________________________________________________________________
 
 AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_bl =
 {
-  "leds.bottom.left",
-  "Set RGB botom left led",
+  "leds.back.left",
+  "Set RGB back left led",
   {
     {1, "red"},
     {1, "green"},
@@ -382,7 +600,30 @@ void set_rgb_bl(AsebaVMState* vm)
   int g = vm->variables[AsebaNativePopArg(vm)];
   int b = vm->variables[AsebaNativePopArg(vm)];
 
-  Leds_SetBottomLeftBrightness(r, g, b);
+  Leds_SetBackLeftBrightness(r, g, b);
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_set_led_rgb_br =
+{
+  "leds.back.right",
+  "Set RGB back right led",
+  {
+    {1, "red"},
+    {1, "green"},
+    {1, "blue"},
+    {0, 0},
+  }
+};
+
+void set_rgb_br(AsebaVMState* vm)
+{
+  int r = vm->variables[AsebaNativePopArg(vm)];
+  int g = vm->variables[AsebaNativePopArg(vm)];
+  int b = vm->variables[AsebaNativePopArg(vm)];
+
+  Leds_SetBackRightBrightness(r, g, b);
 }
 
 //_____________________________________________________________________________
@@ -409,10 +650,7 @@ void set_buttons_leds(AsebaVMState* vm)
 
   Behavior_Disable(B_LEDS_BUTTON);
 
-  Leds_SetSingleBrightness(E_Led_Button_0, l1);
-  Leds_SetSingleBrightness(E_Led_Button_1, l2);
-  Leds_SetSingleBrightness(E_Led_Button_2, l3);
-  Leds_SetSingleBrightness(E_Led_Button_3, l4);
+  Leds_SetButtonsBrightness(l1, l2, l3, l4);
 }
 
 //_____________________________________________________________________________
@@ -447,7 +685,10 @@ void set_hprox_leds(AsebaVMState* vm)
 
   Behavior_Disable(B_LEDS_PROX);
 
-  leds_SetProxIRBrightness(l1, l2, l3, l4, l5, l6, l7, l8);
+  // TODO send to STM32
+  //Leds_SetProxIRBrightness(l1, l2, l3, l4, l5, l6, l7, l8);
+
+  // FIXME STM32_UpdateProxIRLedsBrightness(l1, l2, l3, l4, l5, l6, l7, l8);
 }
 
 //_____________________________________________________________________________
@@ -470,8 +711,13 @@ void set_vprox_leds(AsebaVMState* vm)
 
   Behavior_Disable(B_LEDS_PROX);
 
+#if 0 // TODO Send to STM32
   Leds_SetSingleBrightness(E_Led_Ground_IR_0, l1);
   Leds_SetSingleBrightness(E_Led_Ground_IR_1, l2);
+#endif
+
+  // FIXME STM32_UpdateGroundIRLedsBrightness(l1, l2);
+  Aseba_UpdateGroundIRLedsBrightness(l1, l2);
 }
 
 //_____________________________________________________________________________
@@ -490,9 +736,9 @@ void set_rc_leds(AsebaVMState* vm)
 {
   int l1 = vm->variables[AsebaNativePopArg(vm)];
 #if 0 // FIXME
-  Behavior_Disable(B_LEDS_RC5);
+  Behavior_Disable(B_LED_RC5);
 #endif
-  Leds_SetSingleBrightness(E_Led_RC, l1);
+  Leds_SetSingleBrightness(E_Led_RC5, l1);
 }
 
 //_____________________________________________________________________________
@@ -510,34 +756,13 @@ AsebaNativeFunctionDescription AsebaNativeDescription_set_sound_leds =
 void set_sound_leds(AsebaVMState* vm)
 {
   int l1 = vm->variables[AsebaNativePopArg(vm)];
-#if 0 // FIXME
-  Behavior_Disable(B_LEDS_MIC);
-#endif
+
+  Behavior_Disable(B_LED_MIC);
+
+#if 0 // TODO Send to STM32
   Leds_SetSingleBrightness(E_Led_Sound, l1);
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_set_ntc_leds =
-{
-  "leds.temperature",
-  "Set ntc led",
-  {
-    {1, "red"},
-    {1, "blue"},
-    {0, 0},
-  }
-};
-
-void set_ntc_leds(AsebaVMState* vm)
-{
-  int l1 = vm->variables[AsebaNativePopArg(vm)];
-  int l2 = vm->variables[AsebaNativePopArg(vm)];
-#if 0 // FIXME
-  Behavior_Disable(B_LEDS_TEMPERATURE);
 #endif
-  Leds_SetSingleBrightness(E_Led_Temp_Red, l1);
-  Leds_SetSingleBrightness(E_Led_Temp_Blue, l2);
+  // FIXME STM32_UpdateMicrophoneLedBrightness(l1);
 }
 
 //_____________________________________________________________________________
@@ -625,122 +850,6 @@ void prox_network(AsebaVMState* vm)
 
 //_____________________________________________________________________________
 
-AsebaNativeFunctionDescription AsebaNativeDescription_sd_open =
-{
-  "sd.open",
-  "Open a file on the SD card",
-  {
-    {1, "number"},
-    {1, "status"},
-    {0, 0},
-  }
-};
-
-void thymio_native_sd_open(AsebaVMState* vm)
-{
-  int no = vm->variables[AsebaNativePopArg(vm)];
-  unsigned int status = AsebaNativePopArg(vm);
-  char name[13] = {'u'};
-  char* p;
-#if 0 // FIXME
-
-  if (no == -1)
-  {
-    sd_user_open(NULL);
-    vm->variables[status] = 0;
-  }
-  else
-  {
-    p = _prepare_name(no, &name[1]);
-    *p++ = '.';
-    *p++ = 'd';
-    *p++ = 'a';
-    *p++ = 't';
-    *p++ = 0;
-    vm->variables[status] = sd_user_open(name);
-  }
-#endif
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_sd_write =
-{
-  "sd.write",
-  "Write data to the opened file",
-  {
-    {-1, "data"},
-    {1, "written"},
-    {0, 0},
-  }
-};
-
-void thymio_native_sd_write(AsebaVMState* vm)
-{
-#if 0
-  // variable pos
-  unsigned char* data = (unsigned char*)(vm->variables + AsebaNativePopArg(vm));
-  uint16_t status = AsebaNativePopArg(vm);
-
-  // variable size
-  uint16_t length = AsebaNativePopArg(vm) * 2;
-
-  vm->variables[status] = sd_user_write(data, length) / 2;
-#endif
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_sd_read =
-{
-  "sd.read",
-  "Read data from the opened file",
-  {
-    {-1, "data"},
-    {1, "read"},
-    {0, 0},
-  }
-};
-
-void thymio_native_sd_read(AsebaVMState* vm)
-{
-#if 0
-  // variable pos
-  unsigned char* data = (unsigned char*)(vm->variables + AsebaNativePopArg(vm));
-  uint16_t status = AsebaNativePopArg(vm);
-
-  // variable size
-  uint16_t length = AsebaNativePopArg(vm) * 2;
-
-  vm->variables[status] = sd_user_read(data, length) / 2;
-#endif
-}
-
-//_____________________________________________________________________________
-
-AsebaNativeFunctionDescription AsebaNativeDescription_sd_seek =
-{
-  "sd.seek",
-  "Seek the opened file",
-  {
-    {1, "position"},
-    {1, "status"},
-    {0, 0},
-  }
-};
-
-void thymio_native_sd_seek(AsebaVMState* vm)
-{
-#if 0
-  unsigned long seek =  vm->variables[AsebaNativePopArg(vm)];
-  unsigned int status = AsebaNativePopArg(vm);
-
-  vm->variables[status] = sd_user_seek(seek * 2);
-#endif
-}
-
-//_____________________________________________________________________________
-
 AsebaNativeFunctionDescription AsebaNativeDescription_rf_nodeid =
 {
   "_rf.nodeid",
@@ -758,6 +867,57 @@ void set_rf_nodeid(AsebaVMState* vm)
   rf_set_node_id(nodeid);
   rf_flash_setting();
 #endif
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_gyro_reset_angle =
+{
+  "gyro.reset_angle",
+  "Reset the angle",
+  {
+    {0, 0}
+  }
+};
+
+void gyro_reset_angle(AsebaVMState* vm)
+{
+  Gyroscope_ResetAngle();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_gyro_reset_calib_angle =
+{
+  "gyro.reset_calib_angle",
+  "Reset the calibration of the angle",
+  {
+    {0, 0}
+  }
+};
+
+void gyro_reset_calib_angle(AsebaVMState* vm)
+{
+  Gyroscope_ResetCalibration();
+}
+
+//_____________________________________________________________________________
+
+AsebaNativeFunctionDescription AsebaNativeDescription_gyro_set_offset =
+{
+  "gyro.set_offset",
+  "Set the offset",
+  {
+    {1, "offset"},
+    {0, 0},
+  }
+};
+
+void gyro_set_offset(AsebaVMState* vm)
+{
+  int offset = vm->variables[AsebaNativePopArg(vm)];
+
+  Gyroscope_SetOffset(offset);
 }
 
 //_____________________________________________________________________________

@@ -23,6 +23,7 @@
 #include "gyroscope.h"
 
 #include "aseba_esp32.h"
+#include "settings.h"
 #include "lsm6ds3us.h"
 
 //-----------------------------------------------------------------------------
@@ -43,7 +44,9 @@
 
 static const char* Tag = "gyroscope";
 
-static T_Axis AngularPosition;
+static T_Axis AngularVelocity;
+static int16_t Angle[3];
+static int16_t Angle_deg[3];
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -59,20 +62,95 @@ static T_Axis AngularPosition;
 
 void Gyroscope_Init(void)
 {
-  LSM6DS3US_InitGyroscope();
+  int16_t offset = Settings_ReadOffsetGyro();
+
+  LSM6DS3US_InitGyroscope(offset);
 
   ESP_LOGI(Tag, "Gyroscope is initialized");
 }
 
 //_____________________________________________________________________________
 
-void Gyroscope_GetAngularPosition(void)
+void Gyroscope_ReadAngularVelocity(void)
 {
-  LSM6DS3US_GetAngularPosition(&AngularPosition);
+  LSM6DS3US_GetAngularVelocity(&AngularVelocity);
 
-  vmVariables.gyro[0] = AngularPosition.X;
-  vmVariables.gyro[1] = AngularPosition.Y;
-  vmVariables.gyro[2] = AngularPosition.Z;
+  vmVariables.gyro[0] = AngularVelocity.X;
+  vmVariables.gyro[1] = AngularVelocity.Y;
+  vmVariables.gyro[2] = AngularVelocity.Z;
 
-  SET_EVENT(EVENT_GYRO);
+  //SET_EVENT(EVENT_GYRO);
+}
+
+//_____________________________________________________________________________
+
+void Gyroscope_ReadAngle(void)
+{
+  LSM6DS3US_GetAngle(Angle);
+
+  for (uint8_t index = 0u; index < 3u; index++)
+  {
+    vmVariables.angle[index] = Angle[index];
+
+    Angle_deg[index] = ((Angle[index] * 90) / 16384);
+
+    vmVariables.angle_deg[index] = Angle_deg[index];
+  }
+
+  //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", vmVariables.angle_deg[0], vmVariables.angle_deg[1], vmVariables.angle_deg[2]);
+
+  //SET_EVENT(EVENT_GYRO);
+}
+
+//_____________________________________________________________________________
+
+int16_t Gyroscope_GetAngularVelocityZ(void)
+{
+  return AngularVelocity.Z;
+}
+
+//_____________________________________________________________________________
+
+int16_t Gyroscope_GetAngleZ(void)
+{
+  return Angle[2];
+}
+
+//_____________________________________________________________________________
+
+int16_t Gyroscope_GetAngleZ_deg(void)
+{
+  return Angle_deg[2];
+}
+
+//_____________________________________________________________________________
+
+void Gyroscope_ResetAngle(void)
+{
+  LSM6DS3US_ResetAngle();
+
+  vmVariables.angle[0] = 0;
+  vmVariables.angle[1] = 0;
+  vmVariables.angle[2] = 0;
+
+  vmVariables.angle_deg[0] = 0;
+  vmVariables.angle_deg[1] = 0;
+  vmVariables.angle_deg[2] = 0;
+}
+
+//_____________________________________________________________________________
+
+void Gyroscope_ResetCalibration(void)
+{
+  LSM6DS3US_ResetCalibration();
+}
+
+//_____________________________________________________________________________
+
+void Gyroscope_SetOffset(int32_t offset)
+{
+  LSM6DS3US_SetOffset(offset);
+
+  // Write to the settings file
+  Settings_WriteOffsetGyro(offset);
 }

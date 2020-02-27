@@ -59,7 +59,7 @@ struct _vmVariables
   int16_t buttons[5];
   int16_t buttons_state[5];
   int16_t buttons_mean[5];
-  int16_t buttons_noise[5];
+  int16_t buttons_threshold[5];
   int16_t prox[7];
   int16_t sensor_data[7];
   int16_t intensity[7];
@@ -69,28 +69,39 @@ struct _vmVariables
   int16_t ground_reflected[2];
   int16_t ground_delta[2];
   int16_t target[2];
-  int16_t vbat[2];
+  int16_t vbat_motor[2];
   int16_t imot[2];
   int16_t uind[2];
   int16_t pwm[2];
   int16_t acc[3];
-  int16_t temperature;
   int16_t rc5_address;
   int16_t rc5_command;
-  int16_t sound_level;
-  int16_t sound_tresh;
-  int16_t sound_mean;
+  int16_t micro_intensity;
+  int16_t micro_tresh;
+  int16_t micro_mean;
   int16_t timers[2];
   int16_t acc_tap;
   /*****
     ---> PUT YOUR VARIABLES HERE <---
   ******/
-  int16_t color[4];
+  int16_t color_raw[4];
+  int16_t color_hsv[3];
   int16_t gyro[3];
   int16_t angle[3];
   int16_t angle_deg[3];
   int16_t ip[4];
   int16_t settings[2];
+  int16_t vbat;
+  int16_t sound_volume;
+  int16_t leds_circle[8];
+  int16_t leds_lego_front[8];
+  int16_t leds_lego_back[8];
+  int16_t led_front_left[3];
+  int16_t led_front_right[3];
+  int16_t led_back_left[3];
+  int16_t led_back_right[3];
+  int16_t led_color_sensor[3];
+  int16_t leds_ground[2];
   int16_t freeSpace[VM_VARIABLES_FREE_SPACE];
 };
 
@@ -101,18 +112,20 @@ enum Event
   EVENT_B_CENTER,
   EVENT_B_FORWARD,
   EVENT_B_RIGHT,
-  EVENT_BUTTONS,
-  EVENT_PROX,
+  EVENT_SENSORS,
+  EVENT_STM32,
+//  EVENT_BUTTONS,
+//  EVENT_PROX,
   //EVENT_DATA,
   EVENT_TAP,
-  EVENT_ACC,
-  EVENT_GYRO,
-  //EVENT_MIC,
+  EVENT_FREEFALL,
+//  EVENT_ACC,
+//  EVENT_GYRO,
+  EVENT_MIC,
   //EVENT_SOUND_FINISHED,
-  //EVENT_TEMPERATURE,
-  //EVENT_RC5,
-  EVENT_MOTOR,
-  EVENT_COLOR,
+  EVENT_RC5,
+//  EVENT_MOTOR,
+//  EVENT_COLOR,
   // Must be consecutive
   EVENT_TIMER0,
   EVENT_TIMER1,

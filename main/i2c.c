@@ -18,8 +18,8 @@
 // Include Section
 //-----------------------------------------------------------------------------
 
-#include <driver/i2c.h>
-#include <esp_log.h>
+#include "driver/i2c.h"
+#include "esp_log.h"
 
 #include "i2c.h"
 #include "board.h"
@@ -49,6 +49,8 @@
 
 static const char* Tag = "i2c";
 
+static bool BusIsAvailable = true;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -74,7 +76,9 @@ void I2C_Init(void)
 
   ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
   ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, conf.mode, I2C_MASTER_RX_BUF_DISABLE,
-                                     I2C_MASTER_TX_BUF_DISABLE, ESP_INTR_FLAG_IRAM));
+                                     I2C_MASTER_TX_BUF_DISABLE, 0)); //ESP_INTR_FLAG_IRAM
+
+  BusIsAvailable = true;
 
   ESP_LOGI(Tag, "I2C is initialized");
 }
@@ -132,6 +136,9 @@ void I2C_WriteToAddress(uint8_t slaveAddress, uint8_t registerAddress, uint8_t* 
   //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0));
   i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
 
+  // FIXME Only for debug
+  //ESP_LOGI(Tag, "reg = %d, data = %d", registerAddress, *data);
+
   i2c_cmd_link_delete(cmd);
 }
 
@@ -161,4 +168,25 @@ void I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t registerAddress, uint8_t*
   i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
 
   i2c_cmd_link_delete(cmd);
+}
+
+//_____________________________________________________________________________
+
+T_I2CBus I2C_GetBusStatus(void)
+{
+  return BusIsAvailable;
+}
+
+//_____________________________________________________________________________
+
+void I2C_UpdateBusStatus(T_I2CBus status)
+{
+  BusIsAvailable = status;
+}
+
+//_____________________________________________________________________________
+
+void I2C_DeleteDriver(void)
+{
+  ESP_ERROR_CHECK(i2c_driver_delete(I2C_NUM_0));
 }
