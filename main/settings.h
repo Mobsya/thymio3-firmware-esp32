@@ -151,6 +151,18 @@ extern void Settings_CreateBlackBlueFile(void);
 //! \return    None
 extern void Settings_CreateRC5AddressFile(void);
 
+//! \brief     Create the Wifi SSID settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_CreateWifiSSIDFile(void);
+
+//! \brief     Create the Wifi password settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_CreateWifiPasswordFile(void);
+
 //! \brief     Write the left motor correction to the settings file
 //! \pre       First initialize the settings
 //! \param     leftMotor - Left motor correction
@@ -216,6 +228,18 @@ extern void Settings_WriteBlackBlue(int16_t blackBlue);
 //! \param     address - Remote address
 //! \return    None
 extern void Settings_WriteRC5Address(int16_t address);
+
+//! \brief     Write the Wifi SSID to the settings file
+//! \pre       First initialize the settings
+//! \param     ssid - Wifi SSID
+//! \return    None
+extern void Settings_WriteWifiSSID(char* ssid, uint16_t size);
+
+//! \brief     Write the Wifi password to the settings file
+//! \pre       First initialize the settings
+//! \param     password - Wifi password
+//! \return    None
+extern void Settings_WriteWifiPassword(char* password, uint16_t size);
 
 //! \brief     Read the left motor correction from the settings file
 //! \pre       First initialize the settings
@@ -283,6 +307,19 @@ extern int16_t Settings_ReadBlackBlue(void);
 //! \return    None
 extern int16_t Settings_ReadRC5Address(void);
 
+//! \brief     Read the Wifi SSID from the settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+//extern uint8_t* Settings_ReadWifiSSID(void);
+extern void Settings_ReadWifiSSID(uint8_t* ssid, uint16_t size);
+
+//! \brief     Read the Wifi password from the settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_ReadWifiPassword(uint8_t* password, uint16_t size);
+
 //! \brief     Erase the left motor settings file
 //! \pre       First initialize the settings
 //! \param     None
@@ -348,5 +385,17 @@ extern void Settings_EraseBlackBlueFile(void);
 //! \param     None
 //! \return    None
 extern void Settings_EraseRC5AddressFile(void);
+
+//! \brief     Erase the Wifi SSID settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_EraseWifiSSIDFile(void);
+
+//! \brief     Erase the Wifi password settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_EraseWifiPasswordFile(void);
 
 #endif // SETTINGS_H_

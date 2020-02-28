@@ -33,6 +33,7 @@
 #include "codec.h"
 #include "color_sensor.h"
 #include "common.h"
+#include "file_server.h"
 #include "gpio.h"
 #include "gyroscope.h"
 #include "leds.h"
@@ -685,6 +686,7 @@ static void UpdateSettings(void)
       Behavior_Disable(B_MODE);
       count = 0u;
       start = true;
+      //ESP_ERROR_CHECK(FileServer_Start("/spiffs"));
       CurrentSetting = E_Setting_Menu;
     }
   }

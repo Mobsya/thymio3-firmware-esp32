@@ -35,6 +35,7 @@
 
 #include "tcp_server.h"
 
+#include "behavior.h"
 #include "leds.h"
 
 //-----------------------------------------------------------------------------
@@ -188,6 +189,7 @@ void TCPServer_RunTask(void)
         Leds_SetDebugBrightness(0u, 0u, MAX_BRIGHTNESS);
         SocketIsAccepted = false;
         shutdown(sock, 0);
+        Behavior_Enable(B_MODE);
         close(sock);
       }
     }

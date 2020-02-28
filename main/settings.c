@@ -41,6 +41,8 @@
 #define DEFAULT_BLACK_GREEN     940
 #define DEFAULT_BLACK_BLUE      700
 #define DEFAULT_RC5_ADDRESS       0
+#define DEFAULT_WIFI_SSID         "Thymio-Mobsya"
+#define DEFAULT_WIFI_PASSWORD     "Thymio2test"
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -58,17 +60,19 @@ static T_Settings Settings;
 
 static const char* Tag = "settings";
 
-static const char* FileLeftMotor  = "/spiffs/left_motor.dat";
-static const char* FileRightMotor = "/spiffs/right_motor.dat";
-static const char* FileOffsetGyro = "/spiffs/offset_gyro.dat";
-static const char* FileVolume     = "/spiffs/volume.dat";
-static const char* FileWhiteRed   = "/spiffs/white_red.dat";
-static const char* FileWhiteGreen = "/spiffs/white_green.dat";
-static const char* FileWhiteBlue  = "/spiffs/white_blue.dat";
-static const char* FileBlackRed   = "/spiffs/black_red.dat";
-static const char* FileBlackGreen = "/spiffs/black_green.dat";
-static const char* FileBlackBlue  = "/spiffs/black_blue.dat";
-static const char* FileRC5Address = "/spiffs/rc5_address.dat";
+static const char* FileLeftMotor    = "/spiffs/left_motor.dat";
+static const char* FileRightMotor   = "/spiffs/right_motor.dat";
+static const char* FileOffsetGyro   = "/spiffs/offset_gyro.dat";
+static const char* FileVolume       = "/spiffs/volume.dat";
+static const char* FileWhiteRed     = "/spiffs/white_red.dat";
+static const char* FileWhiteGreen   = "/spiffs/white_green.dat";
+static const char* FileWhiteBlue    = "/spiffs/white_blue.dat";
+static const char* FileBlackRed     = "/spiffs/black_red.dat";
+static const char* FileBlackGreen   = "/spiffs/black_green.dat";
+static const char* FileBlackBlue    = "/spiffs/black_blue.dat";
+static const char* FileRC5Address   = "/spiffs/rc5_address.dat";
+static const char* FileWifiSSID     = "/spiffs/wifi_ssid.dat";
+static const char* FileWifiPassword = "/spiffs/wifi_password.dat";
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -139,6 +143,18 @@ static void WriteFactoryBlackBlue(void);
 //! \param     None
 //! \return    None
 static void WriteFactoryRC5Address(void);
+
+//! \brief     Write the default Wifi SSID to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+static void WriteFactoryWifiSSID(void);
+
+//! \brief     Write the default Wifi password to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+static void WriteFactoryWifiPassword(void);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -330,6 +346,26 @@ void Settings_CreateRC5AddressFile(void)
 
 //_____________________________________________________________________________
 
+void Settings_CreateWifiSSIDFile(void)
+{
+  if (FileSystem_CreateFile(FileWifiSSID))
+  {
+    WriteFactoryWifiSSID();
+  }
+}
+
+//_____________________________________________________________________________
+
+void Settings_CreateWifiPasswordFile(void)
+{
+  if (FileSystem_CreateFile(FileWifiPassword))
+  {
+    WriteFactoryWifiPassword();
+  }
+}
+
+//_____________________________________________________________________________
+
 void Settings_WriteLeftMotor(int16_t leftMotor)
 {
   int16_t input = leftMotor;
@@ -425,6 +461,20 @@ void Settings_WriteRC5Address(int16_t address)
   int16_t input = address;
 
   FileSystem_Write(FileRC5Address, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+void Settings_WriteWifiSSID(char* ssid, uint16_t size)
+{
+  FileSystem_Write(FileWifiSSID, ssid, size);
+}
+
+//_____________________________________________________________________________
+
+void Settings_WriteWifiPassword(char* password, uint16_t size)
+{
+  FileSystem_Write(FileWifiPassword, password, size);
 }
 
 //_____________________________________________________________________________
@@ -548,6 +598,19 @@ int16_t Settings_ReadRC5Address(void)
   return output;
 }
 
+//_____________________________________________________________________________
+
+void Settings_ReadWifiSSID(uint8_t* ssid, uint16_t size)
+{
+  FileSystem_Read(FileWifiSSID, ssid, size);
+}
+
+//_____________________________________________________________________________
+
+void Settings_ReadWifiPassword(uint8_t* password, uint16_t size)
+{
+  FileSystem_Read(FileWifiPassword, password, size);
+}
 
 //_____________________________________________________________________________
 
@@ -624,6 +687,20 @@ void Settings_EraseBlackBlueFile(void)
 void Settings_EraseRC5AddressFile(void)
 {
   FileSystem_EraseFile(FileRC5Address);
+}
+
+//_____________________________________________________________________________
+
+void Settings_EraseWifiSSIDFile(void)
+{
+  FileSystem_EraseFile(FileWifiSSID);
+}
+
+//_____________________________________________________________________________
+
+void Settings_EraseWifiPasswordFile(void)
+{
+  FileSystem_EraseFile(FileWifiPassword);
 }
 
 //_____________________________________________________________________________
@@ -722,5 +799,27 @@ static void WriteFactoryRC5Address(void)
 {
   int16_t input = DEFAULT_RC5_ADDRESS;
 
+  //size_t q = sizeof(int16_t);
+
+  //ESP_LOGE(Tag, "q: %d", q);
+
   FileSystem_Write(FileRC5Address, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryWifiSSID(void)
+{
+  char* input = DEFAULT_WIFI_SSID;
+
+  FileSystem_Write(FileWifiSSID, input, sizeof(DEFAULT_WIFI_SSID));
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryWifiPassword(void)
+{
+  char* input = DEFAULT_WIFI_PASSWORD;
+
+  FileSystem_Write(FileWifiPassword, input, sizeof(DEFAULT_WIFI_PASSWORD));
 }

@@ -23,10 +23,47 @@
                     <button id="upload" type="button" onclick="upload()">Upload</button>
                 </td>
             </tr>
+            <tr>
+                <td>
+                    <label for="SSID">Set network SSID</label>
+                </td>
+                <td>
+                    <input id="filepath" type="text" style="width:100%;">
+                </td>
+                <td>
+                    <button id="upload" type="button" onclick="upload()">Upload</button>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label for="Password">Set network password</label>
+                </td>
+                <td>
+                    <input id="filepath" type="text" style="width:100%;">
+                </td>
+                <td>
+                    <button id="upload" type="button" onclick="write()">Upload</button>
+                </td>
+            </tr>
         </table>
     </td></tr>
 </table>
 <script>
+function write() {
+// Requiring fs module in which 
+// writeFile function is defined. 
+const fs = require('fs') 
+  
+// Data which will write in a file. 
+let data = "Learning how to write in a file."
+  
+// Write data in 'Output.txt' . 
+fs.writeFile('C:/Users/Vincent/Thymio3/workspace_eclipse/thymio3-firmware-esp32-eclipse/main/password.txt"', data, (err) => { 
+      
+    // In case of a error throw err. 
+    if (err) throw err; 
+})
+}
 function setpath() {
     var default_path = document.getElementById("newfile").files[0].name;
     document.getElementById("filepath").value = default_path;

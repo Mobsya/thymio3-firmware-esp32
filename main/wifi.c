@@ -45,6 +45,7 @@
 #include "leds.h"
 #include "rc5.h"
 #include "sensors.h"
+#include "settings.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -110,6 +111,11 @@ typedef enum
 
 static const char* Tag = "wifi";
 
+static uint8_t Ssid[32] = {0};
+static uint8_t Password[64] = {0};
+
+static const char* Val = DEFAULT_WIFI_SSID;
+
 // Indicates that we should trigger a re-boot after sending the response.
 static int RebootAfterReply;
 
@@ -165,6 +171,15 @@ void WIFI_Configure(void)
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
+  //Settings_WriteWifiSSID("Thymio-Mobsya", sizeof(Ssid));
+  //Settings_ReadWifiSSID(Ssid, sizeof(Ssid));
+  //Settings_ReadWifiSSID(Ssid, 14);
+  //Settings_ReadWifiPassword(Password, sizeof(Password));
+  //Settings_ReadWifiPassword(Password, 12);
+
+  //printf("%s\n", Ssid);
+
+//#if 0
   wifi_config_t wifi_config =
   {
     .sta =
@@ -178,6 +193,29 @@ void WIFI_Configure(void)
       .bssid_set = false
     },
   };
+//#endif
+#if 0
+  //wifi_config_t wifi_config;
+
+  for (uint8_t index = 0u; index < 14u; index++)
+  {
+	wifi_config.sta.ssid[index] = Ssid[index];
+  }
+
+  for (uint8_t index = 0u; index < 12u; index++)
+  {
+	wifi_config.sta.password[index] = Password[index];
+  }
+
+  wifi_config.sta.bssid_set = false;
+#endif
+
+  //wifi_config_t wifi_config;
+  //memcpy(wifi_config.sta.ssid, Ssid, 14);
+  //wifi_config.sta.ssid = DEFAULT_WIFI_SSID;
+  //wifi_config.sta.password = CONFIG_WIFI_PASSWORD;
+  //memcpy(wifi_config.sta.password, Password, 64);
+  //wifi_config.sta.bssid_set = false;
 
   // WIFI as Station Mode (connect to another wifi)
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
@@ -188,6 +226,9 @@ void WIFI_Configure(void)
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
   ESP_ERROR_CHECK(esp_wifi_start());
   //ESP_ERROR_CHECK(esp_wifi_connect());
+
+  ESP_LOGI(Tag, "Found ssid: %s",     (const char*) wifi_config.sta.ssid);
+  ESP_LOGI(Tag, "Found password: %s", (const char*) wifi_config.sta.password);
 
   ESP_LOGI(Tag, "WIFI is configured");
 }

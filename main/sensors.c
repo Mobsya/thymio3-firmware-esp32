@@ -90,6 +90,8 @@ void Sensors_Init(void)
 
   Codec_Init();
 
+  //Settings_EraseWifiPasswordFile();
+
   Settings_Init();
   Settings_CreateLeftMotorFile();
   Settings_CreateRightMotorFile();
@@ -102,6 +104,8 @@ void Sensors_Init(void)
   Settings_CreateBlackGreenFile();
   Settings_CreateBlackBlueFile();
   Settings_CreateRC5AddressFile();
+  Settings_CreateWifiSSIDFile();
+  Settings_CreateWifiPasswordFile();
 
   Buttons_Init();
 
