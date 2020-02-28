@@ -227,6 +227,7 @@ void Mode_Run(void)
   {
     ExitMode(CurrentMode);
     Behavior_Disable(B_MODE);
+    Leds_SetDebugBrightness(0u, MAX_BRIGHTNESS, 0u);
     Mode_InitVM();
     vmIsRunning = true;
     return;

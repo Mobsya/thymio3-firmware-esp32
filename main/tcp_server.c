@@ -35,6 +35,8 @@
 
 #include "tcp_server.h"
 
+#include "leds.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -183,6 +185,7 @@ void TCPServer_RunTask(void)
       if (sock != -1)
       {
         ESP_LOGE(Tag, "Shutting down socket and restarting...");
+        Leds_SetDebugBrightness(0u, 0u, MAX_BRIGHTNESS);
         SocketIsAccepted = false;
         shutdown(sock, 0);
         close(sock);

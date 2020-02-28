@@ -198,6 +198,8 @@ void WIFI_Init(void)
 {
   TCPServer_Init();
 
+  Leds_SetDebugBrightness(MAX_BRIGHTNESS, 0u, 0u);
+
 //#if 0  // FIXME
   WIFI_InitNVS();
   WIFI_Configure();
@@ -549,6 +551,7 @@ static esp_err_t EventHandler(void* ctx, system_event_t* event)
       //ESP_LOGI(Tag, "got ip:%s", ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
 
       WifiIsConnected = true;
+      Leds_SetDebugBrightness(0u, 0u, MAX_BRIGHTNESS);
 
       xEventGroupSetBits(EventGroup, IPV4_GOTIP_BIT);
       ESP_LOGI(Tag, "SYSTEM_EVENT_STA_GOT_IP");
