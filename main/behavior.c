@@ -1003,10 +1003,15 @@ static void CalibrateColor(void)
   uint8_t brightness = Common_GetBodyColorPulse();
   uint8_t calibrationStatus = false;
 
-  if (!IsColorCalibrationInProgress)
+  if (!IsColorCalibrationInProgress)  // Pulse the four body LEDs
   {
     // Purple pulse
     Leds_SetBodyBrightness((brightness / 2u), 0u, brightness);
+  }
+  else  // Pulse only the back body LEDs
+  {
+    Leds_SetBackLeftBrightness((brightness / 2u), 0u, brightness);
+    Leds_SetBackRightBrightness((brightness / 2u), 0u, brightness);
   }
 
   when(buttonState[E_Button_Forward] != 0u)
@@ -1037,8 +1042,6 @@ static void CalibrateColor(void)
 
     Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
     Leds_SetFrontRightBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-    Leds_SetBackLeftBrightness((brightness / 2u), 0u, brightness);
-    Leds_SetBackRightBrightness((brightness / 2u), 0u, brightness);
   }
 
   when(buttonState[E_Button_Backward] != 0u)
@@ -1052,15 +1055,15 @@ static void CalibrateColor(void)
       Codec_PlayMP3FileFromFlash(E_SoundIndex_Bad);
     }
 
-    if (calibrationStatus == 2)
+    if (calibrationStatus == 2)  // Successful calibration
     {
       Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
     }
-    else if (calibrationStatus == 1)
+    else if (calibrationStatus == 1)  // Partial calibration
     {
       Leds_SetLegoFrontBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u);
     }
-    else
+    else  // Bad calibration
     {
       Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
     }
@@ -1069,8 +1072,6 @@ static void CalibrateColor(void)
 
     Leds_SetFrontLeftBrightness(0u, 0u, 0u);
     Leds_SetFrontRightBrightness(0u, 0u, 0u);
-    Leds_SetBackLeftBrightness((brightness / 2u), 0u, brightness);
-    Leds_SetBackRightBrightness((brightness / 2u), 0u, brightness);
   }
 }
 
