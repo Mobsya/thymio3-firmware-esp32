@@ -120,10 +120,7 @@ int app_main(void)
   //BLE_Init();
 
   //Codec_SetVolume(100);
-  //Codec_PlayMP3FileFromFlash(E_SystemSound_Startup);
-
-  while (!WIFI_IsConnected())
-  {}
+  //Codec_PlayMP3FileFromFlash(E_SoundIndex_Startup);
 
   // TODO Move to Behavior when entering into settings
   ESP_ERROR_CHECK(FileServer_Start("/spiffs"));
@@ -142,7 +139,6 @@ int app_main(void)
   ESP_LOGI(Tag, "*********************");
 
   esp_log_level_set("*", ESP_LOG_ERROR);
-  //esp_log_level_set("spi_master", ESP_LOG_ERROR);
   esp_log_level_set("sequence", ESP_LOG_INFO);
   esp_log_level_set("mode", ESP_LOG_INFO);
 
