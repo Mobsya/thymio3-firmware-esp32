@@ -104,7 +104,8 @@ void Buttons_Init(void)
   // Set reference voltage for charging/discharging
   // For most usage scenarios, we recommend using the following combination:
   // the high reference voltage will be 2.7V - 1V = 1.7V, The low reference voltage will be 0.5V.
-  touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
+  //touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
+  touch_pad_set_voltage(TOUCH_HVOLT_2V6, TOUCH_LVOLT_0V6, TOUCH_HVOLT_ATTEN_0V5);
 
   // Init touch pad IO
   InitTouchPad();
@@ -171,11 +172,11 @@ void Buttons_UpdateStatus(void)
 
 static void InitTouchPad()
 {
-  Buttons_Table[E_Button_Backward] = TOUCH_PAD_NUM2;
-  Buttons_Table[E_Button_Left]     = TOUCH_PAD_NUM5;
-  Buttons_Table[E_Button_Center]   = TOUCH_PAD_NUM0;
-  Buttons_Table[E_Button_Forward]  = TOUCH_PAD_NUM7;
-  Buttons_Table[E_Button_Right]    = TOUCH_PAD_NUM8;
+  Buttons_Table[E_Button_Backward] = TOUCH_PAD_NUM2;  // GPIO2
+  Buttons_Table[E_Button_Left]     = TOUCH_PAD_NUM5;  // GPIO12
+  Buttons_Table[E_Button_Center]   = TOUCH_PAD_NUM0;  // GPIO4
+  Buttons_Table[E_Button_Forward]  = TOUCH_PAD_NUM7;  // GPIO27
+  Buttons_Table[E_Button_Right]    = TOUCH_PAD_NUM8;  // GPIO33
 
   for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
   {
