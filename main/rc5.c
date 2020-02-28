@@ -51,8 +51,6 @@
 #define RC5_MIN_SHORT_DURATION   500
 #define RC5_MAX_SHORT_DURATION  1000
 
-#define VALID_ADDRESS              0
-
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -94,8 +92,6 @@ static bool TaskIsStarted = false;
 static rmt_config_t rmt_rx;
 
 static bool FrameIsValid = false;
-
-static int16_t OldToggle = -1;
 
 static int16_t ValidAddress = 0;
 
@@ -215,6 +211,8 @@ void RC5_ClearFrameValidity(void)
 
 static void RunRXTask(void* arg)
 {
+  static int16_t oldToggle = -1;
+
   ESP_LOGI(Tag, "Start IR receiver Task");
 
   while (1)
@@ -238,14 +236,14 @@ static void RunRXTask(void* arg)
           {
             FrameIsValid = true;
 
-            if (Message.Toggle != OldToggle)
+            if (Message.Toggle != oldToggle)
             {
               vmVariables.rc5_address = Message.Address;
               vmVariables.rc5_command = Message.Command;
               SET_EVENT(EVENT_RC5);
 
               ESP_LOGI(Tag, "Toggle: %d, Command: %d", Message.Toggle, Message.Command);
-              OldToggle = Message.Toggle;
+              oldToggle = Message.Toggle;
             }
           }
         }
