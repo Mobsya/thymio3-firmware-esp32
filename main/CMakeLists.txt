@@ -1,66 +1,85 @@
 set(COMPONENT_SRCS
     accelerometer.c
     accelerometer.h
-    adc.c
-    adc.h
+    angle_controller.c
+    angle_controller.h
     aseba_esp32.c
     aseba_esp32.h
     aseba_esp32_user.h
+    aseba.c
+    aseba.h
     behavior.c
     behavior.h
     bh1745nuc.c
     bh1745nuc.h
     board.h
+    buttons.c
+    buttons.h
+    codec.c
+    codec.h
     color_sensor.c
     color_sensor.h
     comm.c
     comm.h
-    cosine_generator.c
-    cosine_generator.h
+    common.c
+    common.h
     dsp.c
     dsp.h
     error.h
+    es8374.c
+    es8374.h
+    explorer.c
+    explorer.h
+    fearful.c
+    fearful.h
     fifo.c
     fifo.h
+    file_server.c
+    file_server.h
     file_system.c
     file_system.h
+    friendly.c
+    friendly.h
     gpio.c
     gpio.h
-    ground_ir.c
-    ground_ir.h
     gyroscope.c
     gyroscope.h
     i2c.c
     i2c.h
-    i2s.c
-    i2s.h
     leds.c
     leds.h
+    line_tracker.c
+    line_tracker.h
     lsm6ds3us.c
     lsm6ds3us.h
     main.c
-    melody.h
     mode.c
     mode.h
-    #mp3.c
-    #mp3.h
+    musician.c
+    musician.h
     natives.c
     ota_update.c
     ota_update.h
+    painter.c
+    painter.h
     power.c
     power.h
-    prox_ir.c
-    prox_ir.h
+    rc5.c
+    rc5.h
+    sensors.c
+    sensors.h
+    sequence.c
+    sequence.h
+    settings.c
+    settings.h
     shift_registers.c
     shift_registers.h
     sn74hc595.c
     sn74hc595.h
-    sound.c
-    sound.h
     spi.c
     spi.h
-    stm32.c
-    stm32.h
+    stm32_spi.c
+    stm32_spi.h
     tcp_server.c
     tcp_server.h
     test.c
@@ -83,7 +102,7 @@ set(COMPONENT_SRCS
     wifi_update.h
 )
 
-set(COMPONENT_EMBED_FILES server_certs/ca_cert.pem adf_music.mp3 chicken.mp3 dixie_horn.mp3)
+set(COMPONENT_EMBED_FILES server_certs/ca_cert.pem favicon.ico upload_script.html a3_44100.mp3 alarm_44100.mp3 b3_44100.mp3 bad_44100.mp3 blop_44100.mp3 bye_44100.mp3 c3_44100.mp3 chicken.mp3 d3_44100.mp3 e3_44100.mp3 f3_44100.mp3 fall_44100.mp3 g3_44100.mp3 good_44100.mp3 detect_44100.mp3 magic_44100.mp3 tick_44100.mp3)
 
 set(COMPONENT_ADD_INCLUDEDIRS ".")
 

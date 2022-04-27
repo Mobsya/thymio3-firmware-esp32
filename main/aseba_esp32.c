@@ -547,7 +547,7 @@ void AsebaWriteBytecode(AsebaVMState* vm)
 
 }
 
-const static unsigned int _magic_[8] = {0xDE, 0xAD, 0xCA, 0xFE, 0xBE, 0xEF, 0x04, 0x02};
+//const static unsigned int _magic_[8] = {0xDE, 0xAD, 0xCA, 0xFE, 0xBE, 0xEF, 0x04, 0x02};
 
 
 void write_page_to_flash(unsigned long page_addr, void* const data, unsigned size)

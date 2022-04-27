@@ -339,7 +339,7 @@ static void list(char* path, char* match)
   DIR* dir = NULL;
   struct dirent* ent;
   char type;
-  char size[9];
+  char size[12];
   char tpath[255];
   char tbuffer[80];
   struct stat sb;
