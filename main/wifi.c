@@ -27,13 +27,12 @@
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_event.h"
-#include "esp_event_loop.h"
 #include "nvs_flash.h"
 
 #include "lwip/sockets.h"
 
 #include "wifi.h"
-
+#include "wifi_manager.h"
 #include "ota_update.h"
 #include "tcp_server.h"
 //#include "wifi_update.h"
@@ -153,6 +152,7 @@ static void ProcessMessage(const char* message, int messageLen, char* responseBu
 
 void WIFI_Configure(void)
 {
+	/*
   EventGroup = xEventGroupCreate();
 
   // Initialize the TCP Stack
@@ -190,6 +190,23 @@ void WIFI_Configure(void)
   //ESP_ERROR_CHECK(esp_wifi_connect());
 
   ESP_LOGI(Tag, "WIFI is configured");
+  */
+}
+
+void cb_connection_ok(void *pvParameter){
+	ESP_LOGI(Tag, "I have a connection!");
+	WifiIsConnected = true;
+	Leds_SetDebugBrightness(0u, 0u, MAX_BRIGHTNESS);
+}
+
+void cb_disconnected(void *pvParameter){
+	ESP_LOGI(Tag, "Lost connection");
+	WifiIsConnected = false;
+	Leds_SetDebugBrightness(MAX_BRIGHTNESS, 0u, 0u);
+}
+
+void cb_start_ap(void *pvParameter){
+	Leds_SetDebugBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
 }
 
 //_____________________________________________________________________________
@@ -201,11 +218,16 @@ void WIFI_Init(void)
   Leds_SetDebugBrightness(MAX_BRIGHTNESS, 0u, 0u);
 
 //#if 0  // FIXME
-  WIFI_InitNVS();
-  WIFI_Configure();
+//  WIFI_InitNVS();
+//  WIFI_Configure();
   //WIFIUpdate_Init();
   //WIFI_WaitForIP();
 //#endif
+
+	wifi_manager_start();
+	wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
+	wifi_manager_set_callback(WM_EVENT_STA_DISCONNECTED, &cb_disconnected);
+	wifi_manager_set_callback(WM_ORDER_START_AP, &cb_start_ap);
 
   //OtaUpdate_Init();
 

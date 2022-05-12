@@ -32,6 +32,7 @@
 #include "esp_http_server.h"
 
 #include "file_server.h"
+#include "http_app.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -70,6 +71,7 @@ struct file_server_data
 //-----------------------------------------------------------------------------
 
 static const char* Tag = "file_server";
+static struct file_server_data* server_data = NULL;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -91,6 +93,8 @@ static esp_err_t upload_post_handler(httpd_req_t* req);
 
 static esp_err_t delete_post_handler(httpd_req_t* req);
 
+static esp_err_t general_post_handler(httpd_req_t* req);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -108,8 +112,6 @@ void FileServer_Init(void)
 
 esp_err_t FileServer_Start(const char* basePath)
 {
-  static struct file_server_data* server_data = NULL;
-
   // Validate file storage base path
   if (!basePath || strcmp(basePath, "/spiffs") != 0)
   {
@@ -135,54 +137,57 @@ esp_err_t FileServer_Start(const char* basePath)
   strlcpy(server_data->base_path, basePath,
           sizeof(server_data->base_path));
 
-  httpd_handle_t server = NULL;
-  httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+//  httpd_handle_t server = NULL;
+//  httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+//
+//  // Use the URI wildcard matching function in order to
+//  // allow the same handler to respond to multiple different
+//  // target URIs which match the wildcard scheme
+//  config.uri_match_fn = httpd_uri_match_wildcard;
+//
+//  ESP_LOGI(Tag, "Starting HTTP Server");
+//
+//  if (httpd_start(&server, &config) != ESP_OK)
+//  {
+//    ESP_LOGE(Tag, "Failed to start file server!");
+//    return ESP_FAIL;
+//  }
+//
+//  // URI handler for getting uploaded files
+//  httpd_uri_t file_download =
+//  {
+//    .uri       = "/*",  // Match all URIs of type /path/to/file
+//    .method    = HTTP_GET,
+//    .handler   = download_get_handler,
+//    .user_ctx  = server_data    // Pass server data as context
+//  };
+//
+//  httpd_register_uri_handler(server, &file_download);
+//
+//  // URI handler for uploading files to server
+//  httpd_uri_t file_upload =
+//  {
+//    .uri       = "/upload/*",   // Match all URIs of type /upload/path/to/file
+//    .method    = HTTP_POST,
+//    .handler   = upload_post_handler,
+//    .user_ctx  = server_data    // Pass server data as context
+//  };
+//
+//  httpd_register_uri_handler(server, &file_upload);
+//
+//  // URI handler for deleting files from server
+//  httpd_uri_t file_delete =
+//  {
+//    .uri       = "/delete/*",   // Match all URIs of type /delete/path/to/file
+//    .method    = HTTP_POST,
+//    .handler   = delete_post_handler,
+//    .user_ctx  = server_data    // Pass server data as context
+//  };
+//
+//  httpd_register_uri_handler(server, &file_delete);
 
-  // Use the URI wildcard matching function in order to
-  // allow the same handler to respond to multiple different
-  // target URIs which match the wildcard scheme
-  config.uri_match_fn = httpd_uri_match_wildcard;
-
-  ESP_LOGI(Tag, "Starting HTTP Server");
-
-  if (httpd_start(&server, &config) != ESP_OK)
-  {
-    ESP_LOGE(Tag, "Failed to start file server!");
-    return ESP_FAIL;
-  }
-
-  // URI handler for getting uploaded files
-  httpd_uri_t file_download =
-  {
-    .uri       = "/*",  // Match all URIs of type /path/to/file
-    .method    = HTTP_GET,
-    .handler   = download_get_handler,
-    .user_ctx  = server_data    // Pass server data as context
-  };
-
-  httpd_register_uri_handler(server, &file_download);
-
-  // URI handler for uploading files to server
-  httpd_uri_t file_upload =
-  {
-    .uri       = "/upload/*",   // Match all URIs of type /upload/path/to/file
-    .method    = HTTP_POST,
-    .handler   = upload_post_handler,
-    .user_ctx  = server_data    // Pass server data as context
-  };
-
-  httpd_register_uri_handler(server, &file_upload);
-
-  // URI handler for deleting files from server
-  httpd_uri_t file_delete =
-  {
-    .uri       = "/delete/*",   // Match all URIs of type /delete/path/to/file
-    .method    = HTTP_POST,
-    .handler   = delete_post_handler,
-    .user_ctx  = server_data    // Pass server data as context
-  };
-
-  httpd_register_uri_handler(server, &file_delete);
+  http_app_set_handler_hook(HTTP_GET, &download_get_handler);
+  http_app_set_handler_hook(HTTP_POST, &general_post_handler);
 
   return ESP_OK;
 }
@@ -380,7 +385,7 @@ static esp_err_t download_get_handler(httpd_req_t* req)
   FILE* fd = NULL;
   struct stat file_stat;
 
-  const char* filename = get_path_from_uri(filepath, ((struct file_server_data*)req->user_ctx)->base_path,
+  const char* filename = get_path_from_uri(filepath, server_data->base_path,
                          req->uri, sizeof(filepath));
   if (!filename)
   {
@@ -429,7 +434,7 @@ static esp_err_t download_get_handler(httpd_req_t* req)
   set_content_type_from_file(req, filename);
 
   // Retrieve the pointer to scratch buffer for temporary storage
-  char* chunk = ((struct file_server_data*)req->user_ctx)->scratch;
+  char* chunk = server_data->scratch;
   size_t chunksize;
 
   do
@@ -464,6 +469,18 @@ static esp_err_t download_get_handler(httpd_req_t* req)
 
 //_____________________________________________________________________________
 
+static esp_err_t general_post_handler(httpd_req_t* req)
+{
+	if(strncmp(req->uri, "/upload", 7) == 0) {
+		upload_post_handler(req);
+	} else if(strncmp(req->uri, "/delete", 7) == 0) {
+		delete_post_handler(req);
+	}
+	return ESP_OK;
+}
+
+//_____________________________________________________________________________
+
 static esp_err_t upload_post_handler(httpd_req_t* req)
 {
   char filepath[FILE_PATH_MAX];
@@ -472,7 +489,7 @@ static esp_err_t upload_post_handler(httpd_req_t* req)
 
   // Skip leading "/upload" from URI to get filename
   // Note sizeof() counts NULL termination hence the -1
-  const char* filename = get_path_from_uri(filepath, ((struct file_server_data*)req->user_ctx)->base_path,
+  const char* filename = get_path_from_uri(filepath, server_data->base_path,
                          req->uri + sizeof("/upload") - 1, sizeof(filepath));
 
   if (!filename)
@@ -526,7 +543,7 @@ static esp_err_t upload_post_handler(httpd_req_t* req)
   ESP_LOGI(Tag, "Receiving file : %s...", filename);
 
   // Retrieve the pointer to scratch buffer for temporary storage
-  char* buf = ((struct file_server_data*)req->user_ctx)->scratch;
+  char* buf = server_data->scratch;
   int received;
 
   // Content length of the request gives
@@ -598,7 +615,7 @@ static esp_err_t delete_post_handler(httpd_req_t* req)
 
   // Skip leading "/delete" from URI to get filename
   // Note sizeof() counts NULL termination hence the -1
-  const char* filename = get_path_from_uri(filepath, ((struct file_server_data*)req->user_ctx)->base_path,
+  const char* filename = get_path_from_uri(filepath, server_data->base_path,
                          req->uri  + sizeof("/delete") - 1, sizeof(filepath));
   if (!filename)
   {

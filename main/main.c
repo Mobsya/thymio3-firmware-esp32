@@ -85,6 +85,7 @@ int app_main(void)
 // Initialization
 //*****************************************************************************
 
+	//esp_log_level_set("*", ESP_LOG_VERBOSE);
   esp_log_level_set("*", ESP_LOG_INFO);
 
   ESP_LOGI(Tag, "*********************");
@@ -99,7 +100,7 @@ int app_main(void)
 
   Leds_Init();
 
-  RC5_Init();
+  //RC5_Init();
 
   Sensors_Init();
   Comm_Init();
@@ -138,9 +139,9 @@ int app_main(void)
   ESP_LOGI(Tag, "******* Tasks *******");
   ESP_LOGI(Tag, "*********************");
 
-  esp_log_level_set("*", ESP_LOG_ERROR);
-  esp_log_level_set("sequence", ESP_LOG_INFO);
-  esp_log_level_set("mode", ESP_LOG_INFO);
+  //esp_log_level_set("*", ESP_LOG_ERROR);
+  //esp_log_level_set("sequence", ESP_LOG_INFO);
+  //esp_log_level_set("mode", ESP_LOG_INFO);
 
   ESP_LOGI(Tag, "OTA");
 
@@ -152,7 +153,7 @@ int app_main(void)
 
   Behavior_Start();
 
-  RC5_Start();
+  //RC5_Start();
 
   Sensors_Start();
   Comm_Start();

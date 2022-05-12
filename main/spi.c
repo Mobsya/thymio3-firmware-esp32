@@ -111,7 +111,7 @@ void Spi_AddDeviceHSPI(spi_device_handle_t* device, int csPin)
     .clock_speed_hz   = HSPI_CLK_FREQENCY_Hz,
     .spics_io_num     = csPin,
     .flags            = 0,
-    .queue_size       = 1,
+    .queue_size       = 5,
     .pre_cb           = NULL,
     .post_cb          = NULL
   };

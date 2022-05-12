@@ -39,6 +39,7 @@
 #include "mode.h"
 #include "rc5.h"
 #include "settings.h"
+#include "wifi_manager.h"
 
 #include "aseba_esp32.h"  // TODO Add GetSpeed in common to remove this line
 
@@ -62,7 +63,8 @@ enum
   E_Setting_Volume,
   E_Setting_Motor,
   E_Setting_Color,
-  E_Setting_Max = E_Setting_Color
+  E_Reset_WiFi_Credentials,
+  E_Setting_Max = E_Reset_WiFi_Credentials
 };
 typedef int16_t T_Setting;  // Setting selection
 
@@ -671,6 +673,10 @@ static void UpdateSettings(void)
         CalibrateColor();
         break;
 
+      case E_Reset_WiFi_Credentials:
+    	  wifi_manager_delete_sta_config();
+    	  break;
+
       default:
         // Do nothing
         break;
@@ -751,6 +757,10 @@ static void SetSettingColor(T_Setting setting)
       Leds_SetBodyBrightness((MAX_BRIGHTNESS / 2u), 0u, MAX_BRIGHTNESS);
       break;
 
+    case E_Reset_WiFi_Credentials: // Dark red
+    	Leds_SetBodyBrightness((MAX_BRIGHTNESS / 4u), 0u, 0u);
+    	break;
+
     default:
       // Do nothing
       break;
@@ -792,6 +802,9 @@ static void ExitSetting(T_Setting setting)
     case E_Setting_Color:
       IsColorCalibrationInProgress = false;
       break;
+
+    case E_Reset_WiFi_Credentials:
+    	break;
 
     default:
       // Do nothing

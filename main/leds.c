@@ -41,7 +41,7 @@
 #define LED_OFF_BANK_4          0x0Fu  //!< LSB --> U29.QA
 #define LED_OFF_BANK_5          0x00u  //!< LSB --> U30.QA
 
-#define LEDS_FREQUENCY_Hz      100.0F  //!< Frequency of the LEDs in [Hz]
+#define LEDS_FREQUENCY_Hz      50.0F  //!< Frequency of the LEDs in [Hz]
 
 #define TIMING_FACTOR      1000000.0F  //!< Factor to convert [s] to [us]
 
@@ -70,7 +70,8 @@ static TaskHandle_t LedsTask = NULL;        //!< Used to notified the Leds task
 static bool TaskIsStarted = false;
 
 //                       Rows            Columns
-static uint8_t LedsTable[MAX_BRIGHTNESS][REGISTERS_NUM];
+//static uint8_t LedsTable[MAX_BRIGHTNESS][REGISTERS_NUM];
+uint8_t *LedsTable[MAX_BRIGHTNESS];
 
 static const uint8_t LedsOff[REGISTERS_NUM] = {LED_OFF_BANK_0,
                                                LED_OFF_BANK_1,
@@ -112,13 +113,21 @@ void Leds_Init(void)
 
   ShiftRegisters_Init();
 
+	//LedsTable = (uint8_t*) heap_caps_malloc(MAX_BRIGHTNESS*REGISTERS_NUM, MALLOC_CAP_DMA);
+	//if(LedsTable == NULL) {
+	//	ESP_LOGE(Tag, "Cannot allocate leds buffer");
+	//	return;
+	//}
+
   for (uint8_t row = 0u; row < MAX_BRIGHTNESS; row++)
-  {
-    for (uint8_t column = 0u; column < REGISTERS_NUM; column++)
-    {
-      LedsTable[row][column] = LedsOff[column];
-    }
-  }
+	{
+		LedsTable[row] = (uint8_t*) heap_caps_malloc(REGISTERS_NUM, MALLOC_CAP_DMA);
+	    for (uint8_t column = 0u; column < REGISTERS_NUM; column++)
+	    {
+	      LedsTable[row][column] = LedsOff[column];
+	    }
+	}
+
 
   ShiftRegisters_Fill(&LedsTable[0][0], REGISTERS_NUM);
 

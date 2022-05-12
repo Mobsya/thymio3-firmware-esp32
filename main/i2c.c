@@ -73,6 +73,7 @@ void I2C_Init(void)
   conf.sda_pullup_en    = GPIO_PULLUP_DISABLE;
   conf.scl_pullup_en    = GPIO_PULLUP_DISABLE;
   conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
+  conf.clk_flags		= 0;
 
   ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
   ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, conf.mode, I2C_MASTER_RX_BUF_DISABLE,
