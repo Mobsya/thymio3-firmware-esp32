@@ -22,8 +22,8 @@
 
 #include "timer_hw.h"
 
-#include "board.h"
 #include "gpio.h"
+#include "pins_def.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions

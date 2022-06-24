@@ -28,7 +28,7 @@
 #include "rc5.h"
 
 #include "aseba_esp32.h"
-#include "board.h"
+#include "pins_def.h"
 #include "settings.h"
 
 //-----------------------------------------------------------------------------

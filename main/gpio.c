@@ -25,7 +25,8 @@
 
 #include "aseba_esp32.h"
 #include "gpio.h"
-#include "board.h"
+
+#include "pins_def.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -80,7 +81,7 @@ static void IRAM_ATTR ISR_GPIOHandler(void* arg);
 void Gpio_Init(void)
 {
   // Install the GPIO ISR service
-  gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+  //gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT); // Already installed when initializing SPIFFS
 }
 
 //_____________________________________________________________________________

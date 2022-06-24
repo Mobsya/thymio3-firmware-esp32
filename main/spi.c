@@ -23,9 +23,8 @@
 #include "esp_log.h"
 
 #include "spi.h"
-#include "board.h"
-
 #include "gpio.h"
+#include "pins_def.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -149,6 +148,7 @@ void Spi_AddDeviceVSPI(spi_device_handle_t* device, int csPin)
 
 void Spi_WriteHSPI(spi_device_handle_t device, uint8_t* data, uint16_t size)
 {
+	/*
   spi_transaction_t trans_desc =
   {
     .flags = 0,
@@ -158,7 +158,17 @@ void Spi_WriteHSPI(spi_device_handle_t device, uint8_t* data, uint16_t size)
     .rxlength = 0,
     .tx_buffer = data,
     .rx_buffer = NULL
-  };
+  };*/
+
+  static spi_transaction_t trans_desc;
+  memset(&trans_desc, 0, sizeof(trans_desc));
+  trans_desc.flags = 0;
+  trans_desc.cmd = 0;
+  trans_desc.addr = 0;
+  trans_desc.length = size * 8;
+  trans_desc.rxlength = 0;
+  trans_desc.tx_buffer = data;
+  trans_desc.rx_buffer = NULL;
 
   ESP_ERROR_CHECK(spi_device_queue_trans(device, &trans_desc, portMAX_DELAY));
 }
@@ -167,7 +177,7 @@ void Spi_WriteHSPI(spi_device_handle_t device, uint8_t* data, uint16_t size)
 
 void Spi_CommunicateVSPI(spi_device_handle_t device, int16_t* txBuffer, int16_t* rxBuffer, uint16_t size)
 {
-  spi_transaction_t transaction;
+  static spi_transaction_t transaction;
 
   memset(&transaction, 0, sizeof(transaction));
   transaction.length = 16 * size;

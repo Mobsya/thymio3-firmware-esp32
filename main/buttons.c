@@ -25,8 +25,8 @@
 #include "buttons.h"
 
 #include "aseba_esp32.h"
-#include "board.h"
 #include "gpio.h"
+#include "pins_def.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions

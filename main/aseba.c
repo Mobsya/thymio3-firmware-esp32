@@ -26,13 +26,13 @@
 #include "aseba.h"
 
 #include "behavior.h"
-#include "board.h"
 #include "comm.h"
 #include "leds.h"
 #include "sensors.h"
 #include "timer_sw.h"
 
 #include "aseba_esp32.h"
+#include "pins_def.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions

@@ -85,12 +85,19 @@ int app_main(void)
 // Initialization
 //*****************************************************************************
 
+	//esp_log_level_set("*", ESP_LOG_DEBUG);
 	//esp_log_level_set("*", ESP_LOG_VERBOSE);
-  esp_log_level_set("*", ESP_LOG_INFO);
+  //esp_log_level_set("*", ESP_LOG_INFO);
+  //esp_log_level_set("*", ESP_LOG_ERROR);
+  esp_log_level_set("*", ESP_LOG_NONE);
+
+
 
   ESP_LOGI(Tag, "*********************");
   ESP_LOGI(Tag, "** Initializations **");
   ESP_LOGI(Tag, "*********************");
+
+  ESP_LOGI(Tag, "heap (cont.)=%ul, heap (all)=%ul, min_heap=%ul", esp_get_free_heap_size(), esp_get_free_internal_heap_size(), esp_get_minimum_free_heap_size());
 
   TimerSw_Init();
 
@@ -100,7 +107,7 @@ int app_main(void)
 
   Leds_Init();
 
-  //RC5_Init();
+  RC5_Init();
 
   Sensors_Init();
   Comm_Init();
@@ -153,12 +160,17 @@ int app_main(void)
 
   Behavior_Start();
 
-  //RC5_Start();
+  RC5_Start();
 
   Sensors_Start();
   Comm_Start();
 
   Leds_Start();
+
+  ESP_LOGI(Tag, "heap (cont.)=%ul, heap (all)=%ul, min_heap=%ul", esp_get_free_heap_size(), esp_get_free_internal_heap_size(), esp_get_minimum_free_heap_size());
+
+  //Codec_PlayMP3FileFromFlash(0);
+  //Codec_PlayMP3FileFromFlash(E_SoundIndex_Startup);
 
   return 0;
 }

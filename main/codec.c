@@ -55,9 +55,10 @@
 
 #include "codec.h"
 
-#include "board.h"
-#include "es8374.h"
+#include "thymio_es8374.h"
 #include "file_system.h"
+#include "pins_def.h"
+#include "board.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -111,18 +112,6 @@
         },                                              \
 };
 
-#define AUDIO_CODEC_DEFAULT_CONFIG(){                   \
-        .adc_input  = AUDIO_HAL_ADC_INPUT_LINE1,        \
-        .dac_output = AUDIO_HAL_DAC_OUTPUT_ALL,         \
-        .codec_mode = AUDIO_HAL_CODEC_MODE_BOTH,        \
-        .i2s_iface = {                                  \
-            .mode = AUDIO_HAL_MODE_SLAVE,               \
-            .fmt = AUDIO_HAL_I2S_NORMAL,                \
-            .samples = AUDIO_HAL_48K_SAMPLES,           \
-            .bits = AUDIO_HAL_BIT_LENGTH_16BITS,        \
-        },                                              \
-};
-
 #define BUF_SIZE (SAVE_FILE_RATE * 1) /* 2 second buffer */
 
 //-----------------------------------------------------------------------------
@@ -136,13 +125,14 @@ typedef struct
   const uint8_t* End;
 } T_File;
 
+/*
 struct audio_board_handle
 {
   audio_hal_handle_t audio_hal;  // Audio hardware abstract layer handle
 };
 
 typedef struct audio_board_handle* audio_board_handle_t;
-
+*/
 typedef enum
 {
   PLAYER_EVENT_NONE = 0,
@@ -312,6 +302,14 @@ static T_WAVRecorderHandle        WAVRecorder        = NULL;
 static int16_t buffer[4 * BUF_SIZE];
 
 static T_SoundStatus SoundStatus[15];
+
+#define MY_DEFAULT_MP3_DECODER_CONFIG() {                  \
+    .out_rb_size        = MP3_DECODER_RINGBUFFER_SIZE,  \
+    .task_stack         = MP3_DECODER_TASK_STACK_SIZE,  \
+    .task_core          = MP3_DECODER_TASK_CORE,        \
+    .task_prio          = MP3_DECODER_TASK_PRIO,        \
+    .stack_in_ext       = false,                         \
+}
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -556,7 +554,8 @@ void Codec_Init(void)
   InitSPIFFS();
 
   //ESP_LOGI(Tag, "[2] Start codec chip");
-  BoardHandle = InitBoard();
+  //BoardHandle = InitBoard();
+  BoardHandle = audio_board_init();
   audio_hal_ctrl_codec(BoardHandle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
 
 //#if 0
@@ -564,10 +563,10 @@ void Codec_Init(void)
   MP3PlayerFromFlash = InitMP3PlayerFromFlash();
 //#endif
 
-//#if 0
+#if 0
   ESP_LOGE(Tag, "INIT MP3 PLAYER");
   MP3Player = InitMP3Player();
-//#endif
+#endif
 
 #if 0
   ESP_LOGE(Tag, "INIT WAV PLAYER");
@@ -911,7 +910,7 @@ static T_MP3PlayerHandle InitMP3Player(void)
   //AUDIO_MEM_CHECK(Tag, ap->Filter, goto _audio_init_failed);
 
   ESP_LOGI(Tag, "[2.4] Create I2S stream to write audio data to codec chip");
-  ap->I2SStream = CreateI2SStream(MP3_PLAYER_RATE, MP3_PLAYER_BITS, MP3_PLAYER_CHANNEL, AUDIO_STREAM_WRITER);
+  ap->I2SStream = MP3PlayerFromFlash->I2SStream; //CreateI2SStream(MP3_PLAYER_RATE, MP3_PLAYER_BITS, MP3_PLAYER_CHANNEL, AUDIO_STREAM_WRITER);
 
   ESP_LOGI(Tag, "[2.5] Register all elements to audio pipeline");
   audio_pipeline_register(ap->Pipeline, ap->SPIFFSStream, "mp3_file_reader");
@@ -1135,7 +1134,7 @@ static audio_element_handle_t CreateI2SStream(int sampleRates, int bits, int cha
   i2s_cfg.i2s_config.sample_rate = sampleRates;
 
   audio_element_handle_t i2s_stream = i2s_stream_init(&i2s_cfg);
-
+/*
   // Define the pins of the I2S
   i2s_pin_config_t i2s_pin_cfg =
   {
@@ -1155,7 +1154,7 @@ static audio_element_handle_t CreateI2SStream(int sampleRates, int bits, int cha
   i2s_info.channels = channels;
   i2s_info.sample_rates = sampleRates;
   audio_element_setinfo(i2s_stream, &i2s_info);
-
+*/
   return i2s_stream;
 }
 
@@ -1179,7 +1178,7 @@ static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, in
 
 static audio_element_handle_t CreateMP3Decoder(void)
 {
-  mp3_decoder_cfg_t mp3_cfg = DEFAULT_MP3_DECODER_CONFIG();
+  mp3_decoder_cfg_t mp3_cfg = MY_DEFAULT_MP3_DECODER_CONFIG();
 
   return mp3_decoder_init(&mp3_cfg);
 }
@@ -1375,10 +1374,20 @@ static void RunMP3PlayerFromFlashTask(void* arg)
     if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
         && msg.source == (void*)ap->I2SStream
         && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
-        && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED))
+		&& ((int)msg.data == AEL_STATUS_STATE_FINISHED) // STOPPED state already handled by Stop... functions
         && ap->Playing)
     {
-      ESP_LOGI(Tag, "Stop pipeline");
+      //ESP_LOGE(Tag, "Stop pipeline from task");
+/*
+      //audio_pipeline_stop(ap->Pipeline);
+      //audio_pipeline_wait_for_stop(ap->Pipeline);
+      //audio_pipeline_terminate(ap->Pipeline);
+      audio_pipeline_reset_ringbuffer(ap->Pipeline);
+      audio_pipeline_reset_elements(ap->Pipeline);
+      audio_pipeline_change_state(ap->Pipeline, AEL_STATE_INIT);
+      ap->Playing = false;
+*/
+
       audio_pipeline_stop(ap->Pipeline);
       audio_pipeline_wait_for_stop(ap->Pipeline);
       audio_element_reset_state(ap->Decoder);
@@ -1387,6 +1396,8 @@ static void RunMP3PlayerFromFlashTask(void* arg)
       audio_pipeline_reset_items_state(ap->Pipeline);
       ap->Playing = false;
       //audio_pipeline_terminate(ap->Pipeline);
+
+
 
       SoundStatus[FileIndexFromFlash] = E_SoundStatus_Finished;
     }
@@ -1793,6 +1804,8 @@ static esp_err_t StopMP3FromFlash(T_MP3PlayerFromFlashHandle ap)
 {
   if (ap->Playing)
   {
+	  //ESP_LOGE(Tag, "StopMP3FromFlash");
+
     audio_pipeline_stop(ap->Pipeline);
     audio_pipeline_wait_for_stop(ap->Pipeline);
     audio_element_reset_state(ap->Decoder);
@@ -1801,6 +1814,15 @@ static esp_err_t StopMP3FromFlash(T_MP3PlayerFromFlashHandle ap)
     audio_pipeline_reset_items_state(ap->Pipeline);
     audio_pipeline_terminate(ap->Pipeline);
     ap->Playing = false;
+
+/*
+	  audio_pipeline_stop(ap->Pipeline);
+	  audio_pipeline_wait_for_stop(ap->Pipeline);
+      audio_pipeline_reset_ringbuffer(ap->Pipeline);
+      audio_pipeline_reset_elements(ap->Pipeline);
+      audio_pipeline_change_state(ap->Pipeline, AEL_STATE_INIT);
+      ap->Playing = false;
+      */
   }
 
   return ESP_OK;

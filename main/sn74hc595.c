@@ -23,7 +23,7 @@
 
 #include "sn74hc595.h"
 
-#include "board.h"
+#include "pins_def.h"
 #if 0
 #include "gpio.h"  // Not used in this project
 #endif

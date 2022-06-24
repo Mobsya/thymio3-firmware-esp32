@@ -22,9 +22,9 @@
 
 #include "power.h"
 
-#include "board.h"
 #include "codec.h"
 #include "gpio.h"
+#include "pins_def.h"
 #include "stm32_spi.h"
 
 //-----------------------------------------------------------------------------

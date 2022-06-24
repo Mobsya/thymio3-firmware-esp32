@@ -1,0 +1,15 @@
+menu "My Audio Board"
+
+choice CUSTOMER_AUDIO_BOARD
+    prompt "My audio board"
+    default THYMIO_BOARD
+    help
+        Select an audio board to use with the ESP-ADF
+
+config THYMIO_BOARD
+    bool "Thymio board"
+
+endchoice
+
+endmenu
+

@@ -12,7 +12,7 @@ set(COMPONENT_SRCS
     behavior.h
     bh1745nuc.c
     bh1745nuc.h
-    board.h
+    pins_def.h
     buttons.c
     buttons.h
     codec.c
@@ -26,8 +26,6 @@ set(COMPONENT_SRCS
     dsp.c
     dsp.h
     error.h
-    es8374.c
-    es8374.h
     explorer.c
     explorer.h
     fearful.c

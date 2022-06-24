@@ -28,7 +28,6 @@
 
 #include "accelerometer.h"
 #include "aseba_esp32.h"
-#include "board.h"
 #include "buttons.h"
 #include "codec.h"
 #include "color_sensor.h"
@@ -37,6 +36,7 @@
 #include "settings.h"
 
 #include "es8374.h"
+#include "pins_def.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions

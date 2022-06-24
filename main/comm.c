@@ -28,12 +28,13 @@
 
 #include "aseba_esp32.h"
 #include "behavior.h"
-#include "board.h"
 #include "power.h"
 #include "settings.h"
 #include "spi.h"
 #include "stm32_spi.h"
 #include "uart.h"
+#include <string.h>
+#include "pins_def.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -94,7 +95,7 @@ static void RunCommTask(void* arg);
 
 void Comm_Init(void)
 {
-  //UART_Init();
+  UART_Init();
 
   STM32_Init();
 
@@ -141,8 +142,8 @@ static void RunCommTask(void* arg)
 {
   static uint8_t counter = 0;
 
-  static int16_t tx[DATA_SIZE] = {0x0000};
-  static int16_t rx[DATA_SIZE] = {0x0000};
+  DMA_ATTR static int16_t tx[DATA_SIZE] = {0x0000};
+  DMA_ATTR static int16_t rx[DATA_SIZE] = {0x0000};
 
   ESP_LOGI(Tag, "Start Comm Task");
 

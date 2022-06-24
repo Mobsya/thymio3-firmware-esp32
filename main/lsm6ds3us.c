@@ -25,9 +25,9 @@
 
 #include "lsm6ds3us.h"
 
-#include "board.h"
 #include "gpio.h"
 #include "i2c.h"
+#include "pins_def.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions

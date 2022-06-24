@@ -22,7 +22,8 @@
 #include "esp_log.h"
 
 #include "i2c.h"
-#include "board.h"
+
+#include "pins_def.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions

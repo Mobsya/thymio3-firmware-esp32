@@ -26,7 +26,7 @@
 #include "stm32_spi.h"
 
 #include "aseba_esp32.h"
-#include "board.h"
+#include "pins_def.h"
 #include "spi.h"
 
 //-----------------------------------------------------------------------------
@@ -425,6 +425,7 @@ void STM32_SetBackRightProxIRValue(int16_t value)
 
 bool STM32_IsUSBCablePresent(void)
 {
+	//ESP_LOGE(Tag, "status=%x", Status);
   return ((Status & (1u << USB_CABLE_IS_PRESENT_BIT_POS)) == USB_CABLE_IS_PRESENT_BIT_MASK);
 }
 
@@ -432,6 +433,7 @@ bool STM32_IsUSBCablePresent(void)
 
 bool STM32_IsUSBPortOpen(void)
 {
+	//ESP_LOGE(Tag, "status=%x", Status);
   return ((Status & (1u << USB_PORT_IS_OPEN_BIT_POS)) == USB_PORT_IS_OPEN_BIT_MASK);
   //return false;  // FIXME temporary used to run Aseba with WIFI
   //return true;  // FIXME temporary used to run Aseba with UART

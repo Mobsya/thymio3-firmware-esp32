@@ -21,10 +21,10 @@
 #include "esp_log.h"
 #include "esp_err.h"
 
-#include "es8374.h"
+#include "thymio_es8374.h"
 
-#include "board.h"
-#include "i2c.h"
+#include "../../main/i2c.h"
+#include "../../main/pins_def.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -336,6 +336,16 @@ typedef uint8_t T_PGAGain;  // PGA gain configuration
 //-----------------------------------------------------------------------------
 
 xSemaphoreHandle I2CMutex;
+
+audio_hal_func_t AUDIO_CODEC_THYMIO_ES8374_DEFAULT_HANDLE =
+{
+  .audio_codec_initialize   = ES8374_Init,
+  .audio_codec_deinitialize = ES8374_Deinit,
+  .audio_codec_ctrl         = ES8374_ControlState,
+  .audio_codec_config_iface = ES8374_ConfigureI2S,
+  .audio_codec_set_volume   = ES8374_SetVoiceVolume,
+  .audio_codec_get_volume   = ES8374_GetVoiceVolume
+};
 
 //-----------------------------------------------------------------------------
 // Private Data

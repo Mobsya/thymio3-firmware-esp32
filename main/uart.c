@@ -25,7 +25,7 @@
 
 #include "uart.h"
 
-#include "board.h"
+#include "pins_def.h"
 #include "stm32_spi.h"
 
 //-----------------------------------------------------------------------------

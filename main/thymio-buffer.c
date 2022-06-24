@@ -108,8 +108,10 @@ void AsebaFifoCheckConnectionMode(void)
 {
   if (STM32_IsUSBPortOpen())
   {
+	  //ESP_LOGE("thymio-buffer", "USB Port open");
     if (ConnectionMode != MODE_USB)
     {
+    	//ESP_LOGE("thymio-buffer", "USB mode");
       // Switch off the WIFI
       ESP_LOGI("thymio-buffer", "COUCOU Switch off WIFI");
       //WIFI_Disconnect();
@@ -121,8 +123,10 @@ void AsebaFifoCheckConnectionMode(void)
   }
   else if (WIFI_IsConnected())
   {
+	  //ESP_LOGE("thymio-buffer", "WiFi connected");
     if (TCPServer_IsSocketAccepted())
     {
+    	//ESP_LOGE("thymio-buffer", "WiFi mode");
       ConnectionMode = MODE_WIFI;
     }
     else
@@ -132,6 +136,7 @@ void AsebaFifoCheckConnectionMode(void)
   }
   else
   {
+	  //ESP_LOGE("thymio-buffer", "Disconnected MODE");
     // No USB-UART, no WIFI
     Fifo8bits_Reset(TCPFifoRx);
 

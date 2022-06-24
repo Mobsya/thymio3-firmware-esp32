@@ -14,8 +14,8 @@
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
-#ifndef BH1745NUC_H_
-#define BH1745NUC_H_
+#ifndef THYMIO_ES8374_H_
+#define THYMIO_ES8374_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
@@ -25,7 +25,6 @@
 
 #include "audio_hal.h"
 
-#include "error.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -72,4 +71,4 @@ extern esp_err_t ES8374_GetVoiceVolume(int* volume);
 
 extern esp_err_t ES8374_ControlState(audio_hal_codec_mode_t mode, audio_hal_ctrl_t ctrl_state);
 
-#endif // BH1745NUC_H_
+#endif // THYMIO_ES8374_H_

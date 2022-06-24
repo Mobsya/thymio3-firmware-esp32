@@ -70,8 +70,7 @@ static TaskHandle_t LedsTask = NULL;        //!< Used to notified the Leds task
 static bool TaskIsStarted = false;
 
 //                       Rows            Columns
-//static uint8_t LedsTable[MAX_BRIGHTNESS][REGISTERS_NUM];
-uint8_t *LedsTable[MAX_BRIGHTNESS];
+DMA_ATTR uint8_t LedsTable[MAX_BRIGHTNESS][REGISTERS_NUM];
 
 static const uint8_t LedsOff[REGISTERS_NUM] = {LED_OFF_BANK_0,
                                                LED_OFF_BANK_1,
@@ -113,15 +112,8 @@ void Leds_Init(void)
 
   ShiftRegisters_Init();
 
-	//LedsTable = (uint8_t*) heap_caps_malloc(MAX_BRIGHTNESS*REGISTERS_NUM, MALLOC_CAP_DMA);
-	//if(LedsTable == NULL) {
-	//	ESP_LOGE(Tag, "Cannot allocate leds buffer");
-	//	return;
-	//}
-
   for (uint8_t row = 0u; row < MAX_BRIGHTNESS; row++)
 	{
-		LedsTable[row] = (uint8_t*) heap_caps_malloc(REGISTERS_NUM, MALLOC_CAP_DMA);
 	    for (uint8_t column = 0u; column < REGISTERS_NUM; column++)
 	    {
 	      LedsTable[row][column] = LedsOff[column];

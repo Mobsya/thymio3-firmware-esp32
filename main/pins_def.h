@@ -6,7 +6,7 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    board.h
+//! \file    pins_def.h
 //! \brief   This module configures the board
 //!
 //! \author  Vincent Gonet
@@ -14,8 +14,8 @@
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
-#ifndef BOARD_H_
-#define BOARD_H_
+#ifndef PINS_DEF_H_
+#define PINS_DEF_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
@@ -100,4 +100,4 @@ extern xSemaphoreHandle I2CMutex;
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-#endif // BOARD_H_
+#endif // PINS_DEF_H_
