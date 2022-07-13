@@ -215,7 +215,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3_sys =
 
 void pause_mp3_sys(AsebaVMState* vm)
 {
-  Codec_PauseMP3FileFromFlash();
+  Codec_PauseMP3File();
 }
 
 //_____________________________________________________________________________
@@ -263,7 +263,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3_sys =
 
 void resume_mp3_sys(AsebaVMState* vm)
 {
-  Codec_ResumeMP3FileFromFlash();
+  Codec_ResumeMP3File();
 }
 
 //_____________________________________________________________________________

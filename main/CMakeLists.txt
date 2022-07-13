@@ -8,6 +8,8 @@ set(COMPONENT_SRCS
     aseba_esp32_user.h
     aseba.c
     aseba.h
+    audio_tone_uri.c
+    audio_tone_uri.h
     behavior.c
     behavior.h
     bh1745nuc.c
@@ -105,3 +107,4 @@ set(COMPONENT_EMBED_FILES server_certs/ca_cert.pem favicon.ico upload_script.htm
 set(COMPONENT_ADD_INCLUDEDIRS ".")
 
 register_component()
+

@@ -243,7 +243,7 @@ void FileSystem_SelectFile(char** fileName, int16_t index, T_Extension extension
   char name[4];
   char type[6];
 
-  list("/spiffs/", NULL);
+  //list("/spiffs/", NULL);
 
   switch (extension)
   {

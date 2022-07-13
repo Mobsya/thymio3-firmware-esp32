@@ -1,0 +1,28 @@
+#ifndef __AUDIO_TONEURI_H__
+#define __AUDIO_TONEURI_H__
+
+extern const char* tone_uri[];
+
+typedef enum {
+    TONE_TYPE_A3_44100,
+    TONE_TYPE_ALARM_44100,
+    TONE_TYPE_B3_44100,
+    TONE_TYPE_BAD_44100,
+    TONE_TYPE_BLOP_44100,
+    TONE_TYPE_BYE_44100,
+    TONE_TYPE_C3_44100,
+    TONE_TYPE_D3_44100,
+    TONE_TYPE_DETECT_44100,
+    TONE_TYPE_E3_44100,
+    TONE_TYPE_F3_44100,
+    TONE_TYPE_FALL_44100,
+    TONE_TYPE_G3_44100,
+    TONE_TYPE_GOOD_44100,
+    TONE_TYPE_MAGIC_44100,
+    TONE_TYPE_TICK_44100,
+    TONE_TYPE_MAX,
+} tone_type_t;
+
+int get_tone_uri_num();
+
+#endif

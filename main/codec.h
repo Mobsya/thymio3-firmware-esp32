@@ -87,11 +87,6 @@ extern void Codec_PlayMP3File(int16_t index);
 //! \return    None
 extern void Codec_PlayWAVFile(int16_t index);
 
-//! \brief     Pause a MP3 file
-//! \pre       First initialize the codec
-//! \param     None
-//! \return    None
-extern void Codec_PauseMP3FileFromFlash(void);
 
 //! \brief     Pause a MP3 file
 //! \pre       First initialize the codec
@@ -104,12 +99,6 @@ extern void Codec_PauseMP3File(void);
 //! \param     None
 //! \return    None
 extern void Codec_PauseWAVFile(void);
-
-//! \brief     Resume a MP3 file
-//! \pre       First initialize the codec
-//! \param     None
-//! \return    None
-extern void Codec_ResumeMP3FileFromFlash(void);
 
 //! \brief     Resume a MP3 file
 //! \pre       First initialize the codec

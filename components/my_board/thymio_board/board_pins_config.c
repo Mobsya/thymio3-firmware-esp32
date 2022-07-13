@@ -87,7 +87,6 @@ esp_err_t get_spi_pins(spi_bus_config_t *spi_config, spi_device_interface_config
 
 esp_err_t i2s_mclk_gpio_select(i2s_port_t i2s_num, gpio_num_t gpio_num)
 {
-/*
     if (i2s_num >= I2S_NUM_MAX) {
         ESP_LOGE(TAG, "Does not support i2s number(%d)", i2s_num);
         return ESP_ERR_INVALID_ARG;
@@ -120,8 +119,6 @@ esp_err_t i2s_mclk_gpio_select(i2s_port_t i2s_num, gpio_num_t gpio_num)
             WRITE_PERI_REG(PIN_CTRL, 0xFF0F);
         }
     }
-*/
-	// Generate master clock using a timer.
     return ESP_OK;
 }
 
