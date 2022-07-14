@@ -226,7 +226,7 @@ void FileSystem_EraseFile(const char* fileName)
   {
     if (unlink(fileName) == 0)
     {
-      printf("Erased file: %s\n", fileName);
+    	ESP_LOGI(Tag, "Erased file: %s\n", fileName);
     }
     else
     {
@@ -269,7 +269,7 @@ void FileSystem_SelectFile(char** fileName, int16_t index, T_Extension extension
 
   strcpy(*fileName, path);
 
-  printf("Selected file: %s\n", *fileName);
+  ESP_LOGI(Tag, "Selected file: %s\n", *fileName);
 }
 
 //_____________________________________________________________________________

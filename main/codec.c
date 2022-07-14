@@ -515,6 +515,7 @@ void Codec_Init(void)
   //BoardHandle = InitBoard();
   BoardHandle = audio_board_init();
   audio_hal_ctrl_codec(BoardHandle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
+  //audio_hal_ctrl_codec(BoardHandle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
 
 //#if 0
   ESP_LOGE(Tag, "INIT MP3 PLAYER");
@@ -526,10 +527,10 @@ void Codec_Init(void)
   WAVPlayer = InitWAVPlayer();
 #endif
 
-#if 0
+//#if 0
   ESP_LOGE(Tag, "INIT WAV RECORDER");
   WAVRecorder = InitWAVRecorder();
-#endif
+//#endif
 }
 
 //_____________________________________________________________________________
@@ -589,17 +590,22 @@ void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz)
 
 void Codec_PlayMP3FileFromFlash(T_SoundIndex index)
 {
+	//return;
+
   FileIndexFromFlash = index;
 
   SelectFile(FileIndexFromFlash);
 
   PlayMP3FromFlash(MP3Player);
+
 }
 
 //_____________________________________________________________________________
 
 void Codec_PlayMP3File(int16_t index)
 {
+	//return;
+
   char* fileName;
 
   FileIndex = index;
@@ -611,6 +617,7 @@ void Codec_PlayMP3File(int16_t index)
   {
     PlayMP3(MP3Player, fileName);
   }
+
 }
 
 //_____________________________________________________________________________
@@ -859,7 +866,7 @@ static T_MP3PlayerHandle InitMP3Player(void)
   ap->Run = true;
   ap->Playing = false;
   ap->mode = 0;
-
+/*
   if (xTaskCreatePinnedToCore(
         RunMP3PlayerTask,
         "sys_player",
@@ -872,7 +879,7 @@ static T_MP3PlayerHandle InitMP3Player(void)
     ESP_LOGE(Tag, "Error creating the Player task");
     goto _audio_init_failed;
   }
-
+*/
   return ap;
 _audio_init_failed:
   return NULL;
@@ -972,7 +979,12 @@ static T_WAVRecorderHandle InitWAVRecorder(void)
   AUDIO_MEM_CHECK(Tag, ap->Pipeline, goto _audio_init_failed);
 
   ESP_LOGI(Tag, "[2.1] Create I2S stream to read audio data from codec chip");
-  ap->I2SStream = CreateI2SStream(RECORD_RATE, RECORD_BITS, RECORD_CHANNEL, AUDIO_STREAM_READER);
+  //ap->I2SStream = CreateI2SStream(RECORD_RATE, RECORD_BITS, RECORD_CHANNEL, AUDIO_STREAM_READER);
+  i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
+  i2s_cfg.type = AUDIO_STREAM_READER;
+  i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ALL_RIGHT;
+  i2s_cfg.i2s_config.sample_rate = RECORD_RATE;
+  ap->I2SStream = i2s_stream_init(&i2s_cfg);
 
   ESP_LOGI(Tag, "[2.2] Create filter to convert to 8 [kHz]");
   ap->Filter = CreateFilter(RECORD_RATE, RECORD_CHANNEL, SAVE_FILE_RATE, SAVE_FILE_CHANNEL, AUDIO_CODEC_TYPE_ENCODER);
@@ -996,12 +1008,13 @@ static T_WAVRecorderHandle InitWAVRecorder(void)
   {"i2s_reader", "filter_downsample", "wav_encoder", "file_writer"
   }, 4);
 
-  ESP_LOGI(Tag, "[3.0] Setup event listener");
-  audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
-  ap->Evt = audio_event_iface_init(&evt_cfg);
+  //ESP_LOGI(Tag, "[3.0] Setup event listener");
+  //audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG(); //commented
+  //ap->Evt = audio_event_iface_init(&evt_cfg); //commented
+  ap->Evt = MP3Player->Evt;
 
-  ESP_LOGI(Tag, "[3.1] Listening event from peripherals");
-  audio_event_iface_set_listener(esp_periph_set_get_event_iface(Set), ap->Evt);
+  //ESP_LOGI(Tag, "[3.1] Listening event from peripherals");
+  //audio_event_iface_set_listener(esp_periph_set_get_event_iface(Set), ap->Evt); //commented
 
   ESP_LOGI(Tag, "[3.2] Listening event from pipeline");
   audio_pipeline_set_listener(ap->Pipeline, ap->Evt);
@@ -1009,6 +1022,22 @@ static T_WAVRecorderHandle InitWAVRecorder(void)
   ap->Run = true;
   ap->Recording = false;
 
+  //i2s_stream_set_clk(ap->I2SStream, RECORD_RATE, RECORD_BITS, RECORD_CHANNEL);
+
+  if (xTaskCreatePinnedToCore(
+        RunMP3PlayerTask,
+        "sys_player",
+        DEFAULT_PLAYER_TASK_STACK,
+        ap,
+        DEFAULT_PLAYER_TASK_PRIO,
+        &MP3PlayerTask,
+        0) != pdTRUE)
+  {
+    ESP_LOGE(Tag, "Error creating the Player task");
+    goto _audio_init_failed;
+  }
+
+/*
   if (xTaskCreatePinnedToCore(
         RunWAVRecorderTask,
         "recorder",
@@ -1021,7 +1050,7 @@ static T_WAVRecorderHandle InitWAVRecorder(void)
     ESP_LOGE(Tag, "Error creating the Recorder task");
     goto _audio_init_failed;
   }
-
+*/
   return ap;
 _audio_init_failed:
   return NULL;
@@ -1266,21 +1295,39 @@ static void SelectFile(T_SoundIndex index)
 
 static void RunMP3PlayerTask(void* arg)
 {
-  T_MP3PlayerHandle ap = (T_MP3PlayerHandle) arg;
+  //T_MP3PlayerHandle ap = (T_MP3PlayerHandle) arg;
+  T_WAVRecorderHandle ap = (T_WAVRecorderHandle) arg;
 
+  i2s_stream_set_clk(ap->I2SStream, RECORD_RATE, RECORD_BITS, RECORD_CHANNEL);
+  int second_recorded = 0;
   while (ap->Run)
   {
     audio_event_iface_msg_t msg;
-    esp_err_t ret = audio_event_iface_listen(ap->Evt, &msg, portMAX_DELAY);
+    //esp_err_t ret = audio_event_iface_listen(ap->Evt, &msg, portMAX_DELAY);
+    esp_err_t ret = audio_event_iface_listen(ap->Evt, &msg, 1000 / portTICK_RATE_MS);
 
     if (ret != ESP_OK)
     {
-      ESP_LOGE(Tag, "[ * ] Event interface error : %d", ret);
+      //ESP_LOGE(Tag, "[ * ] Event interface error : %d", ret);
+      if (WAVRecorder->Recording)
+      {
+        second_recorded++;
+
+        ESP_LOGE(Tag, "[ * ] Recording ... %d", second_recorded);
+
+        if (second_recorded >= RecordingDuration_s)
+        {
+          //break;
+          StopWAVRecord(WAVRecorder);
+          second_recorded = 0;
+        }
+      }
+
       continue;
     }
 
     if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-        && msg.source == (void*) ap->Decoder
+        && msg.source == (void*) MP3Player->Decoder
         && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
         && (int)msg.data == AEL_STATUS_STATE_RUNNING)
     {
@@ -1288,7 +1335,7 @@ static void RunMP3PlayerTask(void* arg)
     }
 
     if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-        && msg.source == (void*) ap->Decoder
+        && msg.source == (void*) MP3Player->Decoder
         && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
         && (int)msg.data == AEL_STATUS_STATE_PAUSED)
     {
@@ -1296,23 +1343,23 @@ static void RunMP3PlayerTask(void* arg)
     }
 
     if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-        && msg.source == (void*) ap->Decoder
+        && msg.source == (void*) MP3Player->Decoder
         && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
     {
       audio_element_info_t music_info = {0};
-      audio_element_getinfo(ap->Decoder, &music_info);
+      audio_element_getinfo(MP3Player->Decoder, &music_info);
 
-      //ESP_LOGE(Tag, "[ * ] Receive music info from MP3 decoder, sample_rates=%d, bits=%d, ch=%d",
-      //         music_info.sample_rates, music_info.bits, music_info.channels);
+      ESP_LOGE(Tag, "[ * ] Receive music info from MP3 decoder, sample_rates=%d, bits=%d, ch=%d",
+               music_info.sample_rates, music_info.bits, music_info.channels);
 
-      audio_element_setinfo(ap->I2SStream, &music_info);
-      i2s_stream_set_clk(ap->I2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
+      audio_element_setinfo(MP3Player->I2SStream, &music_info);
+      i2s_stream_set_clk(MP3Player->I2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
       continue;
     }
 
     // Stop when the last pipeline element (I2SStream in this case) receives stop event
     if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-        && msg.source == (void*)ap->I2SStream
+        && msg.source == (void*)MP3Player->I2SStream
         && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
 		&& ((int)msg.data == AEL_STATUS_STATE_FINISHED)) // STOPPED state already handled by Stop... functions
         //&& ap->Playing)
@@ -1442,7 +1489,7 @@ static void RunWAVRecorderTask(void* arg)
 
     if (audio_event_iface_listen(ap->Evt, &msg, 1000 / portTICK_RATE_MS) != ESP_OK)
     {
-      ESP_LOGE(Tag, "RUN RUN");
+      //ESP_LOGE(Tag, "RUN RUN");
       if (ap->Recording)
       {
         second_recorded++;
@@ -1526,6 +1573,7 @@ static esp_err_t PlayMP3FromFlash(T_MP3PlayerHandle ap)
 		//audio_pipeline_relink(ap->Pipeline, (const char *[]) {"mp3_flash_decoder", "i2s_writer"}, 2);
 		audio_pipeline_relink(ap->Pipeline, (const char* []) {"flash_tone", "mp3_flash_decoder", "i2s_writer"}, 3);
 		audio_pipeline_set_listener(ap->Pipeline, ap->Evt);
+		audio_pipeline_set_listener(WAVRecorder->Pipeline, ap->Evt);
 		//audio_element_set_read_cb(ap->Decoder, mp3_music_read_cb, NULL);
 		//audio_pipeline_reset_ringbuffer(ap->Pipeline);
 		//audio_pipeline_reset_elements(ap->Pipeline);
@@ -1548,7 +1596,7 @@ static esp_err_t PlayMP3FromFlash(T_MP3PlayerHandle ap)
 		*/
 
 		ap->mode = 0;
-		xTaskCreatePinnedToCore(RunMP3PlayerTask, "sys_player", DEFAULT_PLAYER_TASK_STACK, ap, DEFAULT_PLAYER_TASK_PRIO, &MP3PlayerTask, 0);
+		xTaskCreatePinnedToCore(RunMP3PlayerTask, "sys_player", DEFAULT_PLAYER_TASK_STACK, WAVRecorder, DEFAULT_PLAYER_TASK_PRIO, &MP3PlayerTask, 0);
 
 	}
 
@@ -1611,6 +1659,7 @@ static esp_err_t PlayMP3(T_MP3PlayerHandle ap, const char* url)
 		//audio_pipeline_relink(ap->Pipeline, (const char *[]) {"mp3_file_reader", "mp3_fs_decoder", "i2s_writer"}, 3);
 		audio_pipeline_relink(ap->Pipeline, (const char *[]) {"mp3_file_reader", "mp3_flash_decoder", "i2s_writer"}, 3);
 		audio_pipeline_set_listener(ap->Pipeline, ap->Evt);
+		audio_pipeline_set_listener(WAVRecorder->Pipeline, ap->Evt);
 		//audio_element_set_read_cb(ap->Decoder, NULL, NULL);
 		//audio_pipeline_reset_ringbuffer(ap->Pipeline);
 		//audio_pipeline_reset_elements(ap->Pipeline);
@@ -1633,12 +1682,12 @@ static esp_err_t PlayMP3(T_MP3PlayerHandle ap, const char* url)
 		*/
 
 		ap->mode = 1;
-		xTaskCreatePinnedToCore(RunMP3PlayerTask, "sys_player", DEFAULT_PLAYER_TASK_STACK, ap, DEFAULT_PLAYER_TASK_PRIO, &MP3PlayerTask, 0);
+		xTaskCreatePinnedToCore(RunMP3PlayerTask, "sys_player", DEFAULT_PLAYER_TASK_STACK, WAVRecorder, DEFAULT_PLAYER_TASK_PRIO, &MP3PlayerTask, 0);
 	}
 
   if (url)
   {
-    printf("Played MP3 file: %s\n", url);
+	ESP_LOGI(Tag, "Played MP3 file: %s\n", url);
     audio_element_set_uri(ap->SPIFFSStream, url);
     audio_pipeline_run(ap->Pipeline);
     //if(ap->mode == 0) {
@@ -1780,6 +1829,7 @@ static esp_err_t RecordWAV(T_WAVRecorderHandle ap, const char* url)
   if (url)
   {
     ESP_LOGE(Tag, "COUCOU RECORD WAV");
+    i2s_stream_set_clk(ap->I2SStream, RECORD_RATE, RECORD_BITS, RECORD_CHANNEL);
     audio_element_set_uri(ap->SPIFFSStream, url);
     audio_pipeline_run(ap->Pipeline);
     ap->Recording = true;
