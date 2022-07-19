@@ -74,7 +74,7 @@
 #define MP3_PLAYER_CHANNEL          1  //!< Mono = 1
 #define MP3_PLAYER_BITS            16
 
-#define RECORD_RATE             48000
+#define RECORD_RATE             8000
 #define RECORD_CHANNEL              1  //!< Mono = 1
 #define RECORD_BITS                16
 
@@ -995,6 +995,7 @@ static T_WAVRecorderHandle InitWAVRecorder(void)
 
   ESP_LOGI(Tag, "[2.4] Create spiffs stream to write data to spi flash");
   ap->SPIFFSStream = CreateSPIFFSStream(SAVE_FILE_RATE, SAVE_FILE_BITS, SAVE_FILE_CHANNEL, AUDIO_STREAM_WRITER);
+  //ap->SPIFFSStream = CreateSPIFFSStream(RECORD_RATE, SAVE_FILE_BITS, RECORD_CHANNEL, AUDIO_STREAM_WRITER);
   AUDIO_MEM_CHECK(Tag, ap->SPIFFSStream, goto _audio_init_failed);
 
   ESP_LOGI(Tag, "[2.5] Register all elements to audio pipeline");
@@ -1004,9 +1005,8 @@ static T_WAVRecorderHandle InitWAVRecorder(void)
   audio_pipeline_register(ap->Pipeline, ap->SPIFFSStream, "file_writer");
 
   ESP_LOGI(Tag, "[2.6] Link it together [codec_chip]-->i2s_stream-->wav_encoder-->spiffs_stream-->[flash]");
-  audio_pipeline_link(ap->Pipeline, (const char* [])
-  {"i2s_reader", "filter_downsample", "wav_encoder", "file_writer"
-  }, 4);
+  //audio_pipeline_link(ap->Pipeline, (const char* []) {"i2s_reader", "filter_downsample", "wav_encoder", "file_writer"}, 4);
+  audio_pipeline_link(ap->Pipeline, (const char* []) {"i2s_reader", "wav_encoder", "file_writer"}, 3);
 
   //ESP_LOGI(Tag, "[3.0] Setup event listener");
   //audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG(); //commented
@@ -1062,6 +1062,7 @@ static audio_element_handle_t CreateSPIFFSStream(int sampleRates, int bits, int 
 {
   spiffs_stream_cfg_t spiffs_cfg = SPIFFS_STREAM_CFG_DEFAULT();
   spiffs_cfg.type = type;
+  //spiffs_cfg.task_prio = 7;
 
   audio_element_handle_t spiffs_stream = spiffs_stream_init(&spiffs_cfg);
   mem_assert(spiffs_stream);
@@ -1121,7 +1122,9 @@ static audio_element_handle_t CreateFilter(int sourceRate, int sourceChannel, in
   rsp_cfg.src_ch = sourceChannel;
   rsp_cfg.dest_rate = destRate;
   rsp_cfg.dest_ch = destChannel;
-  rsp_cfg.type = type;
+  rsp_cfg.out_rb_size = (8 * 1024);
+  //rsp_cfg.type = type;
+  //rsp_cfg.task_prio = 8;
   rsp_cfg.stack_in_ext = false;
 
   return rsp_filter_init(&rsp_cfg);
@@ -1150,6 +1153,8 @@ static audio_element_handle_t CreateWAVDecoder(void)
 static audio_element_handle_t CreateWAVEncoder(void)
 {
   wav_encoder_cfg_t wav_cfg = DEFAULT_WAV_ENCODER_CONFIG();
+  wav_cfg.stack_in_ext = 0;
+  //wav_cfg.task_prio = 8;
 
   return wav_encoder_init(&wav_cfg);
 }
