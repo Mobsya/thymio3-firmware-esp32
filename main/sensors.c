@@ -38,6 +38,8 @@
 #include "es8374.h"
 #include "pins_def.h"
 
+#include <sys/time.h>
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -59,6 +61,7 @@ xSemaphoreHandle I2CMutex;
 static const char* Tag = "sensors";
 
 static TaskHandle_t SensorsTask = NULL;
+static TaskHandle_t ButtonsTask = NULL;
 
 static bool TaskIsStarted = false;
 
@@ -71,6 +74,7 @@ static bool TaskIsStarted = false;
 //! \param     arg - Task parameter
 //! \return    None
 static void RunSensorsTask(void* arg);
+static void RunButtonsTask(void* arg);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -124,6 +128,15 @@ void Sensors_Start(void)
     0);              // Core where the task should run
 
   TaskIsStarted = true;
+
+  xTaskCreatePinnedToCore(
+	RunButtonsTask,  // Function to implement the task
+    "buttons",       // Name of the task
+    2048,            // Stack size in words
+    NULL,            // Task input parameter
+    6,               // Priority of the task
+    &ButtonsTask,    // Task handle
+    0);              // Core where the task should run
 }
 
 //_____________________________________________________________________________
@@ -144,6 +157,7 @@ void Sensors_Stop(void)
 
 static void RunSensorsTask(void* arg)
 {
+
   ESP_LOGI(Tag, "Start Sensors Task");
 
   if (ColorSensor_CheckManufacturerId() != E_Error_None)
@@ -158,11 +172,11 @@ static void RunSensorsTask(void* arg)
 
   while (1)
   {
-    Buttons_UpdateStatus();
 
     xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
     // Every 20 [ms], 50 [Hz] (vTaskDelay = 20 [ms])
+    // The delay at the end of the loop doesn't take in consideration the time needed to read the sensors, that takes about 33-39 ms
     Accelerometer_ReadTapSource();
     Accelerometer_ReadAcceleration();
     Gyroscope_ReadAngularVelocity();
@@ -175,4 +189,19 @@ static void RunSensorsTask(void* arg)
 
     vTaskDelay(20 / portTICK_PERIOD_MS);
   }
+}
+
+//_____________________________________________________________________________
+
+static void RunButtonsTask(void* arg) {
+	int64_t time_start, time_end;
+	while (1) {
+		time_start = esp_timer_get_time();
+		Buttons_UpdateStatus();
+		time_end = esp_timer_get_time();
+		//printf("%lld usec\n", time_end - time_start);
+		if((time_end - time_start) < 50000) { // Run task @ 20 Hz
+			vTaskDelay((50000 - (time_end - time_start))/1000 / portTICK_PERIOD_MS);
+		}
+	}
 }

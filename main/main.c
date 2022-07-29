@@ -79,6 +79,30 @@ static const char* Tag = "main";
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
+void stats(void*z)
+{
+	char * buf=malloc(1000);
+
+	while (1)
+	{
+		//CPU usage & task list
+		memset(buf, 0x0, 1000);
+		vTaskGetRunTimeStats(buf);
+		printf("%s\n",buf);
+		vTaskList(buf);
+		printf("%s",buf);
+
+		//Timers
+		esp_timer_dump(stdout);
+		printf("\n");
+
+		//Heap
+		printf("heap_free_size %d\n",heap_caps_get_free_size(MALLOC_CAP_8BIT));
+
+		vTaskDelay(15000 / portTICK_PERIOD_MS);
+	}
+}
+
 int app_main(void)
 {
 //*****************************************************************************
@@ -172,5 +196,12 @@ int app_main(void)
   //Codec_PlayMP3FileFromFlash(0);
   //Codec_PlayMP3FileFromFlash(E_SoundIndex_Startup);
 
+  //xTaskCreatePinnedToCore(stats, "stats", 4096, NULL, 0, NULL, 0);
+
   return 0;
 }
+
+
+
+
+

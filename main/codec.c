@@ -199,57 +199,6 @@ typedef enum
   E_SoundStatus_Finished
 } T_SoundStatus;
 
-//-----------------------------------------------------------------------------
-// Exported Global Data
-//-----------------------------------------------------------------------------
-
-extern const uint8_t magic_44100_mp3_start[]    asm("_binary_magic_44100_mp3_start");
-extern const uint8_t magic_44100_mp3_end[]      asm("_binary_magic_44100_mp3_end");
-
-extern const uint8_t tick_44100_mp3_start[]     asm("_binary_tick_44100_mp3_start");
-extern const uint8_t tick_44100_mp3_end[]       asm("_binary_tick_44100_mp3_end");
-
-extern const uint8_t blop_44100_mp3_start[]     asm("_binary_blop_44100_mp3_start");
-extern const uint8_t blop_44100_mp3_end[]       asm("_binary_blop_44100_mp3_end");
-
-extern const uint8_t fall_44100_mp3_start[]     asm("_binary_fall_44100_mp3_start");
-extern const uint8_t fall_44100_mp3_end[]       asm("_binary_fall_44100_mp3_end");
-
-extern const uint8_t detect_44100_mp3_start[]   asm("_binary_detect_44100_mp3_start");
-extern const uint8_t detect_44100_mp3_end[]     asm("_binary_detect_44100_mp3_end");
-
-extern const uint8_t bye_44100_mp3_start[]      asm("_binary_bye_44100_mp3_start");
-extern const uint8_t bye_44100_mp3_end[]        asm("_binary_bye_44100_mp3_end");
-
-extern const uint8_t c3_44100_mp3_start[]       asm("_binary_c3_44100_mp3_start");
-extern const uint8_t c3_44100_mp3_end[]         asm("_binary_c3_44100_mp3_end");
-
-extern const uint8_t d3_44100_mp3_start[]       asm("_binary_d3_44100_mp3_start");
-extern const uint8_t d3_44100_mp3_end[]         asm("_binary_d3_44100_mp3_end");
-
-extern const uint8_t e3_44100_mp3_start[]       asm("_binary_e3_44100_mp3_start");
-extern const uint8_t e3_44100_mp3_end[]         asm("_binary_e3_44100_mp3_end");
-
-extern const uint8_t f3_44100_mp3_start[]       asm("_binary_f3_44100_mp3_start");
-extern const uint8_t f3_44100_mp3_end[]         asm("_binary_f3_44100_mp3_end");
-
-extern const uint8_t g3_44100_mp3_start[]       asm("_binary_g3_44100_mp3_start");
-extern const uint8_t g3_44100_mp3_end[]         asm("_binary_g3_44100_mp3_end");
-
-extern const uint8_t a3_44100_mp3_start[]       asm("_binary_a3_44100_mp3_start");
-extern const uint8_t a3_44100_mp3_end[]         asm("_binary_a3_44100_mp3_end");
-
-extern const uint8_t b3_44100_mp3_start[]       asm("_binary_b3_44100_mp3_start");
-extern const uint8_t b3_44100_mp3_end[]         asm("_binary_b3_44100_mp3_end");
-
-extern const uint8_t alarm_44100_mp3_start[]    asm("_binary_alarm_44100_mp3_start");
-extern const uint8_t alarm_44100_mp3_end[]      asm("_binary_alarm_44100_mp3_end");
-
-extern const uint8_t good_44100_mp3_start[]     asm("_binary_good_44100_mp3_start");
-extern const uint8_t good_44100_mp3_end[]       asm("_binary_good_44100_mp3_end");
-
-extern const uint8_t bad_44100_mp3_start[]      asm("_binary_bad_44100_mp3_start");
-extern const uint8_t bad_44100_mp3_end[]        asm("_binary_bad_44100_mp3_end");
 
 //-----------------------------------------------------------------------------
 // Private Data
