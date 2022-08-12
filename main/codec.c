@@ -237,6 +237,7 @@ static T_WAVRecorderHandle        WAVRecorder        = NULL;
 //static int16_t buffer[4 * BUF_SIZE];
 
 static T_SoundStatus SoundStatus[15];
+int64_t start_rec_time, end_rec_time;
 
 #define MY_DEFAULT_MP3_DECODER_CONFIG() {                  \
     .out_rb_size        = MP3_DECODER_RINGBUFFER_SIZE,  \
@@ -1260,6 +1261,16 @@ static void RunMP3PlayerTask(void* arg)
     //esp_err_t ret = audio_event_iface_listen(ap->Evt, &msg, portMAX_DELAY);
     esp_err_t ret = audio_event_iface_listen(ap->Evt, &msg, 1000 / portTICK_RATE_MS);
 
+    /*
+    if (WAVRecorder->Recording) {
+    	end_rec_time = esp_timer_get_time();
+    	if((end_rec_time - start_rec_time) >= ((int64_t)RecordingDuration_s*1000000)) {
+    		//StopWAVRecord(WAVRecorder);
+    		audio_element_set_ringbuf_done(ap->I2SStream);
+    	}
+    }
+    */
+
     if (ret != ESP_OK)
     {
       //ESP_LOGE(Tag, "[ * ] Event interface error : %d", ret);
@@ -1272,7 +1283,8 @@ static void RunMP3PlayerTask(void* arg)
         if (second_recorded >= RecordingDuration_s)
         {
           //break;
-          StopWAVRecord(WAVRecorder);
+          //StopWAVRecord(WAVRecorder);
+        	audio_element_set_ringbuf_done(ap->I2SStream);
           second_recorded = 0;
         }
       }
@@ -1342,6 +1354,16 @@ static void RunMP3PlayerTask(void* arg)
 		*/
 
       SoundStatus[FileIndexFromFlash] = E_SoundStatus_Finished;
+    }
+
+    /* Stop when the last pipeline element (fatfs_stream_writer in this case) receives stop event */
+    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *)ap->SPIFFSStream
+        && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
+        && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED)
+            || ((int)msg.data == AEL_STATUS_ERROR_OPEN))) {
+        //ESP_LOGW(TAG, "[ * ] Stop event received");
+        //break;
+    	StopWAVRecord(WAVRecorder);
     }
   }
 
@@ -1787,6 +1809,7 @@ static esp_err_t RecordWAV(T_WAVRecorderHandle ap, const char* url)
     audio_element_set_uri(ap->SPIFFSStream, url);
     audio_pipeline_run(ap->Pipeline);
     ap->Recording = true;
+    start_rec_time = esp_timer_get_time();
   }
 
   return ESP_OK;

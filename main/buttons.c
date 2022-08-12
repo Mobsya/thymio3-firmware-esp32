@@ -108,7 +108,7 @@ void Buttons_Init(void)
 
   // Initialize touch pad peripheral, it will start a timer to run a filter
   touch_pad_init();
-  //touch_pad_set_fsm_mode(TOUCH_FSM_MODE_TIMER); // To start an hardware timer that automatically read the touch channels.
+  touch_pad_set_fsm_mode(TOUCH_FSM_MODE_TIMER); // To start an hardware timer that automatically read the touch channels.
   	  	  	  	  	  	  	  	  	  	  	  	  // The sleep time between each reading is defined by the function "touch_pad_set_meas_time", by default is about 27 ms.
 
   // Set reference voltage for charging/discharging: measured in oscilloscope: 0.6V-2.2V
@@ -127,7 +127,23 @@ void Buttons_Init(void)
   //printf("sleep cycle = %d, meas cycle = %d, freq = %d", sleep_cycle, meas_cycle, rtc_clk_slow_freq_get_hz());
   // The RTC clock is 150 KHz => sleep time: 1000/150000*4096=27 ms
   // Measure time (clock is 8 MHz): 1000/8000000*16383=2ms
-  touch_pad_set_meas_time(0x1000, 0x3FFF); // Set measure time = 2 ms, sleep time = about 27 ms
+  //touch_pad_set_meas_time(0x1000, 0x3FFF); // Set measure time = 2 ms, sleep time = about 27 ms
+
+  /*
+  // By default the slope = 7 (fastest) charge/discharge speed.
+  touch_cnt_slope_t slope;
+  touch_tie_opt_t tie;
+  touch_pad_get_cnt_mode(TOUCH_PAD_NUM2, &slope, &tie);
+  printf("back: slope=%d, tie=%d\n", slope, tie);
+  touch_pad_get_cnt_mode(TOUCH_PAD_NUM5, &slope, &tie);
+  printf("left: slope=%d, tie=%d\n", slope, tie);
+  touch_pad_get_cnt_mode(TOUCH_PAD_NUM7, &slope, &tie);
+  printf("center: slope=%d, tie=%d\n", slope, tie);
+  touch_pad_get_cnt_mode(TOUCH_PAD_NUM9, &slope, &tie);
+  printf("fw: slope=%d, tie=%d\n", slope, tie);
+  touch_pad_get_cnt_mode(TOUCH_PAD_NUM8, &slope, &tie);
+  printf("right: slope=%d, tie=%d\n", slope, tie);
+  */
 
   ESP_LOGI(Tag, "Buttons are initialized");
 }
@@ -360,7 +376,8 @@ static void UpdateThresholds(uint8_t button)
 
     if (Count[button] == THRESHOLD_AVERAGE_SIZE)
     {
-      Threshold[button] = ((Sum[button] / THRESHOLD_AVERAGE_SIZE) * PRESSED_THRESHOLD_PERCENT / 100u);
+      //Threshold[button] = ((Sum[button] / THRESHOLD_AVERAGE_SIZE) * PRESSED_THRESHOLD_PERCENT / 100u);
+      Threshold[button] = ((Sum[button] >> 4) * PRESSED_THRESHOLD_PERCENT / 100u);
 
       Sum[button] = 0u;
       Count[button] = 0u;
