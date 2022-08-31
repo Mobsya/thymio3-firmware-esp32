@@ -85,7 +85,7 @@ void FileSystem_Init(void)
   esp_vfs_spiffs_conf_t conf =
   {
     .base_path = "/spiffs",
-    .partition_label = NULL,
+    .partition_label = NULL, // First partition with subtype=spiffs will be used
     .max_files = 5,
     .format_if_mount_failed = true
   };
@@ -690,3 +690,8 @@ static const char* rangematch(const char* pattern, char test, int flags)
 
   return (ok == negate ? NULL : pattern);
 }
+
+void listDir(void) {
+	list("/spiffs/", NULL);
+}
+

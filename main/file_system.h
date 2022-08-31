@@ -48,7 +48,7 @@ typedef enum
 //-----------------------------------------------------------------------------
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
-
+extern void listDir(void);
 //! \brief     Initialize the file system
 //! \pre       None
 //! \param     None

@@ -198,6 +198,8 @@ int app_main(void)
 
   //xTaskCreatePinnedToCore(stats, "stats", 4096, NULL, 0, NULL, 0);
 
+  //listDir();
+
   return 0;
 }
 
