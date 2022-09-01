@@ -64,6 +64,7 @@ static TaskHandle_t SensorsTask = NULL;
 static TaskHandle_t ButtonsTask = NULL;
 
 static bool TaskIsStarted = false;
+static bool ButtonsInhibit = false;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -197,7 +198,9 @@ static void RunButtonsTask(void* arg) {
 	int64_t time_start, time_end;
 	while (1) {
 		time_start = esp_timer_get_time();
-		Buttons_UpdateStatus();
+		if(!ButtonsInhibit) {
+			Buttons_UpdateStatus();
+		}
 		time_end = esp_timer_get_time();
 		//printf("%lld usec\n", time_end - time_start);
 		if((time_end - time_start) < 50000) { // Run task @ 20 Hz
@@ -205,3 +208,13 @@ static void RunButtonsTask(void* arg) {
 		}
 	}
 }
+
+extern void Sensors_buttons_pause(void) {
+	ButtonsInhibit = true;
+}
+
+extern void Sensors_buttons_resume(void) {
+	ButtonsInhibit = false;
+}
+
+

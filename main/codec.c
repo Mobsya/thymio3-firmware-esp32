@@ -61,6 +61,7 @@
 #include "pins_def.h"
 #include "board.h"
 #include "audio_tone_uri.h"
+#include "sensors.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -467,6 +468,7 @@ void Codec_PlayWAVFile(int16_t index)
   // Check that the file exists
   if (FileSystem_DoesFileExist(fileName))
   {
+	  Sensors_buttons_pause();
     PlayWAV(Player, fileName);
   }
 }
@@ -525,6 +527,7 @@ void Codec_RecordWAVFile(int16_t index, uint16_t duration_s)
 
   FileSystem_SelectFile(&fileName, FileIndex, E_Extension_WAV);
 
+  Sensors_buttons_pause();
   RecordWAV(Recorder, fileName);
 }
 
@@ -946,8 +949,8 @@ static void RunAudioTask(void* arg)
     if (Recorder->Recording) {
     	end_rec_time = esp_timer_get_time();
     	if((end_rec_time - start_rec_time) >= ((int64_t)RecordingDuration_s*1000000)) {
-    		//StopWAVRecord(Recorder);
-    		audio_element_set_ringbuf_done(ap->I2SStream);
+    		StopWAVRecord(Recorder);
+    		//audio_element_set_ringbuf_done(ap->I2SStream);
     	}
     }
     */
@@ -1030,6 +1033,7 @@ static void RunAudioTask(void* arg)
         //&& ap->Playing)
     {
       ESP_LOGE(Tag, "Stop pipeline from task");
+      Sensors_buttons_resume();
 /*
       //audio_pipeline_stop(ap->Pipeline);
       //audio_pipeline_wait_for_stop(ap->Pipeline);
@@ -1057,17 +1061,17 @@ static void RunAudioTask(void* arg)
       //}
     }
 
-#if 0
-    /* Stop recording when the last pipeline element (spiffs_stream_writer) receives stop event */
+    /* Enable buttons when the last pipeline element (spiffs_stream_writer) receives stop event */
     if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *)ap->SPIFFSStream
         && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
         && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED)
             || ((int)msg.data == AEL_STATUS_ERROR_OPEN))) {
         //ESP_LOGW(TAG, "[ * ] Stop event received");
         //break;
-    	StopWAVRecord(Recorder);
+    	//StopWAVRecord(Recorder);
+    	Sensors_buttons_resume();
     }
-#endif
+
 
   }
 
@@ -1228,8 +1232,6 @@ static esp_err_t PlayMP3(T_PlayerHandle ap, const char* url)
 
 static esp_err_t PlayWAV(T_PlayerHandle ap, const char* url)
 {
-//  StopWAV(ap);
-
 
 	audio_element_state_t el_state = audio_element_get_state(ap->I2SStream);
     switch (el_state) {

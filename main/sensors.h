@@ -61,4 +61,7 @@ extern void Sensors_Start(void);
 //! \return    None
 extern void Sensors_Stop(void);
 
+extern void Sensors_buttons_pause(void);
+extern void Sensors_buttons_resume(void);
+
 #endif // SENSORS_H_

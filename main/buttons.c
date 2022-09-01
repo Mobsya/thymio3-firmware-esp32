@@ -169,7 +169,7 @@ void Buttons_UpdateStatus(void)
 
   for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
   {
-    touch_pad_read(Buttons_Table[button], &ButtonRaw[button]); // This function is blocking: it starts a new measurement and wait until is done (about 2 ms).
+    touch_pad_read(Buttons_Table[button], &ButtonRaw[button]); // This function is blocking when in "FSM software mode": it starts a new measurement and wait until is done (about 2 ms).
     // Apply a low pass filter on the count value: new filt = prev filt * 0.75 + new raw * 0.25
     ButtonFiltered[button] = ButtonFiltered[button] - (ButtonFiltered[button]>>2) + (ButtonRaw[button]>>2);
 
