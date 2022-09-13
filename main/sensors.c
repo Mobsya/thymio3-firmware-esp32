@@ -181,7 +181,7 @@ static void RunSensorsTask(void* arg)
     Accelerometer_ReadTapSource();
     Accelerometer_ReadAcceleration();
     Gyroscope_ReadAngularVelocity();
-    Gyroscope_ReadAngle();
+    //Gyroscope_ReadAngle();
     ColorSensor_ReadColor();
 
     SET_EVENT(EVENT_SENSORS);

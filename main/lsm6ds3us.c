@@ -927,7 +927,8 @@ static uint16_t ReadBufferedAngularPosition(void)
 
   if (length > 0u)
   {
-    numSamples = ((length / 3) * 3);  // Get a multiple of 3 (entire part) for the XYZ samples
+    numSamples = ((length / 3) * 3);  // Get a multiple of 3 (entire part) for the XYZ samples (get maximum number of complete triplets).
+    //ESP_LOGI(Tag, "numSamples=%d", numSamples);
 
     for (uint16_t index = 0u; index < numSamples; index++)
     {
@@ -1048,7 +1049,7 @@ static void CalculateAngle(int16_t* angle, uint16_t number)
 {
   int32_t sum[3] = {0, 0, 0};
   int64_t gyroCorr[3] = {0, 0, 0};
-
+  //ESP_LOGI(Tag, "number=%d", number);
   for (uint8_t axis = 0u; axis < 3u; axis++)
   {
     for (uint8_t index = 0u; index < number; index++)

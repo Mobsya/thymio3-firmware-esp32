@@ -559,6 +559,7 @@ static esp_err_t upload_post_handler(httpd_req_t* req)
     {
       if (received == HTTPD_SOCK_ERR_TIMEOUT)
       {
+    	  //vTaskDelay(50 / portTICK_PERIOD_MS);
         // Retry if timeout occurred
         continue;
       }
@@ -593,6 +594,8 @@ static esp_err_t upload_post_handler(httpd_req_t* req)
     // Keep track of remaining size of
     // the file left to be uploaded
     remaining -= received;
+    //vTaskDelay(50 / portTICK_PERIOD_MS);
+
   }
 
   // Close file upon upload completion

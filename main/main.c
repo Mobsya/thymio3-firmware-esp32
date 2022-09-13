@@ -79,6 +79,8 @@ static const char* Tag = "main";
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
+//uint8_t temp_buff[4096]={0};
+
 void stats(void*z)
 {
 	char * buf=malloc(1000);
@@ -190,9 +192,14 @@ int app_main(void)
   Comm_Start();
 
   Leds_Start();
-
-  ESP_LOGI(Tag, "heap (cont.)=%ul, heap (all)=%ul, min_heap=%ul", esp_get_free_heap_size(), esp_get_free_internal_heap_size(), esp_get_minimum_free_heap_size());
-
+/*
+  heap_caps_check_integrity_all(true);
+  ESP_LOGI(Tag, "heap (cont.)=%u, heap (all)=%u, min_heap=%u", esp_get_free_heap_size(), esp_get_free_internal_heap_size(), esp_get_minimum_free_heap_size());
+  int min_free_8bit_cap = heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+  int min_free_32bit_cap = heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_32BIT);
+  printf("||   Miniumum Free DRAM\t|   Minimum Free IRAM\t|| \n");
+  printf("||\t%-6d\t\t|\t%-6d\t\t||\n", min_free_8bit_cap, (min_free_32bit_cap - min_free_8bit_cap));
+*/
   //Codec_PlayMP3FileFromFlash(0);
   //Codec_PlayMP3FileFromFlash(E_SoundIndex_Startup);
 
@@ -200,6 +207,24 @@ int app_main(void)
 
   //listDir();
 
+/*
+  vTaskDelay(10000 / portTICK_PERIOD_MS);
+ // FileSystem_CreateFile("512.txt");
+  FileSystem_Write("/spiffs/512.txt", temp_buff, 512);
+  ESP_LOGI(Tag, "written 512.txt");
+
+//  FileSystem_CreateFile("1024.txt");
+  FileSystem_Write("/spiffs/1024.txt", temp_buff, 1024);
+  ESP_LOGI(Tag, "written 1024.txt");
+
+//  FileSystem_CreateFile("2048.txt");
+  FileSystem_Write("/spiffs/2048.txt", temp_buff, 2048);
+  ESP_LOGI(Tag, "written 2048.txt");
+
+//  FileSystem_CreateFile("4096.txt");
+  FileSystem_Write("/spiffs/4096.txt", temp_buff, 4096);
+  ESP_LOGI(Tag, "written 4096.txt");
+*/
   return 0;
 }
 

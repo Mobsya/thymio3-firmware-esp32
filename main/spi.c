@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "esp_log.h"
+#include "esp_intr_alloc.h"
 
 #include "spi.h"
 #include "gpio.h"
@@ -60,6 +61,30 @@ static const char* Tag = "spi";
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
+static spi_transaction_t transaction = // Placed in DRAM bss section
+//DRAM_ATTR spi_transaction_t transaction = // Placed in DRAM data section
+{
+  .flags = 0,
+  .cmd = 0,
+  .addr = 0,
+  .length = 0,
+  .rxlength = 0,
+  .tx_buffer = NULL,
+  .rx_buffer = NULL
+};
+
+static spi_transaction_t trans_desc = // Placed in DRAM bss section
+//DRAM_ATTR spi_transaction_t trans_desc = // Placed in DRAM data section
+{
+  .flags = 0,
+  .cmd = 0,
+  .addr = 0,
+  .length = 0,
+  .rxlength = 0,
+  .tx_buffer = NULL,
+  .rx_buffer = NULL
+};
+
 void Spi_InitHSPI(void)
 {
   spi_bus_config_t hspi_config =
@@ -68,10 +93,12 @@ void Spi_InitHSPI(void)
     .mosi_io_num   = LED_SDI_PIN,
     .miso_io_num   = -1, // Not used
     .quadwp_io_num = -1, // Not used
-    .quadhd_io_num = -1  // Not used
+    .quadhd_io_num = -1,  // Not used
+	.flags = SPICOMMON_BUSFLAG_MASTER | SPICOMMON_BUSFLAG_NATIVE_PINS,
+	.intr_flags = ESP_INTR_FLAG_IRAM // SPI ISR saved in IRAM
   };
 
-  ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &hspi_config, 1));
+  ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &hspi_config, SPI_DMA_CH_AUTO));
 
   ESP_LOGI(Tag, "HSPI SPI is initialized");
 }
@@ -86,10 +113,12 @@ void Spi_InitVSPI(void)
     .mosi_io_num   = SPI_MOSI_PIN,
     .miso_io_num   = SPI_MISO_PIN,
     .quadwp_io_num = -1, // Not used
-    .quadhd_io_num = -1  // Not used
+    .quadhd_io_num = -1,  // Not used
+	.flags = SPICOMMON_BUSFLAG_MASTER | SPICOMMON_BUSFLAG_NATIVE_PINS,
+	.intr_flags = ESP_INTR_FLAG_IRAM // SPI ISR saved in IRAM
   };
 
-  ESP_ERROR_CHECK(spi_bus_initialize(VSPI_HOST, &vspi_config, 2));
+  ESP_ERROR_CHECK(spi_bus_initialize(VSPI_HOST, &vspi_config, SPI_DMA_CH_AUTO));
 
   ESP_LOGI(Tag, "VSPI SPI is initialized");
 }
@@ -109,7 +138,7 @@ void Spi_AddDeviceHSPI(spi_device_handle_t* device, int csPin)
     .cs_ena_pretrans  = 0,
     .clock_speed_hz   = HSPI_CLK_FREQENCY_Hz,
     .spics_io_num     = csPin,
-    .flags            = 0,
+    .flags            = 0, //SPI_DEVICE_NO_DUMMY
     .queue_size       = 5,
     .pre_cb           = NULL,
     .post_cb          = NULL
@@ -148,27 +177,10 @@ void Spi_AddDeviceVSPI(spi_device_handle_t* device, int csPin)
 
 void Spi_WriteHSPI(spi_device_handle_t device, uint8_t* data, uint16_t size)
 {
-	/*
-  spi_transaction_t trans_desc =
-  {
-    .flags = 0,
-    .cmd = 0,
-    .addr = 0,
-    .length = size * 8,
-    .rxlength = 0,
-    .tx_buffer = data,
-    .rx_buffer = NULL
-  };*/
-
-  static spi_transaction_t trans_desc;
-  memset(&trans_desc, 0, sizeof(trans_desc));
-  trans_desc.flags = 0;
-  trans_desc.cmd = 0;
-  trans_desc.addr = 0;
-  trans_desc.length = size * 8;
-  trans_desc.rxlength = 0;
-  trans_desc.tx_buffer = data;
-  trans_desc.rx_buffer = NULL;
+	trans_desc.length = size * 8;
+	trans_desc.rxlength = 0;
+	trans_desc.tx_buffer = data;
+	trans_desc.rx_buffer = NULL;
 
   ESP_ERROR_CHECK(spi_device_queue_trans(device, &trans_desc, portMAX_DELAY));
 }
@@ -177,13 +189,10 @@ void Spi_WriteHSPI(spi_device_handle_t device, uint8_t* data, uint16_t size)
 
 void Spi_CommunicateVSPI(spi_device_handle_t device, int16_t* txBuffer, int16_t* rxBuffer, uint16_t size)
 {
-  static spi_transaction_t transaction;
-
-  memset(&transaction, 0, sizeof(transaction));
-  transaction.length = 16 * size;
-  transaction.flags = 0;
-  transaction.tx_buffer = txBuffer;
-  transaction.rx_buffer = rxBuffer;
+	  transaction.length = 16 * size;
+	  transaction.rxlength = 0; //16 * size; //0;
+	  transaction.tx_buffer = txBuffer;
+	  transaction.rx_buffer = rxBuffer;
 
   spi_device_transmit(device, &transaction);
 }

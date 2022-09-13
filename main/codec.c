@@ -835,8 +835,6 @@ static audio_element_handle_t CreateWAVDecoder(void)
 {
   wav_decoder_cfg_t wav_cfg = DEFAULT_WAV_DECODER_CONFIG();
   wav_cfg.stack_in_ext = false;
-  //wav_cfg.out_rb_size = (16 * 1024);
-  //wav_cfg.task_stack = (8 * 1024);
 
   return wav_decoder_init(&wav_cfg);
 }
@@ -847,7 +845,6 @@ static audio_element_handle_t CreateWAVEncoder(void)
 {
   wav_encoder_cfg_t wav_cfg = DEFAULT_WAV_ENCODER_CONFIG();
   wav_cfg.stack_in_ext = 0;
-  //wav_cfg.task_prio = 8;
 
   return wav_encoder_init(&wav_cfg);
 }
