@@ -295,7 +295,9 @@ static const T_GpioPinConfig PinConfig[2] =
   {ACC_INT2_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_RisingEdge}
 };
 
-static int16_t Buffer[3][10];
+#define BUFFER_SIZE 128
+
+static int16_t Buffer[3][BUFFER_SIZE];
 
 static bool IsCalibrated = false;
 static int16_t ZeroGyro[3] = {0, 0, 0};
@@ -929,6 +931,10 @@ static uint16_t ReadBufferedAngularPosition(void)
   {
     numSamples = ((length / 3) * 3);  // Get a multiple of 3 (entire part) for the XYZ samples (get maximum number of complete triplets).
     //ESP_LOGI(Tag, "numSamples=%d", numSamples);
+
+    if (numSamples >= 3*BUFFER_SIZE) {
+    	numSamples = 3*BUFFER_SIZE;
+    }
 
     for (uint16_t index = 0u; index < numSamples; index++)
     {
