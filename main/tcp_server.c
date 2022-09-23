@@ -236,7 +236,7 @@ static const char* get_mdns_hostname(void)
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
 
-    if (asprintf(&hostname, "NotAThymio3-%02X%02X%02X%02X", mac[3], mac[4], mac[5], esp_random()) == -1)
+    if (asprintf(&hostname, "Thymio3-%02X%02X%02X%02X", mac[2], mac[3], mac[4], mac[5]) == -1)
     {
       abort();
     }
@@ -253,7 +253,7 @@ static void start_zeroconf_service(uint16_t port)
   ESP_ERROR_CHECK(mdns_hostname_set(get_mdns_hostname()));
 
   ESP_LOGI(MDNS_Tag, "mdns hostname set to: [%s]", get_mdns_hostname());
-  mdns_instance_name_set("Not A Thymio 3");
+  mdns_instance_name_set("Thymio 3");
 
   mdns_txt_item_t serviceTxtData[2] =
   {

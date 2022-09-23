@@ -931,9 +931,11 @@ static uint16_t ReadBufferedAngularPosition(void)
   {
     numSamples = ((length / 3) * 3);  // Get a multiple of 3 (entire part) for the XYZ samples (get maximum number of complete triplets).
     //ESP_LOGI(Tag, "numSamples=%d", numSamples);
-	if (numSamples>=3*BUFFER_SIZE)
-		numSamples= 3*BUFFER_SIZE;
-	
+
+    if (numSamples >= 3*BUFFER_SIZE) {
+    	numSamples = 3*BUFFER_SIZE;
+    }
+
     for (uint16_t index = 0u; index < numSamples; index++)
     {
       I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_STATUS3_REG_ADDRESS, pat, 2u);
