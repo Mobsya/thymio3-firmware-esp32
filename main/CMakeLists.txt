@@ -52,6 +52,8 @@ set(COMPONENT_SRCS
     line_tracker.h
     lsm6ds3us.c
     lsm6ds3us.h
+    lsm6ds3tr.c
+    lsm6ds3tr.h
     main.c
     mode.c
     mode.h

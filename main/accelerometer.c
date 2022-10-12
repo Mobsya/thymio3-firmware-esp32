@@ -61,7 +61,12 @@ static uint8_t TapSource;
 
 void Accelerometer_Init(void)
 {
+#ifdef LSM6DS3US
   LSM6DS3US_InitAccelerometer();
+#else
+  LSM6DS3TR_InitAccelerometer();	
+#endif 
+
 
   ESP_LOGI(Tag, "Accelerometer is initialized");
 }
@@ -70,8 +75,11 @@ void Accelerometer_Init(void)
 
 void Accelerometer_ReadAcceleration(void)
 {
-  LSM6DS3US_GetAcceleration(&Acceleration);
-
+#ifdef LSM6DS3US
+   LSM6DS3US_GetAcceleration(&Acceleration);
+#else
+   LSM6DS3TR_GetAcceleration(&Acceleration);
+#endif 	
   vmVariables.acc[0] = Acceleration.X;
   vmVariables.acc[1] = Acceleration.Y;
   vmVariables.acc[2] = Acceleration.Z;
@@ -97,7 +105,12 @@ int16_t Accelerometer_GetAccelerationY(void)
 
 void Accelerometer_ReadTapSource(void)
 {
-  LSM6DS3US_GetTapSource(&TapSource);
+#ifdef LSM6DS3US
+   LSM6DS3US_GetTapSource(&TapSource);
+#else
+   LSM6DS3TR_GetTapSource(&TapSource);
+#endif 	
+
 
   vmVariables.acc_tap = TapSource;
 
@@ -151,11 +164,18 @@ bool Accelerometer_IsFreeFallDetected(void)
 T_Error Accelerometer_CheckManufacturerId(void)
 {
   T_Error err = E_Error_None;
-
-  if (LSM6DS3US_CheckManufacturerId() != E_Error_None)
+#ifdef LSM6DS3US
+   if (LSM6DS3US_CheckManufacturerId() != E_Error_None)
   {
     err = E_Error_Acc_InvalidID;
   }
+#else
+   if (LSM6DS3TR_CheckManufacturerId() != E_Error_None)
+  {
+    err = E_Error_Acc_InvalidID;
+  }
+#endif 	 
+  
 
   ESP_LOGI(Tag, "Accelerometer test is done");
 

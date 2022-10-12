@@ -22,7 +22,11 @@
 //-----------------------------------------------------------------------------
 
 #include "error.h"
-#include "lsm6ds3us.h"
+#ifdef LSM6DS3US
+   #include "lsm6ds3us.h"
+#else
+   #include "lsm6ds3tr.h"
+#endif 	
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions

@@ -24,8 +24,12 @@
 
 #include "aseba_esp32.h"
 #include "settings.h"
-#include "lsm6ds3us.h"
 
+#ifdef LSM6DS3US
+#include "lsm6ds3us.h"
+#else
+#include "lsm6ds3tr.h"	
+#endif 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -63,8 +67,12 @@ static int16_t Angle_deg[3];
 void Gyroscope_Init(void)
 {
   int16_t offset = Settings_ReadOffsetGyro();
-
+#ifdef LSM6DS3US
   LSM6DS3US_InitGyroscope(offset);
+#else
+  LSM6DS3TR_InitGyroscope(offset);
+#endif 
+
 
   ESP_LOGI(Tag, "Gyroscope is initialized");
 }
@@ -73,7 +81,12 @@ void Gyroscope_Init(void)
 
 void Gyroscope_ReadAngularVelocity(void)
 {
-  LSM6DS3US_GetAngularVelocity(&AngularVelocity);
+#ifdef LSM6DS3US
+    LSM6DS3US_GetAngularVelocity(&AngularVelocity);
+#else
+    LSM6DS3TR_GetAngularVelocity(&AngularVelocity);
+#endif 
+
 
   vmVariables.gyro[0] = AngularVelocity.X;
   vmVariables.gyro[1] = AngularVelocity.Y;
@@ -86,7 +99,12 @@ void Gyroscope_ReadAngularVelocity(void)
 
 void Gyroscope_ReadAngle(void)
 {
-  LSM6DS3US_GetAngle(Angle);
+#ifdef LSM6DS3US
+    LSM6DS3US_GetAngle(Angle);
+#else
+    LSM6DS3TR_GetAngle(Angle);
+#endif 
+  
 
   for (uint8_t index = 0u; index < 3u; index++)
   {
@@ -127,7 +145,12 @@ int16_t Gyroscope_GetAngleZ_deg(void)
 
 void Gyroscope_ResetAngle(void)
 {
-  LSM6DS3US_ResetAngle();
+#ifdef LSM6DS3US
+    LSM6DS3US_ResetAngle();
+#else
+    LSM6DS3TR_ResetAngle();
+#endif
+
 
   vmVariables.angle[0] = 0;
   vmVariables.angle[1] = 0;
@@ -142,14 +165,24 @@ void Gyroscope_ResetAngle(void)
 
 void Gyroscope_ResetCalibration(void)
 {
-  LSM6DS3US_ResetCalibration();
+#ifdef LSM6DS3US
+	LSM6DS3US_ResetCalibration();
+#else
+	LSM6DS3TR_ResetCalibration();
+#endif	
+
 }
 
 //_____________________________________________________________________________
 
 void Gyroscope_SetOffset(int32_t offset)
 {
-  LSM6DS3US_SetOffset(offset);
+#ifdef LSM6DS3US
+	LSM6DS3US_SetOffset(offset);
+#else
+	LSM6DS3TR_SetOffset(offset);
+#endif
+
 
   // Write to the settings file
   Settings_WriteOffsetGyro(offset);
