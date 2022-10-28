@@ -44,6 +44,11 @@
 
 //#include "leds.h"  // only for debug
 
+#include "thymio-nn/thymio/nn-natives.h"
+	// for static mem allocation:
+	// append to CMakeLists.txt in project root dir
+	// idf_build_set_property(COMPILE_OPTIONS "-DSTATICALLOC=20000" APPEND)
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -380,6 +385,9 @@ static const AsebaNativeFunctionDescription* nativeFunctionsDescription[] =
   THYMIO_NATIVES_DESCRIPTIONS,
 
   &AsebaNativeDescription_poweroff,
+
+  NN_NATIVES_DESCRIPTIONS,
+
   0       // null terminated
 };
 
@@ -395,7 +403,9 @@ static AsebaNativeFunctionPointer nativeFunctions[] =
 
   THYMIO_NATIVES_FUNCTIONS,
 
-  power_off
+  power_off,
+
+  NN_NATIVES_FUNCTIONS
 };
 
 #if 0
