@@ -173,6 +173,7 @@ static void RunRecordState(void)
 
   Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);
 
+  // Handle circle leds animation
   if (CurrentStep == 1u)
   {
     Leds_SetCircleBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, 0u);

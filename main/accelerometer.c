@@ -9,7 +9,7 @@
 //! \file    accelerometer.c
 //! \brief   This module provides the useful functions to use the accelerometer
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -24,6 +24,7 @@
 
 #include "aseba_esp32.h"
 #include "gpio.h"
+#include "i2c.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -46,6 +47,7 @@ static const char* Tag = "accelerometer";
 static T_Axis  Acceleration;
 
 static uint8_t TapSource;
+static uint8_t currAcc = LSM6DS3US;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -61,12 +63,19 @@ static uint8_t TapSource;
 
 void Accelerometer_Init(void)
 {
-#ifdef LSM6DS3US
-  LSM6DS3US_InitAccelerometer();
-#else
-  LSM6DS3TR_InitAccelerometer();	
-#endif 
-
+	uint8_t data = 0x00u;
+	I2C_ReadFromAddress(0x6B, 0x0F, &data, 1u);
+	//ESP_LOGD(Tag, "LSM6DS id = %x", data);
+	if(data == 0x69) {
+		currAcc = LSM6DS3US;
+		LSM6DS3US_InitAccelerometer();
+	} else if(data == 0x6A) {
+		currAcc = LSM6DS3TR;
+		LSM6DS3TR_InitAccelerometer();
+	} else if(data == 0x6C) {
+		currAcc = LSM6DS0;
+		LSM6DS0_InitAccelerometer();
+	}
 
   ESP_LOGI(Tag, "Accelerometer is initialized");
 }
@@ -75,11 +84,14 @@ void Accelerometer_Init(void)
 
 void Accelerometer_ReadAcceleration(void)
 {
-#ifdef LSM6DS3US
-   LSM6DS3US_GetAcceleration(&Acceleration);
-#else
-   LSM6DS3TR_GetAcceleration(&Acceleration);
-#endif 	
+	if(currAcc == LSM6DS3US) {
+		LSM6DS3US_GetAcceleration(&Acceleration);
+	} else if(currAcc == LSM6DS3TR) {
+		LSM6DS3TR_GetAcceleration(&Acceleration);
+	} else if(currAcc == LSM6DS0) {
+		LSM6DS0_GetAcceleration(&Acceleration);
+	}
+
   vmVariables.acc[0] = Acceleration.X;
   vmVariables.acc[1] = Acceleration.Y;
   vmVariables.acc[2] = Acceleration.Z;
@@ -105,12 +117,13 @@ int16_t Accelerometer_GetAccelerationY(void)
 
 void Accelerometer_ReadTapSource(void)
 {
-#ifdef LSM6DS3US
-   LSM6DS3US_GetTapSource(&TapSource);
-#else
-   LSM6DS3TR_GetTapSource(&TapSource);
-#endif 	
-
+	if(currAcc == LSM6DS3US) {
+		LSM6DS3US_GetTapSource(&TapSource);
+	} else if(currAcc == LSM6DS3TR) {
+		LSM6DS3TR_GetTapSource(&TapSource);
+	} else if(currAcc == LSM6DS0) {
+		LSM6DS0_GetTapSource(&TapSource);
+	}
 
   vmVariables.acc_tap = TapSource;
 
@@ -164,18 +177,23 @@ bool Accelerometer_IsFreeFallDetected(void)
 T_Error Accelerometer_CheckManufacturerId(void)
 {
   T_Error err = E_Error_None;
-#ifdef LSM6DS3US
-   if (LSM6DS3US_CheckManufacturerId() != E_Error_None)
-  {
-    err = E_Error_Acc_InvalidID;
-  }
-#else
-   if (LSM6DS3TR_CheckManufacturerId() != E_Error_None)
-  {
-    err = E_Error_Acc_InvalidID;
-  }
-#endif 	 
-  
+
+	if(currAcc == LSM6DS3US) {
+		  if (LSM6DS3US_CheckManufacturerId() != E_Error_None)
+		  {
+		    err = E_Error_Acc_InvalidID;
+		  }
+	} else if(currAcc == LSM6DS3TR) {
+		  if (LSM6DS3TR_CheckManufacturerId() != E_Error_None)
+		  {
+		    err = E_Error_Acc_InvalidID;
+		  }
+	} else if(currAcc == LSM6DS0) {
+		  if (LSM6DS0_CheckManufacturerId() != E_Error_None)
+		  {
+		    err = E_Error_Acc_InvalidID;
+		  }
+	}
 
   ESP_LOGI(Tag, "Accelerometer test is done");
 

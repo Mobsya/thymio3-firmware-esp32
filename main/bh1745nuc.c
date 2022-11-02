@@ -202,6 +202,7 @@ void BH1745NUC_Init(void)
 {
   UpdateMeasurementTime(E_MeasurementTime_160ms);
   UpdateADCGain(E_ADCGain_16x);
+  //UpdateADCGain(E_ADCGain_1x);
   UpdateModeControl3();
   EnableMeasurement();
 

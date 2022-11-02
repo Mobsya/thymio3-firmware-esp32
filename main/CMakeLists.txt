@@ -54,6 +54,8 @@ set(COMPONENT_SRCS
     lsm6ds3us.h
     lsm6ds3tr.c
     lsm6ds3tr.h
+    lsm6ds0.c
+    lsm6ds0.h    
     main.c
     mode.c
     mode.h

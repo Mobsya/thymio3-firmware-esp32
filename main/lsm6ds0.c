@@ -6,11 +6,11 @@
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    lsm6ds3tr.c
-//! \brief   This module provides the useful functions to use the LSM6DS3TR device
+//! \file    lsm6ds0.c
+//! \brief   This module provides the useful functions to use the LSM6DS0 device
 //!          (3D accelerometer and 3D gyroscope)
 //!
-//! \author  Vincent Gonet, Stefano Morgani
+//! \author  Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -23,7 +23,7 @@
 
 #include "esp_log.h"
 
-#include "lsm6ds3tr.h"
+#include "LSM6DS0.h"
 
 #include "gpio.h"
 #include "i2c.h"
@@ -35,19 +35,19 @@
 //-----------------------------------------------------------------------------
 
 #define SA0_PIN_STATE                           1u  //!< ADDR pin state used to set the slave address
-#define LSM6DS3TR_ADDRESS                    0x6Au  //!< Device address
+#define LSM6DS0_ADDRESS                    0x6Au  //!< Device address
 
-#define SLAVE_ADDRESS                 (LSM6DS3TR_ADDRESS | SA0_PIN_STATE)  //!< Slave address
+#define SLAVE_ADDRESS                 (LSM6DS0_ADDRESS | SA0_PIN_STATE)  //!< Slave address
 
 // Registers addresses
 #define FUNC_CFG_ACCESS_REG_ADDRESS          0x01u  //!< Enable embedded functions register address                             (Read/Write)
 #define SENSOR_SYNC_TIME_FRAME_REG_ADDRESS   0x04u  //!< Sensor synchronization time frame register address                     (Read/Write)
-#define FIFO_CTRL1_REG_ADDRESS               0x06u  //!< FIFO control register address                                          (Read/Write)
-#define FIFO_CTRL2_REG_ADDRESS               0x07u  //!< FIFO control register address                                          (Read/Write)
-#define FIFO_CTRL3_REG_ADDRESS               0x08u  //!< FIFO control register address                                          (Read/Write)
-#define FIFO_CTRL4_REG_ADDRESS               0x09u  //!< FIFO control register address                                          (Read/Write)
-#define FIFO_CTRL5_REG_ADDRESS               0x0Au  //!< FIFO control register address                                          (Read/Write)
-#define DRDY_PULSE_CFG_G_REG_ADDRESS         0x0Bu  //!< DataReady configuration register address 								(Read/Write)
+#define FIFO_CTRL1_REG_ADDRESS               0x07u  //!< FIFO control register address                                          (Read/Write)
+#define FIFO_CTRL2_REG_ADDRESS               0x08u  //!< FIFO control register address                                          (Read/Write)
+#define FIFO_CTRL3_REG_ADDRESS               0x09u  //!< FIFO control register address                                          (Read/Write)
+#define FIFO_CTRL4_REG_ADDRESS               0x0Au  //!< FIFO control register address                                          (Read/Write)
+#define COUNTER_BDR_REG1_ADDRESS             0x0Bu  //!< Counter batch data rate register 1                                          (Read/Write)
+#define COUNTER_BDR_REG2_ADDRESS         	 0x0Cu  //!< Counter batch data rate register 2 								(Read/Write)
 #define INT1_CTRL_REG_ADDRESS                0x0Du  //!< INT1 pad control register address                                      (Read/Write)
 #define INT2_CTRL_REG_ADDRESS                0x0Eu  //!< INT2 pad control register address                                      (Read/Write)
 #define WHO_AM_I_REG_ADDRESS                 0x0Fu  //!< Who_AM_I register address                                              (Read only)
@@ -84,11 +84,11 @@
 #define FIFO_STATUS2_REG_ADDRESS             0x3Bu  //!< FIFO status control register 2 address                                 (Read only)
 #define FIFO_STATUS3_REG_ADDRESS             0x3Cu  //!< FIFO status control register 3 address                                 (Read only)
 #define FIFO_STATUS4_REG_ADDRESS             0x3Du  //!< FIFO status control register 4 address                                 (Read only)
-#define FIFO_DATA_OUT_L_REG_ADDRESS          0x3Eu  //!< Low byte of FIFO data output register address                          (Read only)
-#define FIFO_DATA_OUT_H_REG_ADDRESS          0x3Fu  //!< High byte of FIFO data output register address                         (Read only)
-
-// TODO last registers
-#define TAP_CFG_REG_ADDRESS                  0x58u  //!< Tap recognition configuration register address                         (Read/Write)
+#define FIFO_DATA_OUT_L_REG_ADDRESS          0x79u  //!< Low byte of FIFO data output register address                          (Read only)
+#define FIFO_DATA_OUT_H_REG_ADDRESS          0x7Au  //!< High byte of FIFO data output register address                         (Read only)
+#define TAP_CFG0_REG_ADDRESS				 0x56u	//!< Tap recognition configuration register address                         (Read/Write)
+#define TAP_CFG1_REG_ADDRESS				 0x57u	//!< Tap recognition configuration register address                         (Read/Write)
+#define TAP_CFG2_REG_ADDRESS                 0x58u  //!< Tap recognition configuration register address                         (Read/Write)
 #define TAP_THS_6D_REG_ADDRESS               0x59u  //!< Portrait/landscape position and tap threshold register address         (Read/Write)
 #define INT_DUR2_REG_ADDRESS                 0x5Au  //!< Tap recognition register address                                       (Read/Write)
 #define FREE_FALL_REG_ADDRESS                0x5Du  //!< Free-Fall register address                                             (Read/Write)
@@ -115,12 +115,9 @@
 // TAP_THS_6D bits mask
 #define TAP_THS_BIT_MASK                     0xE0u  //!< Mask of bit TAP_THS
 
-// FIFO_CTRL3 bits mask
-#define DEC_FIFO_GYRO_BIT_MASK               0x07u  //!< Mask of bit DEC_FIFO_GYRO
-
 // FIFO_CTRL5 bits mask
-#define FIFO_MODE_BIT_MASK                   0x78u  //!< Mask of bit FIFO_MODE
-#define ODR_FIFO_BIT_MASK                    0x07u  //!< Mask of bit ODR_FIFO
+#define FIFO_MODE_BIT_MASK                   0xF0u  //!< Mask of bit FIFO_MODE
+#define BDR_GY_FIFO_BIT_MASK                 0x0Fu  //!< Mask of bit BDR_GY
 
 // Register bits position
 // CTRL1_XL bits position
@@ -137,10 +134,10 @@
 #define ACC_TAP_EN_BIT_POS                      1u  //!< Position of LSB bit TAP_x_EN
 
 // FIFO_CTRL3 bits position
-#define DEC_FIFO_GYRO_BIT_POS                   3u  //!< Position of LSB bit DEC_FIFO_GYRO
+#define DEC_FIFO_GYRO_BIT_POS                   6u  //!< Position of LSB bit DEC_FIFO_GYRO
 
 // FIFO_CTRL5 bits position
-#define ODR_FIFO_BIT_POS                        3u  //!< Position of LSB bit ODR_FIFO
+#define ODR_FIFO_BIT_POS                        4u  //!< Position of LSB bit ODR_FIFO
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -290,7 +287,7 @@ typedef uint8_t T_Interrupt;
 // Private Data
 //-----------------------------------------------------------------------------
 
-static const char* Tag = "LSM6DS3TR";
+static const char* Tag = "LSM6DS0";
 
 static const T_GpioPinConfig PinConfig[2] =
 {
@@ -420,18 +417,6 @@ static void UpdateFifoThreshold(uint16_t threshold);
 //! \return    None
 static void UpdateFifoOutputDataRate(T_Fifo_OutputDataRate rate);
 
-//! \brief     Update the gyroscope FIFO decimation setting
-//! \pre       None
-//! \param     None
-//! \return    None
-static void UpdateGyroFifoDecimationSetting(T_Decimation setting);
-
-//! \brief     Enable/disable the gyroscope axis
-//! \pre       None
-//! \param     None
-//! \return    None
-static void EnableGyroAxis(T_Gyro_EnableAxis config);
-
 static void EnableGyroDataReadyInterrupt(T_Interrupt interrupt);
 
 //! \brief     Read the manufacturer ID
@@ -457,7 +442,7 @@ static void CalculateAngle(int16_t* angle, uint16_t number);
 // Accelerometer
 //-----------------------------------------------------------------------------
 
-void LSM6DS3TR_InitAccelerometer(void)
+void LSM6DS0_InitAccelerometer(void)
 {
   for (uint8_t index = 0u; index < 2u; index++)
   {
@@ -466,20 +451,20 @@ void LSM6DS3TR_InitAccelerometer(void)
 
   UpdateAccOutputDataRate(E_Acc_OutputDataRate_416Hz);
 
-  ConfigureINT1(0x10);
-  ConfigureINT2(0x40);
+  ConfigureINT1(0x10); // Enable free-fall interrupt on INT1
+  ConfigureINT2(0x40); // Enable single-tap interrupt on INT2
 
   ConfigureTap(E_Acc_Tap_EnableAll);
   UpdateTapThreshold(E_Acc_TapThreshold_Mid);
 
   UpdateFreeFall(E_Acc_FreeFallThreshold_312g, 6);
 
-  ESP_LOGI(Tag, "LSM6DS3TR accelerometer is initialized");
+  ESP_LOGI(Tag, "LSM6DS0 accelerometer is initialized");
 }
 
 //_____________________________________________________________________________
 
-void LSM6DS3TR_GetAcceleration(T_Axis* acceleration)
+void LSM6DS0_GetAcceleration(T_Axis* acceleration)
 {
   ReadAcceleration(acceleration);
 
@@ -488,7 +473,7 @@ void LSM6DS3TR_GetAcceleration(T_Axis* acceleration)
 
 //_____________________________________________________________________________
 
-void LSM6DS3TR_GetTapSource(uint8_t* source)
+void LSM6DS0_GetTapSource(uint8_t* source)
 {
   ReadTapSource(source);
 }
@@ -540,12 +525,12 @@ static void ConfigureTap(T_Acc_Tap config)
 
   if (config <= E_Acc_Tap_EnableAll)
   {
-    I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_CFG_REG_ADDRESS, &data, 1u);
+    I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_CFG0_REG_ADDRESS, &data, 1u);
 
     data &= ACC_TAP_EN_BIT_MASK;
     data |= (config << ACC_TAP_EN_BIT_POS);
 
-    I2C_WriteToAddress(SLAVE_ADDRESS, TAP_CFG_REG_ADDRESS, &data, 1u);
+    I2C_WriteToAddress(SLAVE_ADDRESS, TAP_CFG0_REG_ADDRESS, &data, 1u);
 
     // TODO check if needed
     data = 0x06;
@@ -561,12 +546,24 @@ static void UpdateTapThreshold(T_Acc_TapThreshold threshold)
 
   if (threshold <= E_Acc_TapThreshold_High)
   {
-    I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_THS_6D_REG_ADDRESS, &data, 1u);
+	// X axis threshold
+	I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_CFG1_REG_ADDRESS, &data, 1u);
+	data &= TAP_THS_BIT_MASK;
+	data |= threshold;
+	I2C_WriteToAddress(SLAVE_ADDRESS, TAP_CFG1_REG_ADDRESS, &data, 1u);
 
+	// Y axis threshold
+	I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_CFG2_REG_ADDRESS, &data, 1u);
+	data &= TAP_THS_BIT_MASK;
+	data |= threshold;
+	I2C_WriteToAddress(SLAVE_ADDRESS, TAP_CFG2_REG_ADDRESS, &data, 1u);
+
+	// Z axis threshold
+    I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_THS_6D_REG_ADDRESS, &data, 1u);
     data &= TAP_THS_BIT_MASK;
     data |= threshold;
-
     I2C_WriteToAddress(SLAVE_ADDRESS, TAP_THS_6D_REG_ADDRESS, &data, 1u);
+
   }
 }
 
@@ -636,7 +633,7 @@ static void ConvertAcceleration(int16_t input)
 // Gyroscope
 //-----------------------------------------------------------------------------
 
-void LSM6DS3TR_InitGyroscope(int16_t offset)
+void LSM6DS0_InitGyroscope(int16_t offset)
 {
 	uint8_t data = 0x00u;
 
@@ -647,28 +644,26 @@ void LSM6DS3TR_InitGyroscope(int16_t offset)
 
 	UpdateFifoMode(E_FifoMode_Bypass); // Set bypass mode during FIFO configuration
 	UpdateFifoOutputDataRate(E_Fifo_OutputDataRate_104Hz);
-	UpdateGyroFifoDecimationSetting(E_Decimation_1);
 	//UpdateFifoThreshold(1500);
 
-	EnableGyroAxis(E_Gyro_Enable_All);
 	UpdateGyroOutputDataRate(E_Gyro_OutputDataRate_104Hz);
 	UpdateGyroFullScale(E_Gyro_FullScale_500dps);
 
 	Offset = offset;
 
-	ESP_LOGI(Tag, "LSM6DS3TR gyroscope is initialized with offset = %d", Offset);
+	ESP_LOGI(Tag, "LSM6DS0 gyroscope is initialized with offset = %d", Offset);
 }
 
 //_____________________________________________________________________________
 
-void LSM6DS3TR_GetAngularVelocity(T_Axis* angularVelocity)
+void LSM6DS0_GetAngularVelocity(T_Axis* angularVelocity)
 {
   ReadAngularVelocity(angularVelocity);
 }
 
 //_____________________________________________________________________________
 
-void LSM6DS3TR_GetAngle(int16_t* angle)
+void LSM6DS0_GetAngle(int16_t* angle)
 {
   uint16_t numSamples = ReadBufferedAngularPosition();
 
@@ -684,7 +679,7 @@ void LSM6DS3TR_GetAngle(int16_t* angle)
 
 //_____________________________________________________________________________
 
-void LSM6DS3TR_ResetAngle(void)
+void LSM6DS0_ResetAngle(void)
 {
   for (uint8_t i = 0u; i < 3u; i++)
   {
@@ -694,7 +689,7 @@ void LSM6DS3TR_ResetAngle(void)
 
 //_____________________________________________________________________________
 
-void LSM6DS3TR_ResetCalibration(void)
+void LSM6DS0_ResetCalibration(void)
 {
   for (uint8_t i = 0u; i < 3u; i++)
   {
@@ -706,7 +701,7 @@ void LSM6DS3TR_ResetCalibration(void)
 
 //_____________________________________________________________________________
 
-void LSM6DS3TR_SetOffset(int32_t offset)
+void LSM6DS0_SetOffset(int32_t offset)
 {
   Offset = offset;
   ESP_LOGI(Tag, "Set Offset: %d", Offset);
@@ -764,12 +759,12 @@ static void UpdateFifoMode(T_FifoMode mode)
 
   if (mode <= E_FifoMode_Continuous)
   {
-    I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_CTRL5_REG_ADDRESS, &data, 1u);
+    I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_CTRL4_REG_ADDRESS, &data, 1u);
 
     data &= FIFO_MODE_BIT_MASK;
     data |= mode;
 
-    I2C_WriteToAddress(SLAVE_ADDRESS, FIFO_CTRL5_REG_ADDRESS, &data, 1u);
+    I2C_WriteToAddress(SLAVE_ADDRESS, FIFO_CTRL4_REG_ADDRESS, &data, 1u);
   }
   else
   {
@@ -783,7 +778,7 @@ static T_FifoMode GetFifoMode(void)
 {
   uint8_t data = 0x00u;
 
-  I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_CTRL5_REG_ADDRESS, &data, 1u);
+  I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_CTRL4_REG_ADDRESS, &data, 1u);
 
   return (T_FifoMode)(data & 0x07);
 }
@@ -796,11 +791,11 @@ static void UpdateFifoThreshold(uint16_t threshold)
   uint8_t data = 0x00u;
   uint8_t limit[2];
 
-  if (threshold < 2047)
+  if (threshold < 512)
   {
     I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_CTRL2_REG_ADDRESS, &data, 1u);
-    data &= 0xC8;
-    data |= ((threshold & 0x0700) >> 8);
+    data &= 0xD6;
+    data |= ((threshold & 0x0100) >> 8);
 
     limit[0] = (threshold & 0x00FF);
     limit[1] = data;
@@ -817,61 +812,17 @@ static void UpdateFifoOutputDataRate(T_Fifo_OutputDataRate rate)
 
   if (rate <= E_Fifo_OutputDataRate_6660Hz)
   {
-    I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_CTRL5_REG_ADDRESS, &data, 1u);
-
-    data &= ODR_FIFO_BIT_MASK;
-    data |= (rate << ODR_FIFO_BIT_POS);
-
-    I2C_WriteToAddress(SLAVE_ADDRESS, FIFO_CTRL5_REG_ADDRESS, &data, 1u);
-  }
-  else
-  {
-    ESP_LOGE(Tag, "Invalid gyroscope output data rate: %d", rate);
-  }
-}
-
-//_____________________________________________________________________________
-
-static void UpdateGyroFifoDecimationSetting(T_Decimation setting)
-{
-  uint8_t data = 0x00u;
-
-  if (setting <= E_Decimation_32)
-  {
     I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_CTRL3_REG_ADDRESS, &data, 1u);
 
-    data &= DEC_FIFO_GYRO_BIT_MASK;
-    data |= (setting << DEC_FIFO_GYRO_BIT_POS);
+    data &= BDR_GY_FIFO_BIT_MASK;
+    data |= (rate << ODR_FIFO_BIT_POS);
 
     I2C_WriteToAddress(SLAVE_ADDRESS, FIFO_CTRL3_REG_ADDRESS, &data, 1u);
   }
   else
   {
-    ESP_LOGE(Tag, "Invalid gyroscope FIFO decimation setting: %d", setting);
+    ESP_LOGE(Tag, "Invalid gyroscope output data rate: %d", rate);
   }
-}
-
-//_____________________________________________________________________________
-
-static void EnableGyroAxis(T_Gyro_EnableAxis config)
-{
-  uint8_t data = 0x00u;
-  //seems gyro is always on, no need to handle this
-/*
-  if (config <= E_Gyro_Enable_All)
-  {
-    I2C_ReadFromAddress(SLAVE_ADDRESS, CTRL10_C_REG_ADDRESS, &data, 1u);
-
-    data &= GYR_EN_G_BIT_MASK;
-    data |= (config << GYR_EN_G_BIT_POS);
-
-    I2C_WriteToAddress(SLAVE_ADDRESS, CTRL10_C_REG_ADDRESS, &data, 1u);
-  }
-  else
-  {
-    ESP_LOGE(Tag, "Invalid gyroscope axis configuration: %d", config);
-  }
-*/
 }
 
 //_____________________________________________________________________________
@@ -915,9 +866,8 @@ static void ReadAngularVelocity(T_Axis* angularVelocity)
 
 static uint16_t ReadBufferedAngularPosition(void)
 {
-  uint8_t position[2u] = {0u, 0u};
+  uint8_t temp_data[7u] = {0u};
   uint16_t length = 0x00u;
-  uint16_t pattern = 0x00u;
 
   uint8_t i = 0u;
   uint8_t j = 0u;
@@ -938,12 +888,12 @@ static uint16_t ReadBufferedAngularPosition(void)
 
   I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_STATUS1_REG_ADDRESS, len, 2u);
 
-  length = (uint16_t)((uint16_t)(len[1] & 0x07) << 8) | len[0];
+  length = (uint16_t)((uint16_t)(len[1] & 0x03) << 8) | len[0];
   //ESP_LOGD(Tag, "length=%d", length);
 
   if (length > 0u)
   {
-    numSamples = ((length / 3) * 3);  // Get a multiple of 3 (entire part) for the XYZ samples (get maximum number of complete triplets).
+    numSamples = length; // Fifo format: TAG + 6 bytes for the XYZ samples.
     //ESP_LOGD(Tag, "numSamples=%d", numSamples);
 
     if (numSamples >= 3*BUFFER_SIZE) {
@@ -952,30 +902,15 @@ static uint16_t ReadBufferedAngularPosition(void)
 
     for (uint16_t index = 0u; index < numSamples; index++)
     {
-      I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_STATUS3_REG_ADDRESS, pat, 2u);
-      pattern = (uint16_t)((uint16_t)(pat[1] & 0x03) << 8) | pat[0];
-
-      I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_DATA_OUT_L_REG_ADDRESS, position, 2u);
-
-      if (pattern == 0)
-      {
-        Buffer[0][i] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
-        i++;
-      }
-      else if (pattern == 1)
-      {
-        Buffer[1][j] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
-        j++;
-      }
-      else
-      {
-        Buffer[2][k] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
-        k++;
-      }
+    	I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_DATA_OUT_L_REG_ADDRESS, temp_data, 7u);
+    	Buffer[0][i] = (int16_t)((uint16_t)temp_data[1u] << 8u) | temp_data[0u];
+    	Buffer[1][i] = (int16_t)((uint16_t)temp_data[3u] << 8u) | temp_data[2u];
+    	Buffer[2][i] = (int16_t)((uint16_t)temp_data[5u] << 8u) | temp_data[4u];
+    	i++;
     }
   }
 
-  return (numSamples / 3);  // Number of XYZ samples
+  return (numSamples);  // Number of XYZ samples
 }
 
 //_____________________________________________________________________________
@@ -1087,7 +1022,7 @@ static void CalculateAngle(int16_t* angle, uint16_t number)
 // Common
 //-----------------------------------------------------------------------------
 
-T_Error LSM6DS3TR_CheckManufacturerId(void)
+T_Error LSM6DS0_CheckManufacturerId(void)
 {
   uint8_t id = 0x00;
   T_Error err = E_Error_None;
