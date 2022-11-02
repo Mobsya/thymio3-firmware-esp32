@@ -33,7 +33,10 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define DETECT                  85
+#define DETECT                  500 //85
+#define SPEED_INCREMENT         50
+#define MAX_SPEED              300
+#define MIN_SPEED            (-300)
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -84,8 +87,10 @@ void Friendly_Stop(void)
 
 void Friendly_Run(void)
 {
+	static char does_see_friend;
+
   int16_t max = vmVariables.prox[0];
-  int16_t min = 0;
+  int16_t mi = 0;
   int16_t t;
   uint8_t brightness = Common_GetBodyColorPulse();
   int16_t speedDiff;
@@ -98,30 +103,32 @@ void Friendly_Run(void)
     if (vmVariables.prox[index] > max)
     {
       max = vmVariables.prox[index];
-      min = index;
+      mi = index;
     }
   }
 
-  t = 2 - min;
+  t = 2 - mi;
   speedDiff = t * (speed / 2);
 
-  if (max > 600)
+  if (max > 3500) //600)
   {
-    speed_l = (600 - max) / 2;
+    //speed_l = (600 - max) / 2;
+    speed_l = (3500 - max) / 2;
   }
 
-  if (max > 700)
+  if (max > 4000) //700)
   {
     speed_l = -speed;
   }
 
-  if (max < 520)
+  if (max < 3000) //520)
   {
-    t = 52 - ((max - 175) / 7);
+    //t = 52 - ((max - 175) / 7);
+    t = 300 - (max - 1000) / 7;
     speed_l = t;
   }
 
-  if (max < 350)
+  if (max < 2000) //350)
   {
     speed_l = speed;
   }
@@ -138,13 +145,11 @@ void Friendly_Run(void)
 
   if (max < DETECT)
   {
-#if 0  // FIXME
     if (does_see_friend)
     {
       Common_SetTargetSpeed(speed, speed);
     }
     else
-#endif
     {
       Common_SetTargetSpeed(0, 0);
     }
@@ -154,12 +159,91 @@ void Friendly_Run(void)
     Common_SetTargetSpeed((speed_l - speedDiff), (speedDiff + speed_l));
   }
 
+#if 0
+  // LEDs management
+	if(does_see_friend > 0 && sound_done) {
+		unsigned char rgb[3];
+
+		rainbow_get(rgb);
+
+		leds_set_top(rgb[0],rgb[1],rgb[2]);
+		leds_set_bl(rgb[2],rgb[0],rgb[1]);
+		leds_set_br(rgb[1],rgb[2],rgb[0]);
+	} else
+		leds_set_body_rgb(0,body_color_pulse_get(),0);
+
+	if(does_see_friend) {
+		led_state += led_delta;
+		if(led_state >= 31)
+			led_delta = -1;
+		else if(led_state == 0)
+			led_delta = 1;
+
+		leds_set_circle(0, led_state >> 4, led_state >> 3, led_state, 32, led_state, led_state >> 3, led_state >> 4);
+	} else
+		leds_set_circle(0,0,0,32,32,32,0,0);
+#endif
+
+	// Buttons management
+	Common_SetSpeedUsingButtons(&speed, SPEED_INCREMENT, MAX_SPEED, MIN_SPEED);
+
+
+	// Audio management
   when(max > DETECT)
   {
     Codec_PlayMP3FileFromFlash(E_SoundIndex_Detection);
   }
+#if 0
+	when(max > DETECT)
+		play_sound(SOUND_F_DETECT);
 
+	if(speed_diff == 0 && speed_l == 0 && sound_done == 0 && max > DETECT) {
+		sound_done = 1;
+		play_sound(SOUND_F_OK);
+	}
+	if(speed_diff != 0 || max < DETECT)
+		sound_done = 0;
+#endif
+
+	// "Cliff" detection handling
   Common_HandleTableEdgeDetection(0u, brightness, 0u);
+
+  if(vmVariables.ground_delta[0] < 130 || vmVariables.ground_delta[1] < 130) {
+	  Common_SetTargetSpeed(0, 0);
+  		//leds_set(LED_R_BOT_L, 32);
+  		//leds_set(LED_R_BOT_R, 32);
+  	} //else {
+  	//	leds_set(LED_R_BOT_L, 0);
+  	//	leds_set(LED_R_BOT_R, 0);
+  	//}
+
+  	if(does_see_friend)
+  		does_see_friend--;
+
+  	if(IS_EVENT(EVENT_STM32)) {
+  		CLEAR_EVENT(EVENT_STM32);
+  		does_see_friend = 0;
+  		mi = 0;
+  		max = vmVariables.intensity[0];
+  		vmVariables.intensity[0] = 0;
+  		for(int i = 1; i < 7; i++) {
+  			if(vmVariables.intensity[i] > max) {
+  				mi = i;
+  				max = vmVariables.intensity[i];
+  			}
+  			vmVariables.intensity[i] = 0;
+  		}
+  		if(max > 3000) {
+  			vmVariables.ir_tx_data = mi;
+  			if(vmVariables.rx_data > 0 && vmVariables.rx_data < 4) {
+  				when(mi == 2) {
+  					//play_sound(SOUND_F_OK);
+  				}
+  				if(mi == 2)
+  					does_see_friend = 6;
+  			}
+  		}
+  	}
 
 #if 0
   static char sound_done;

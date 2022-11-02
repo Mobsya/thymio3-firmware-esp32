@@ -29,13 +29,13 @@
 
 #define B_SOUND_BUTTON  (1 << 0)
 #define B_LEDS_BUTTON   (1 << 1)
-#define B_LEDS_PROX     (1 << 2)
+#define B_LEDS_PROX     (1 << 2) // Implemented on STM
 #define B_LEDS_LEGO     (1 << 3)
-#define B_LEDS_BATTERY  (1 << 4)
-#define B_LEDS_CIRCLE   (1 << 5)
+#define B_LEDS_BATTERY  (1 << 4) // Implemented on STM
+#define B_LEDS_CIRCLE   (1 << 5) // Not implemented?
 #define B_LEDS_ACC      (1 << 6)
-#define B_LEDS_RGB      (1 << 7)
-#define B_LED_MIC       (1 << 8)
+#define B_LEDS_RGB      (1 << 7) // Not implemented?
+#define B_LED_MIC       (1 << 8) // Implemented on STM
 #define B_LED_RC5       (1 << 9)
 #define B_MODE          (1 << 10)
 #define B_SETTING       (1 << 11)

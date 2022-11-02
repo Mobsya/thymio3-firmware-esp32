@@ -20,13 +20,15 @@
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
+#define LSM6DS3US 0
+#define LSM6DS3TR 1
+#define LSM6DS0 2
 
 #include "error.h"
-#ifdef LSM6DS3US
-   #include "lsm6ds3us.h"
-#else
-   #include "lsm6ds3tr.h"
-#endif 	
+#include "imu_common.h"
+#include "lsm6ds3us.h"
+#include "lsm6ds3tr.h"
+#include "lsm6ds0.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions

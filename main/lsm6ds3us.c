@@ -10,7 +10,7 @@
 //! \brief   This module provides the useful functions to use the LSM6DS3US device
 //!          (3D accelerometer and 3D gyroscope)
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -28,6 +28,7 @@
 #include "gpio.h"
 #include "i2c.h"
 #include "pins_def.h"
+#include "imu_common.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -635,6 +636,13 @@ static void ConvertAcceleration(int16_t input)
 
 void LSM6DS3US_InitGyroscope(int16_t offset)
 {
+	uint8_t data = 0x00u;
+
+	// Set BDU flag
+	I2C_ReadFromAddress(SLAVE_ADDRESS, CTRL3_C_REG_ADDRESS, &data, 1u);
+	data |= 0x40;
+	I2C_WriteToAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
+
   EnableGyroAxis(E_Gyro_Enable_All);
   UpdateGyroOutputDataRate(E_Gyro_OutputDataRate_104Hz);
   UpdateGyroFullScale(E_Gyro_FullScale_500dps);
