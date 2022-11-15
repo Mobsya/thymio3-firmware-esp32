@@ -160,7 +160,7 @@ static void TuneMotors(void);
 
 static void CalibrateColor(void);
 
-static void RunLegoLedAnimation(void);
+static void RunMatrixLedAnimation(void);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -328,7 +328,7 @@ static void RunBehaviors(void)
     SetAccelerometerLeds();
   }
 
-  if (ENABLED(B_LEDS_LEGO))
+  if (ENABLED(B_LEDS_MATRIX))
   {
     SetGyroscopeLeds();
   }
@@ -529,40 +529,40 @@ static void SetGyroscopeLeds(void)
   // Turn left
   if (gyro >= 20000)
   {
-    Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    Leds_SetMatrixFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
   }
   else if (gyro >= 10000)
   {
-    Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
+    Leds_SetMatrixFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
   }
   else if (gyro >= 5000)
   {
-    Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u);
+    Leds_SetMatrixFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u);
   }
   else if (gyro >= 2500)
   {
-    Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u);
+    Leds_SetMatrixFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u);
   }
   // Turn right
   else if (gyro <= -20000)
   {
-    Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
+    Leds_SetMatrixFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
   }
   else if (gyro <= -10000)
   {
-    Leds_SetLegoFrontBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
+    Leds_SetMatrixFrontBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
   }
   else if (gyro <= -5000)
   {
-    Leds_SetLegoFrontBrightness(0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
+    Leds_SetMatrixFrontBrightness(0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
   }
   else if (gyro <= -2500)
   {
-    Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
+    Leds_SetMatrixFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
   }
   else
   {
-    Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+    Leds_SetMatrixFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
   }
 }
 
@@ -613,7 +613,7 @@ static void UpdateSettings(void)
 
   if (start)
   {
-    //RunLegoLedAnimation();
+    //RunMatrixLedAnimation();
 
     // Enter into a setting
     when(buttonState[E_Button_Center])
@@ -773,8 +773,8 @@ static void ExitSetting(T_Setting setting)
 {
   Leds_SetBodyBrightness(0u, 0u, 0u);
   Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-  Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-  Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  Leds_SetMatrixFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  Leds_SetMatrixBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
 
   switch (setting)
   {
@@ -1040,15 +1040,15 @@ static void CalibrateColor(void)
 
     if (calibrationStatus == 2)
     {
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
+      Leds_SetMatrixFrontBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
     }
     else if (calibrationStatus == 1)
     {
-      Leds_SetLegoFrontBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u);
+      Leds_SetMatrixFrontBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u);
     }
     else
     {
-      Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
+      Leds_SetMatrixFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
     }
 
     IsColorCalibrationInProgress = true;
@@ -1070,15 +1070,15 @@ static void CalibrateColor(void)
 
     if (calibrationStatus == 2)  // Successful calibration
     {
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
+      Leds_SetMatrixFrontBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
     }
     else if (calibrationStatus == 1)  // Partial calibration
     {
-      Leds_SetLegoFrontBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u);
+      Leds_SetMatrixFrontBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u);
     }
     else  // Bad calibration
     {
-      Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
+      Leds_SetMatrixFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
     }
 
     IsColorCalibrationInProgress = true;
@@ -1090,7 +1090,7 @@ static void CalibrateColor(void)
 
 //_____________________________________________________________________________
 
-static void RunLegoLedAnimation(void)
+static void RunMatrixLedAnimation(void)
 {
   static uint8_t led_state;
   uint8_t l[8] = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -1104,8 +1104,8 @@ static void RunLegoLedAnimation(void)
   l[(fixed + 2) & 0x7] = (led_state & (MAX_BRIGHTNESS - 1));
   l[(fixed + 4) & 0x7] = (led_state & (MAX_BRIGHTNESS - 1));
 
-  Leds_SetLegoFrontBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
-  //Leds_SetLegoBackBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
+  Leds_SetMatrixFrontBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
+  //Leds_SetMatrixBackBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
 
 #if 0
   uint8_t l[8] = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -1207,7 +1207,7 @@ static void RunLegoLedAnimation(void)
     count = 0u;
   }
 
-  Leds_SetLegoFrontBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
-  Leds_SetLegoBackBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
+  Leds_SetMatrixFrontBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
+  Leds_SetMatrixBackBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
 #endif
 }

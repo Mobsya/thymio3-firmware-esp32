@@ -140,7 +140,7 @@ void Mode_Init(bool enableVM)
 void Mode_InitVM(void)
 {
   Behavior_Enable(B_LEDS_ACC);
-  Behavior_Enable(B_LEDS_LEGO);
+  Behavior_Enable(B_LEDS_MATRIX);
   Behavior_Enable(B_LEDS_PROX);
   Behavior_Enable(B_SOUND_BUTTON);
   Behavior_Enable(B_LED_MIC);
@@ -321,7 +321,7 @@ static void StartMode(T_Mode mode)
     case E_Mode_Fearful:
       Behavior_Enable(B_LEDS_PROX);
       Behavior_Enable(B_LEDS_ACC);
-      Behavior_Enable(B_LEDS_LEGO);
+      Behavior_Enable(B_LEDS_MATRIX);
       Fearful_Start();
       break;
 
@@ -335,7 +335,7 @@ static void StartMode(T_Mode mode)
 
     case E_Mode_Sequence:
       Behavior_Enable(B_LEDS_PROX);
-      Behavior_Enable(B_LEDS_LEGO);
+      Behavior_Enable(B_LEDS_MATRIX);
       Behavior_Enable(B_LED_RC5);
       Sequence_Start();
       break;
@@ -356,8 +356,8 @@ static void ExitMode(T_Mode mode)
 {
   Leds_SetBodyBrightness(0u, 0u, 0u);
   Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-  Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-  Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  Leds_SetMatrixFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  Leds_SetMatrixBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
 
   switch (mode)
   {
@@ -379,7 +379,7 @@ static void ExitMode(T_Mode mode)
       Fearful_Stop();
       Behavior_Disable(B_LEDS_PROX);
       Behavior_Disable(B_LEDS_ACC);
-      Behavior_Disable(B_LEDS_LEGO);
+      Behavior_Disable(B_LEDS_MATRIX);
       break;
 
     case E_Mode_Painter:
@@ -395,7 +395,7 @@ static void ExitMode(T_Mode mode)
     case E_Mode_Sequence:
       Sequence_Stop();
       Behavior_Disable(B_LEDS_PROX);
-      Behavior_Disable(B_LEDS_LEGO);
+      Behavior_Disable(B_LEDS_MATRIX);
       Behavior_Disable(B_LED_RC5);
       break;
 

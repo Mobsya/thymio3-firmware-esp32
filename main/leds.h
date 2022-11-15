@@ -71,24 +71,24 @@ enum
   E_Led_R_Debug,         // U25.QH --> D53 Red
 
   // LEDs connected to U28
-  E_Led_Lego_Front_0,    // U28.QA --> D28
-  E_Led_Lego_Front_1,    // U28.QB --> D31
-  E_Led_Lego_Front_2,    // U28.QC --> D34
-  E_Led_Lego_Front_3,    // U28.QD --> D37
-  E_Led_Lego_Front_4,    // U28.QE --> D40
-  E_Led_Lego_Front_5,    // U28.QF --> D43
-  E_Led_Lego_Front_6,    // U28.QG --> D46
-  E_Led_Lego_Front_7,    // U28.QH --> D49
+  E_Led_Matrix_Front_0,    // U28.QA --> D28
+  E_Led_Matrix_Front_1,    // U28.QB --> D31
+  E_Led_Matrix_Front_2,    // U28.QC --> D34
+  E_Led_Matrix_Front_3,    // U28.QD --> D37
+  E_Led_Matrix_Front_4,    // U28.QE --> D40
+  E_Led_Matrix_Front_5,    // U28.QF --> D43
+  E_Led_Matrix_Front_6,    // U28.QG --> D46
+  E_Led_Matrix_Front_7,    // U28.QH --> D49
 
   // LEDs connected to U29
-  E_Led_Lego_Back_0,     // U29.QA --> D29
-  E_Led_Lego_Back_1,     // U29.QB --> D32
-  E_Led_Lego_Back_2,     // U29.QC --> D35
-  E_Led_Lego_Back_3,     // U29.QD --> D38
-  E_Led_Lego_Back_4,     // U29.QE --> D41
-  E_Led_Lego_Back_5,     // U29.QF --> D44
-  E_Led_Lego_Back_6,     // U29.QG --> D47
-  E_Led_Lego_Back_7,     // U29.QH --> D50
+  E_Led_Matrix_Back_0,     // U29.QA --> D29
+  E_Led_Matrix_Back_1,     // U29.QB --> D32
+  E_Led_Matrix_Back_2,     // U29.QC --> D35
+  E_Led_Matrix_Back_3,     // U29.QD --> D38
+  E_Led_Matrix_Back_4,     // U29.QE --> D41
+  E_Led_Matrix_Back_5,     // U29.QF --> D44
+  E_Led_Matrix_Back_6,     // U29.QG --> D47
+  E_Led_Matrix_Back_7,     // U29.QH --> D50
 
   // LEDs connected to U30 (bank 0)
   E_Led_R_Back_Right,    // U30.QA --> D51 Red
@@ -156,18 +156,18 @@ extern void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t
 //! \return    None
 extern void Leds_SetButtonsBrightness(uint8_t forward, uint8_t right, uint8_t backward, uint8_t left);
 
-//! \brief     Set the brightness of each front Lego LED
+//! \brief     Set the brightness of each front Matrix LED
 //! \pre       First initialize the LEDs
-//! \param     l0 to l7 - LEDs associated with the front Lego
+//! \param     l0 to l7 - LEDs associated with the front Matrix
 //! \return    None
-extern void Leds_SetLegoFrontBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
+extern void Leds_SetMatrixFrontBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
                                         uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7);
 
-//! \brief     Set the brightness of each back Lego LED
+//! \brief     Set the brightness of each back Matrix LED
 //! \pre       First initialize the LEDs
-//! \param     l0 to l7 - LEDs associated with the back Lego
+//! \param     l0 to l7 - LEDs associated with the back Matrix
 //! \return    None
-extern void Leds_SetLegoBackBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
+extern void Leds_SetMatrixBackBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
                                        uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7);
 
 //! \brief     Set the brightness of the color sensor RGB LED

@@ -30,7 +30,7 @@
 #define B_SOUND_BUTTON  (1 << 0)
 #define B_LEDS_BUTTON   (1 << 1)
 #define B_LEDS_PROX     (1 << 2) // Implemented on STM
-#define B_LEDS_LEGO     (1 << 3)
+#define B_LEDS_MATRIX     (1 << 3)
 #define B_LEDS_BATTERY  (1 << 4) // Implemented on STM
 #define B_LEDS_CIRCLE   (1 << 5) // Not implemented?
 #define B_LEDS_ACC      (1 << 6)

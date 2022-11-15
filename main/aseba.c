@@ -79,9 +79,9 @@ static void UpdateTimers(void);
 
 static void UpdateLedsCircle(void);
 
-static void UpdateLedsLegoFront(void);
+static void UpdateLedsMatrixFront(void);
 
-static void UpdateLedsLegoBack(void);
+static void UpdateLedsMatrixBack(void);
 
 static void UpdateLedFrontLeft(void);
 
@@ -127,8 +127,8 @@ void update_aseba_variables_write(void)
 {
   UpdateTimers();
   UpdateLedsCircle();
-  UpdateLedsLegoFront();
-  UpdateLedsLegoBack();
+  UpdateLedsMatrixFront();
+  UpdateLedsMatrixBack();
   UpdateLedFrontLeft();
   UpdateLedFrontRight();
   UpdateLedBackLeft();
@@ -156,8 +156,8 @@ void AsebaVMResetCB(AsebaVMState* vm)
 {
   Leds_SetBodyBrightness(0u, 0u, 0u);
   Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-  Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-  Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  Leds_SetMatrixFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  Leds_SetMatrixBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
   Leds_SetButtonsBrightness(0u, 0u, 0u, 0u);
 
   //Leds_SetSingleBrightness(E_Led_Battery_1, MAX_BRIGHTNESS);
@@ -167,7 +167,7 @@ void AsebaVMResetCB(AsebaVMState* vm)
   leds_set(LED_RC, 0);
 #endif
   Behavior_Enable(B_LEDS_ACC);
-  Behavior_Enable(B_LEDS_LEGO);
+  Behavior_Enable(B_LEDS_MATRIX);
   Behavior_Enable(B_LED_MIC);
   Behavior_Enable(B_LEDS_PROX);
   Behavior_Enable(B_SOUND_BUTTON);
@@ -315,7 +315,7 @@ static void UpdateLedsCircle(void)
 
 //_____________________________________________________________________________
 
-static void UpdateLedsLegoFront(void)
+static void UpdateLedsMatrixFront(void)
 {
   // brightness[0] is assigned to the LED D28
   // brightness[1] is assigned to the LED D31
@@ -329,19 +329,19 @@ static void UpdateLedsLegoFront(void)
 
   for (uint8_t index = 0u; index < 8u; index++)
   {
-    if (brightness[index] != vmVariables.leds_lego_front[index])
+    if (brightness[index] != vmVariables.leds_matrix_front[index])
     {
-      brightness[index] = vmVariables.leds_lego_front[index];
+      brightness[index] = vmVariables.leds_matrix_front[index];
 
-      Behavior_Disable(B_LEDS_LEGO);
-      Leds_SetSingleBrightness((E_Led_Lego_Front_0 + index), brightness[index]);
+      Behavior_Disable(B_LEDS_MATRIX);
+      Leds_SetSingleBrightness((E_Led_Matrix_Front_0 + index), brightness[index]);
     }
   }
 }
 
 //_____________________________________________________________________________
 
-static void UpdateLedsLegoBack(void)
+static void UpdateLedsMatrixBack(void)
 {
   // brightness[0] is assigned to the LED D29
   // brightness[1] is assigned to the LED D32
@@ -355,12 +355,12 @@ static void UpdateLedsLegoBack(void)
 
   for (uint8_t index = 0u; index < 8u; index++)
   {
-    if (brightness[index] != vmVariables.leds_lego_back[index])
+    if (brightness[index] != vmVariables.leds_matrix_back[index])
     {
-      brightness[index] = vmVariables.leds_lego_back[index];
+      brightness[index] = vmVariables.leds_matrix_back[index];
 
-      Behavior_Disable(B_LEDS_LEGO);
-      Leds_SetSingleBrightness((E_Led_Lego_Back_0 + index), brightness[index]);
+      Behavior_Disable(B_LEDS_MATRIX);
+      Leds_SetSingleBrightness((E_Led_Matrix_Back_0 + index), brightness[index]);
     }
   }
 }

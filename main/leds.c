@@ -239,32 +239,32 @@ void Leds_SetButtonsBrightness(uint8_t forward, uint8_t right, uint8_t backward,
 
 //_____________________________________________________________________________
 
-void Leds_SetLegoFrontBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
+void Leds_SetMatrixFrontBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
                                  uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
 {
-  Leds_SetSingleBrightness(E_Led_Lego_Front_0, l0);
-  Leds_SetSingleBrightness(E_Led_Lego_Front_1, l1);
-  Leds_SetSingleBrightness(E_Led_Lego_Front_2, l2);
-  Leds_SetSingleBrightness(E_Led_Lego_Front_3, l3);
-  Leds_SetSingleBrightness(E_Led_Lego_Front_4, l4);
-  Leds_SetSingleBrightness(E_Led_Lego_Front_5, l5);
-  Leds_SetSingleBrightness(E_Led_Lego_Front_6, l6);
-  Leds_SetSingleBrightness(E_Led_Lego_Front_7, l7);
+  Leds_SetSingleBrightness(E_Led_Matrix_Front_0, l0);
+  Leds_SetSingleBrightness(E_Led_Matrix_Front_1, l1);
+  Leds_SetSingleBrightness(E_Led_Matrix_Front_2, l2);
+  Leds_SetSingleBrightness(E_Led_Matrix_Front_3, l3);
+  Leds_SetSingleBrightness(E_Led_Matrix_Front_4, l4);
+  Leds_SetSingleBrightness(E_Led_Matrix_Front_5, l5);
+  Leds_SetSingleBrightness(E_Led_Matrix_Front_6, l6);
+  Leds_SetSingleBrightness(E_Led_Matrix_Front_7, l7);
 }
 
 //_____________________________________________________________________________
 
-void Leds_SetLegoBackBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
+void Leds_SetMatrixBackBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
                                 uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7)
 {
-  Leds_SetSingleBrightness(E_Led_Lego_Back_0, l0);
-  Leds_SetSingleBrightness(E_Led_Lego_Back_1, l1);
-  Leds_SetSingleBrightness(E_Led_Lego_Back_2, l2);
-  Leds_SetSingleBrightness(E_Led_Lego_Back_3, l3);
-  Leds_SetSingleBrightness(E_Led_Lego_Back_4, l4);
-  Leds_SetSingleBrightness(E_Led_Lego_Back_5, l5);
-  Leds_SetSingleBrightness(E_Led_Lego_Back_6, l6);
-  Leds_SetSingleBrightness(E_Led_Lego_Back_7, l7);
+  Leds_SetSingleBrightness(E_Led_Matrix_Back_0, l0);
+  Leds_SetSingleBrightness(E_Led_Matrix_Back_1, l1);
+  Leds_SetSingleBrightness(E_Led_Matrix_Back_2, l2);
+  Leds_SetSingleBrightness(E_Led_Matrix_Back_3, l3);
+  Leds_SetSingleBrightness(E_Led_Matrix_Back_4, l4);
+  Leds_SetSingleBrightness(E_Led_Matrix_Back_5, l5);
+  Leds_SetSingleBrightness(E_Led_Matrix_Back_6, l6);
+  Leds_SetSingleBrightness(E_Led_Matrix_Back_7, l7);
 }
 
 //_____________________________________________________________________________

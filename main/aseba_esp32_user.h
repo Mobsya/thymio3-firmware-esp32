@@ -94,8 +94,8 @@ struct _vmVariables
   int16_t vbat;
   int16_t sound_volume;
   int16_t leds_circle[8];
-  int16_t leds_lego_front[8];
-  int16_t leds_lego_back[8];
+  int16_t leds_matrix_front[8];
+  int16_t leds_matrix_back[8];
   int16_t led_front_left[3];
   int16_t led_front_right[3];
   int16_t led_back_left[3];
