@@ -22,6 +22,7 @@
 //-----------------------------------------------------------------------------
 
 #include "stdint.h"
+#include "aseba/common/procustids.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -31,7 +32,7 @@
 
 #define PRIO_COMMUNICATION          4
 
-#define PRODUCT_ID                  8
+#define PRODUCT_ID                  ASEBA_PID_THYMIO3
 
 // Send queue minimum size: 512+6+4+1
 #define SEND_QUEUE_SIZE      (512+6+4+1)
