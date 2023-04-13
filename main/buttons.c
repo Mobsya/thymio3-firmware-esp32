@@ -24,7 +24,7 @@
 #include "soc/rtc.h"
 
 #include "buttons.h"
-
+#include "utility.h"
 #include "aseba_esp32.h"
 #include "gpio.h"
 #include "pins_def.h"
@@ -68,6 +68,9 @@ static int16_t ThresholdLow[BUTTONS_NUM]      = {0u, 0u, 0u, 0u, 0u};
 int16_t DeltaMin[BUTTONS_NUM] = {0, 0, 0, 0, 0};
 //int16_t DeltaMax[BUTTONS_NUM] = {0, 0, 0, 0, 0};
 uint8_t init_thr_flag = 1;
+//uint32_t buttonDeltaTick[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
+//uint32_t buttonLastTick[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};
+//uint32_t currentTick = 0;
 
 static const T_GpioPinConfig PinConfig = {BUTTON_SIDE_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_FallingEdge};
 
@@ -169,9 +172,16 @@ void Buttons_UpdateStatus(void)
 
   for (uint8_t button = 0u; button < BUTTONS_NUM; button++)
   {
+	//currentTick = getTimeUs();
+	//buttonDeltaTick[button] = currentTick - buttonLastTick[button];
+	//buttonLastTick[button] = currentTick;
+
     touch_pad_read(Buttons_Table[button], &ButtonRaw[button]); // This function is blocking when in "FSM software mode": it starts a new measurement and wait until is done (about 2 ms).
     // Apply a low pass filter on the count value: new filt = prev filt * 0.75 + new raw * 0.25
     ButtonFiltered[button] = ButtonFiltered[button] - (ButtonFiltered[button]>>2) + (ButtonRaw[button]>>2);
+    //if(button == 0) {
+    //	printf("%u,%d\n", buttonDeltaTick[button], ButtonRaw[button]);
+    //}
 
     // Shift left the history
     for(i=0; i<HIST_SIZE-1; i++) {

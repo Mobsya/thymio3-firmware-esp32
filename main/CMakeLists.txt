@@ -98,6 +98,8 @@ set(COMPONENT_SRCS
     timer_sw.h
     uart.c
     uart.h
+    utility.c
+    utility.h
     vm-buffer.c
     vm.c
     wifi.c

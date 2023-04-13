@@ -57,6 +57,7 @@ static const char* Tag = "gpio";
 static bool FreeFall = false;
 static bool Tap = false;
 static bool Side = false;
+extern bool printStats;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -327,5 +328,6 @@ static void IRAM_ATTR ISR_GPIOHandler(void* arg)
   if (gpio_num == BUTTON_SIDE_PIN)
   {
     Side = true;
+    printStats = true;
   }
 }

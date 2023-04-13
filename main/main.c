@@ -80,6 +80,7 @@ static const char* Tag = "main";
 //-----------------------------------------------------------------------------
 
 //uint8_t temp_buff[4096]={0};
+bool printStats = false;
 
 void stats(void*z)
 {
@@ -102,6 +103,152 @@ void stats(void*z)
 		printf("heap_free_size %d\n",heap_caps_get_free_size(MALLOC_CAP_8BIT));
 
 		vTaskDelay(15000 / portTICK_PERIOD_MS);
+	}
+}
+
+void stats2(void*z)
+{
+	char * buf=malloc(1000);
+	char * buf_addr = buf;
+	volatile UBaseType_t uxArraySize;
+	//TaskStatus_t *mytasks = pvPortMalloc( uxTaskGetNumberOfTasks() * sizeof( TaskStatus_t ) );
+	TaskStatus_t mytasks[30];
+	unsigned long mytasksLastRunTimeCounter[30];
+	unsigned long mytasksMinCpu[30] = {100};
+	unsigned long mytasksMaxCpu[30] = {0};
+	uint16_t mytasksMinStack[30] = {60000};
+	TaskStatus_t *mytaskTemp;
+	uint8_t num_tasks = 0, i = 0, j = 0;
+	unsigned long cpuUsageTemp = 0;
+	uint32_t lastTotalRunTimeCounter = 0, totalRunTimeCounter = 0;
+	uint32_t currHeapSize = 0, minHeapSize = 0;
+	uint8_t totalMaxCpu0Usage = 0, sumCpu0Usage = 0, maxCpu0UsageTaskId = 0, taskMaxCpu0Usage = 0;
+	uint8_t totalMaxCpu1Usage = 0, sumCpu1Usage = 0, maxCpu1UsageTaskId = 0, taskMaxCpu1Usage = 0;
+	uint8_t totalMaxCpuXUsage = 0, sumCpuXUsage = 0, maxCpuXUsageTaskId = 0, taskMaxCpuXUsage = 0; // Not pinned to any core.
+	//num_tasks = uxTaskGetSystemState(mytasks, uxArraySize, &lastTotalRunTimeCounter);
+	//for(j=0; j<num_tasks; j++) {
+	//	mytasksLastRunTimeCounter[j] = lastTotalRunTimeCounter;
+	//	mytasksMinStack[j] = mytasks[j].usStackHighWaterMark;
+	//}
+
+	while (1)
+	{
+		uxArraySize = uxTaskGetNumberOfTasks();
+
+	   /* Allocate a TaskStatus_t structure for each task.*/
+		mytaskTemp = pvPortMalloc( uxArraySize * sizeof( TaskStatus_t ) );
+
+	   if(mytaskTemp != NULL)
+	   {
+		  /* Generate raw status information about each task. */
+		  uxArraySize = uxTaskGetSystemState(mytaskTemp, uxArraySize, &totalRunTimeCounter);
+		  //printf("uxArraySize = %d\n", uxArraySize);
+		  sumCpu0Usage = 0;
+		  sumCpu1Usage = 0;
+		  sumCpuXUsage = 0;
+		  for(i=0; i<uxArraySize; i++) {
+			  for(j=0; j<num_tasks; j++) {
+				  if(mytaskTemp[i].xTaskNumber == mytasks[j].xTaskNumber) { // Found the task in the list, update its stats
+					  memcpy(&mytasks[j], &mytaskTemp[i], sizeof(TaskStatus_t));
+					  //printf("%s) task timer = %u, last task timer = %lu, total counter = %u, total last counter = %u\n", mytasks[j].pcTaskName, mytasks[j].ulRunTimeCounter, mytasksLastRunTimeCounter[j], totalRunTimeCounter, lastTotalRunTimeCounter);
+					  cpuUsageTemp = (mytasks[j].ulRunTimeCounter - mytasksLastRunTimeCounter[j])*100/(totalRunTimeCounter - lastTotalRunTimeCounter);
+					  if(mytasksMinCpu[j] > cpuUsageTemp) {
+						  mytasksMinCpu[j] = cpuUsageTemp;
+					  }
+					  if(mytasksMaxCpu[j] < cpuUsageTemp) {
+						  mytasksMaxCpu[j] = cpuUsageTemp;
+					  }
+					  if(mytasksMinStack[j] > mytasks[j].usStackHighWaterMark) {
+						  mytasksMinStack[j] = mytasks[j].usStackHighWaterMark;
+					  }
+					  if(strcmp("IDLE", mytasks[j].pcTaskName) != 0) { // IDLE tasks represent free cpu
+						  if(mytasks[j].xCoreID == 0) {
+							  if(taskMaxCpu0Usage < cpuUsageTemp) {
+								  taskMaxCpu0Usage = cpuUsageTemp;
+								  maxCpu0UsageTaskId = j;
+							  }
+							  sumCpu0Usage += cpuUsageTemp;
+						  } else if(mytasks[j].xCoreID == 1) {
+							  if(taskMaxCpu1Usage < cpuUsageTemp) {
+								  taskMaxCpu1Usage = cpuUsageTemp;
+								  maxCpu1UsageTaskId = j;
+							  }
+							  sumCpu1Usage += cpuUsageTemp;
+						  } else {
+							  if(taskMaxCpuXUsage < cpuUsageTemp) {
+								  taskMaxCpuXUsage = cpuUsageTemp;
+								  maxCpuXUsageTaskId = j;
+							  }
+							  sumCpuXUsage += cpuUsageTemp;
+						  }
+					  }
+					  mytasksLastRunTimeCounter[j] = mytasks[j].ulRunTimeCounter;
+					  break;
+				  }
+			  }
+			  if(j==num_tasks) { // Task not found in the list, add it
+				  memcpy(&mytasks[num_tasks], &mytaskTemp[i], sizeof(TaskStatus_t));
+				  mytasksLastRunTimeCounter[num_tasks] = 0;
+				  mytasksMinStack[num_tasks] = mytasks[num_tasks].usStackHighWaterMark;
+				  num_tasks++;
+			  }
+		  }
+
+		  lastTotalRunTimeCounter = totalRunTimeCounter;
+		  if(totalMaxCpu0Usage < sumCpu0Usage) {
+			  totalMaxCpu0Usage = sumCpu0Usage;
+		  }
+		  if(totalMaxCpu1Usage < sumCpu1Usage) {
+			  totalMaxCpu1Usage = sumCpu1Usage;
+		  }
+		  if(totalMaxCpuXUsage < sumCpuXUsage) {
+			  totalMaxCpuXUsage = sumCpuXUsage;
+		  }
+		  /* The array is no longer needed, free the memory it consumes. */
+		  vPortFree(mytaskTemp);
+	   }
+
+		if(printStats) {
+			printStats = false;
+			buf = buf_addr;
+			memset(buf, 0x0, 1000);
+			for(j=0; j<num_tasks; j++) {
+				sprintf(buf, "%s,%lu,%lu,%d,%d\n", mytasks[j].pcTaskName, mytasksMinCpu[j], mytasksMaxCpu[j], mytasksMinStack[j], mytasks[j].xCoreID);
+				buf += strlen((char*)buf);
+				//mytasksLastRunTimeCounter[j] = 0;
+				mytasksMinCpu[j] = 100;
+				mytasksMaxCpu[j] = 0;
+				mytasksMinStack[j] = 60000;
+			}
+			printf("%s",buf_addr);
+			printf("tot max core0 usage=%d (%d, %s)\n", totalMaxCpu0Usage, taskMaxCpu0Usage, mytasks[maxCpu0UsageTaskId].pcTaskName);
+			printf("tot max core1 usage=%d (%d, %s)\n", totalMaxCpu1Usage, taskMaxCpu1Usage, mytasks[maxCpu1UsageTaskId].pcTaskName);
+			printf("tot max coreX usage=%d (%d, %s)\n", totalMaxCpuXUsage, taskMaxCpuXUsage, mytasks[maxCpuXUsageTaskId].pcTaskName);
+			totalMaxCpu0Usage = 0;
+			taskMaxCpu0Usage = 0;
+			maxCpu0UsageTaskId = 0;
+			totalMaxCpu1Usage = 0;
+			taskMaxCpu1Usage = 0;
+			maxCpu1UsageTaskId = 0;
+			totalMaxCpuXUsage = 0;
+			taskMaxCpuXUsage = 0;
+			maxCpuXUsageTaskId = 0;
+
+			//Heap
+			//printf("heap_free_size %d\n",heap_caps_get_free_size(MALLOC_CAP_8BIT));
+			// Heap statistics
+			// DRAM heap size: use heap_caps_get_total_size(MALLOC_CAP_8BIT) or heap_caps_get_total_size(MALLOC_CAP_8BIT|MALLOC_CAP_32BIT) because only DRAM can handle 8bit access
+			// Total (DRAM + IRAM) heap size: use heap_caps_get_total_size(MALLOC_CAP_32BIT) because both handle 32bit access
+			// IRAM heap size: use (heap_caps_get_total_size(MALLOC_CAP_32BIT) - heap_caps_get_total_size(MALLOC_CAP_8BIT))
+		   	//printf("tot heap=%d, dram heap=%d, iram heap=%d\n", heap_caps_get_total_size(MALLOC_CAP_32BIT), heap_caps_get_total_size(MALLOC_CAP_8BIT), (heap_caps_get_total_size(MALLOC_CAP_32BIT) - heap_caps_get_total_size(MALLOC_CAP_8BIT)));
+		   	//printf("tot free heap=%d, tot dram heap=%d, tot free iram heap=%d\n", heap_caps_get_free_size(MALLOC_CAP_32BIT), heap_caps_get_free_size(MALLOC_CAP_8BIT), (heap_caps_get_free_size(MALLOC_CAP_32BIT) - heap_caps_get_free_size(MALLOC_CAP_8BIT)));
+		   	currHeapSize = heap_caps_get_free_size(MALLOC_CAP_32BIT);
+		   	minHeapSize = heap_caps_get_minimum_free_size(MALLOC_CAP_32BIT);
+		   	printf("free heap=%d, min free heap=%d\n\n", currHeapSize, minHeapSize);
+
+		}
+
+		vTaskDelay(500 / portTICK_PERIOD_MS);
 	}
 }
 
@@ -205,6 +352,7 @@ int app_main(void)
   //Codec_PlayMP3FileFromFlash(E_SoundIndex_Startup);
 
   //xTaskCreatePinnedToCore(stats, "stats", 4096, NULL, 0, NULL, 0);
+  //xTaskCreatePinnedToCore(stats2, "stats2", 4096, NULL, 0, NULL, 0);
 
   //listDir();
 
