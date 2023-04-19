@@ -23,6 +23,7 @@
 #include "sdkconfig.h"
 
 #include "esp_log.h"
+#include "esp32/spiram.h"
 
 #include "aseba.h"
 #include "aseba_esp32.h"
@@ -374,6 +375,10 @@ int app_main(void)
   FileSystem_Write("/spiffs/4096.txt", temp_buff, 4096);
   ESP_LOGI(Tag, "written 4096.txt");
 */
+
+  //size_t psram_size = esp_spiram_get_size();
+  //printf("PSRAM size: %d bytes\n", psram_size);
+
   return 0;
 }
 
