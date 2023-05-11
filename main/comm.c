@@ -95,7 +95,7 @@ static void RunCommTask(void* arg);
 
 void Comm_Init(void)
 {
-  UART_Init();
+  //UART_Init();
 
   STM32_Init();
 

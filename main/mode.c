@@ -223,7 +223,8 @@ void Mode_Run(void)
     }
   }
 
-  if (STM32_IsUSBPortOpen() || TCPServer_IsSocketAccepted())
+  //if (STM32_IsUSBPortOpen() || TCPServer_IsSocketAccepted())
+  if (TCPServer_IsSocketAccepted())
   {
     ExitMode(CurrentMode);
     Behavior_Disable(B_MODE);

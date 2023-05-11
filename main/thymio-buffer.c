@@ -106,7 +106,7 @@ int AsebaFifoRxFull(void)
 
 void AsebaFifoCheckConnectionMode(void)
 {
-  if (STM32_IsUSBPortOpen())
+  /*if (STM32_IsUSBPortOpen())
   {
 	  //ESP_LOGE("thymio-buffer", "USB Port open");
     if (ConnectionMode != MODE_USB)
@@ -121,7 +121,7 @@ void AsebaFifoCheckConnectionMode(void)
     Fifo8bits_Reset(TCPFifoRx);
     ConnectionMode = MODE_USB;
   }
-  else if (WIFI_IsConnected())
+  else */if (WIFI_IsConnected())
   {
 	  //ESP_LOGE("thymio-buffer", "WiFi connected");
     if (TCPServer_IsSocketAccepted())

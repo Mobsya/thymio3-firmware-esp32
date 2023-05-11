@@ -49,6 +49,7 @@
 #include "uart.h"
 #include "wifi.h"
 #include "wifi_update.h"
+#include "mp_component.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -341,6 +342,9 @@ int app_main(void)
   Comm_Start();
 
   Leds_Start();
+
+  init_micropython();
+
 /*
   heap_caps_check_integrity_all(true);
   ESP_LOGI(Tag, "heap (cont.)=%u, heap (all)=%u, min_heap=%u", esp_get_free_heap_size(), esp_get_free_internal_heap_size(), esp_get_minimum_free_heap_size());

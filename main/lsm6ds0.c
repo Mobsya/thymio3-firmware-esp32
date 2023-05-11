@@ -23,7 +23,7 @@
 
 #include "esp_log.h"
 
-#include "LSM6DS0.h"
+#include "lsm6ds0.h"
 
 #include "gpio.h"
 #include "i2c.h"
