@@ -6,4 +6,4 @@
 	url = https://github.com/Mobsya/thymio-nn.git
 [submodule "components/mp_component/micropython"]
 	path = components/mp_component/micropython
-	url = https://github.com/micropython/micropython.git
+	url = https://github.com/gctronic/micropython.git
