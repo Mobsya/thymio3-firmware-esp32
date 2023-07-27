@@ -9,7 +9,7 @@
 //! \file    leds.h
 //! \brief   This module provides the useful functions to use the LEDs
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -98,8 +98,9 @@ enum
   E_Led_G_Back_Left,     // U30.QE --> D52 Green
   E_Led_B_Back_Left,     // U30.QF --> D52 Blue
   E_Led_G_Debug,         // U30.QG --> D53 Green
-  E_Led_B_Debug          // U30.QH --> D53 Blue
+  E_Led_B_Debug,          // U30.QH --> D53 Blue
   // D53 Red is driven directly by GPIO17
+  
 };
 typedef uint8_t T_Led;
 
@@ -225,5 +226,11 @@ extern void Leds_SetDebugBrightness(uint8_t red, uint8_t green, uint8_t blue);
 //! \param     blue - Blue component of the RGB LED
 //! \return    None
 void Leds_SetBodyBrightness(uint8_t red, uint8_t green, uint8_t blue);
+
+//! \brief     Get the brightness of a single LED
+//! \pre       First initialize the LEDs
+//! \param     led - LED to handle
+//! \return    Brightness
+uint8_t Leds_GetBrightness(T_Led led);
 
 #endif // LEDS_H_

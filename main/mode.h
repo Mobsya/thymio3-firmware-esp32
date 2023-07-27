@@ -9,7 +9,7 @@
 //! \file    mode.h
 //! \brief   This module provides the useful functions to use the modes
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -24,6 +24,9 @@
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
+
+#define RUNNING_MENU 0
+#define RUNNING_BEHAVIOR 1
 
 //-----------------------------------------------------------------------------
 // Types Definitions

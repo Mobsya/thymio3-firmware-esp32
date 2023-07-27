@@ -9,7 +9,7 @@
 //! \file    leds.c
 //! \brief   This module provides the useful functions to use the LEDs
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -81,6 +81,8 @@ static const uint8_t LedsOff[REGISTERS_NUM] = {LED_OFF_BANK_0,
                                               };
 
 static T_TimerSw* LedsTaskTimer = NULL;  //!< Used to schedule the Leds task
+
+uint8_t LedsBrightness[MAX_LEDS_NUM] = {0};
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -177,6 +179,10 @@ void Leds_SetSingleBrightness(T_Led led, uint8_t brightness)
   uint8_t polarity = 0u;
   uint8_t position = 0u;
 
+  if(brightness > MAX_BRIGHTNESS) {
+    brightness = MAX_BRIGHTNESS;
+  }
+
   if (led < MAX_LEDS_NUM)
   {
     bank = (led >> 0x03u);
@@ -210,6 +216,7 @@ void Leds_SetSingleBrightness(T_Led led, uint8_t brightness)
       }
     }
   }
+  LedsBrightness[led] = brightness;
 }
 
 //_____________________________________________________________________________
@@ -329,6 +336,12 @@ void Leds_SetBodyBrightness(uint8_t red, uint8_t green, uint8_t blue)
   Leds_SetFrontRightBrightness(red, green, blue);
   Leds_SetBackLeftBrightness(red, green, blue);
   Leds_SetBackRightBrightness(red, green, blue);
+}
+
+//_____________________________________________________________________________
+
+uint8_t Leds_GetBrightness(T_Led led) {
+  return LedsBrightness[led];
 }
 
 //_____________________________________________________________________________

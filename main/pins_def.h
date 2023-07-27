@@ -40,7 +40,7 @@
 #define GPIO0_PIN                     0u  //!< GPIO0 pin is GPIO0
 
 // LEDs pins (HSPI)
-#define LED_CLK_PIN                  14u  //!< LED_CLK pin is GPIO14
+#define LED_CLK_PIN                  2u   //!< LED_CLK pin is GPIO2
 #define LED_SDI_PIN                  13u  //!< LED_SDI pin is GPIO13
 #define LED_CS_PIN                   15u  //!< LED_CS pin is GPIO15
 
@@ -51,7 +51,7 @@
 #define SPI_CS_PIN                    5u  //!< SPI_CS pin is GPIO5
 
 // Capacitive buttons pins
-#define BUTTON_BACKWARD_PIN           2u  //!< BUTTON_BACKWARD pin is GPIO2 (Channel T2)
+#define BUTTON_BACKWARD_PIN          14u  //!< BUTTON_BACKWARD pin is GPIO14 (Channel T6)
 #define BUTTON_LEFT_PIN              12u  //!< BUTTON_LEFT pin is GPIO12 (Channel T5)
 #define BUTTON_CENTER_PIN            27u  //!< BUTTON_CENTER pin is GPIO27 (Channel T7)
 #define BUTTON_FORWARD_PIN           32u  //!< BUTTON_FORWARD pin is GPIO32 (Channel T9)
@@ -69,6 +69,7 @@
 #define SCL_PIN                      22u  //!< SCL pin is GPIO22
 
 // I2S pins
+#define I2S_MCLK_PIN                 0u  //!< I2S_MCLK pin is GPIO0
 #define I2S_SCLK_PIN                 17u  //!< I2S_SCLK pin is GPIO16
 #define I2S_LCLK_PIN                  4u  //!< I2S_LCLK pin is GPIO04
 #define I2S_DSIN_PIN                 26u  //!< I2S_DSIN pin is GPIO26

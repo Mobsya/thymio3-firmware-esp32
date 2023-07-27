@@ -9,7 +9,7 @@
 //! \file    behavior.c
 //! \brief   This module provides the useful functions to handle the behavior
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -607,6 +607,7 @@ static void UpdateSettings(void)
   static uint8_t count = 0u;
   static uint8_t select = 0u;
   static bool start = false;
+  static uint8_t settings_navigation_state = RUNNING_SETTINGS_MENU;
 
   uint8_t* buttonState = Buttons_GetStatus();
   bool sideState = Gpio_IsButtonPressed();
@@ -615,15 +616,23 @@ static void UpdateSettings(void)
   {
     //RunLegoLedAnimation();
 
-    // Enter into a setting
+    // Handle settings entering/exiting with the center button
     when(buttonState[E_Button_Center])
     {
-      if (select != CurrentSetting)
-      {
-        CurrentSetting = select;
+      if(settings_navigation_state == RUNNING_SETTINGS_MENU) {
+        settings_navigation_state = RUNNING_SETTINGS_BEHAVIOR;
+        if (select != CurrentSetting) {
+          CurrentSetting = select;
+        }        
+      } else {
+        settings_navigation_state = RUNNING_SETTINGS_MENU;
+        ExitSetting(CurrentSetting);
+        CurrentSetting = E_Setting_Menu;
       }
+
     }
 
+/*
     // Exit from a setting
     when(sideState)
     {
@@ -634,6 +643,7 @@ static void UpdateSettings(void)
         CurrentSetting = E_Setting_Menu;
       }
     }
+*/
 
     switch (CurrentSetting)
     {
@@ -681,17 +691,34 @@ static void UpdateSettings(void)
         // Do nothing
         break;
     }
-  }
-  else if (buttonState[E_Button_Left] && buttonState[E_Button_Right])
-  {
-    count++;
 
-    if (count > 75)  // 75 * 40 [ms] = 3 [s]
+    if (buttonState[E_Button_Left] && buttonState[E_Button_Right])
     {
-      Behavior_Disable(B_MODE);
-      count = 0u;
-      start = true;
-      CurrentSetting = E_Setting_Menu;
+      count++;
+
+      if (count > 75)  // 75 * 40 [ms] = 3 [s]
+      {
+        Behavior_Enable(B_MODE);
+        count = 0u;
+        start = false;
+        CurrentSetting = E_Setting_Menu;
+      }
+    } else {
+      count = 0;
+    }
+
+  } else {
+    if (buttonState[E_Button_Left] && buttonState[E_Button_Right]) {
+      count++;
+      if (count > 75)  // 75 * 40 [ms] = 3 [s]
+      {
+        Behavior_Disable(B_MODE);
+        count = 0u;
+        start = true;
+        CurrentSetting = E_Setting_Menu;
+      }
+    } else {
+      count = 0;
     }
   }
 }

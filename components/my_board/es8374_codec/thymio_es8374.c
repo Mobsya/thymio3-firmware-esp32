@@ -1,1511 +1,797 @@
-//_____________________________________________________________________________
-//
-// Copyright (C) 2019                   Mobsya                   CH-1020 Renens
-//_____________________________________________________________________________
-//
-// PROJECT   Thymio-III
-//_____________________________________________________________________________
-//
-//! \file    es8374.c
-//! \brief   This module provides the useful functions to use the audio codec ES8374
-//!
-//! \author  Vincent Gonet
-//!
-//! \license This project is released under the GNU Lesser General Public License
-//_____________________________________________________________________________
+/*
+ * ESPRESSIF MIT License
+ *
+ * Copyright (c) 2018 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
+ *
+ * Permission is hereby granted for use on all ESPRESSIF SYSTEMS products, in which case,
+ * it is free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished
+ * to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or
+ * substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ */
 
-//-----------------------------------------------------------------------------
-// Include Section
-//-----------------------------------------------------------------------------
-
+#include <string.h>
+#include "esp_system.h"
 #include "esp_log.h"
-#include "esp_err.h"
-
+#include "i2c_bus.h"
 #include "thymio_es8374.h"
-
+#include "board_pins_config.h"
 #include "../../main/i2c.h"
 #include "../../main/pins_def.h"
 
-//-----------------------------------------------------------------------------
-// Constants/Macros Definitions
-//-----------------------------------------------------------------------------
+#define ES8374_TAG "ES8374_DRIVER"
 
+#define ES_ASSERT(a, format, b, ...) \
+    if ((a) != 0) { \
+        ESP_LOGE(ES8374_TAG, format, ##__VA_ARGS__); \
+        return b;\
+    }
+
+#define LOG_8374(fmt, ...)   ESP_LOGW(ES8374_TAG, fmt, ##__VA_ARGS__)
+
+#define ES8374_ADDR 0
 #define ADDR_STATE                       1u  //!< ADDR state used to set the slave address
 #define ES8374_ADDRESS                0x10u  //!< Device address
-
 #define SLAVE_ADDRESS                 (ES8374_ADDRESS | ADDR_STATE)  //!< Slave address
 
-// Registers addresses
-#define RESET_REG_ADDRESS                   0x00u  //!< Reset register address                 (Read/Write)
-#define CLOCK_MANAGER_A_REG_ADDRESS         0x01u  //!< Clock manager register address         (Read/Write)
-#define CLOCK_MANAGER_B_REG_ADDRESS         0x02u  //!< Clock manager register address         (Read/Write)
-#define CLOCK_MANAGER_C_REG_ADDRESS         0x03u  //!< Clock manager register address         (Read/Write)
-#define CLOCK_MANAGER_D_REG_ADDRESS         0x04u  //!< Clock manager register address         (Read/Write)
-#define CLOCK_MANAGER_E_REG_ADDRESS         0x05u  //!< Clock manager register address         (Read/Write)
-#define CLOCK_MANAGER_F_REG_ADDRESS         0x06u  //!< Clock manager register address         (Read/Write)
-#define CLOCK_MANAGER_G_REG_ADDRESS         0x07u  //!< Clock manager register address         (Read/Write)
-#define CLOCK_MANAGER_H_REG_ADDRESS         0x08u  //!< Clock manager register address         (Read/Write)
-#define CLOCK_MANAGER_I_REG_ADDRESS         0x09u  //!< Clock manager register address         (Read/Write)
-#define CLOCK_MANAGER_J_REG_ADDRESS         0x0Au  //!< Clock manager register address         (Read/Write)
-#define CLOCK_MANAGER_K_REG_ADDRESS         0x0Bu  //!< Clock manager register address         (Read/Write)
-#define CLOCK_MANAGER_L_REG_ADDRESS         0x0Cu  //!< Clock manager register address         (Read/Write)
-#define CLOCK_MANAGER_M_REG_ADDRESS         0x0Du  //!< Clock manager register address         (Read/Write)
-#define CLOCK_MANAGER_N_REG_ADDRESS         0x0Eu  //!< Clock manager register address         (Read/Write)
-#define SDP_A_REG_ADDRESS                   0x0Fu  //!< SDP register address                   (Read/Write)
-#define SDP_B_REG_ADDRESS                   0x10u  //!< SDP register address                   (Read/Write)
-#define SDP_C_REG_ADDRESS                   0x11u  //!< SDP register address                   (Read/Write)
-#define SYSTEM_A_REG_ADDRESS                0x12u  //!< System register address                (Read/Write)
-#define SYSTEM_B_REG_ADDRESS                0x13u  //!< System register address                (Read/Write)
-#define ANALOG_REF_REG_ADDRESS              0x14u  //!< Analog reference register address      (Read/Write)
-#define ANALOG_POWER_DOWN_REG_ADDRESS       0x15u  //!< Analog power down register address     (Read/Write)
-#define ANALOG_LOW_POWER_DOWN_REG_ADDRESS   0x16u  //!< Analog low power mode register address (Read/Write)
-#define REF_AND_POWER_MODE_REG_ADDRESS      0x17u  //!<
-#define BIAS_SELECTION_REG_ADDRESS          0x18u  //!<
-// Not implemented                          0x19u
-#define MONO_OUT_SEL_REG_ADDRESS            0x1Au  //!<
-#define MONO_OUT_GAIN_REG_ADDRESS           0x1Bu  //!<
-#define MIXER_REG_ADDRESS                   0x1Cu  //!<
-#define MIXER_GAIN_REG_ADDRESS              0x1Du  //!<
-#define SPEAKER_A_REG_ADDRESS               0x1Eu  //!<
-#define SPEAKER_B_REG_ADDRESS               0x1Fu  //!<
-#define SPEAKER_C_REG_ADDRESS               0x20u  //!<
-#define PGA_REG_ADDRESS                     0x21u  //!<
-#define PGA_GAIN_REG_ADDRESS                0x22u  //!<
-// Not implemented                          0x23u
-#define ADC_CONTROL_A_REG_ADDRESS           0x24u  //!<
-#define ADC_CONTROL_B_REG_ADDRESS           0x25u  //!<
-#define ALC_CONTROL_A_REG_ADDRESS           0x26u  //!<
-#define ALC_CONTROL_B_REG_ADDRESS           0x27u  //!<
-#define ALC_CONTROL_C_REG_ADDRESS           0x28u  //!<
-#define ALC_CONTROL_D_REG_ADDRESS           0x29u  //!<
-#define ALC_CONTROL_E_REG_ADDRESS           0x2Au  //!<
-#define ALC_CONTROL_F_REG_ADDRESS           0x2Bu  //!<
-#define ADC_CONTROL_C_REG_ADDRESS           0x2Cu  //!<
-#define ADC_CONTROL_D_REG_ADDRESS           0x2Du  //!<
-#define ADC_CONTROL_E_REG_ADDRESS           0x2Eu  //!<
-#define ADC_CONTROL_F_REG_ADDRESS           0x2Fu  //!<
-#define ADC_CONTROL_G_REG_ADDRESS           0x30u  //!<
-#define ADC_CONTROL_H_REG_ADDRESS           0x31u  //!<
-#define ADC_CONTROL_I_REG_ADDRESS           0x32u  //!<
-#define ADC_CONTROL_J_REG_ADDRESS           0x33u  //!<
-#define ADC_CONTROL_K_REG_ADDRESS           0x34u  //!<
-#define ADC_CONTROL_L_REG_ADDRESS           0x35u  //!<
-#define DAC_CONTROL_A_REG_ADDRESS           0x36u  //!<
-#define DAC_CONTROL_B_REG_ADDRESS           0x37u  //!<
-#define DAC_CONTROL_C_REG_ADDRESS           0x38u  //!<
-#define DAC_CONTROL_D_REG_ADDRESS           0x39u  //!<
-#define DAC_CONTROL_E_REG_ADDRESS           0x3Au  //!<
-#define DAC_CONTROL_F_REG_ADDRESS           0x3Bu  //!<
-#define DAC_CONTROL_G_REG_ADDRESS           0x3Cu  //!<
-#define DAC_CONTROL_H_REG_ADDRESS           0x3Du  //!<
-#define DAC_CONTROL_I_REG_ADDRESS           0x3Eu  //!<
-#define DAC_CONTROL_J_REG_ADDRESS           0x3Fu  //!<
-#define DAC_CONTROL_K_REG_ADDRESS           0x40u  //!<
-#define DAC_CONTROL_L_REG_ADDRESS           0x41u  //!<
-#define DAC_CONTROL_M_REG_ADDRESS           0x42u  //!<
-#define DAC_CONTROL_N_REG_ADDRESS           0x43u  //!<
-#define DAC_CONTROL_O_REG_ADDRESS           0x44u  //!<
-#define TWO_BAND_EQ_AA_REG_ADDRESS          0x45u  //!<
-#define TWO_BAND_EQ_AB_REG_ADDRESS          0x46u  //!<
-#define TWO_BAND_EQ_AC_REG_ADDRESS          0x47u  //!<
-#define TWO_BAND_EQ_AD_REG_ADDRESS          0x48u  //!<
-#define TWO_BAND_EQ_AE_REG_ADDRESS          0x49u  //!<
-#define TWO_BAND_EQ_AF_REG_ADDRESS          0x4Au  //!<
-#define TWO_BAND_EQ_AG_REG_ADDRESS          0x4Bu  //!<
-#define TWO_BAND_EQ_AH_REG_ADDRESS          0x4Cu  //!<
-#define TWO_BAND_EQ_AI_REG_ADDRESS          0x4Du  //!<
-#define TWO_BAND_EQ_AJ_REG_ADDRESS          0x4Eu  //!<
-#define TWO_BAND_EQ_AK_REG_ADDRESS          0x4Fu  //!<
-#define TWO_BAND_EQ_AL_REG_ADDRESS          0x50u  //!<
-#define TWO_BAND_EQ_AM_REG_ADDRESS          0x51u  //!<
-#define TWO_BAND_EQ_AN_REG_ADDRESS          0x52u  //!<
-#define TWO_BAND_EQ_AO_REG_ADDRESS          0x53u  //!<
-#define TWO_BAND_EQ_AP_REG_ADDRESS          0x54u  //!<
-#define TWO_BAND_EQ_AQ_REG_ADDRESS          0x55u  //!<
-#define TWO_BAND_EQ_AR_REG_ADDRESS          0x56u  //!<
-#define TWO_BAND_EQ_AS_REG_ADDRESS          0x57u  //!<
-#define TWO_BAND_EQ_AT_REG_ADDRESS          0x58u  //!<
-#define TWO_BAND_EQ_AU_REG_ADDRESS          0x59u  //!<
-#define TWO_BAND_EQ_AV_REG_ADDRESS          0x5Au  //!<
-#define TWO_BAND_EQ_AW_REG_ADDRESS          0x5Bu  //!<
-#define TWO_BAND_EQ_AX_REG_ADDRESS          0x5Cu  //!<
-#define TWO_BAND_EQ_AY_REG_ADDRESS          0x5Du  //!<
-#define TWO_BAND_EQ_AZ_REG_ADDRESS          0x5Eu  //!<
-#define TWO_BAND_EQ_BA_REG_ADDRESS          0x5Fu  //!<
-#define TWO_BAND_EQ_BB_REG_ADDRESS          0x60u  //!<
-#define TWO_BAND_EQ_BC_REG_ADDRESS          0x61u  //!<
-#define TWO_BAND_EQ_BD_REG_ADDRESS          0x62u  //!<
-#define TWO_BAND_EQ_BE_REG_ADDRESS          0x63u  //!<
-#define TWO_BAND_EQ_BF_REG_ADDRESS          0x64u  //!<
-#define TWO_BAND_EQ_BG_REG_ADDRESS          0x65u  //!<
-#define TWO_BAND_EQ_BH_REG_ADDRESS          0x66u  //!<
-#define TWO_BAND_EQ_BI_REG_ADDRESS          0x67u  //!<
-#define TWO_BAND_EQ_BJ_REG_ADDRESS          0x68u  //!<
-#define TWO_BAND_EQ_BK_REG_ADDRESS          0x69u  //!<
-#define TWO_BAND_EQ_BL_REG_ADDRESS          0x6Au  //!<
-#define TWO_BAND_EQ_BM_REG_ADDRESS          0x6Bu  //!<
-#define TWO_BAND_EQ_BN_REG_ADDRESS          0x6Cu  //!<
-#define GPIO_AND_INT_CONTROL_REG_ADDRESS    0x6Du  //!<
-#define FLAGS_REG_ADDRESS                   0x6Eu  //!<
+static int codec_init_flag = 0;
+static i2c_bus_handle_t i2c_handle;
 
-#define MIN_DAC_VOLUME                0xC0u  //!< -96dB
-
-#define MANUFACTURER_ID               0xE0u  //!< Manufacturer ID
-
-// DAC_CONTROL_A bits mask
-#define DAC_MUTE_BIT_MASK             0xDFu  //!< Mask of bit DAC_MUTE
-
-// SDP_B bits mask
-#define ADCWL_BIT_MASK                0xE3u  //!< Mask of bits ADCWL
-
-// SDP_C bits mask
-#define DACWL_BIT_MASK                0xE3u  //!< Mask of bits DACWL
-
-// MIXER bits mask
-#define LAX2LSPKMX_BIT_MASK           0xBFu  //!< Mask of bits LAX2LSPKMX
-
-// SDP_A bits mask
-#define MSC_BIT_MASK                  0x7Fu  //!< Mask of bits MSC
-
-// PGA bits mask
-#define DF2SE_10DB_BIT_MASK           0xFBu  //!< Mask of bits DF2SE_10DB
-
-// DAC_CONTROL_A bits position
-#define DAC_MUTE_BIT_POS                 5u  //!< Position of bit RGBC_EN
-
-// SDP_A bits position
-#define MSC_BIT_POS                      7u  //!< Position of bit MSC
-
-// SDP_B bits position
-#define ADCWL_BIT_POS                    2u  //!< Position of LSB bit ADCWL
-
-// SDP_C bits position
-#define DACWL_BIT_POS                    2u  //!< Position of LSB bit DACWL
-
-// MONO_OUT_SEL bits position
-#define LOUT_MUTE_BIT_POS                3u  //!< Position of bit LOUT_MUTE
-
-// ANALOG_POWER_DOWN bits position
-#define PDN_DACL_BIT_POS                 5u  //!< Position of bit PDN_DACL
-
-// SPEAKER_A bits position
-#define LM2SPKLOUT_BIT_POS               5u  //!< Position of bit LM2SPKLOUT
-
-// ADC_CONTROL_A bits position
-#define ADCHPF_BIT_POS                   3u  //!< Position of bit ADCHPF
-
-// PGA bits position
-#define DF2SE_10DB_BIT_POS               2u  //!< Position of bit DF2SE_10DB
-
-//-----------------------------------------------------------------------------
-// Types Definitions
-//-----------------------------------------------------------------------------
-
-enum
-{
-  E_DACMute_Normal,  //!< DAC is activated
-  E_DACMute_Mute     //!< DAC is muted
-};
-typedef uint8_t T_DACMute;  //!< DAC mute configuration
-
-enum
-{
-  E_BitsPerSample_24bits,  //!< 24-bit serial audio data word length
-  E_BitsPerSample_20bits,  //!< 20-bit serial audio data word length
-  E_BitsPerSample_18bits,  //!< 18-bit serial audio data word length
-  E_BitsPerSample_16bits,  //!< 16-bit serial audio data word length
-  E_BitsPerSample_32bits   //!< 32-bit serial audio data word length
-};
-typedef uint8_t T_BitsPerSample;  //!< Bits per sample selection
-
-typedef enum
-{
-  MCLK_DIV_MIN = -1,
-  MCLK_DIV_1   = 1,
-  MCLK_DIV_2   = 2,
-  MCLK_DIV_3   = 3,
-  MCLK_DIV_4   = 4,
-  MCLK_DIV_6   = 5,
-  MCLK_DIV_8   = 6,
-  MCLK_DIV_9   = 7,
-  MCLK_DIV_11  = 8,
-  MCLK_DIV_12  = 9,
-  MCLK_DIV_16  = 10,
-  MCLK_DIV_18  = 11,
-  MCLK_DIV_22  = 12,
-  MCLK_DIV_24  = 13,
-  MCLK_DIV_33  = 14,
-  MCLK_DIV_36  = 15,
-  MCLK_DIV_44  = 16,
-  MCLK_DIV_48  = 17,
-  MCLK_DIV_66  = 18,
-  MCLK_DIV_72  = 19,
-  MCLK_DIV_5   = 20,
-  MCLK_DIV_10  = 21,
-  MCLK_DIV_15  = 22,
-  MCLK_DIV_17  = 23,
-  MCLK_DIV_20  = 24,
-  MCLK_DIV_25  = 25,
-  MCLK_DIV_30  = 26,
-  MCLK_DIV_32  = 27,
-  MCLK_DIV_34  = 28,
-  MCLK_DIV_7   = 29,
-  MCLK_DIV_13  = 30,
-  MCLK_DIV_14  = 31,
-  MCLK_DIV_MAX = 32
-} es_sclk_div_t;
-
-typedef enum
-{
-  LCLK_DIV_MIN  = -1,
-  LCLK_DIV_128  = 0,
-  LCLK_DIV_192  = 1,
-  LCLK_DIV_256  = 2,
-  LCLK_DIV_384  = 3,
-  LCLK_DIV_512  = 4,
-  LCLK_DIV_576  = 5,
-  LCLK_DIV_768  = 6,
-  LCLK_DIV_1024 = 7,
-  LCLK_DIV_1152 = 8,
-  LCLK_DIV_1408 = 9,
-  LCLK_DIV_1536 = 10,
-  LCLK_DIV_2112 = 11,
-  LCLK_DIV_2304 = 12,
-  LCLK_DIV_125  = 16,
-  LCLK_DIV_136  = 17,
-  LCLK_DIV_250  = 18,
-  LCLK_DIV_272  = 19,
-  LCLK_DIV_375  = 20,
-  LCLK_DIV_500  = 21,
-  LCLK_DIV_544  = 22,
-  LCLK_DIV_750  = 23,
-  LCLK_DIV_1000 = 24,
-  LCLK_DIV_1088 = 25,
-  LCLK_DIV_1496 = 26,
-  LCLK_DIV_1500 = 27,
-  LCLK_DIV_MAX  = 28
-} es_lclk_div_t;
-
-typedef struct
-{
-  es_sclk_div_t sclk_div;    /*!< bits clock divide */
-  es_lclk_div_t lclk_div;    /*!< WS clock divide */
-} T_I2SClock;  //!< I2S clock configuration
-
-enum
-{
-  E_I2SFormat_Normal,
-  E_I2SFormat_Left,
-  E_I2SFormat_Right,
-  E_I2SFormat_DSP
-};
-typedef uint8_t T_I2SFormat;  //!< I2S format configuration
-
-enum
-{
-  E_Mode_ADC     = 0x01,
-  E_Mode_DAC     = 0x02,
-  E_Mode_ADC_DAC = 0x03,
-  E_Mode_Line    = 0x04
-};
-typedef uint8_t T_Mode;  // Mode selection
-
-enum
-{
-  E_MicroGain_0dB,
-  E_MicroGain_3dB,
-  E_MicroGain_6dB,
-  E_MicroGain_9dB,
-  E_MicroGain_12dB,
-  E_MicroGain_15dB,
-  E_MicroGain_18dB,
-  E_MicroGain_21dB
-};
-typedef uint8_t T_MicroGain;  // Microphone gain
-
-enum
-{
-  E_PGAGain_Disable,
-  E_PGAGain_Enable
-};
-typedef uint8_t T_PGAGain;  // PGA gain configuration
-
-
-//-----------------------------------------------------------------------------
-// Exported Global Data
-//-----------------------------------------------------------------------------
-
-xSemaphoreHandle I2CMutex;
-
-audio_hal_func_t AUDIO_CODEC_THYMIO_ES8374_DEFAULT_HANDLE =
-{
-  .audio_codec_initialize   = ES8374_Init,
-  .audio_codec_deinitialize = ES8374_Deinit,
-  .audio_codec_ctrl         = ES8374_ControlState,
-  .audio_codec_config_iface = ES8374_ConfigureI2S,
-  .audio_codec_set_volume   = ES8374_SetVoiceVolume,
-  .audio_codec_get_volume   = ES8374_GetVoiceVolume
+audio_hal_func_t AUDIO_CODEC_THYMIO_ES8374_DEFAULT_HANDLE = {
+    .audio_codec_initialize = es8374_codec_init_Thymio,
+    .audio_codec_deinitialize = es8374_codec_deinit_Thymio,
+    .audio_codec_ctrl = es8374_codec_ctrl_state_Thymio,
+    .audio_codec_config_iface = es8374_codec_config_i2s_Thymio,
+    .audio_codec_set_mute = es8374_set_voice_mute_Thymio,
+    .audio_codec_set_volume = es8374_codec_set_voice_volume_Thymio,
+    .audio_codec_get_volume = es8374_codec_get_voice_volume_Thymio,
+    .audio_hal_lock = NULL,
+    .handle = NULL,
 };
 
-//-----------------------------------------------------------------------------
-// Private Data
-//-----------------------------------------------------------------------------
-
-static const char* Tag = "es8374";
-
-static bool InitFlag = false;
-
-//-----------------------------------------------------------------------------
-// Private Functions Prototypes
-//-----------------------------------------------------------------------------
-
-static esp_err_t Start(T_Mode mode);
-
-static esp_err_t Stop(T_Mode mode);
-
-//! \brief     Update the DAC mute
-//! \pre       None
-//! \param     config - The DAC mute
-//! \return    None
-static esp_err_t ConfigureDACMute(T_DACMute config);
-
-static esp_err_t ConfigureI2SClock(T_I2SClock clock);
-
-static esp_err_t ConfigureI2SFormat(T_Mode mode, uint8_t format);
-
-static esp_err_t UpdateBitsPerSample(T_Mode mode, T_BitsPerSample number);
-
-static esp_err_t SetADCDACVolume(T_Mode mode, int16_t volume_dB, int16_t dot);
-
-static esp_err_t ConfigureDACOutput(void);
-
-static esp_err_t SetMicrophoneGain(T_MicroGain gain_dB);
-
-static esp_err_t ConfigurePGAGain(T_PGAGain config);
-
-static esp_err_t ConfigureClock(void);
-
-static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T_I2SClock cfg);
-
-//-----------------------------------------------------------------------------
-// Inline Code Definition
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// Functions Implementation
-//-----------------------------------------------------------------------------
-
-esp_err_t ES8374_Init(audio_hal_codec_config_t* cfg)
+static bool es8374_codec_initialized_Thymio()
 {
-  esp_err_t result = ESP_OK;
+    return codec_init_flag;
+}
 
-  T_I2SClock clkdiv;
+static esp_err_t es_write_reg_Thymio(uint8_t slave_addr, uint8_t reg_add, uint8_t data)
+{
+	I2C_WriteToAddress(SLAVE_ADDRESS, reg_add, &data, sizeof(data));
+	return 0;
+    //return i2c_bus_write_bytes(i2c_handle, slave_addr, &reg_add, sizeof(reg_add), &data, sizeof(data));
+}
 
-  if (!InitFlag)
-  {
+static esp_err_t es_read_reg_Thymio(uint8_t slave_addr, uint8_t reg_add, uint8_t *p_data)
+{
+	I2C_ReadFromAddress(SLAVE_ADDRESS, reg_add, p_data, 1u);
+	return 0;
+    //return i2c_bus_read_bytes(i2c_handle, slave_addr, &reg_add, sizeof(reg_add), p_data, 1);
+}
+
+esp_err_t es8374_write_reg_Thymio(uint8_t reg_add, uint8_t data)
+{
+    return es_write_reg_Thymio(ES8374_ADDR, reg_add, data);
+}
+
+int es8374_read_reg_Thymio(uint8_t reg_add, uint8_t *regv)
+{
+    uint8_t regdata = 0xFF;
+    uint8_t res = 0;
+
+    if (es_read_reg_Thymio(ES8374_ADDR, reg_add, &regdata) == 0) {
+        *regv = regdata;
+        return res;
+    } else {
+        LOG_8374("Read Audio Codec Register Failed!");
+        res = -1;
+        return res;
+    }
+}
+
+void es8374_read_all_Thymio()
+{
+    for (int i = 0; i < 110; i++) {
+        uint8_t reg = 0;
+        es8374_read_reg_Thymio(i, &reg);
+        ESP_LOGE(ES8374_TAG, "%x: %x", i, reg);
+    }
+}
+
+esp_err_t es8374_set_voice_mute_Thymio(bool enable)
+{
+    esp_err_t res = ESP_OK;
+    uint8_t reg = 0;
+
+    res |= es8374_read_reg_Thymio(0x36, &reg);
+    if (res == 0) {
+        reg = reg & 0xdf;
+        res |= es8374_write_reg_Thymio(0x36, reg | (((int)enable) << 5));
+    }
+
+    return res;
+}
+
+esp_err_t es8374_get_voice_mute_Thymio(void)
+{
+    esp_err_t res = ESP_OK;
+    uint8_t reg = 0;
+
+    res |= es8374_read_reg_Thymio(0x36, &reg);
+    if (res == ESP_OK) {
+        reg = reg & 0x40;
+    }
+
+    return res == ESP_OK ? reg : res;
+}
+
+esp_err_t es8374_set_bits_per_sample_Thymio(es_module_t mode, es_bits_length_t bit_per_sample)
+{
+    esp_err_t res = ESP_OK;
+    uint8_t reg = 0;
+    int bits = (int)bit_per_sample & 0x0f;
+
+    if (mode == ES_MODULE_ADC || mode == ES_MODULE_ADC_DAC) {
+        res |= es8374_read_reg_Thymio(0x10, &reg);
+        if (res == 0) {
+            reg = reg & 0xe3;
+            res |=  es8374_write_reg_Thymio(0x10, reg | (bits << 2));
+        }
+    }
+    if (mode == ES_MODULE_DAC || mode == ES_MODULE_ADC_DAC) {
+        res |= es8374_read_reg_Thymio(0x11, &reg);
+        if (res == 0) {
+            reg = reg & 0xe3;
+            res |= es8374_write_reg_Thymio(0x11, reg | (bits << 2)); // | 0x40);
+        }
+    }
+
+    return res;
+}
+
+esp_err_t es8374_config_fmt_Thymio(es_module_t mode, es_i2s_fmt_t fmt)
+{
+    esp_err_t res = ESP_OK;
+    uint8_t reg = 0;
+    int fmt_tmp, fmt_i2s;
+
+    fmt_tmp = ((fmt & 0xf0) >> 4);
+    fmt_i2s =  fmt & 0x0f;
+    if (mode == ES_MODULE_ADC || mode == ES_MODULE_ADC_DAC) {
+        res |= es8374_read_reg_Thymio(0x10, &reg);
+        if (res == 0) {
+            reg = reg & 0xfc;
+            res |= es8374_write_reg_Thymio(0x10, reg | fmt_i2s);
+            res |= es8374_set_bits_per_sample_Thymio(mode, fmt_tmp);
+        }
+    }
+    if (mode == ES_MODULE_DAC || mode == ES_MODULE_ADC_DAC) {
+        res |= es8374_read_reg_Thymio(0x11, &reg);
+        if (res == 0) {
+            reg = reg & 0xfc;
+            res |= es8374_write_reg_Thymio(0x11, reg | (fmt_i2s)); // | 0x40);
+            res |= es8374_set_bits_per_sample_Thymio(mode, fmt_tmp);
+        }
+    }
+
+    return res;
+}
+
+esp_err_t es8374_start_Thymio(es_module_t mode)
+{
+    esp_err_t res = ESP_OK;
+    uint8_t reg = 0;
+
+    if (mode == ES_MODULE_LINE) {
+        res |= es8374_read_reg_Thymio(0x1a, &reg);       //set monomixer
+        reg |= 0x60;									// => select mixer output to mono output + enable mono output
+        reg |= 0x20; 									// => no sense, already set in previous line
+        reg &= 0xf7;									// => normal mono output level
+        res |= es8374_write_reg_Thymio( 0x1a, reg);
+        res |= es8374_read_reg_Thymio(0x1c, &reg);        // set spk mixer
+        reg |= 0x40;
+        res |= es8374_write_reg_Thymio( 0x1c, reg);
+        res |= es8374_write_reg_Thymio(0x1D, 0x02);      // spk set
+        res |= es8374_write_reg_Thymio(0x1F, 0x00);      // spk set
+        res |= es8374_write_reg_Thymio(0x1E, 0xA0);      // spk on
+    }
+    if (mode == ES_MODULE_ADC || mode == ES_MODULE_ADC_DAC || mode == ES_MODULE_LINE) {
+        res |= es8374_read_reg_Thymio(0x21, &reg);       //power up adc and input
+        reg &= 0x3f;									// => enable analog PGA circuits + enable analog ADC modulator
+        res |= es8374_write_reg_Thymio(0x21, reg);
+        //res |= es8374_read_reg_Thymio(0x10, &reg);       //power up adc and input
+        //reg &= 0x3f;									// => ADC SDP unmute(default)
+        //res |= es8374_write_reg_Thymio(0x10, reg);
+    }
+
+    if (mode == ES_MODULE_DAC || mode == ES_MODULE_ADC_DAC || mode == ES_MODULE_LINE) {
+        res |= es8374_read_reg_Thymio(0x1a, &reg);       //disable lout
+        reg |= 0x08;									//=> mute mono output level
+        res |= es8374_write_reg_Thymio( 0x1a, reg);
+        reg &= 0xdf;									//=> disable mono output
+        res |= es8374_write_reg_Thymio( 0x1a, reg);
+        res |= es8374_write_reg_Thymio(0x1D, 0x12);      // mute speaker => mute mixer output level + Gain setting for mixer output = -5dB/-6.5dB
+        res |= es8374_write_reg_Thymio(0x1E, 0x20);      // disable class d => + enable speaker bias + select mixer output to speaker output + spk volume = 0
+        res |= es8374_read_reg_Thymio(0x15, &reg);        //power up dac
+        reg &= 0xdf;									// => enable analog DAC circuits
+        res |= es8374_write_reg_Thymio(0x15, reg);
+        res |= es8374_read_reg_Thymio(0x1a, &reg);        //disable lout
+        reg |= 0x20;									// enable mono output
+        res |= es8374_write_reg_Thymio( 0x1a, reg);
+        reg &= 0xf7;									// => normal mono output level
+        res |= es8374_write_reg_Thymio( 0x1a, reg);
+        res |= es8374_write_reg_Thymio(0x1D, 0x02);      // mute speaker => normal mixer output level + gain -5dB/-6.5dB
+        res |= es8374_write_reg_Thymio(0x1E, 0xa0);      // disable class d => enable classD speaker output + enable speaker bias + select mixer output to speaker output + SPK volume 0dB [0xA0]
+
+        res |= es8374_set_voice_mute_Thymio(false);
+    }
+
+    return res;
+}
+
+esp_err_t es8374_stop_Thymio(es_module_t mode)
+{
+    esp_err_t res = ESP_OK;
+    uint8_t reg = 0;
+
+    if (mode == ES_MODULE_LINE) {
+        res |= es8374_read_reg_Thymio(0x1a, &reg);       //disable lout
+        reg |= 0x08;
+        res |= es8374_write_reg_Thymio( 0x1a, reg);
+        reg &= 0x9f;
+        res |= es8374_write_reg_Thymio( 0x1a, reg);
+        res |= es8374_write_reg_Thymio(0x1D, 0x12);      // mute speaker
+        res |= es8374_write_reg_Thymio(0x1E, 0x20);      // disable class d
+        res |= es8374_read_reg_Thymio(0x1c, &reg);        // disable spkmixer
+        reg &= 0xbf;
+        res |= es8374_write_reg_Thymio( 0x1c, reg);
+        res |= es8374_write_reg_Thymio(0x1F, 0x00);      // spk set
+    }
+    if (mode == ES_MODULE_DAC || mode == ES_MODULE_ADC_DAC) {
+        res |= es8374_set_voice_mute_Thymio(true);
+
+        res |= es8374_read_reg_Thymio(0x1a, &reg);        //disable lout => mute mono output level
+        reg |= 0x08;
+        res |= es8374_write_reg_Thymio( 0x1a, reg);
+        reg &= 0xdf;									// => disable mono output
+        res |= es8374_write_reg_Thymio( 0x1a, reg);
+        res |= es8374_write_reg_Thymio(0x1D, 0x12);      // mute speaker => mute mixer output level + Gain setting for mixer output = -5dB/-6.5dB
+        res |= es8374_write_reg_Thymio(0x1E, 0x20);      // disable class d => + enable speaker bias + select mixer output to speaker output + spk volume = 0
+        res |= es8374_read_reg_Thymio(0x15, &reg);        //power up dac
+        reg |= 0x20;									// => power down analog DAC circuits
+        res |= es8374_write_reg_Thymio(0x15, reg);
+    }
+    if (mode == ES_MODULE_ADC || mode == ES_MODULE_ADC_DAC) {
+
+        res |= es8374_read_reg_Thymio(0x10, &reg);       //power up adc and input
+        reg |= 0xc0;									// => ADC SDP mute L+R
+        res |= es8374_write_reg_Thymio(0x10, reg);
+        res |= es8374_read_reg_Thymio(0x21, &reg);       //power up adc and input
+        reg |= 0xc0;									// => power down analog PGA circuits + power down analog ADC modulator
+        res |= es8374_write_reg_Thymio(0x21, reg);
+    }
+
+    return res;
+}
+
+esp_err_t es8374_i2s_config_clock_Thymio(es_i2s_clock_t cfg)
+{
+
+    esp_err_t res = ESP_OK;
+    uint8_t reg = 0;
+
+    res |= es8374_read_reg_Thymio(0x0f, &reg);       //power up adc and input
+    reg &= 0xe0;
+    int divratio = 0;
+    switch (cfg.sclk_div) {
+        case MCLK_DIV_1:
+            divratio = 1;
+            break;
+        case MCLK_DIV_2: // = 2,
+            divratio = 2;
+            break;
+        case MCLK_DIV_3: // = 3,
+            divratio = 3;
+            break;
+        case MCLK_DIV_4: // = 4,
+            divratio = 4;
+            break;
+        case MCLK_DIV_5: // = 20,
+            divratio = 5;
+            break;
+        case MCLK_DIV_6: // = 5,
+            divratio = 6;
+            break;
+        case MCLK_DIV_7: //  = 29,
+            divratio = 7;
+            break;
+        case MCLK_DIV_8: // = 6,
+            divratio = 8;
+            break;
+        case MCLK_DIV_9: // = 7,
+            divratio = 9;
+            break;
+        case MCLK_DIV_10: // = 21,
+            divratio = 10;
+            break;
+        case MCLK_DIV_11: // = 8,
+            divratio = 11;
+            break;
+        case MCLK_DIV_12: // = 9,
+            divratio = 12;
+            break;
+        case MCLK_DIV_13: // = 30,
+            divratio = 13;
+            break;
+        case MCLK_DIV_14: // = 31
+            divratio = 14;
+            break;
+        case MCLK_DIV_15: // = 22,
+            divratio = 15;
+            break;
+        case MCLK_DIV_16: // = 10,
+            divratio = 16;
+            break;
+        case MCLK_DIV_17: // = 23,
+            divratio = 17;
+            break;
+        case MCLK_DIV_18: // = 11,
+            divratio = 18;
+            break;
+        case MCLK_DIV_20: // = 24,
+            divratio = 19;
+            break;
+        case MCLK_DIV_22: // = 12,
+            divratio = 20;
+            break;
+        case MCLK_DIV_24: // = 13,
+            divratio = 21;
+            break;
+        case MCLK_DIV_25: // = 25,
+            divratio = 22;
+            break;
+        case MCLK_DIV_30: // = 26,
+            divratio = 23;
+            break;
+        case MCLK_DIV_32: // = 27,
+            divratio = 24;
+            break;
+        case MCLK_DIV_33: // = 14,
+            divratio = 25;
+            break;
+        case MCLK_DIV_34: // = 28,
+            divratio = 26;
+            break;
+        case MCLK_DIV_36: // = 15,
+            divratio = 27;
+            break;
+        case MCLK_DIV_44: // = 16,
+            divratio = 28;
+            break;
+        case MCLK_DIV_48: // = 17,
+            divratio = 29;
+            break;
+        case MCLK_DIV_66: // = 18,
+            divratio = 30;
+            break;
+        case MCLK_DIV_72: // = 19,
+            divratio = 31;
+            break;
+        default:
+            break;
+    }
+    reg |= divratio;
+    res |= es8374_write_reg_Thymio(0x0f, reg);
+
+    int dacratio_l = 0;
+    int dacratio_h = 0;
+
+    switch (cfg.lclk_div) {
+        case LCLK_DIV_128:
+            dacratio_l = 128 % 256;
+            dacratio_h = 128 / 256;
+            break;
+        case LCLK_DIV_192:
+            dacratio_l = 192 % 256;
+            dacratio_h = 192 / 256;
+            break;
+        case LCLK_DIV_256:
+            dacratio_l = 256 % 256;
+            dacratio_h = 256 / 256;
+            break;
+        case LCLK_DIV_384:
+            dacratio_l = 384 % 256;
+            dacratio_h = 384 / 256;
+            break;
+        case LCLK_DIV_512:
+            dacratio_l = 512 % 256;
+            dacratio_h = 512 / 256;
+            break;
+        case LCLK_DIV_576:
+            dacratio_l = 576 % 256;
+            dacratio_h = 576 / 256;
+            break;
+        case LCLK_DIV_768:
+            dacratio_l = 768 % 256;
+            dacratio_h = 768 / 256;
+            break;
+        case LCLK_DIV_1024:
+            dacratio_l = 1024 % 256;
+            dacratio_h = 1024 / 256;
+            break;
+        case LCLK_DIV_1152:
+            dacratio_l = 1152 % 256;
+            dacratio_h = 1152 / 256;
+            break;
+        case LCLK_DIV_1408:
+            dacratio_l = 1408 % 256;
+            dacratio_h = 1408 / 256;
+            break;
+        case LCLK_DIV_1536:
+            dacratio_l = 1536 % 256;
+            dacratio_h = 1536 / 256;
+            break;
+        case LCLK_DIV_2112:
+            dacratio_l = 2112 % 256;
+            dacratio_h = 2112 / 256;
+            break;
+        case LCLK_DIV_2304:
+            dacratio_l = 2304 % 256;
+            dacratio_h = 2304 / 256;
+            break;
+        case LCLK_DIV_125:
+            dacratio_l = 125 % 256;
+            dacratio_h = 125 / 256;
+            break;
+        case LCLK_DIV_136:
+            dacratio_l = 136 % 256;
+            dacratio_h = 136 / 256;
+            break;
+        case LCLK_DIV_250:
+            dacratio_l = 250 % 256;
+            dacratio_h = 250 / 256;
+            break;
+        case LCLK_DIV_272:
+            dacratio_l = 272 % 256;
+            dacratio_h = 272 / 256;
+            break;
+        case LCLK_DIV_375:
+            dacratio_l = 375 % 256;
+            dacratio_h = 375 / 256;
+            break;
+        case LCLK_DIV_500:
+            dacratio_l = 500 % 256;
+            dacratio_h = 500 / 256;
+            break;
+        case LCLK_DIV_544:
+            dacratio_l = 544 % 256;
+            dacratio_h = 544 / 256;
+            break;
+        case LCLK_DIV_750:
+            dacratio_l = 750 % 256;
+            dacratio_h = 750 / 256;
+            break;
+        case LCLK_DIV_1000:
+            dacratio_l = 1000 % 256;
+            dacratio_h = 1000 / 256;
+            break;
+        case LCLK_DIV_1088:
+            dacratio_l = 1088 % 256;
+            dacratio_h = 1088 / 256;
+            break;
+        case LCLK_DIV_1496:
+            dacratio_l = 1496 % 256;
+            dacratio_h = 1496 / 256;
+            break;
+        case LCLK_DIV_1500:
+            dacratio_l = 1500 % 256;
+            dacratio_h = 1500 / 256;
+            break;
+        default:
+            break;
+    }
+    res |= es8374_write_reg_Thymio( 0x06, dacratio_h);  //ADCFsMode,singel SPEED,RATIO=256
+    res |= es8374_write_reg_Thymio( 0x07, dacratio_l);  //ADCFsMode,singel SPEED,RATIO=256
+
+    return res;
+}
+
+esp_err_t es8374_config_dac_output_Thymio(es_dac_output_t output)
+{
+    esp_err_t res = ESP_OK;
+    uint8_t reg = 0;
+
+    reg = 0x1d;
+
+    res = es8374_write_reg_Thymio(reg, 0x02); // => -5dB/-6.5dB
+    //res |= es8374_read_reg_Thymio(0x1c, &reg); // set spk mixer
+    //reg |= 0x80;								// => select DAC to mixer
+    //res |= es8374_write_reg_Thymio(0x1c, reg);
+    res |= es8374_write_reg_Thymio(0x1D, 0x02); // spk set => -5dB/-6.5dB (same as 4 lines above...)
+    res |= es8374_write_reg_Thymio(0x1F, 0x00); // spk set [0x00]
+    res |= es8374_write_reg_Thymio(0x1E, 0xA0); // spk on => enable class d speaker + enable speaker bias + select mixer output to speaker output + SPK volume = 0dB [0xA0]
+
+    return res;
+}
+
+esp_err_t es8374_config_adc_input_Thymio(es_adc_input_t input)
+{
+    esp_err_t res = ESP_OK;
+    uint8_t reg = 0;
+
+    res |= es8374_read_reg_Thymio(0x21, &reg);
+    if (res == 0) {
+        reg = (reg & 0xcf) | 0x24;	// => MIC1P-MIC1N + 15dB gain for input diff circuits => same as line 672
+        res |= es8374_write_reg_Thymio( 0x21, reg);
+    }
+
+    return res;
+}
+
+esp_err_t es8374_set_mic_gain_Thymio(es_mic_gain_t gain)
+{
+    esp_err_t res = ESP_OK;
+
+    if (gain > MIC_GAIN_MIN && gain < MIC_GAIN_24DB) {
+        int gain_n = 0;
+        gain_n = (int)gain / 3;
+        res = es8374_write_reg_Thymio(0x22, gain_n | (gain_n << 4)); //MIC PGA => 15 dB
+    } else {
+        res = -1;
+        LOG_8374("invalid microphone gain!");
+    }
+
+    return res;
+}
+
+esp_err_t es8374_codec_set_voice_volume_Thymio(int volume)
+{
+    esp_err_t res = ESP_OK;
+
+    if (volume < 0) {
+        volume = 192;
+    } else if (volume > 96) {
+        volume = 0;
+    } else {
+        volume = 192 - volume * 2;
+    }
+
+    res = es8374_write_reg_Thymio(0x38, volume);
+
+    return res;
+}
+
+esp_err_t es8374_codec_get_voice_volume_Thymio(int *volume)
+{
+    esp_err_t res = 0;
+    uint8_t reg = 0;
+
+    res = es8374_read_reg_Thymio(0x38, &reg);
+
+    if (res == ESP_FAIL) {
+        *volume = 0;
+    } else {
+        *volume = (192 - reg) / 2;
+        if (*volume > 96) {
+            *volume = 100;
+        }
+    }
+
+    return res;
+}
+
+static int es8374_set_adc_dac_volume_Thymio(int mode, int volume, int dot)
+{
+    int res = 0;
+
+    if ( volume < -96 || volume > 0 ) {
+        LOG_8374("Warning: volume < -96! or > 0!");
+        if (volume < -96) {
+            volume = -96;
+        } else {
+            volume = 0;
+        }
+    }
+    dot = (dot >= 5 ? 1 : 0);
+    volume = (-volume << 1) + dot;
+    if (mode == ES_MODULE_ADC || mode == ES_MODULE_ADC_DAC) {
+        res |= es8374_write_reg_Thymio(0x25, volume);
+    }
+    if (mode == ES_MODULE_DAC || mode == ES_MODULE_ADC_DAC) {
+        res |= es8374_write_reg_Thymio(0x38, volume);
+    }
+
+    return res;
+}
+
+static int es8374_set_d2se_pga_Thymio(es_d2se_pga_t gain)
+{
+    int res = 0;
+    uint8_t reg = 0;
+
+    if (gain > D2SE_PGA_GAIN_MIN && gain < D2SE_PGA_GAIN_MAX) {
+        res = es8374_read_reg_Thymio(0x21, &reg);
+        reg &= 0xfb;
+        reg |= gain << 2;
+        res = es8374_write_reg_Thymio(0x21, reg); //MIC PGA => 15dB gain for input diff circuits
+    } else {
+        res = 0xff;
+        LOG_8374("invalid microphone gain!");
+    }
+
+    return res;
+}
+
+static int es8374_init_reg_Thymio(audio_hal_codec_mode_t ms_mode, es_i2s_fmt_t fmt, es_i2s_clock_t cfg, es_dac_output_t out_channel, es_adc_input_t in_channel)
+{
+    int res = 0;
+    uint8_t reg;
+
+    res |= es8374_write_reg_Thymio(0x00, 0x3F); //IC Rst start
+    res |= es8374_write_reg_Thymio(0x00, 0x03); //IC Rst stop
+    res |= es8374_write_reg_Thymio(0x01, 0x7F); //IC clk on [0x7F]
+    //res |= es8374_write_reg_Thymio(0x02, 0x01); //sync mode
+    res |= es8374_read_reg_Thymio(0x0F, &reg);
+    reg &= 0x7f;
+    reg |=  (ms_mode << 7);
+    res |= es8374_write_reg_Thymio( 0x0f, reg); //CODEC IN I2S SLAVE MODE
+
+    res |= es8374_write_reg_Thymio(0x6F, 0xA0); //pll set:mode enable => not available in the datasheet
+    res |= es8374_write_reg_Thymio(0x72, 0x41); //pll set:mode set => not available in the datasheet
+    res |= es8374_write_reg_Thymio(0x09, 0x01); //pll set:reset on ,set start [0x01]
+    res |= es8374_write_reg_Thymio(0x0C, 0x22); //pll set:k
+    res |= es8374_write_reg_Thymio(0x0D, 0x2E); //pll set:k
+    res |= es8374_write_reg_Thymio(0x0E, 0xC6); //pll set:k
+    res |= es8374_write_reg_Thymio(0x0A, 0x3A); //pll set:
+    res |= es8374_write_reg_Thymio(0x0B, 0x07); //pll set:n
+    res |= es8374_write_reg_Thymio(0x09, 0x41); //pll set:reset off ,set stop
+
+    res |= es8374_i2s_config_clock_Thymio(cfg);
+
+    res |= es8374_write_reg_Thymio(0x24, 0x08); //adc set => enable ADC left channel high pass filter
+    res |= es8374_write_reg_Thymio(0x36, 0x00); //dac set
+    res |= es8374_write_reg_Thymio(0x12, 0x30); //timming set
+    res |= es8374_write_reg_Thymio(0x13, 0x20); //timming set
+
+    res |= es8374_config_fmt_Thymio(ES_MODULE_ADC, fmt);
+    res |= es8374_config_fmt_Thymio(ES_MODULE_DAC, fmt);
+
+    res |= es8374_write_reg_Thymio(0x21, 0x50); //adc set: SEL LIN1 CH+PGAGAIN=0DB => enable analog PGA circuits + power down analog ADC modulator + MIC1P-MIC1N + 0dB gain for input diff circuits
+    res |= es8374_write_reg_Thymio(0x22, 0xFF); //adc set: PGA GAIN=0DB => -3.5 dB
+    res |= es8374_write_reg_Thymio(0x21, 0x14); //adc set: SEL LIN1 CH+PGAGAIN=18DB => enable analog ADC modulator + 15dB gain for input diff circuits + mic1 selected
+    res |= es8374_write_reg_Thymio(0x22, 0x55); //pga = +15db
+    res |= es8374_write_reg_Thymio(0x08, 10); //0x21); //set class d divider = 33, to avoid the high frequency tone on laudspeaker [0x21]
+    res |= es8374_write_reg_Thymio(0x00, 0x80); // IC START
+
+    res |= es8374_set_adc_dac_volume_Thymio(ES_MODULE_ADC, 0, 0);      // 0db
+    res |= es8374_set_adc_dac_volume_Thymio(ES_MODULE_DAC, 0, 0);      // 0db
+
+    res |= es8374_write_reg_Thymio(0x14, 0x8A); // IC START => enable mic bias + ... [0x8A]
+    res |= es8374_write_reg_Thymio(0x15, 0x40); // IC START [0x40]
+    res |= es8374_write_reg_Thymio(0x1A, 0xA0); // monoout set => select DAC to mono output  + disable mixer + enable mono output + analog input to mixer input=MIC1P
+    res |= es8374_write_reg_Thymio(0x1B, 0x19); // monoout set => +1dB/-0.5dB
+    res |= es8374_write_reg_Thymio(0x1C, 0x90); // spk set => select DAC to mixer + disable aux to mixer [0xB0?]
+    res |= es8374_write_reg_Thymio(0x1D, 0x01); // spk set => -6.5dB/-8dB
+    res |= es8374_write_reg_Thymio(0x1F, 0x00); // spk set [0x00]
+    res |= es8374_write_reg_Thymio(0x1E, 0x20); // spk on => disable class d speaker + enable speaker bias + select mixer output to speaker output + volume=0dB
+    res |= es8374_write_reg_Thymio(0x28, 0x00); // alc set => ALC target=-16.5dB + ALC hold time before gain is increased=0ms
+    res |= es8374_write_reg_Thymio(0x25, 0x00); // ADCVOLUME on
+    res |= es8374_write_reg_Thymio(0x38, 0x00); // DACVOLUME on
+    res |= es8374_write_reg_Thymio(0x37, 0x30); // dac set => LOUT/SPK auto mute en
+    res |= es8374_write_reg_Thymio(0x6D, 0x60); //SEL:GPIO1=DMIC CLK OUT+SEL:GPIO2=PLL CLK OUT
+    res |= es8374_write_reg_Thymio(0x71, 0x05); //for automute setting => not available in datasheet
+    res |= es8374_write_reg_Thymio(0x73, 0x70); // => not available in datasheet
+
+    res |= es8374_config_dac_output_Thymio(out_channel);  //0x3c Enable DAC and Enable Lout/Rout/1/2
+    res |= es8374_config_adc_input_Thymio(in_channel);  //0x00 LINSEL & RINSEL, LIN1/RIN1 as ADC Input; DSSEL,use one DS Reg11; DSR, LINPUT1-RINPUT1
+    res |= es8374_codec_set_voice_volume_Thymio(0);
+
+    res |= es8374_write_reg_Thymio(0x37, 0x00); // dac set => auto mute dis
+
+    return res;
+}
+
+esp_err_t es8374_codec_init_Thymio(audio_hal_codec_config_t *cfg)
+{
+    if (es8374_codec_initialized_Thymio()) {
+        ESP_LOGW(ES8374_TAG, "The es8374 codec has already been initialized!");
+        return ESP_FAIL;
+    }
+    esp_err_t res = ESP_OK;
+    es_i2s_clock_t clkdiv;
+
     clkdiv.lclk_div = LCLK_DIV_256;
     clkdiv.sclk_div = MCLK_DIV_4;
 
-    // I2C shall be initialized in master mode
+//    i2c_init(); // ESP32 in master mode
 
-    result |= Stop(cfg->codec_mode);
-    result |= InitRegisters(cfg->i2s_iface.mode, ((E_BitsPerSample_16bits << 4) | cfg->i2s_iface.fmt), clkdiv);
-    result |= SetMicrophoneGain(E_MicroGain_21dB);
-    result |= ConfigurePGAGain(E_PGAGain_Enable);
-    result |= ConfigureI2SFormat(cfg->codec_mode, cfg->i2s_iface.fmt);
-    result |= ES8374_ConfigureI2S(cfg->codec_mode, &(cfg->i2s_iface));
-
-    InitFlag = true;
-
-    ESP_LOGI(Tag, "ES8374 is initialized");
-  }
-  else
-  {
-    result = ESP_FAIL;
-  }
-
-  return result;
+    res |= es8374_stop_Thymio(cfg->codec_mode); // codec_mode = ES_MODULE_ADC_DAC = AUDIO_HAL_CODEC_MODE_BOTH
+    res |= es8374_init_reg_Thymio(cfg->i2s_iface.mode, (BIT_LENGTH_16BITS << 4) | cfg->i2s_iface.fmt, clkdiv,
+                           cfg->dac_output, cfg->adc_input);
+    res |= es8374_set_mic_gain_Thymio(MIC_GAIN_15DB);
+    res |= es8374_set_d2se_pga_Thymio(D2SE_PGA_GAIN_EN);
+    res |= es8374_config_fmt_Thymio(cfg->codec_mode, cfg->i2s_iface.fmt);
+    res |= es8374_codec_config_i2s_Thymio(cfg->codec_mode, &(cfg->i2s_iface));
+    codec_init_flag = 1;
+    return res;
 }
 
-//_____________________________________________________________________________
-
-esp_err_t ES8374_Deinit(void)
+esp_err_t es8374_codec_deinit_Thymio(void)
 {
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  uint8_t data = 0x7Fu;
-  I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &data, 1u);
-
-  //xSemaphoreGive(I2CMutex);
-
-  InitFlag = false;
-
-  return ESP_OK;
+    codec_init_flag = 0;
+    i2c_bus_delete(i2c_handle);
+    return es8374_write_reg_Thymio(0x00, 0x7F); // IC Reset and STOP
 }
-
-//_____________________________________________________________________________
-
-esp_err_t ES8374_ConfigureI2S(audio_hal_codec_mode_t mode, audio_hal_codec_i2s_iface_t* iface)
+esp_err_t es8374_codec_config_i2s_Thymio(audio_hal_codec_mode_t mode, audio_hal_codec_i2s_iface_t *iface)
 {
-  esp_err_t result = ESP_OK;
-  T_BitsPerSample bitsPerSample = E_BitsPerSample_32bits;
-
-  result |= ConfigureI2SFormat(mode, iface->fmt);
-
-  if (iface->bits == AUDIO_HAL_BIT_LENGTH_16BITS)
-  {
-    bitsPerSample = E_BitsPerSample_16bits;
-  }
-  else if (iface->bits == AUDIO_HAL_BIT_LENGTH_24BITS)
-  {
-    bitsPerSample = E_BitsPerSample_24bits;
-  }
-  else
-  {
-    // Do nothing
-  }
-
-  UpdateBitsPerSample(mode, bitsPerSample);
-
-  return result;
-}
-
-//_____________________________________________________________________________
-
-esp_err_t ES8374_SetVoiceVolume(int volume)
-{
-  uint8_t vol = 0;
-
-  if (volume < 0)
-  {
-    vol = MIN_DAC_VOLUME;  // Min volume = -96 [dB]
-  }
-  else if (volume > (MIN_DAC_VOLUME / 2))
-  {
-    vol = 0u;  // Max volume = 0 [dB]
-  }
-  else
-  {
-    vol = MIN_DAC_VOLUME - (volume * 2);
-  }
-
-  ESP_LOGI(Tag, "volume = %d, vol = %d", volume, vol);
-
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_C_REG_ADDRESS, &vol, 1u);
-
-  //xSemaphoreGive(I2CMutex);
-
-  return ESP_OK;
-}
-
-//_____________________________________________________________________________
-
-esp_err_t ES8374_GetVoiceVolume(int* volume)
-{
-  uint8_t data = 0u;
-
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, DAC_CONTROL_C_REG_ADDRESS, &data, 1u);
-
-  //xSemaphoreGive(I2CMutex);
-
-  *volume = ((MIN_DAC_VOLUME - data) / 2);
-
-  if (*volume > 96)
-  {
-    *volume = 100;
-  }
-
-  ESP_LOGI(Tag, "VOLUME = %d", *volume);
-
-  return ESP_OK;
-}
-
-//_____________________________________________________________________________
-
-esp_err_t ES8374_ControlState(audio_hal_codec_mode_t mode, audio_hal_ctrl_t ctrl_state)
-{
-  esp_err_t result = ESP_OK;
-  T_Mode config = E_Mode_DAC;
-
-  switch (mode)
-  {
-    case AUDIO_HAL_CODEC_MODE_ENCODE:
-      config  = E_Mode_ADC;
-      break;
-    case AUDIO_HAL_CODEC_MODE_LINE_IN:
-      config  = E_Mode_Line;
-      break;
-    case AUDIO_HAL_CODEC_MODE_DECODE:
-      config  = E_Mode_DAC;
-      break;
-    case AUDIO_HAL_CODEC_MODE_BOTH:
-      config  = E_Mode_ADC_DAC;
-      break;
-    default:
-      ESP_LOGW(Tag, "Codec mode not supported, default is decode mode");
-      break;
-  }
-
-  if (AUDIO_HAL_CTRL_STOP == ctrl_state)
-  {
-    result = Stop(config);
-  }
-  else
-  {
-    result = Start(config);
-    ESP_LOGD(Tag, "start default is decode mode: %d", config);
-  }
-
-  return result;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t Start(T_Mode mode)
-{
-  esp_err_t result = ESP_OK;
-  uint8_t data = 0x00u;
-  uint8_t constant = 0x00u;
-
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  if (mode == E_Mode_Line)
-  {
-    I2C_ReadFromAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-    data |= 0x60u;
-    data |= 0x20u;
-    data &= 0xF7u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-
-    I2C_ReadFromAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
-    data |= 0x40u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
-
-    constant = 0x02u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
-
-    constant = 0x00u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &constant, 1u);
-
-    constant = 0xA0u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
-  }
-
-  if (mode == E_Mode_ADC || mode == E_Mode_ADC_DAC || mode == E_Mode_Line)
-  {
-    I2C_ReadFromAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
-    data &= 0x3Fu;
-    I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
-
-    I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_B_REG_ADDRESS, &data, 1u);
-    data &= 0x3Fu;
-    I2C_WriteToAddress(SLAVE_ADDRESS, SDP_B_REG_ADDRESS, &data, 1u);
-  }
-
-  if (mode == E_Mode_DAC || mode == E_Mode_ADC_DAC || mode == E_Mode_Line)
-  {
-    I2C_ReadFromAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-    data |= 0x08u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-    data &= 0xDFu;
-    I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-
-    constant = 0x12u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
-
-    constant = 0x20u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
-
-    I2C_ReadFromAddress(SLAVE_ADDRESS, ANALOG_POWER_DOWN_REG_ADDRESS, &data, 1u);
-    data &= 0xDFu;
-    I2C_WriteToAddress(SLAVE_ADDRESS, ANALOG_POWER_DOWN_REG_ADDRESS, &data, 1u);
-
-    I2C_ReadFromAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-    data |= 0x20u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-    data &= 0xF7u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-
-    constant = 0x02u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
-
-    constant = 0xA0u;
-    I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
-
-    result |= ConfigureDACMute(E_DACMute_Normal);
-  }
-
-  //xSemaphoreGive(I2CMutex);
-
-  return result;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t Stop(T_Mode mode)
-{
-  esp_err_t result = ESP_OK;
-  uint8_t data = 0x00u;
-  uint8_t constant = 0x00;
-
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  if (mode <= E_Mode_Line)
-  {
-    if (mode == E_Mode_Line)
-    {
-      I2C_ReadFromAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-      data |= (1 << LOUT_MUTE_BIT_POS);  // Mute mono output level
-      I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-      data &= 0x9Fu;                      // Disable mono output and mixer output to mono output
-      I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-
-      constant = 0x12;
-      I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
-
-      constant = 0x20;
-      I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
-
-      I2C_ReadFromAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
-      data &= LAX2LSPKMX_BIT_MASK;       // Disable
-      I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
-
-      constant = 0x00u;
-      I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &constant, 1u);
+    esp_err_t res = ESP_OK;
+    int tmp = 0;
+    res |= es8374_config_fmt_Thymio(ES_MODULE_ADC_DAC, iface->fmt);
+    if (iface->bits == AUDIO_HAL_BIT_LENGTH_16BITS) {
+        tmp = BIT_LENGTH_16BITS;
+    } else if (iface->bits == AUDIO_HAL_BIT_LENGTH_24BITS) {
+        tmp = BIT_LENGTH_24BITS;
+    } else {
+        tmp = BIT_LENGTH_32BITS;
     }
+    res |= es8374_set_bits_per_sample_Thymio(ES_MODULE_ADC_DAC, tmp);
+    return res;
+}
 
-    if ((mode == E_Mode_DAC) || (mode == E_Mode_ADC_DAC))
-    {
-      result |= ConfigureDACMute(E_DACMute_Mute);
-
-      I2C_ReadFromAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-      data |= (1u << LOUT_MUTE_BIT_POS);  // Mute mono output level
-      I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-      data &= 0xDFu;                      // Disable mono output
-      I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &data, 1u);
-
-      constant = 0x12u;                   // Mute mixer output level
-      I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
-
-      constant = 0x20;
-      I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
-
-
-      I2C_ReadFromAddress(SLAVE_ADDRESS, ANALOG_POWER_DOWN_REG_ADDRESS, &data, 1u);
-      data |= (1u << PDN_DACL_BIT_POS);   // Power down analog DAC circuits
-      I2C_WriteToAddress(SLAVE_ADDRESS, ANALOG_POWER_DOWN_REG_ADDRESS, &data, 1u);
+esp_err_t es8374_codec_ctrl_state_Thymio(audio_hal_codec_mode_t mode, audio_hal_ctrl_t ctrl_state)
+{
+    esp_err_t res = ESP_OK;
+    int es_mode_t = 0;
+    switch (mode) {
+        case AUDIO_HAL_CODEC_MODE_ENCODE:
+            es_mode_t  = ES_MODULE_ADC;
+            break;
+        case AUDIO_HAL_CODEC_MODE_LINE_IN:
+            es_mode_t  = ES_MODULE_LINE;
+            break;
+        case AUDIO_HAL_CODEC_MODE_DECODE:
+            es_mode_t  = ES_MODULE_DAC;
+            break;
+        case AUDIO_HAL_CODEC_MODE_BOTH:
+            es_mode_t  = ES_MODULE_ADC_DAC;
+            break;
+        default:
+            es_mode_t = ES_MODULE_DAC;
+            ESP_LOGW(ES8374_TAG, "Codec mode not support, default is decode mode");
+            break;
     }
-
-    if ((mode == E_Mode_ADC) || (mode == E_Mode_ADC_DAC))
-    {
-      I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_B_REG_ADDRESS, &data, 1u);
-      data |= 0xC0u;                      // ADC SDP mute L+R
-      I2C_WriteToAddress(SLAVE_ADDRESS, SDP_B_REG_ADDRESS, &data, 1u);
-
-      I2C_ReadFromAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
-      data |= 0xC0u;                      // Power down analog PGA circuits and analog ADC modulator
-      I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
+    if (AUDIO_HAL_CTRL_STOP == ctrl_state) {
+        res = es8374_stop_Thymio(es_mode_t);
+    } else {
+        res = es8374_start_Thymio(es_mode_t);
+        ESP_LOGD(ES8374_TAG, "start default is decode mode:%d", es_mode_t);
     }
-  }
-  else
-  {
-    result = ESP_ERR_INVALID_ARG;
-  }
-
-  //xSemaphoreGive(I2CMutex);
-
-  return result;
+    return res;
 }
 
-//_____________________________________________________________________________
-
-static esp_err_t ConfigureDACMute(T_DACMute config)
+void es8374_pa_power_Thymio(bool enable)
 {
-  esp_err_t result = ESP_OK;
-  uint8_t data = 0x00u;
-
-  if (config <= E_DACMute_Mute)
-  {
-    //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-    I2C_ReadFromAddress(SLAVE_ADDRESS, DAC_CONTROL_A_REG_ADDRESS, &data, 1u);
-
-    data &= DAC_MUTE_BIT_MASK;
-    data |= (config << DAC_MUTE_BIT_POS);
-
-    I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_A_REG_ADDRESS, &data, 1u);
-
-    //xSemaphoreGive(I2CMutex);
-  }
-  else
-  {
-    result = ESP_ERR_INVALID_ARG;
-    ESP_LOGE(Tag, "Invalid DAC mute configuration: %d", config);
-  }
-
-  return result;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t ConfigureI2SClock(T_I2SClock clock)
-{
-  esp_err_t result = ESP_OK;
-  uint8_t data = 0u;
-
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_A_REG_ADDRESS, &data, 1u);
-  data &= 0xe0;              // Slave serial port mode
-
-  int divratio = 0;
-
-  switch (clock.sclk_div)
-  {
-    case MCLK_DIV_1:
-      divratio = 1;
-      break;
-    case MCLK_DIV_2: // = 2,
-      divratio = 2;
-      break;
-    case MCLK_DIV_3: // = 3,
-      divratio = 3;
-      break;
-    case MCLK_DIV_4: // = 4,
-      divratio = 4;
-      break;
-    case MCLK_DIV_5: // = 20,
-      divratio = 5;
-      break;
-    case MCLK_DIV_6: // = 5,
-      divratio = 6;
-      break;
-    case MCLK_DIV_7: //  = 29,
-      divratio = 7;
-      break;
-    case MCLK_DIV_8: // = 6,
-      divratio = 8;
-      break;
-    case MCLK_DIV_9: // = 7,
-      divratio = 9;
-      break;
-    case MCLK_DIV_10: // = 21,
-      divratio = 10;
-      break;
-    case MCLK_DIV_11: // = 8,
-      divratio = 11;
-      break;
-    case MCLK_DIV_12: // = 9,
-      divratio = 12;
-      break;
-    case MCLK_DIV_13: // = 30,
-      divratio = 13;
-      break;
-    case MCLK_DIV_14: // = 31
-      divratio = 14;
-      break;
-    case MCLK_DIV_15: // = 22,
-      divratio = 15;
-      break;
-    case MCLK_DIV_16: // = 10,
-      divratio = 16;
-      break;
-    case MCLK_DIV_17: // = 23,
-      divratio = 17;
-      break;
-    case MCLK_DIV_18: // = 11,
-      divratio = 18;
-      break;
-    case MCLK_DIV_20: // = 24,
-      divratio = 19;
-      break;
-    case MCLK_DIV_22: // = 12,
-      divratio = 20;
-      break;
-    case MCLK_DIV_24: // = 13,
-      divratio = 21;
-      break;
-    case MCLK_DIV_25: // = 25,
-      divratio = 22;
-      break;
-    case MCLK_DIV_30: // = 26,
-      divratio = 23;
-      break;
-    case MCLK_DIV_32: // = 27,
-      divratio = 24;
-      break;
-    case MCLK_DIV_33: // = 14,
-      divratio = 25;
-      break;
-    case MCLK_DIV_34: // = 28,
-      divratio = 26;
-      break;
-    case MCLK_DIV_36: // = 15,
-      divratio = 27;
-      break;
-    case MCLK_DIV_44: // = 16,
-      divratio = 28;
-      break;
-    case MCLK_DIV_48: // = 17,
-      divratio = 29;
-      break;
-    case MCLK_DIV_66: // = 18,
-      divratio = 30;
-      break;
-    case MCLK_DIV_72: // = 19,
-      divratio = 31;
-      break;
-    default:
-      result = ESP_ERR_INVALID_ARG;
-      break;
-  }
-
-  data |= divratio;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SDP_A_REG_ADDRESS, &data, 1u);
-
-  int dacratio_l = 0;
-  int dacratio_h = 0;
-
-  switch (clock.lclk_div)
-  {
-    case LCLK_DIV_128:
-      dacratio_l = 128 % 256;
-      dacratio_h = 128 / 256;
-      break;
-    case LCLK_DIV_192:
-      dacratio_l = 192 % 256;
-      dacratio_h = 192 / 256;
-      break;
-    case LCLK_DIV_256:
-      dacratio_l = 256 % 256;
-      dacratio_h = 256 / 256;
-      break;
-    case LCLK_DIV_384:
-      dacratio_l = 384 % 256;
-      dacratio_h = 384 / 256;
-      break;
-    case LCLK_DIV_512:
-      dacratio_l = 512 % 256;
-      dacratio_h = 512 / 256;
-      break;
-    case LCLK_DIV_576:
-      dacratio_l = 576 % 256;
-      dacratio_h = 576 / 256;
-      break;
-    case LCLK_DIV_768:
-      dacratio_l = 768 % 256;
-      dacratio_h = 768 / 256;
-      break;
-    case LCLK_DIV_1024:
-      dacratio_l = 1024 % 256;
-      dacratio_h = 1024 / 256;
-      break;
-    case LCLK_DIV_1152:
-      dacratio_l = 1152 % 256;
-      dacratio_h = 1152 / 256;
-      break;
-    case LCLK_DIV_1408:
-      dacratio_l = 1408 % 256;
-      dacratio_h = 1408 / 256;
-      break;
-    case LCLK_DIV_1536:
-      dacratio_l = 1536 % 256;
-      dacratio_h = 1536 / 256;
-      break;
-    case LCLK_DIV_2112:
-      dacratio_l = 2112 % 256;
-      dacratio_h = 2112 / 256;
-      break;
-    case LCLK_DIV_2304:
-      dacratio_l = 2304 % 256;
-      dacratio_h = 2304 / 256;
-      break;
-    case LCLK_DIV_125:
-      dacratio_l = 125 % 256;
-      dacratio_h = 125 / 256;
-      break;
-    case LCLK_DIV_136:
-      dacratio_l = 136 % 256;
-      dacratio_h = 136 / 256;
-      break;
-    case LCLK_DIV_250:
-      dacratio_l = 250 % 256;
-      dacratio_h = 250 / 256;
-      break;
-    case LCLK_DIV_272:
-      dacratio_l = 272 % 256;
-      dacratio_h = 272 / 256;
-      break;
-    case LCLK_DIV_375:
-      dacratio_l = 375 % 256;
-      dacratio_h = 375 / 256;
-      break;
-    case LCLK_DIV_500:
-      dacratio_l = 500 % 256;
-      dacratio_h = 500 / 256;
-      break;
-    case LCLK_DIV_544:
-      dacratio_l = 544 % 256;
-      dacratio_h = 544 / 256;
-      break;
-    case LCLK_DIV_750:
-      dacratio_l = 750 % 256;
-      dacratio_h = 750 / 256;
-      break;
-    case LCLK_DIV_1000:
-      dacratio_l = 1000 % 256;
-      dacratio_h = 1000 / 256;
-      break;
-    case LCLK_DIV_1088:
-      dacratio_l = 1088 % 256;
-      dacratio_h = 1088 / 256;
-      break;
-    case LCLK_DIV_1496:
-      dacratio_l = 1496 % 256;
-      dacratio_h = 1496 / 256;
-      break;
-    case LCLK_DIV_1500:
-      dacratio_l = 1500 % 256;
-      dacratio_h = 1500 / 256;
-      break;
-    default:
-      result = ESP_ERR_INVALID_ARG;
-      break;
-  }
-
-  data = dacratio_h;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_F_REG_ADDRESS, &data, 1u);
-  data = dacratio_l;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_G_REG_ADDRESS, &data, 1u);
-
-  //xSemaphoreGive(I2CMutex);
-
-  return result;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t ConfigureI2SFormat(T_Mode mode, uint8_t format)
-{
-  esp_err_t result = ESP_OK;
-  uint8_t data = 0;
-  uint8_t fmt_tmp = ((format & 0xF0u) >> 4);
-  uint8_t fmt_i2s = format & 0x0Fu;
-
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  if (mode <= E_Mode_Line)
-  {
-    if ((mode == E_Mode_ADC) || (mode == E_Mode_ADC_DAC))
-    {
-      I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_B_REG_ADDRESS, &data, 1u);
-      data &= 0xFCu;              // Slave serial port mode
-      data |= fmt_i2s;
-      I2C_WriteToAddress(SLAVE_ADDRESS, SDP_B_REG_ADDRESS, &data, 1u);
-      result |= UpdateBitsPerSample(mode, fmt_tmp);
+    gpio_config_t  io_conf;
+    memset(&io_conf, 0, sizeof(io_conf));
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pin_bit_mask = BIT64(get_pa_enable_gpio());
+    io_conf.pull_down_en = 0;
+    io_conf.pull_up_en = 0;
+    gpio_config(&io_conf);
+    if (enable) {
+        gpio_set_level(get_pa_enable_gpio(), 1);
+    } else {
+        gpio_set_level(get_pa_enable_gpio(), 0);
     }
-
-    if (mode == E_Mode_DAC || mode == E_Mode_ADC_DAC)
-    {
-      I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_C_REG_ADDRESS, &data, 1u);
-      data &= 0xFCu;              // I2S serial audio data format
-      data |= fmt_i2s;
-      I2C_WriteToAddress(SLAVE_ADDRESS, SDP_C_REG_ADDRESS, &data, 1u);
-      result |= UpdateBitsPerSample(mode, fmt_tmp);
-    }
-  }
-  else
-  {
-    result = ESP_ERR_INVALID_ARG;
-    ESP_LOGE(Tag, "Invalid mode: %d", mode);
-  }
-
-  //xSemaphoreGive(I2CMutex);
-
-  return result;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t UpdateBitsPerSample(T_Mode mode, T_BitsPerSample number)
-{
-  esp_err_t result = ESP_OK;
-  uint8_t data = 0x00u;
-
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  if (mode <= E_Mode_Line)
-  {
-    if ((mode == E_Mode_ADC) || (mode == E_Mode_ADC_DAC))
-    {
-      if (number <= E_BitsPerSample_32bits)
-      {
-        I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_B_REG_ADDRESS, &data, 1u);
-        data &= ADCWL_BIT_MASK;
-        data |= (number << ADCWL_BIT_POS);
-        I2C_WriteToAddress(SLAVE_ADDRESS, SDP_B_REG_ADDRESS, &data, 1u);
-      }
-      else
-      {
-        result = ESP_ERR_INVALID_ARG;
-        ESP_LOGE(Tag, "Invalid number of bit per sample: %d", number);
-      }
-    }
-
-    if ((mode == E_Mode_DAC) || (mode == E_Mode_ADC_DAC))
-    {
-      if (number <= E_BitsPerSample_32bits)
-      {
-        I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_C_REG_ADDRESS, &data, 1u);
-        data &= DACWL_BIT_MASK;
-        data |= (number << DACWL_BIT_POS);
-        I2C_WriteToAddress(SLAVE_ADDRESS, SDP_C_REG_ADDRESS, &data, 1u);
-      }
-      else
-      {
-        result = ESP_ERR_INVALID_ARG;
-        ESP_LOGE(Tag, "Invalid number of bit per sample: %d", number);
-      }
-    }
-  }
-  else
-  {
-    result = ESP_ERR_INVALID_ARG;
-    ESP_LOGE(Tag, "Invalid mode: %d", mode);
-  }
-
-  //xSemaphoreGive(I2CMutex);
-
-  return result;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t SetADCDACVolume(T_Mode mode, int16_t volume_dB, int16_t dot)
-{
-  esp_err_t result = ESP_OK;
-  uint8_t data[2] = {0u, 0u};
-  int16_t vol = volume_dB;
-
-  if ((volume_dB < -96) || (volume_dB > 0))
-  {
-    ESP_LOGW(Tag, "Volume < -96! or > 0: %d", volume_dB);
-
-    if (volume_dB < -96)
-    {
-      vol = -96;
-    }
-    else
-    {
-      vol = 0;
-    }
-  }
-
-  if (mode <= E_Mode_Line)
-  {
-    dot = (dot >= 5 ? 1 : 0);
-    vol = (-vol << 1) + dot;
-
-    data[0] = vol & 0x00FF;
-    data[1] = ((vol & 0xFF00) >> 8);
-
-    //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-    if ((mode == E_Mode_ADC) || (mode == E_Mode_ADC_DAC))
-    {
-      I2C_WriteToAddress(SLAVE_ADDRESS, ADC_CONTROL_B_REG_ADDRESS, data, 2u);
-    }
-
-    if (mode == E_Mode_DAC || mode == E_Mode_ADC_DAC)
-    {
-      I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_C_REG_ADDRESS, data, 2u);
-    }
-
-    //xSemaphoreGive(I2CMutex);
-  }
-  else
-  {
-    result = ESP_ERR_INVALID_ARG;
-    ESP_LOGE(Tag, "Invalid mode: %d", mode);
-  }
-
-  return result;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t ConfigureDACOutput(void)
-{
-  esp_err_t result = ESP_OK;
-  uint8_t data = 0x02u;
-  uint8_t constant;
-
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  constant = 0x02u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
-  data |= 0x80u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &data, 1u);
-
-  constant = 0x02u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x00u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &constant, 1u);
-
-  constant = 0xA0u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
-
-  //xSemaphoreGive(I2CMutex);
-
-  return result;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t ConfigureADCInput(void)
-{
-  esp_err_t result = ESP_OK;
-  uint8_t data = 0x00u;
-
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
-  data = (data & 0xCFu) | 0x24u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
-
-  //xSemaphoreGive(I2CMutex);
-
-  return result;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t SetMicrophoneGain(T_MicroGain gain_dB)
-{
-  esp_err_t result = ESP_OK;
-  uint8_t data = 0x00u;
-
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  if (gain_dB <= E_MicroGain_21dB)
-  {
-    data = (gain_dB | (gain_dB << 4));
-    I2C_WriteToAddress(SLAVE_ADDRESS, PGA_GAIN_REG_ADDRESS, &data, 1u);
-  }
-  else
-  {
-    result = ESP_FAIL;
-    ESP_LOGE(Tag, "Invalid microphone gain: %d", gain_dB);
-  }
-
-  //xSemaphoreGive(I2CMutex);
-
-  return result;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t ConfigurePGAGain(T_PGAGain config)
-{
-  esp_err_t result = ESP_OK;
-  uint8_t data = 0x00u;
-
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  if (config <= E_PGAGain_Enable)
-  {
-    I2C_ReadFromAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
-    data &= DF2SE_10DB_BIT_MASK;
-    data |= (config << DF2SE_10DB_BIT_POS);
-    I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &data, 1u);
-  }
-  else
-  {
-    result = ESP_ERR_INVALID_ARG;
-    ESP_LOGE(Tag, "Invalid configuration: %d", config);
-  }
-
-  //xSemaphoreGive(I2CMutex);
-
-  return result;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t ConfigureClock(void)
-{
-  esp_err_t result = ESP_OK;
-  uint8_t constant;
-
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  // FIXME unknown register
-  constant = 0xA0u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, 0x6F, &constant, 1u);
-
-  // FIXME unknown register
-  constant = 0x41u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, 0x72, &constant, 1u);
-
-  // CLOCK MANAGER I Register
-  // --------------------------------------------------------------------
-  // PLL_PDN     = 0... ....  Enable PLL analog
-  // PLL_RB      = .0.. ....  Reset PLL digital
-  // PLLDITH_MAG = ...0 00..  Dither off
-  // PLLOUT_SEL  = .... ..01  VCO out divide by 8
-  //               ---------
-  //               0000 0001 = 0x01
-  // --------------------------------------------------------------------
-  constant = 0x01u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &constant, 1u);
-
-  // Set PLL_K[21:16]
-  constant = 0x01u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_L_REG_ADDRESS, &constant, 1u);
-
-  // Set PLL_K[15:8]
-  constant = 0x55u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_M_REG_ADDRESS, &constant, 1u);
-
-  // Set PLL_K[7:0]
-  constant = 0x33u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_N_REG_ADDRESS, &constant, 1u);
-
-  // CLOCK MANAGER J Register
-  // --------------------------------------------------------------------
-  // PLL_LP     = 1... ....  PLL low power mode
-  // PLL_CP     = .000 ....  PLL cp gain0
-  // PLL_SUPSEL = .... 10..  VDDD =3.3v
-  // PLL_KVCO   = .... ..10  VCO gain2
-  //              ---------
-  //              1000 1010 = 0x8A
-  // --------------------------------------------------------------------
-  constant = 0x8Au;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_J_REG_ADDRESS, &constant, 1u);
-
-  // CLOCK MANAGER K Register
-  // --------------------------------------------------------------------
-  // PLL_CAL_SHORT = 0... ....  PLL calibration 64 data
-  // PLL_VCO_WAIT  = .00. ....  Wait 2 MCLK for vcoout stable when calibration
-  // PLL_N         = .... 1001  Integer part of PLL frequency ratio = 9
-  //              ------------
-  // CLOCK_MANAGER = 0000 1001 = 0x09
-  // --------------------------------------------------------------------
-  constant = 0x09u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_K_REG_ADDRESS, &constant, 1u);
-
-  // CLOCK MANAGER I Register
-  // --------------------------------------------------------------------
-  // PLL_PDN     = 0... ....  Enable PLL analog
-  // PLL_RB      = .1.. ....  PLL digital on
-  // PLLDITH_MAG = ...0 00..  Dither off
-  // PLLOUT_SEL  = .... ..01  VCO out divide by 8
-  //               ---------
-  //               0100 0001 = 0x41
-  // --------------------------------------------------------------------
-  constant = 0x41u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_I_REG_ADDRESS, &constant, 1u);
-
-  // Set ADC_OSR = 32 (0x20)
-  constant = 0x20u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_C_REG_ADDRESS, &constant, 1u);
-
-  // CLOCK MANAGER E Register
-  // --------------------------------------------------------------------
-  // CLK_ADC_DIV = 0001 ....  CLK_ADC_DIV = 1
-  // CLK_DAC_DIV = .... 0001  CLK_DAC_DIV = 1
-  //               ---------
-  //               0001 0001 = 0x11
-  // --------------------------------------------------------------------
-  constant = 0x11u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_E_REG_ADDRESS, &constant, 1u);
-
-
-  // Set Class D speaker clock divider = 32 (0x20)
-  constant = 0x20u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_H_REG_ADDRESS, &constant, 1u);
-
-  // CLOCK MANAGER B Register
-  // --------------------------------------------------------------------
-  // CLK_ADC_CONT   = .0.. ....  CLK_ADC flex
-  // CLK_ADC_DOUBLE = ..0. ....  clk_adc control normal
-  // CLK_DAC_DOUBLE = ...0 ....  clk_dac control normal
-  // PLL_SEL        = .... 1...  PLL enable
-  // SYNCMODE       = .... ...0  Sync mode normal
-  //                  ---------
-  //                  0000 1000 = 0x08
-  // --------------------------------------------------------------------
-  constant = 0x08u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_B_REG_ADDRESS, &constant, 1u);
-
-  //xSemaphoreGive(I2CMutex);
-
-  return result;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t InitRegisters(audio_hal_codec_mode_t ms_mode, uint8_t format, T_I2SClock cfg)
-{
-  esp_err_t result = ESP_OK;
-  uint8_t data = 0x00u;
-  uint8_t constant;
-
-  //xSemaphoreTake(I2CMutex, portMAX_DELAY);
-
-  // Reset DAC digital block, ADC digital block, master block, all registers, digital reset
-  constant = 0x3Fu;
-  I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &constant, 1u);
-
-  // Reset DAC digital block, ADC digital block
-  constant = 0x03u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &constant, 1u);
-
-  // CLOCK MANAGER Register
-  // --------------------------------------------------------------------
-  // MCLK_DIV2     = 1... ....  MCLK divide by 2
-  // MCLK_ON       = .1.. ....  MCLK on
-  // BCLK_ON       = ..1. ....  BCLK on
-  // CLKD_ON       = ...1 ....  Class D clock on
-  // CLK_ADC_ON    = .... 1...  ADC digital clock on
-  // CLK_DAC_ON    = .... .1..  DAC digital clock on
-  // ANACLK_ADC_ON = .... ..1.  ADC analog clock on
-  // ANACLK_DAC_ON = .... ...1  DAC analog clock on
-  //              -------------------
-  // CLOCK_MANAGER = 1111 1111 = 0xFF
-  // --------------------------------------------------------------------
-  constant = 0xFFu;
-  I2C_WriteToAddress(SLAVE_ADDRESS, CLOCK_MANAGER_A_REG_ADDRESS, &constant, 1u);
-
-  I2C_ReadFromAddress(SLAVE_ADDRESS, SDP_A_REG_ADDRESS, &data, 1u);
-  data &= MSC_BIT_MASK;              // Slave serial port mode
-  data |= (ms_mode << MSC_BIT_POS);
-  I2C_WriteToAddress(SLAVE_ADDRESS, SDP_A_REG_ADDRESS, &data, 1u);
-
-  result |= ConfigureClock();
-
-  result |= ConfigureI2SClock(cfg);
-
-  constant = 0x08u;  //(1u << ADCHPF_BIT_POS);     // Enable ADC left channel high pass filter
-  I2C_WriteToAddress(SLAVE_ADDRESS, ADC_CONTROL_A_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x00u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_A_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x30u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SYSTEM_A_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x20u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SYSTEM_B_REG_ADDRESS, &constant, 1u);
-
-  result |= ConfigureI2SFormat(E_Mode_ADC, format);
-  result |= ConfigureI2SFormat(E_Mode_DAC, format);
-
-  // PGA Register
-  // --------------------------------------------------------------------
-  // PDN_ALINL  = 0... ....  Enable analog PGA circuits
-  // PDN_MODE   = .1.. ....  Power down analog ADC modulator
-  // LINSEL     = ..10 ....  Lin2-Rin2
-  // LDCM       = .... 0...  Disable DC measurement
-  // DF2SE_15DB = .... .0..  0dB gain for input diff circuits
-  //              ---------
-  //              0110 0000 = 0x60
-  // --------------------------------------------------------------------
-  constant = 0x60u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &constant, 1u);
-
-  constant = 0xFFu;  // PGA gain = -3.5 [dB]
-  I2C_WriteToAddress(SLAVE_ADDRESS, PGA_GAIN_REG_ADDRESS, &constant, 1u);
-
-  // PGA Register
-  // --------------------------------------------------------------------
-  // PDN_ALINL  = 0... ....  Enable analog PGA circuits
-  // PDN_MODE   = .0.. ....  Enable analog ADC modulator
-  // LINSEL     = ..10 ....  Lin2-Rin2
-  // LDCM       = .... 0...  Disable DC measurement
-  // DF2SE_15DB = .... .0..  0dB gain for input diff circuits
-  //              ---------
-  //              0010 0000 = 0x20
-  // --------------------------------------------------------------------
-  constant = 0x20u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, PGA_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x80u;  // IC START
-  I2C_WriteToAddress(SLAVE_ADDRESS, RESET_REG_ADDRESS, &constant, 1u);
-
-  result |= SetADCDACVolume(E_Mode_ADC, 0, 0);      // 0db
-  result |= SetADCDACVolume(E_Mode_DAC, 0, 0);      // 0db
-
-  constant = 0x8Au;
-  I2C_WriteToAddress(SLAVE_ADDRESS, ANALOG_REF_REG_ADDRESS, &constant, 1u);
-
-  // ANALOG POWER DOWN Register
-  // --------------------------------------------------------------------
-  // PDN_ANA        = 0... ....  Enable analog circuits
-  // ENREFR         = .1.. ....  Enable reference circuits
-  // PDN_DACL       = ..0. ....  Enable analog DAC circuits
-  // PDN_IBIASGEN   = ...0 ....  Enable analog bias circuits
-  // PDN_ADCBIASGEN = .... 0...  Enable analog ADC bias circuits
-  // PDN_ADCVERFGEN = .... .0..  Enable analog ADC reference circuits
-  // PDN_DACVREFGEN = .... ..0.  Enable analog DAC reference circuits
-  //                  ---------
-  //                  0100 0000 = 0x40
-  // --------------------------------------------------------------------
-  constant = 0x40u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, ANALOG_POWER_DOWN_REG_ADDRESS, &constant, 1u);
-
-  constant = 0xA0u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_SEL_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x19u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, MONO_OUT_GAIN_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x90u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x02u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, MIXER_GAIN_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x00u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_B_REG_ADDRESS, &constant, 1u);
-
-  constant = 0xA0u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SPEAKER_A_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x00u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, ALC_CONTROL_C_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x00u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, ADC_CONTROL_B_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x00u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_C_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x30u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_B_REG_ADDRESS, &constant, 1u);
-
-  constant = 0x60u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, GPIO_AND_INT_CONTROL_REG_ADDRESS, &constant, 1u);
-
-  // It's for testing
-  constant = 0x0Cu;
-  I2C_WriteToAddress(SLAVE_ADDRESS, SDP_C_REG_ADDRESS, &constant, 1u);
-
-  result |= ConfigureDACOutput();
-  result |= ConfigureADCInput();
-  result |= ES8374_SetVoiceVolume(0);
-
-  constant = 0x30u;
-  I2C_WriteToAddress(SLAVE_ADDRESS, DAC_CONTROL_B_REG_ADDRESS, &constant, 1u);
-
-  //xSemaphoreGive(I2CMutex);
-
-  return result;
 }

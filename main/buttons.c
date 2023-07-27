@@ -253,7 +253,7 @@ void Buttons_UpdateStatus(void)
 
 static void InitTouchPad()
 {
-  Buttons_Table[E_Button_Backward] = TOUCH_PAD_NUM2;  // GPIO2
+  Buttons_Table[E_Button_Backward] = TOUCH_PAD_NUM6;  // GPIO14 //TOUCH_PAD_NUM2;  // GPIO2
   Buttons_Table[E_Button_Left]     = TOUCH_PAD_NUM5;  // GPIO12
   Buttons_Table[E_Button_Center]   = TOUCH_PAD_NUM7;  // GPIO27
   Buttons_Table[E_Button_Forward]  = TOUCH_PAD_NUM9;  // GPIO32

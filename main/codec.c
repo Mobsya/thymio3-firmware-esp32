@@ -67,19 +67,19 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define MP3_PLAYER_RATE         48000
-#define MP3_PLAYER_CHANNEL          1  //!< Mono = 1
+#define MP3_PLAYER_RATE         12000
+#define MP3_PLAYER_CHANNEL          2  //!< Mono = 1
 #define MP3_PLAYER_BITS            16
 
-#define RECORD_RATE             8000
+#define RECORD_RATE             12000
 #define RECORD_CHANNEL              1  //!< Mono = 1
 #define RECORD_BITS                16
 
-#define WAV_PLAYER_RATE          8000
+#define WAV_PLAYER_RATE          12000
 #define WAV_PLAYER_CHANNEL          1  //!< Mono = 1
 #define WAV_PLAYER_BITS            16
 
-#define SAVE_FILE_RATE           8000
+#define SAVE_FILE_RATE           12000
 #define SAVE_FILE_CHANNEL           1  //!< Mono = 1
 #define SAVE_FILE_BITS             16
 
@@ -357,8 +357,12 @@ void Codec_Init(void)
 
   //ESP_LOGI(Tag, "[2] Start codec chip");
   BoardHandle = audio_board_init();
+
+  //es8374_read_all_Thymio();
+
   audio_hal_ctrl_codec(BoardHandle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
-  //audio_hal_ctrl_codec(BoardHandle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
+
+  //es8374_read_all_Thymio();
 
   ESP_LOGE(Tag, "INIT PLAYER");
   Player = InitPlayer();
@@ -535,7 +539,7 @@ void Codec_RecordWAVFile(int16_t index, uint16_t duration_s)
 
 void Codec_SetVolume(int16_t volume)
 {
-  ES8374_SetVoiceVolume(volume);
+	es8374_codec_set_voice_volume_Thymio(volume);
 }
 
 //_____________________________________________________________________________
@@ -604,8 +608,14 @@ static T_PlayerHandle InitPlayer(void)
   ap->Mp3Decoder = CreateMP3Decoder();
   AUDIO_MEM_CHECK(Tag, ap->Mp3Decoder, goto _audio_init_failed);
 
-  tone_stream_cfg_t tone_cfg = TONE_STREAM_CFG_DEFAULT();
+  tone_stream_cfg_t tone_cfg = TONE_STREAM_CFG_DEFAULT();  
   tone_cfg.type = AUDIO_STREAM_READER;
+  tone_cfg.task_core = 1;
+  tone_cfg.buf_sz = (10*1024);
+  tone_cfg.task_stack = (8*1024);
+  tone_cfg.out_rb_size = (8*1024);
+  tone_cfg.task_prio = 5;
+  //tone_cfg.extern_stack = true;
   ap->FlashToneStream = tone_stream_init(&tone_cfg);
   AUDIO_MEM_CHECK(Tag, ap->FlashToneStream, goto _audio_init_failed);
 
@@ -686,8 +696,9 @@ static T_RecorderHandle InitRecorder(void)
   //ap->I2SStream = CreateI2SStream(RECORD_RATE, RECORD_BITS, RECORD_CHANNEL, AUDIO_STREAM_READER);
   i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
   i2s_cfg.type = AUDIO_STREAM_READER;
-  i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ALL_RIGHT;
+  i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT; //I2S_CHANNEL_FMT_ALL_RIGHT;
   i2s_cfg.i2s_config.sample_rate = RECORD_RATE;
+  //i2s_cfg.i2s_config.fixed_mclk = 4096000;
   ap->I2SStream = i2s_stream_init(&i2s_cfg);
 
   ESP_LOGI(Tag, "[2.2] Create filter to convert to 8 [kHz]");
@@ -727,7 +738,6 @@ static T_RecorderHandle InitRecorder(void)
   ap->Recording = false;
 
   //i2s_stream_set_clk(ap->I2SStream, RECORD_RATE, RECORD_BITS, RECORD_CHANNEL);
-
   if (xTaskCreatePinnedToCore(
         RunAudioTask,
         "sys_player",
@@ -773,9 +783,11 @@ static audio_element_handle_t CreateI2SStream(int sampleRates, int bits, int cha
 {
   i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
   i2s_cfg.type = type;
-  i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ALL_RIGHT;
+  i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT; //I2S_CHANNEL_FMT_RIGHT_LEFT; //I2S_CHANNEL_FMT_ALL_RIGHT;
+  i2s_cfg.i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S; //I2S_COMM_FORMAT_STAND_MSB; //I2S_COMM_FORMAT_STAND_I2S
   i2s_cfg.i2s_config.sample_rate = sampleRates;
-
+  i2s_cfg.task_core = 1;
+  //i2s_cfg.i2s_config.fixed_mclk = 4096000;
   audio_element_handle_t i2s_stream = i2s_stream_init(&i2s_cfg);
 /*
   // Define the pins of the I2S
@@ -929,6 +941,121 @@ static void SelectFile(T_SoundIndex index)
 
 //_____________________________________________________________________________
 
+static void RunAudioTask2(void* arg)
+{
+  while (Player->Run)
+  {
+    audio_event_iface_msg_t msg;
+    //esp_err_t ret = audio_event_iface_listen(ap->Evt, &msg, portMAX_DELAY);
+    esp_err_t ret = audio_event_iface_listen(Player->Evt, &msg, 1000 / portTICK_RATE_MS);
+
+    if (ret != ESP_OK)
+    {
+      continue;
+    }
+
+    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
+        && msg.source == (void*) Player->Mp3Decoder
+        && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
+        && (int)msg.data == AEL_STATUS_STATE_RUNNING)
+    {
+      continue;
+    }
+
+    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
+        && msg.source == (void*) Player->Mp3Decoder
+        && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
+        && (int)msg.data == AEL_STATUS_STATE_PAUSED)
+    {
+      continue;
+    }
+
+    // Handle rate for mp3 files.
+    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
+        && msg.source == (void*) Player->Mp3Decoder
+        && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
+    {
+      audio_element_info_t music_info = {0};
+      audio_element_getinfo(Player->Mp3Decoder, &music_info);
+
+      ESP_LOGE(Tag, "[ * ] Receive music info from MP3 decoder, sample_rates=%d, bits=%d, ch=%d",
+               music_info.sample_rates, music_info.bits, music_info.channels);
+
+      audio_element_setinfo(Player->I2SStream, &music_info);
+      i2s_stream_set_clk(Player->I2SStream, music_info.sample_rates, music_info.bits, music_info.channels);
+      continue;
+    }
+
+    // Handle rate for wav files.
+    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
+        && msg.source == (void*) Player->WavDecoder
+        && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
+    {
+      audio_element_info_t music_info = {0};
+      audio_element_getinfo(Player->WavDecoder, &music_info);
+
+      ESP_LOGE(Tag, "[ * ] Receive music info from WAV decoder, sample_rates=%d, bits=%d, ch=%d",
+               music_info.sample_rates, music_info.bits, music_info.channels);
+
+      audio_element_setinfo(Player->I2SStream, &music_info);
+      //i2s_stream_set_clk(Player->I2SStream, music_info.sample_rates, music_info.bits, music_info.channels);	// If using this function, then when playing a wav there is a little pause (no sound) just after the start and then the wav is played normally.
+      	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	// So do not use it to avoid this problem.
+      continue;
+    }
+
+    // Stop when the last pipeline element (I2SStream in this case) receives stop event
+    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
+        && msg.source == (void*)Player->I2SStream
+        && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
+		&& ((int)msg.data == AEL_STATUS_STATE_FINISHED)) // STOPPED state already handled by Stop... functions
+        //&& ap->Playing)
+    {
+      ESP_LOGE(Tag, "Stop pipeline from task");
+      Sensors_buttons_resume();
+/*
+      //audio_pipeline_stop(ap->Pipeline);
+      //audio_pipeline_wait_for_stop(ap->Pipeline);
+      //audio_pipeline_terminate(ap->Pipeline);
+      audio_pipelinI2S_CHANNEL_FMT_ONLY_LEFTe_reset_ringbuffer(ap->Pipeline);
+      audio_pipeline_reset_elements(ap->Pipeline);
+      audio_pipeline_change_state(ap->Pipeline, AEL_STATE_INIT);
+      ap->Playing = false;
+*/
+
+    /*
+      audio_pipeline_stop(ap->Pipeline);
+      audio_pipeline_wait_for_stop(ap->Pipeline);
+      audio_element_reset_state(ap->Mp3Decoder);
+      audio_element_reset_state(ap->SPIFFSStream);
+      audio_element_reset_state(ap->I2SStream);
+      audio_pipeline_reset_ringbuffer(ap->Pipeline);
+      audio_pipeline_reset_items_state(ap->Pipeline);
+      ap->Playing = false;
+      //audio_pipeline_terminate(ap->Pipeline);
+		*/
+
+      //if(Player->mode == 0) {
+    	  SoundStatus[FileIndexFromFlash] = E_SoundStatus_Finished;
+      //}
+    }
+
+    /* Enable buttons when the last pipeline element (spiffs_stream_writer) receives stop event */
+    if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *)Player->SPIFFSStream
+        && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
+        && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED)
+            || ((int)msg.data == AEL_STATUS_ERROR_OPEN))) {
+        //ESP_LOGW(TAG, "[ * ] Stop event received");
+        //break;
+    	//StopWAVRecord(Recorder);
+    	Sensors_buttons_resume();
+    }
+
+
+  }
+
+  vTaskDelete(AudioTask);
+}
+
 static void RunAudioTask(void* arg)
 {
   //T_PlayerHandle ap = (T_PlayerHandle) arg;
@@ -940,7 +1067,7 @@ static void RunAudioTask(void* arg)
   {
     audio_event_iface_msg_t msg;
     //esp_err_t ret = audio_event_iface_listen(ap->Evt, &msg, portMAX_DELAY);
-    esp_err_t ret = audio_event_iface_listen(ap->Evt, &msg, 1000 / portTICK_RATE_MS);
+    esp_err_t ret = audio_event_iface_listen(ap->Evt, &msg, 1000 / portTICK_RATE_MS); // Wait at most 1 second (this is the time base for recording duration).
 
     /*
     if (Recorder->Recording) {
@@ -955,7 +1082,8 @@ static void RunAudioTask(void* arg)
     if (ret != ESP_OK)
     {
       //ESP_LOGE(Tag, "[ * ] Event interface error : %d", ret);
-      if (Recorder->Recording)
+      //if (Recorder->Recording)
+      if (ap->Recording)
       {
         second_recorded++;
 
@@ -964,7 +1092,8 @@ static void RunAudioTask(void* arg)
         if (second_recorded >= RecordingDuration_s)
         {
           //break;
-          StopWAVRecord(Recorder);
+          //StopWAVRecord(Recorder);
+          StopWAVRecord(ap);
         	//audio_element_set_ringbuf_done(ap->I2SStream);
           second_recorded = 0;
         }
@@ -1017,7 +1146,7 @@ static void RunAudioTask(void* arg)
                music_info.sample_rates, music_info.bits, music_info.channels);
 
       audio_element_setinfo(Player->I2SStream, &music_info);
-      //i2s_stream_set_clk(Player->I2SStream, music_info.sample_rates, music_info.bits, music_info.channels);	// If using this function, then when playing a wav there is a little pause (no sound) just after the start and then the wav is played normally.
+      i2s_stream_set_clk(Player->I2SStream, music_info.sample_rates, music_info.bits, music_info.channels);	// If using this function, then when playing a wav there is a little pause (no sound) just after the start and then the wav is played normally.
       	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	// So do not use it to avoid this problem.
       continue;
     }

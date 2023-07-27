@@ -150,7 +150,7 @@ static void RunCommTask(void* arg)
   while (1)
   {
     Settings_UpdateSettings();
-    STM32_UpdateMotorTargets();
+    //STM32_UpdateMotorTargets(); // This is needed to update the motors target speed from Aseba
 
     // Transmit values to the STM32
     // tx[0] is not used

@@ -94,7 +94,7 @@ void Spi_InitHSPI(void)
     .miso_io_num   = -1, // Not used
     .quadwp_io_num = -1, // Not used
     .quadhd_io_num = -1,  // Not used
-	.flags = SPICOMMON_BUSFLAG_MASTER | SPICOMMON_BUSFLAG_NATIVE_PINS,
+	.flags = SPICOMMON_BUSFLAG_MASTER, // | SPICOMMON_BUSFLAG_NATIVE_PINS,
 	.intr_flags = ESP_INTR_FLAG_IRAM // SPI ISR saved in IRAM
   };
 

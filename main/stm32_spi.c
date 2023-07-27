@@ -9,7 +9,7 @@
 //! \file    stm32.c
 //! \brief   This module provides the useful functions to communicate with the STM32 by I2C
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -458,4 +458,88 @@ void STM32_AllowToSwitchOff(void)
 bool STM32_IsAllowedToSwitchOff(void)
 {
   return ((Status & (1u << OK_TO_SWITCH_OFF_BIT_POS)) == OK_TO_SWITCH_OFF_BIT_MASK);
+}
+
+//_____________________________________________________________________________
+
+void GetProximityValues(int16_t* buffer) {
+  buffer[0] = ProxIR.FrontLeft;
+  buffer[1] = ProxIR.FrontLeftCenter;
+  buffer[2] = ProxIR.FrontCenter;
+  buffer[3] = ProxIR.FrontRightCenter;
+  buffer[4] = ProxIR.FrontRight;
+  buffer[5] = ProxIR.BackLeft;
+  buffer[6] = ProxIR.BackRight;
+}
+
+//_____________________________________________________________________________
+
+uint16_t GetProximityValue(uint8_t prox_id) {
+  switch(prox_id) {
+    case 0:
+      return ProxIR.FrontLeft;
+      break;
+    case 1:
+      return ProxIR.FrontLeftCenter;
+      break;
+    case 2:
+      return ProxIR.FrontCenter;
+      break;
+    case 3:
+      return ProxIR.FrontRightCenter;
+      break;
+    case 4:
+      return ProxIR.FrontRight;
+      break;
+    case 5:
+      return ProxIR.BackLeft;
+      break;
+    case 6:
+      return ProxIR.BackRight;
+      break; 
+    default:
+      return 0;                                   
+  }
+}
+
+//_____________________________________________________________________________
+
+void GetGroundValues(int16_t* buffer) {
+  buffer[0] = GroundIR.LeftDelta;
+  buffer[1] = GroundIR.RightDelta;
+}
+
+//_____________________________________________________________________________
+
+uint16_t GetGroundValue(uint8_t ground_id) {
+  switch(ground_id) {
+    case 0:
+      return GroundIR.LeftDelta;
+      break;
+    case 1:
+      return GroundIR.RightDelta;
+      break;
+    default:
+      return 0;    
+  }
+}
+
+//_____________________________________________________________________________
+
+void SetMotorTargets(int16_t left, int16_t right)
+{
+  Target.Left  = left;
+  Target.Right = right;
+}
+
+//_____________________________________________________________________________
+
+int16_t GetLeftSpeed(void) {
+  return Vind.Left;  
+}
+
+//_____________________________________________________________________________
+
+int16_t GetRightSpeed(void) {
+  return Vind.Right;
 }

@@ -9,7 +9,7 @@
 //! \file    behavior.h
 //! \brief   This module provides the useful functions to handle the behavior
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -41,6 +41,12 @@
 #define B_SETTING       (1 << 11)
 
 #define B_ALWAYS    (B_LEDS_BATTERY | B_LEDS_BUTTON | B_SOUND_BUTTON | B_LEDS_CIRCLE | B_LEDS_RGB)  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_SOUND_BUTTON | B_LEDS_BUTTON)
+// B_LEDS_RGB not used
+// B_LEDS_CIRCLE not used
+// B_LEDS_BATTERY not used
+
+#define RUNNING_SETTINGS_MENU 0
+#define RUNNING_SETTINGS_BEHAVIOR 1
 
 //-----------------------------------------------------------------------------
 // Types Definitions

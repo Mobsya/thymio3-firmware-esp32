@@ -9,7 +9,7 @@
 //! \file    stm32.h
 //! \brief   This module provides the useful functions to communicate with the STM32
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -176,5 +176,48 @@ extern void STM32_AllowToSwitchOff(void);
 //! \param     None
 //! \return    True if the STM32 is allowed to switch off, false otherwise
 extern bool STM32_IsAllowedToSwitchOff(void);
+
+//! \brief     Get last proximity values available.
+//! \pre       None
+//! \param     destination buffer
+//! \return    None
+extern void GetProximityValues(int16_t* buffer);
+
+//! \brief     Get last proximity value available.
+//! \pre       None
+//! \param     proximity id (0..6)
+//! \return    proximity value (the higher the value the closer the object)
+extern uint16_t GetProximityValue(uint8_t prox_id);
+
+//! \brief     Get last ground values available.
+//! \pre       None
+//! \param     destination buffer
+//! \return    None
+extern void GetGroundValues(int16_t* buffer);
+
+//! \brief     Get last ground value available.
+//! \pre       None
+//! \param     proximity id (0..1)
+//! \return    proximity value (the higher the value the closer the object)
+extern uint16_t GetGroundValue(uint8_t ground_id);
+
+//! \brief     Set desired motors speed.
+//! \pre       None
+//! \param     left speed, right speed
+//! \return    None
+void SetMotorTargets(int16_t left, int16_t right);
+
+//! \brief     Get measured left speed.
+//! \pre       None
+//! \param     None
+//! \return    Left speed
+int16_t GetLeftSpeed(void);
+
+//! \brief     Get measured right speed.
+//! \pre       None
+//! \param     None
+//! \return    Right speed
+int16_t GetRightSpeed(void);
+
 
 #endif // STM32_SPI_H_

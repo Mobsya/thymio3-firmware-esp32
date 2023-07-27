@@ -297,7 +297,8 @@ int app_main(void)
   Mode_Init(false);
   //Mode_InitVM();
 
-  WIFI_Init();
+  //WIFI_Init();
+	TCPServer_Init();
   AsebaESP32_Init();
 
   //Bluetooth_Init();
@@ -329,7 +330,7 @@ int app_main(void)
   ESP_LOGI(Tag, "OTA");
 
   //BLE_Start();
-  WIFI_Start();
+  //WIFI_Start();
   AsebaESP32_Start();
 
   //Test_StartDebugging();

@@ -93,6 +93,11 @@ set(MICROPY_SOURCE_PORT
     ${MICROPY_DIR}/ports/esp32/mpthreadport.c
     ${MICROPY_DIR}/ports/esp32/machine_rtc.c
     ${MICROPY_DIR}/ports/esp32/machine_sdcard.c
+    ${MICROPY_DIR}/ports/esp32/thymio_leds_circle.c
+    ${MICROPY_DIR}/ports/esp32/thymio_proximity.c
+    ${MICROPY_DIR}/ports/esp32/thymio_ground.c
+    ${MICROPY_DIR}/ports/esp32/thymio_motors.c
+    ${MICROPY_DIR}/ports/esp32/modthymio.c
 )
 
 set(MICROPY_SOURCE_QSTR

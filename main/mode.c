@@ -78,6 +78,8 @@ static T_Mode SelectMode;
 
 static bool VMIsActive = false;
 
+static uint8_t navigation_state = RUNNING_MENU;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -113,6 +115,7 @@ void Mode_Init(bool enableVM)
   VMIsActive = enableVM;
 
   StartMode(E_Mode_Menu);
+  navigation_state = RUNNING_MENU;
 
   if (VMIsActive)
   {
@@ -124,7 +127,7 @@ void Mode_Init(bool enableVM)
     SetModeColor(SelectMode);
   }
 
-  Behavior_Enable(B_ALWAYS | B_MODE);
+  Behavior_Enable(B_ALWAYS | B_MODE | B_SETTING);
 
   if (!first)
   {
@@ -159,6 +162,27 @@ void Mode_Run(void)
   static bool vmIsRunning = false;
 
   buttonState = Buttons_GetStatus();
+
+  // Handle pre-programmed behavior entering/exiting with the center button
+  when(buttonState[E_Button_Center]) {
+    if(navigation_state == RUNNING_MENU) {  // Entering a behavior
+      navigation_state = RUNNING_BEHAVIOR;
+      if (SelectMode != CurrentMode) {
+        ExitMode(CurrentMode);
+        StartMode(SelectMode);        
+        CurrentMode = SelectMode;
+      }      
+    } else {  // Entering menu
+      navigation_state = RUNNING_MENU;
+      ExitMode(CurrentMode);
+      StartMode(E_Mode_Menu);
+      CurrentMode = E_Mode_Menu;
+    }
+  }
+
+
+/*
+
   bool sideState = Gpio_IsButtonPressed();
 
   ignore++;
@@ -238,6 +262,7 @@ void Mode_Run(void)
     ExitMode(CurrentMode);
     return;
   }
+*/
 
   switch (CurrentMode)
   {
@@ -297,6 +322,7 @@ void Mode_Run(void)
       // Do nothing
       break;
   }
+
 }
 
 //_____________________________________________________________________________
@@ -308,7 +334,7 @@ static void StartMode(T_Mode mode)
   switch (mode)
   {
     case E_Mode_Menu:
-      Behavior_Enable(B_SETTING);
+      //Behavior_Enable(B_SETTING);
       break;
 
     case E_Mode_Friendly:
@@ -363,7 +389,7 @@ static void ExitMode(T_Mode mode)
   switch (mode)
   {
     case E_Mode_Menu:
-      Behavior_Disable(B_SETTING);
+      //Behavior_Disable(B_SETTING);
       break;
 
     case E_Mode_Friendly:
