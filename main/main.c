@@ -51,6 +51,15 @@
 #include "wifi_update.h"
 #include "mp_component.h"
 
+#include <stdlib.h>
+#include <stdio.h>
+#include "esp_vfs.h"
+#include "esp_vfs_fat.h"
+#include "esp_system.h"
+
+#include "vfs_fat_internal.h"
+#include "diskio_impl.h"
+
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
@@ -254,6 +263,50 @@ void stats2(void*z)
 	}
 }
 
+FRESULT scan_files (
+    char* path        /* Start node to be scanned (also used as work area) */
+)
+{
+    FRESULT res;
+    FILINFO fno;
+    FF_DIR dir;
+    int i;
+    char *fn;   /* This function is assuming non-Unicode cfg. */
+#if _USE_LFN
+    static char lfn[_MAX_LFN + 1];
+    fno.lfname = lfn;
+    fno.lfsize = sizeof lfn;
+#endif
+
+
+    res = f_opendir(&dir, path);                       /* Open the directory */
+    if (res == FR_OK) {
+        i = strlen(path);
+        for (;;) {
+            res = f_readdir(&dir, &fno);                   /* Read a directory item */
+            if (res != FR_OK || fno.fname[0] == 0) break;  /* Break on error or end of dir */
+            if (fno.fname[0] == '.') continue;             /* Ignore dot entry */
+#if _USE_LFN
+            fn = *fno.lfname ? fno.lfname : fno.fname;
+#else
+            fn = fno.fname;
+#endif
+            if (fno.fattrib & AM_DIR) {                    /* It is a directory */
+                sprintf(&path[i], "/%s", fn);
+                res = scan_files(path);
+                if (res != FR_OK) break;
+                path[i] = 0;
+            } else {                                       /* It is a file. */
+                //printf("%s/%s\n", path, fn);
+                ESP_LOGD(Tag, "%s/%s\n", path, fn);
+            }
+        }
+    }
+
+    return res;
+}
+
+
 int app_main(void)
 {
 //*****************************************************************************
@@ -262,8 +315,8 @@ int app_main(void)
 
 	esp_log_level_set("*", ESP_LOG_NONE);
 	//esp_log_level_set("*", ESP_LOG_ERROR);
-	//esp_log_level_set("*", ESP_LOG_DEBUG);
 	//esp_log_level_set("*", ESP_LOG_INFO);
+	//esp_log_level_set("*", ESP_LOG_DEBUG);
 	//esp_log_level_set("*", ESP_LOG_VERBOSE);
 
 
@@ -308,7 +361,7 @@ int app_main(void)
   //Codec_PlayMP3FileFromFlash(E_SoundIndex_Startup);
 
   // TODO Move to Behavior when entering into settings
-  ESP_ERROR_CHECK(FileServer_Start("/spiffs"));
+  //ESP_ERROR_CHECK(FileServer_Start("/spiffs"));
 
   //Codec_SetVolume(80);
   //Codec_PlayMP3File(2);
@@ -345,6 +398,107 @@ int app_main(void)
   Leds_Start();
 
   init_micropython();
+
+
+//     // Handle of the wear levelling library instance
+//     static wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
+
+//     // Mount path for the partition
+//     //const char *base_path = "/spiflash";
+//     const char *base_path = "/sound";
+
+//     ESP_LOGI(Tag, "Mounting FAT filesystem");
+//     // To mount device we need name of device partition, define base_path
+//     // and allow format partition in case if it is new one and was not formated before
+//     const esp_vfs_fat_mount_config_t mount_config = {
+//             .max_files = 4,
+//             .format_if_mount_failed = false,
+//             .allocation_unit_size = 4096
+//     };
+//     /*
+//     esp_err_t err = esp_vfs_fat_spiflash_mount(base_path, "vfs", &mount_config, &s_wl_handle);
+//     if (err != ESP_OK) {
+//         ESP_LOGE(Tag, "Failed to mount FATFS (%s)", esp_err_to_name(err));
+//         return;
+//     }
+//     */
+    
+//     esp_err_t err = esp_vfs_fat_rawflash_mount(base_path, "vfs", &mount_config);
+//     if (err != ESP_OK) {
+//         ESP_LOGE(Tag, "(esp_vfs_fat_rawflash_mount) Failed to mount FATFS (%s)", esp_err_to_name(err));
+//         return 0;
+//     }
+    
+    
+// /*    
+//     FIL fsrc, fdst;      // File objects
+//     UINT br, bw;         // File read/write count
+//     f_open(&fdst, "0:sound/prova.txt", FA_WRITE | FA_CREATE_ALWAYS);
+//     f_write(&fdst, "Hello", 5, &bw);           // Write it to the destination file
+//     f_close(&fdst);
+// */
+
+
+//     ESP_LOGI(Tag, "Opening file");
+//     FILE *f = fopen("/sound/hello.txt", "w");
+//     if (f == NULL) {
+//         ESP_LOGE(Tag, "Failed to open file for writing");
+//         return 0;
+//     }
+//     fprintf(f, "written using ESP-IDF %s\n", esp_get_idf_version());
+//     fclose(f);
+//     ESP_LOGI(Tag, "File written");
+
+//     // Open file for reading
+//     ESP_LOGI(Tag, "Reading file");
+//     f = fopen("/sound/hello.txt", "r");
+//     if (f == NULL) {
+//         ESP_LOGE(Tag, "Failed to open file for reading");
+//         return 0;
+//     }
+//     char line[128];
+//     fgets(line, sizeof(line), f);
+//     //printf("%s", line);
+//     fclose(f);
+//     // strip newline
+//     char *pos = strchr(line, '\n');
+//     if (pos) {
+//         *pos = '\0';
+//     }
+//     ESP_LOGI(Tag, "Read from file: '%s'", line);
+
+
+//     //listDir();
+//     scan_files("0:sound");
+
+//     // Unmount FATFS
+//     ESP_LOGI(Tag, "Unmounting FAT filesystem");
+//     //ESP_ERROR_CHECK( esp_vfs_fat_spiflash_unmount(base_path, s_wl_handle));
+//     ESP_ERROR_CHECK( esp_vfs_fat_rawflash_unmount(base_path, "vfs"));
+
+//     ESP_LOGI(Tag, "Done");
+
+
+// /*
+//     FF_DIR* *dp;  
+//     FILINFO* fno;
+//     f_opendir (dp, base_path);
+//     if (dp != NULL)
+//     {
+//       while (f_readdir (dp, fno)) != NULL)
+//         puts (ep->d_name);
+            
+//       (void) closedir (dp);
+//       //return 0;
+//     }
+//     else
+//     {
+//       perror ("Couldn't open the directory");
+//       //return -1;
+//     }
+// */
+
+
 
 /*
   heap_caps_check_integrity_all(true);

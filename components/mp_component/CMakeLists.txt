@@ -97,6 +97,8 @@ set(MICROPY_SOURCE_PORT
     ${MICROPY_DIR}/ports/esp32/thymio_proximity.c
     ${MICROPY_DIR}/ports/esp32/thymio_ground.c
     ${MICROPY_DIR}/ports/esp32/thymio_motors.c
+    ${MICROPY_DIR}/ports/esp32/thymio_filesystem.c
+    ${MICROPY_DIR}/ports/esp32/thymio_sound.c
     ${MICROPY_DIR}/ports/esp32/modthymio.c
 )
 
@@ -123,6 +125,7 @@ set(IDF_COMPONENTS
     esp_ringbuf
     esp_rom
     esp_wifi
+    #fatfs
     freertos
     heap
     log
@@ -203,6 +206,7 @@ target_compile_definitions(${MICROPY_TARGET} PUBLIC
     MICROPY_VFS_FAT=1
     MICROPY_VFS_LFS2=1
     FFCONF_H=\"${MICROPY_OOFATFS_DIR}/ffconf.h\"
+    #FFCONF_H=\"/home/stefano/Desktop/esp-adf-2.4/esp-idf/components/fatfs/src/ffconf.h\"
     LFS1_NO_MALLOC LFS1_NO_DEBUG LFS1_NO_WARN LFS1_NO_ERROR LFS1_NO_ASSERT
     LFS2_NO_MALLOC LFS2_NO_DEBUG LFS2_NO_WARN LFS2_NO_ERROR LFS2_NO_ASSERT
 )

@@ -9,7 +9,7 @@
 //! \file    file_system.c
 //! \brief   This module provides the useful functions to use the file system
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -152,7 +152,7 @@ bool FileSystem_CreateFile(const char* filename)
 
 //_____________________________________________________________________________
 
-void FileSystem_Write(const char* filename, void* input, int16_t size)
+void FileSystem_Write(const char* filename, void* input, long int size)
 {
   ESP_LOGI(Tag, "Opening file");
 
@@ -174,7 +174,7 @@ void FileSystem_Write(const char* filename, void* input, int16_t size)
 
 //_____________________________________________________________________________
 
-void FileSystem_Read(const char* filename, void* output, int16_t size)
+void FileSystem_Read(const char* filename, void* output, long int size)
 {
   uint16_t fileSize = 0;
 
@@ -199,6 +199,104 @@ void FileSystem_Read(const char* filename, void* output, int16_t size)
   {
     ESP_LOGE(Tag, "Failed to open file for reading");
   }
+}
+
+//_____________________________________________________________________________
+
+int8_t FileSystem_Read2(const char* filename, void* output, long int *size)
+{
+  uint16_t fileSize = 0;
+
+  ESP_LOGI(Tag, "Reading file");
+
+  FILE* file = fopen(filename, "r");
+
+  if (file != NULL)
+  {
+    fseek(file, 0, SEEK_END); // To get file size
+    fileSize = ftell(file);
+    if(fileSize < 0) {
+      return -2;
+    }
+    *size = fileSize;
+    fseek(file, 0, SEEK_SET);
+    ESP_LOGI(Tag, "File %s open. File size: %d Bytes", filename, fileSize);
+
+    output = malloc((size_t) fileSize);
+    if(output == NULL) {
+      return -3;
+    }
+
+    size_t size_read = fread(output, 1, fileSize, file);
+    fclose(file);
+    if(size_read != fileSize) {
+      return -4;
+    }
+
+  } else {
+    ESP_LOGE(Tag, "Failed to open file for reading");
+    return -1;
+  }
+  
+  return 0;
+}
+
+//_____________________________________________________________________________
+
+int8_t FileSystem_Read3(const char* filename, void* output)
+{
+  uint16_t fileSize = 0;
+
+  ESP_LOGI(Tag, "Reading file");
+
+  FILE* file = fopen(filename, "r");
+
+  if (file != NULL)
+  {
+    fseek(file, 0, SEEK_END); // To get file size
+    fileSize = ftell(file);
+    if(fileSize < 0) {
+      return -2;
+    }
+    fseek(file, 0, SEEK_SET);
+    ESP_LOGI(Tag, "File %s open. File size: %d Bytes", filename, fileSize);
+
+    size_t size_read = fread(output, 1, fileSize, file);
+    fclose(file);
+    if(size_read != fileSize) {
+      return -3;
+    }
+
+  } else {
+    ESP_LOGE(Tag, "Failed to open file for reading");
+    return -1;
+  }
+  
+  return 0;
+}
+
+//_____________________________________________________________________________
+
+int32_t FileSystem_GetFileSize(const char* filename)
+{
+  int32_t fileSize = 0;
+
+  FILE* file = fopen(filename, "r");
+
+  if (file != NULL)
+  {
+    fseek(file, 0, SEEK_END); // To get file size
+    fileSize = ftell(file);
+    if(fileSize < 0) {
+      return -2;
+    }
+    fclose(file);
+    return fileSize;
+  } else {
+    ESP_LOGE(Tag, "Failed to open file for reading");
+    return -1;
+  }
+
 }
 
 //_____________________________________________________________________________
@@ -404,6 +502,7 @@ static void list(char* path, char* match)
         else
         {
           total += sb.st_size;
+          //printf("file size = %ld\n", sb.st_size);
 
           if (sb.st_size < (1024 * 1024))
           {

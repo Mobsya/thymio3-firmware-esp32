@@ -68,7 +68,7 @@
 //-----------------------------------------------------------------------------
 
 #define MP3_PLAYER_RATE         12000
-#define MP3_PLAYER_CHANNEL          2  //!< Mono = 1
+#define MP3_PLAYER_CHANNEL          1  //!< Mono = 1
 #define MP3_PLAYER_BITS            16
 
 #define RECORD_RATE             12000
@@ -696,7 +696,7 @@ static T_RecorderHandle InitRecorder(void)
   //ap->I2SStream = CreateI2SStream(RECORD_RATE, RECORD_BITS, RECORD_CHANNEL, AUDIO_STREAM_READER);
   i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
   i2s_cfg.type = AUDIO_STREAM_READER;
-  i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT; //I2S_CHANNEL_FMT_ALL_RIGHT;
+  i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT;
   i2s_cfg.i2s_config.sample_rate = RECORD_RATE;
   //i2s_cfg.i2s_config.fixed_mclk = 4096000;
   ap->I2SStream = i2s_stream_init(&i2s_cfg);
@@ -783,7 +783,7 @@ static audio_element_handle_t CreateI2SStream(int sampleRates, int bits, int cha
 {
   i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
   i2s_cfg.type = type;
-  i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT; //I2S_CHANNEL_FMT_RIGHT_LEFT; //I2S_CHANNEL_FMT_ALL_RIGHT;
+  i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT;
   i2s_cfg.i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S; //I2S_COMM_FORMAT_STAND_MSB; //I2S_COMM_FORMAT_STAND_I2S
   i2s_cfg.i2s_config.sample_rate = sampleRates;
   i2s_cfg.task_core = 1;

@@ -210,6 +210,7 @@ esp_err_t es8374_start_Thymio(es_module_t mode)
         res |= es8374_read_reg_Thymio(0x21, &reg);       //power up adc and input
         reg &= 0x3f;									// => enable analog PGA circuits + enable analog ADC modulator
         res |= es8374_write_reg_Thymio(0x21, reg);
+        //printf("[es8374_start_Thymio] 0x21 = %x\n", reg);
         //res |= es8374_read_reg_Thymio(0x10, &reg);       //power up adc and input
         //reg &= 0x3f;									// => ADC SDP unmute(default)
         //res |= es8374_write_reg_Thymio(0x10, reg);
@@ -280,6 +281,7 @@ esp_err_t es8374_stop_Thymio(es_module_t mode)
         res |= es8374_read_reg_Thymio(0x21, &reg);       //power up adc and input
         reg |= 0xc0;									// => power down analog PGA circuits + power down analog ADC modulator
         res |= es8374_write_reg_Thymio(0x21, reg);
+        //printf("[es8374_stop_Thymio] 0x21 = %x\n", reg);
     }
 
     return res;
@@ -532,10 +534,10 @@ esp_err_t es8374_config_adc_input_Thymio(es_adc_input_t input)
 
     res |= es8374_read_reg_Thymio(0x21, &reg);
     if (res == 0) {
-        reg = (reg & 0xcf) | 0x24;	// => MIC1P-MIC1N + 15dB gain for input diff circuits => same as line 672
+        reg = (reg & 0xcf) | 0x24;	// => MIC2P-MIC2N + 15dB gain for input diff circuits => same as line 672
         res |= es8374_write_reg_Thymio( 0x21, reg);
     }
-
+    //printf("[es8374_config_adc_input_Thymio] 0x21 = %x\n", reg);
     return res;
 }
 
@@ -547,6 +549,7 @@ esp_err_t es8374_set_mic_gain_Thymio(es_mic_gain_t gain)
         int gain_n = 0;
         gain_n = (int)gain / 3;
         res = es8374_write_reg_Thymio(0x22, gain_n | (gain_n << 4)); //MIC PGA => 15 dB
+        //printf("[es8374_set_mic_gain_Thymio] 0x22 = %x\n", gain_n | (gain_n << 4));
     } else {
         res = -1;
         LOG_8374("invalid microphone gain!");
@@ -607,6 +610,7 @@ static int es8374_set_adc_dac_volume_Thymio(int mode, int volume, int dot)
     volume = (-volume << 1) + dot;
     if (mode == ES_MODULE_ADC || mode == ES_MODULE_ADC_DAC) {
         res |= es8374_write_reg_Thymio(0x25, volume);
+        //printf("[es8374_set_adc_dac_volume_Thymio] 0x25 = %x\n", volume);
     }
     if (mode == ES_MODULE_DAC || mode == ES_MODULE_ADC_DAC) {
         res |= es8374_write_reg_Thymio(0x38, volume);
@@ -625,6 +629,7 @@ static int es8374_set_d2se_pga_Thymio(es_d2se_pga_t gain)
         reg &= 0xfb;
         reg |= gain << 2;
         res = es8374_write_reg_Thymio(0x21, reg); //MIC PGA => 15dB gain for input diff circuits
+        //printf("[es8374_set_d2se_pga_Thymio] 0x21 = %x\n", reg);
     } else {
         res = 0xff;
         LOG_8374("invalid microphone gain!");
@@ -668,9 +673,10 @@ static int es8374_init_reg_Thymio(audio_hal_codec_mode_t ms_mode, es_i2s_fmt_t f
     res |= es8374_config_fmt_Thymio(ES_MODULE_DAC, fmt);
 
     res |= es8374_write_reg_Thymio(0x21, 0x50); //adc set: SEL LIN1 CH+PGAGAIN=0DB => enable analog PGA circuits + power down analog ADC modulator + MIC1P-MIC1N + 0dB gain for input diff circuits
-    res |= es8374_write_reg_Thymio(0x22, 0xFF); //adc set: PGA GAIN=0DB => -3.5 dB
+    //res |= es8374_write_reg_Thymio(0x22, 0xFF); //adc set: PGA GAIN=0DB => -3.5 dB
     res |= es8374_write_reg_Thymio(0x21, 0x14); //adc set: SEL LIN1 CH+PGAGAIN=18DB => enable analog ADC modulator + 15dB gain for input diff circuits + mic1 selected
     res |= es8374_write_reg_Thymio(0x22, 0x55); //pga = +15db
+    //printf("[es8374_init_reg_Thymio] 0x22 = %x\n", 0x55);
     res |= es8374_write_reg_Thymio(0x08, 10); //0x21); //set class d divider = 33, to avoid the high frequency tone on laudspeaker [0x21]
     res |= es8374_write_reg_Thymio(0x00, 0x80); // IC START
 
@@ -687,6 +693,7 @@ static int es8374_init_reg_Thymio(audio_hal_codec_mode_t ms_mode, es_i2s_fmt_t f
     res |= es8374_write_reg_Thymio(0x1E, 0x20); // spk on => disable class d speaker + enable speaker bias + select mixer output to speaker output + volume=0dB
     res |= es8374_write_reg_Thymio(0x28, 0x00); // alc set => ALC target=-16.5dB + ALC hold time before gain is increased=0ms
     res |= es8374_write_reg_Thymio(0x25, 0x00); // ADCVOLUME on
+    //printf("[es8374_init_reg_Thymio] 0x25 = %x\n", 0x00);
     res |= es8374_write_reg_Thymio(0x38, 0x00); // DACVOLUME on
     res |= es8374_write_reg_Thymio(0x37, 0x30); // dac set => LOUT/SPK auto mute en
     res |= es8374_write_reg_Thymio(0x6D, 0x60); //SEL:GPIO1=DMIC CLK OUT+SEL:GPIO2=PLL CLK OUT
@@ -698,6 +705,10 @@ static int es8374_init_reg_Thymio(audio_hal_codec_mode_t ms_mode, es_i2s_fmt_t f
     res |= es8374_codec_set_voice_volume_Thymio(0);
 
     res |= es8374_write_reg_Thymio(0x37, 0x00); // dac set => auto mute dis
+
+    res |= es8374_write_reg_Thymio(0x26, 0x5F); // 
+    res |= es8374_write_reg_Thymio(0x27, 0x08); // 
+    res |= es8374_write_reg_Thymio(0x2B, 0x20); // 
 
     return res;
 }
