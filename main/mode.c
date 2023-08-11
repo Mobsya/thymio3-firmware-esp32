@@ -520,6 +520,18 @@ static void SetModeColor(T_Mode mode)
   }
 }
 
+void enter_micropython_mode(void) {
+  ExitMode(CurrentMode);
+  Behavior_Disable(B_MODE);
+  Behavior_Disable(B_SETTING);
+}
+
+extern void exit_micropython_mode(void) {
+  CurrentMode = E_Mode_Menu;
+  Behavior_Enable(B_MODE);
+  Behavior_Enable(B_SETTING);
+}
+
 //_____________________________________________________________________________
 #if 0
 static void GetRainbow(uint8_t* rgb)

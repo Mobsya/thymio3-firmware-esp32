@@ -99,6 +99,11 @@ set(MICROPY_SOURCE_PORT
     ${MICROPY_DIR}/ports/esp32/thymio_motors.c
     ${MICROPY_DIR}/ports/esp32/thymio_filesystem.c
     ${MICROPY_DIR}/ports/esp32/thymio_sound.c
+    ${MICROPY_DIR}/ports/esp32/thymio_leds_lego_front.c
+    ${MICROPY_DIR}/ports/esp32/thymio_leds_lego_back.c
+    ${MICROPY_DIR}/ports/esp32/thymio_leds_rgb.c
+    ${MICROPY_DIR}/ports/esp32/thymio_rc5.c
+    ${MICROPY_DIR}/ports/esp32/thymio_imu.c
     ${MICROPY_DIR}/ports/esp32/modthymio.c
 )
 

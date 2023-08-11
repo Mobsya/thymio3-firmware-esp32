@@ -62,4 +62,8 @@ extern void Mode_InitVM(void);
 //! \return    None
 extern void Mode_Run(void);
 
+extern void enter_micropython_mode(void);
+
+extern void exit_micropython_mode(void);
+
 #endif // MODE_H_

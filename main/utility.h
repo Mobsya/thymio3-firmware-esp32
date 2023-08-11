@@ -48,4 +48,6 @@
 //! \return    Tick
 extern int64_t getTimeUs(void);
 
+extern void turnOffAllSensors(void);
+
 #endif // UTILITY_H_

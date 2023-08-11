@@ -104,6 +104,13 @@ void Gyroscope_ReadAngularVelocity(void)
 
 //_____________________________________________________________________________
 
+T_Axis Gyroscope_GetAngularVelocity(void)
+{
+  return AngularVelocity;
+}
+
+//_____________________________________________________________________________
+
 void Gyroscope_ReadAngle(void)
 {
 	if(currGyro == LSM6DS3US) {

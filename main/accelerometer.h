@@ -9,7 +9,7 @@
 //! \file    accelerometer.h
 //! \brief   This module provides the useful functions to use the accelerometer
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -62,6 +62,10 @@ extern void Accelerometer_Init(void);
 //! \return    None
 extern void Accelerometer_ReadAcceleration(void);
 
+//! \brief     Get last acceleration read
+//! \pre       First initialize the accelerometer
+//! \param     None
+//! \return    Raw acceleration values
 extern T_Axis Accelerometer_GetAcceleration(void);
 
 //! \brief     Get the acceleration on Y-axis

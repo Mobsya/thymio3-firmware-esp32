@@ -205,7 +205,7 @@ void FileSystem_Read(const char* filename, void* output, long int size)
 
 int8_t FileSystem_Read2(const char* filename, void* output, long int *size)
 {
-  uint16_t fileSize = 0;
+  long int fileSize = 0;
 
   ESP_LOGI(Tag, "Reading file");
 
@@ -220,7 +220,7 @@ int8_t FileSystem_Read2(const char* filename, void* output, long int *size)
     }
     *size = fileSize;
     fseek(file, 0, SEEK_SET);
-    ESP_LOGI(Tag, "File %s open. File size: %d Bytes", filename, fileSize);
+    ESP_LOGI(Tag, "File %s open. File size: %ld Bytes", filename, fileSize);
 
     output = malloc((size_t) fileSize);
     if(output == NULL) {
@@ -245,7 +245,7 @@ int8_t FileSystem_Read2(const char* filename, void* output, long int *size)
 
 int8_t FileSystem_Read3(const char* filename, void* output)
 {
-  uint16_t fileSize = 0;
+  long int fileSize = 0;
 
   ESP_LOGI(Tag, "Reading file");
 
@@ -259,7 +259,7 @@ int8_t FileSystem_Read3(const char* filename, void* output)
       return -2;
     }
     fseek(file, 0, SEEK_SET);
-    ESP_LOGI(Tag, "File %s open. File size: %d Bytes", filename, fileSize);
+    ESP_LOGI(Tag, "File %s open. File size: %ld Bytes", filename, fileSize);
 
     size_t size_read = fread(output, 1, fileSize, file);
     fclose(file);

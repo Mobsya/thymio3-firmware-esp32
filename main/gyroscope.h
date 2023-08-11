@@ -9,7 +9,7 @@
 //! \file    gyroscope.h
 //! \brief   This module provides the useful functions to use the gyroscope
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -102,5 +102,11 @@ extern void Gyroscope_ResetCalibration(void);
 //! \param     offset - Offset
 //! \return    None
 extern void Gyroscope_SetOffset(int32_t offset);
+
+//! \brief     Get last angular velocities read
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    Raw angular velocities values
+T_Axis Gyroscope_GetAngularVelocity(void);
 
 #endif // GYROSCOPE_H_

@@ -19,6 +19,8 @@
 //-----------------------------------------------------------------------------
 #include "utility.h"
 #include "esp_timer.h"
+#include "stm32_spi.h"
+#include "leds.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -53,4 +55,12 @@ int64_t getTimeUs(void) {
 	//return portGET_RUN_TIME_COUNTER_VALUE()
 	// Time based on 1 us resolution
 	return esp_timer_get_time();
+}
+
+void turnOffAllSensors(void) {
+	Leds_SetBodyBrightness(0u, 0u, 0u);
+	Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+	Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+	Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+	SetMotorTargets(0, 0);
 }

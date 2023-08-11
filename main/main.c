@@ -47,6 +47,7 @@
 #include "timer_sw.h"
 //#include "tracking.h"
 #include "uart.h"
+#include "utility.h"
 #include "wifi.h"
 #include "wifi_update.h"
 #include "mp_component.h"
@@ -331,6 +332,7 @@ int app_main(void)
   TimerSw_Init();
 
   Gpio_Init();
+  turnOffAllSensors();
 
   Aseba_Init();
 
