@@ -9,7 +9,7 @@
 //! \file    color_sensor.c
 //! \brief   This module provides the useful functions to use the color sensor
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -41,13 +41,6 @@
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
-
-typedef struct
-{
-  int16_t Hue;
-  int16_t Saturation;
-  int16_t Value;
-} T_HSV;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -172,6 +165,12 @@ T_Color ColorSensor_GetColor(void)
   return Color;
 }
 
+//_____________________________________________________________________________
+
+T_HSV ColorSensor_GetHsv(void)
+{
+  return Hsv;
+}
 //_____________________________________________________________________________
 
 bool ColorSensor_Calibrate(uint8_t choice, uint8_t* calibrationStatus)

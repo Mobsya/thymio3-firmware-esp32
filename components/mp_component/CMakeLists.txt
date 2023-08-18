@@ -104,6 +104,8 @@ set(MICROPY_SOURCE_PORT
     ${MICROPY_DIR}/ports/esp32/thymio_leds_rgb.c
     ${MICROPY_DIR}/ports/esp32/thymio_rc5.c
     ${MICROPY_DIR}/ports/esp32/thymio_imu.c
+    ${MICROPY_DIR}/ports/esp32/thymio_color_sensor.c
+    ${MICROPY_DIR}/ports/esp32/thymio_buttons.c
     ${MICROPY_DIR}/ports/esp32/modthymio.c
 )
 

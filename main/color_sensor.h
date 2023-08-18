@@ -9,7 +9,7 @@
 //! \file    color_sensor.h
 //! \brief   This module provides the useful functions to use the color sensor
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -44,6 +44,12 @@ typedef enum
   E_Color_Unknown
 } T_Color;
 
+typedef struct
+{
+  int16_t Hue;
+  int16_t Saturation;
+  int16_t Value;
+} T_HSV;
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -86,5 +92,11 @@ extern bool ColorSensor_Calibrate(uint8_t choice, uint8_t* calibrationStatus);
 //! \param     None
 //! \return    E_Error_None if no error, otherwise E_Error_Color_InvalidID
 extern T_Error ColorSensor_CheckManufacturerId(void);
+
+//! \brief     Get the HSV values
+//! \pre       First initialize the color sensor
+//! \param     None
+//! \return    HSV
+extern T_HSV ColorSensor_GetHsv(void);
 
 #endif // COLOR_SENSOR_H_
