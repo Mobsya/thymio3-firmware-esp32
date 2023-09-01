@@ -19,6 +19,7 @@
 //-----------------------------------------------------------------------------
 
 #include "esp_log.h"
+#include <math.h>
 
 #include "color_sensor.h"
 
@@ -87,25 +88,28 @@ static void UpdateColor(T_HSV hsv);
 //! \pre       None
 //! \param     None
 //! \return    Smallest value
-static inline int16_t Min(int16_t a, int16_t b);
+static inline float fMin(float a, float b);
 
 //! \brief     Get the highest value
 //! \pre       None
 //! \param     None
 //! \return    Highest value
-static inline int16_t Max(int16_t a, int16_t b);
+static inline float fMax(float a, float b);
 
 //! \brief     Get the lowest value
 //! \pre       None
 //! \param     None
 //! \return    Smallest value
-static inline int16_t Min3(int16_t a, int16_t b, int16_t c);
+static inline float fMin3(float a, float b, float c);
 
 //! \brief     Get the highest value
 //! \pre       None
 //! \param     None
 //! \return    Highest value
-static inline int16_t Max3(int16_t a, int16_t b, int16_t c);
+static inline float fMax3(float a, float b, float c);
+
+
+
 
 //-----------------------------------------------------------------------------
 // Functions Implementation
@@ -171,6 +175,28 @@ T_HSV ColorSensor_GetHsv(void)
 {
   return Hsv;
 }
+
+//_____________________________________________________________________________
+
+T_RawColor ColorSensor_GetRaw(void)
+{
+  return RawColor;
+}
+
+//_____________________________________________________________________________
+
+T_RawColor ColorSensor_GetWhiteCalibration(void)
+{
+  return White;
+}
+
+//_____________________________________________________________________________
+
+T_RawColor ColorSensor_GetBlackCalibration(void)
+{
+  return Black;
+}
+
 //_____________________________________________________________________________
 
 bool ColorSensor_Calibrate(uint8_t choice, uint8_t* calibrationStatus)
@@ -317,75 +343,82 @@ T_Error ColorSensor_CheckManufacturerId(void)
 
 static void ConvertToHSV(void)
 {
-  int16_t red   = (RawColor.Red - Black.Red);
-  int16_t green = (RawColor.Green - Black.Green);
-  int16_t blue  = (RawColor.Blue - Black.Blue);
+  float red   = (RawColor.Red - Black.Red);
+  float green = (RawColor.Green - Black.Green);
+  float blue  = (RawColor.Blue - Black.Blue);
+  
+  if(red > Range.Red) {
+    red = Range.Red;
+  }
+  if(red < 0) {
+    red = 0;
+  }
 
-  int16_t min;
-  int16_t max;
-  int16_t delta;
+  if(green > Range.Green) {
+    green = Range.Green;
+  }
+  if(green < 0) {
+    green = 0;
+  }
+
+  if(red > Range.Red) {
+    red = Range.Red;
+  }
+  if(red < 0) {
+    red = 0;
+  }
+
+  if(blue > Range.Blue) {
+    blue = Range.Blue;
+  }
+  if(blue < 0) {
+    blue = 0;
+  }  
+
+  float cmin;
+  float cmax;
+  float delta;
 
   // Check division by 0
-  if ((Range.Red != 0) && (Range.Green != 0) && (Range.Blue != 0))
+  if ((Range.Red == 0) || (Range.Green == 0) || (Range.Blue == 0))
   {
-    red   = (red * MaxColor.Red) / Range.Red;
-    green = (green * MaxColor.Green) / Range.Green;
-    blue  = (blue * MaxColor.Blue) / Range.Blue;
-
-    min = Min3(red, green, blue);
-    max = Max3(red, green, blue);
-    delta = max - min;
-
-    if (delta == 0)
-    {
-      // Achromatic case (i.e. grayscale)
-      Hsv.Hue = -1;  // Undefined
-      Hsv.Saturation = 0;
-    }
-    else
-    {
-      int16_t h;
-
-      if (red == max)
-      {
-        h = ((green - blue) * 60 * HUE_DEGREE) / delta;
-      }
-      else if (green == max)
-      {
-        h = (((blue - red) * 60 * HUE_DEGREE) / delta) + (120 * HUE_DEGREE);
-      }
-      else  // blue == max
-      {
-        h = (((red - green) * 60 * HUE_DEGREE) / delta) + (240 * HUE_DEGREE);
-      }
-
-      if (h < 0)
-      {
-        h += 360 * HUE_DEGREE;
-      }
-
-      Hsv.Hue = h;
-
-      if (max != 0)
-      {
-        Hsv.Saturation = (128 * delta) / max;
-      }
-      else
-      {
-        Hsv.Saturation = 0;
-      }
-    }
-
-    Hsv.Value = max;
-
-    vmVariables.color_hsv[0] = Hsv.Hue;
-    vmVariables.color_hsv[1] = Hsv.Saturation;
-    vmVariables.color_hsv[2] = Hsv.Value;
+    Hsv.Hue = -1;
+    Hsv.Saturation = -1;
+    Hsv.Value = -1;
+    return;
   }
-  else
-  {
-    Behavior_PlaySoundAlarm(0u);
+
+  // Make the RGB values between 0 and 1
+  red   /= Range.Red;
+  green /= Range.Green;
+  blue  /= Range.Blue;
+  
+  cmin = fMin3(red, green, blue);
+  cmax = fMax3(red, green, blue);
+  delta = cmax - cmin;
+
+  Hsv.Value = (int16_t)(cmax*100);
+
+  if (cmin == cmax) {
+    Hsv.Hue = 0;
+    Hsv.Saturation = 0;
+  } else if(cmax == red) {
+    Hsv.Hue = (int16_t)(fmod((60 * ((green - blue) / delta) + 360), 360.0));
+  } else if(cmax == green) {
+    Hsv.Hue = (int16_t)(fmod((60 * ((blue - red) / delta) + 120), 360.0));
+  } else if(cmax == blue) {
+    Hsv.Hue = (int16_t)(fmod((60 * ((red - green) / delta) + 240), 360.0));
   }
+  
+  if (cmax == 0) {
+    Hsv.Saturation = 0;
+  } else {
+    Hsv.Saturation = (int16_t)((delta/cmax)*100);
+  }
+
+  vmVariables.color_hsv[0] = Hsv.Hue;
+  vmVariables.color_hsv[1] = Hsv.Saturation;
+  vmVariables.color_hsv[2] = Hsv.Value;
 
   //ESP_LOGI(Tag, "H: %d, S: %d, V: %d", Hsv.Hue, Hsv.Saturation, Hsv.Value);
 }
@@ -454,28 +487,28 @@ static void UpdateColor(T_HSV hsv)
 
 //_____________________________________________________________________________
 
-static inline int16_t Min(int16_t a, int16_t b)
+static inline float fMin(float a, float b)
 {
   return ((a < b) ? a : b);
 }
 
 //_____________________________________________________________________________
 
-static inline int16_t Max(int16_t a, int16_t b)
+static inline float fMax(float a, float b)
 {
   return ((a > b) ? a : b);
 }
 
 //_____________________________________________________________________________
 
-static inline int16_t Min3(int16_t a, int16_t b, int16_t c)
+static inline float fMin3(float a, float b, float c)
 {
-  return Min(a, Min(b, c));
+  return fMin(a, fMin(b, c));
 }
 
 //_____________________________________________________________________________
 
-static inline int16_t Max3(int16_t a, int16_t b, int16_t c)
+static inline float fMax3(float a, float b, float c)
 {
-  return Max(a, Max(b, c));
+  return fMax(a, fMax(b, c));
 }

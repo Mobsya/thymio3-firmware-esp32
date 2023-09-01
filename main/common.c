@@ -25,6 +25,7 @@
 #include "aseba_esp32.h"
 #include "buttons.h"
 #include "leds.h"
+#include "stm32_spi.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -88,6 +89,7 @@ void Common_SetTargetSpeed(int16_t left, int16_t right)
 {
   vmVariables.target[0] = left;
   vmVariables.target[1] = right;
+  SetMotorTargets(vmVariables.target[0], vmVariables.target[1]);
 }
 
 //_____________________________________________________________________________
@@ -96,6 +98,7 @@ void Common_IncrementTargetSpeed(int16_t left, int16_t right)
 {
   vmVariables.target[0] += left;
   vmVariables.target[1] += right;
+  SetMotorTargets(vmVariables.target[0], vmVariables.target[1]);
 }
 
 //_____________________________________________________________________________
@@ -127,6 +130,7 @@ void Common_LimitSpeed(int16_t min, int16_t max)
   {
     // Do nothing
   }
+  SetMotorTargets(vmVariables.target[0], vmVariables.target[1]);
 }
 
 //_____________________________________________________________________________
@@ -207,6 +211,7 @@ void Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue)
   {
     vmVariables.target[0] = 0;
     vmVariables.target[1] = 0;
+    SetMotorTargets(vmVariables.target[0], vmVariables.target[1]);
 
     Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, 0u, 0u);
     Leds_SetFrontRightBrightness(MAX_BRIGHTNESS, 0u, 0u);

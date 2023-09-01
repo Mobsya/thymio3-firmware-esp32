@@ -9,7 +9,7 @@
 //! \file    power.c
 //! \brief   This module provides the useful functions to manage the power
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -21,11 +21,15 @@
 #include "esp_log.h"
 
 #include "power.h"
-
+#include "behavior.h"
+#include "rc5.h"
+#include "sensors.h"
+#include "leds.h"
 #include "codec.h"
 #include "gpio.h"
 #include "pins_def.h"
 #include "stm32_spi.h"
+#include "common.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -77,20 +81,30 @@ void Power_Init(void)
 
 void Power_HandlePowerModeRequest(void)
 {
-  static bool soundStarted = false;
+  static uint8_t powerDownState = 0;
 
-  if (STM32_IsStandbyRequested() && !STM32_IsAllowedToSwitchOff())
-  {
-    if (!soundStarted)
-    {
-      Codec_PlayMP3FileFromFlash(E_SoundIndex_Bye);
-      soundStarted = true;
-    }
+  switch(powerDownState) {
+    case 0: // Waiting for power down request. Then stop main tasks and play "bye bye".
+      if(STM32_IsStandbyRequested()) {
+        powerDownState = 1;
+        Behavior_Stop();
+        RC5_Stop();
+        Sensors_Stop();
+        Leds_Stop();
+        Common_SetTargetSpeed(0, 0);
+        Codec_PlayMP3FileFromFlash(E_SoundIndex_Bye);
+      }
+      break;
+    
+    case 1: // Wait for "bye bye" sound terminates. Then tell STM32 to turn off.
+      if(Codec_IsSoundFinished(E_SoundIndex_Bye)) {
+        powerDownState = 2;
+        STM32_AllowToSwitchOff();  // Give the permission to the STM32 to switch off
+      }
+      break;
+    
+    case 2:
+      break;
   }
 
-  if (soundStarted && Codec_IsSoundFinished(E_SoundIndex_Bye))
-  {
-    soundStarted = false;
-    STM32_AllowToSwitchOff();  // Give the permission to the STM32 to switch off
-  }
 }

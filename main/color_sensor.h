@@ -22,6 +22,7 @@
 //-----------------------------------------------------------------------------
 
 #include "error.h"
+#include "bh1745nuc.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -98,5 +99,23 @@ extern T_Error ColorSensor_CheckManufacturerId(void);
 //! \param     None
 //! \return    HSV
 extern T_HSV ColorSensor_GetHsv(void);
+
+//! \brief     Get the RGB raw values
+//! \pre       First initialize the color sensor
+//! \param     None
+//! \return    T_RawColor
+extern T_RawColor ColorSensor_GetRaw(void);
+
+//! \brief     Get the white calibration values (calibration done in a white surface).
+//! \pre       First initialize the color sensor
+//! \param     None
+//! \return    T_RawColor
+extern T_RawColor ColorSensor_GetWhiteCalibration(void);
+
+//! \brief     Get the black calibration values (calibration done in a black surface).
+//! \pre       First initialize the color sensor
+//! \param     None
+//! \return    T_RawColor
+extern T_RawColor ColorSensor_GetBlackCalibration(void);
 
 #endif // COLOR_SENSOR_H_

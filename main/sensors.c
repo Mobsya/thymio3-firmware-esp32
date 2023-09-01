@@ -151,6 +151,7 @@ void Sensors_Stop(void)
     I2C_DeleteDriver();
     TaskIsStarted = false;
     vTaskDelete(SensorsTask);
+    vTaskDelete(ButtonsTask);
   }
 }
 
