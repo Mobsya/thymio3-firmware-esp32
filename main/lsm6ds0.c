@@ -25,10 +25,9 @@
 
 #include "lsm6ds0.h"
 
-#include "gpio.h"
 #include "i2c.h"
-#include "pins_def.h"
 #include "imu_common.h"
+#include "gyroscope.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -289,24 +288,11 @@ typedef uint8_t T_Interrupt;
 
 static const char* Tag = "LSM6DS0";
 
-static const T_GpioPinConfig PinConfig[2] =
-{
-  {ACC_INT1_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_RisingEdge},
-  {ACC_INT2_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_RisingEdge}
-};
+extern int16_t GyroBuffer[3][GYRO_BUFFER_SIZE];
 
-#define BUFFER_SIZE 128
-
-static int16_t Buffer[3][BUFFER_SIZE];
-
-static bool IsCalibrated = false;
-static int16_t ZeroGyro[3] = {0, 0, 0};
-
-static int16_t Teta[3] = {0, 0, 0};
-
-static int32_t Mul = 0;
-static int32_t Div = 0;
-static int32_t Offset = 0;
+extern int32_t Mul;
+extern int32_t Div;
+extern int32_t Offset;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -347,33 +333,6 @@ static void UpdateTapThreshold(T_Acc_TapThreshold threshold);
 //! \param     None
 //! \return    None
 static void UpdateFreeFall(T_Acc_FreeFallThreshold threshold, uint8_t duration);
-
-//! \brief     Read the acceleration
-//! \pre       None
-//! \param     None
-//! \return    None
-//! \image     html ReadAcceleration.svg
-static void ReadAcceleration(T_Axis* acceleration);
-
-//! \brief     Read the acceleration tap source
-//! \pre       None
-//! \param     None
-//! \return    None
-static void ReadTapSource(uint8_t* source);
-
-//! \brief     Read the angular velocity
-//! \pre       None
-//! \param     None
-//! \return    None
-//! \image     html ReadAngle.svg
-static void ReadAngularVelocity(T_Axis* angularVelocity);
-
-//! \brief     Read the buffered angular position
-//! \pre       None
-//! \param     None
-//! \return    None
-//! \image     html ReadAngle.svg
-static uint16_t ReadBufferedAngularPosition(void);
 
 //! \brief     Set the integrator factors used to calculate the angle
 //! \pre       None
@@ -426,10 +385,6 @@ static void EnableGyroDataReadyInterrupt(T_Interrupt interrupt);
 //! \image     html ReadAccManufacturerId.svg
 static void ReadManufacturerId(uint8_t* data);
 
-static void CalibrateZeroGyro(uint16_t number);
-
-static void CalculateAngle(int16_t* angle, uint16_t number);
-
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -460,22 +415,6 @@ void LSM6DS0_InitAccelerometer(void)
   UpdateFreeFall(E_Acc_FreeFallThreshold_312g, 6);
 
   ESP_LOGI(Tag, "LSM6DS0 accelerometer is initialized");
-}
-
-//_____________________________________________________________________________
-
-void LSM6DS0_GetAcceleration(T_Axis* acceleration)
-{
-  ReadAcceleration(acceleration);
-
-  // TODO ConvertAcceleration(int16_t input);
-}
-
-//_____________________________________________________________________________
-
-void LSM6DS0_GetTapSource(uint8_t* source)
-{
-  ReadTapSource(source);
 }
 
 //_____________________________________________________________________________
@@ -589,7 +528,7 @@ static void UpdateFreeFall(T_Acc_FreeFallThreshold threshold, uint8_t duration)
 
 //_____________________________________________________________________________
 
-static void ReadAcceleration(T_Axis* acceleration)
+void LSM6DS0_ReadAcceleration(T_Axis* acceleration)
 {
   uint8_t acc[6u];
 
@@ -604,7 +543,7 @@ static void ReadAcceleration(T_Axis* acceleration)
 
 //_____________________________________________________________________________
 
-static void ReadTapSource(uint8_t* source)
+void LSM6DS0_ReadTapSource(uint8_t* source)
 {
   uint8_t src;
 
@@ -652,51 +591,6 @@ void LSM6DS0_InitGyroscope(int16_t offset)
 	Offset = offset;
 
 	ESP_LOGI(Tag, "LSM6DS0 gyroscope is initialized with offset = %d", Offset);
-}
-
-//_____________________________________________________________________________
-
-void LSM6DS0_GetAngularVelocity(T_Axis* angularVelocity)
-{
-  ReadAngularVelocity(angularVelocity);
-}
-
-//_____________________________________________________________________________
-
-void LSM6DS0_GetAngle(int16_t* angle)
-{
-  uint16_t numSamples = ReadBufferedAngularPosition();
-
-  if (!IsCalibrated)
-  {
-    CalibrateZeroGyro(numSamples);
-  }
-  else
-  {
-    CalculateAngle(angle, numSamples);
-  }
-}
-
-//_____________________________________________________________________________
-
-void LSM6DS0_ResetAngle(void)
-{
-  for (uint8_t i = 0u; i < 3u; i++)
-  {
-    Teta[i] = 0;
-  }
-}
-
-//_____________________________________________________________________________
-
-void LSM6DS0_ResetCalibration(void)
-{
-  for (uint8_t i = 0u; i < 3u; i++)
-  {
-    ZeroGyro[i] = 0;
-  }
-
-  IsCalibrated = false;
 }
 
 //_____________________________________________________________________________
@@ -849,7 +743,7 @@ static void EnableGyroDataReadyInterrupt(T_Interrupt interrupt)
 
 //_____________________________________________________________________________
 
-static void ReadAngularVelocity(T_Axis* angularVelocity)
+void LSM6DS0_ReadAngularVelocity(T_Axis* angularVelocity)
 {
   uint8_t velocity[6u];
 
@@ -864,7 +758,7 @@ static void ReadAngularVelocity(T_Axis* angularVelocity)
 
 //_____________________________________________________________________________
 
-static uint16_t ReadBufferedAngularPosition(void)
+uint16_t LSM6DS0_ReadBufferedAngularPosition(void)
 {
   uint8_t temp_data[7u] = {0u};
   uint16_t length = 0x00u;
@@ -896,16 +790,16 @@ static uint16_t ReadBufferedAngularPosition(void)
     numSamples = length; // Fifo format: TAG + 6 bytes for the XYZ samples.
     //ESP_LOGD(Tag, "numSamples=%d", numSamples);
 
-    if (numSamples >= 3*BUFFER_SIZE) {
-    	numSamples = 3*BUFFER_SIZE;
+    if (numSamples >= 3*GYRO_BUFFER_SIZE) {
+    	numSamples = 3*GYRO_BUFFER_SIZE;
     }
 
     for (uint16_t index = 0u; index < numSamples; index++)
     {
     	I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_DATA_OUT_L_REG_ADDRESS, temp_data, 7u);
-    	Buffer[0][i] = (int16_t)((uint16_t)temp_data[1u] << 8u) | temp_data[0u];
-    	Buffer[1][i] = (int16_t)((uint16_t)temp_data[3u] << 8u) | temp_data[2u];
-    	Buffer[2][i] = (int16_t)((uint16_t)temp_data[5u] << 8u) | temp_data[4u];
+    	GyroBuffer[0][i] = (int16_t)((uint16_t)temp_data[1u] << 8u) | temp_data[0u];
+    	GyroBuffer[1][i] = (int16_t)((uint16_t)temp_data[3u] << 8u) | temp_data[2u];
+    	GyroBuffer[2][i] = (int16_t)((uint16_t)temp_data[5u] << 8u) | temp_data[4u];
     	i++;
     }
   }
@@ -966,55 +860,6 @@ static void SetIntegratorFactors(T_Gyro_OutputDataRate rate)
     default:
       // Do nothing
       break;
-  }
-}
-
-//_____________________________________________________________________________
-
-static void CalibrateZeroGyro(uint16_t number)
-{
-  static uint16_t num = 0u;
-
-  num += number;
-
-  for (uint8_t axis = 0u; axis < 3u; axis++)
-  {
-    for (uint16_t index = 0u; index < number; index++)
-    {
-      ZeroGyro[axis] += Buffer[axis][index];
-    }
-  }
-
-  if (num >= 16)
-  {
-    for (uint8_t axis = 0u; axis < 3u; axis++)
-    {
-      ZeroGyro[axis] /= num;
-      //ESP_LOGI(Tag, "Index : %d, ZeroGyro: %d", i, ZeroGyro[i]);
-    }
-
-    num = 0u;
-    IsCalibrated = true;
-  }
-}
-
-//_____________________________________________________________________________
-
-static void CalculateAngle(int16_t* angle, uint16_t number)
-{
-  int32_t sum[3] = {0, 0, 0};
-  int64_t gyroCorr[3] = {0, 0, 0};
-  //ESP_LOGI(Tag, "number=%d", number);
-  for (uint8_t axis = 0u; axis < 3u; axis++)
-  {
-    for (uint8_t index = 0u; index < number; index++)
-    {
-      sum[axis] += Buffer[axis][index];
-    }
-
-    gyroCorr[axis] = (sum[axis] - (number * ZeroGyro[axis]));
-    Teta[axis] += (((Mul + Offset) * gyroCorr[axis]) / Div);
-    angle[axis] = Teta[axis];
   }
 }
 

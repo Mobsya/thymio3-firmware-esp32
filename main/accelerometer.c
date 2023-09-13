@@ -85,11 +85,11 @@ void Accelerometer_Init(void)
 void Accelerometer_ReadAcceleration(void)
 {
 	if(currAcc == LSM6DS3US) {
-		LSM6DS3US_GetAcceleration(&Acceleration);
+		LSM6DS3US_ReadAcceleration(&Acceleration);
 	} else if(currAcc == LSM6DS3TR) {
-		LSM6DS3TR_GetAcceleration(&Acceleration);
+		LSM6DS3TR_ReadAcceleration(&Acceleration);
 	} else if(currAcc == LSM6DS0) {
-		LSM6DS0_GetAcceleration(&Acceleration);
+		LSM6DS0_ReadAcceleration(&Acceleration);
 	}
 
   vmVariables.acc[0] = Acceleration.X;
@@ -118,11 +118,11 @@ int16_t Accelerometer_GetAccelerationY(void)
 void Accelerometer_ReadTapSource(void)
 {
 	if(currAcc == LSM6DS3US) {
-		LSM6DS3US_GetTapSource(&TapSource);
+		LSM6DS3US_ReadTapSource(&TapSource);
 	} else if(currAcc == LSM6DS3TR) {
-		LSM6DS3TR_GetTapSource(&TapSource);
+		LSM6DS3TR_ReadTapSource(&TapSource);
 	} else if(currAcc == LSM6DS0) {
-		LSM6DS0_GetTapSource(&TapSource);
+		LSM6DS0_ReadTapSource(&TapSource);
 	}
 
   vmVariables.acc_tap = TapSource;

@@ -20,6 +20,8 @@
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
+#include "gpio.h"
+#include "pins_def.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -38,6 +40,11 @@ typedef struct
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
+static const T_GpioPinConfig PinConfig[2] =
+{
+  {ACC_INT1_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_RisingEdge},
+  {ACC_INT2_PIN, E_GpioMode_Input, E_GpioResistor_None, E_GpioLevel_Low, E_GpioInterrupt_RisingEdge}
+};
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition

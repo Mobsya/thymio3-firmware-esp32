@@ -31,7 +31,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define GROUND_IR_THRESHOLD    130
+#define GROUND_IR_THRESHOLD    280 //130
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -45,7 +45,7 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
-static const char* Tag = "common";
+//static const char* Tag = "common";
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -204,7 +204,7 @@ void Common_SetSpeedUsingButtons(int16_t* speed, int16_t increment, int16_t max,
 
 //_____________________________________________________________________________
 
-void Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue)
+uint8_t Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue)
 {
   if ((vmVariables.ground_delta[0] < GROUND_IR_THRESHOLD) ||
       (vmVariables.ground_delta[1] < GROUND_IR_THRESHOLD))
@@ -217,10 +217,12 @@ void Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue)
     Leds_SetFrontRightBrightness(MAX_BRIGHTNESS, 0u, 0u);
     Leds_SetBackLeftBrightness(red, green, blue);
     Leds_SetBackRightBrightness(red, green, blue);
+    return 1;
   }
   else
   {
     // Yellow pulse
     Leds_SetBodyBrightness(red, green, blue);
+    return 0;
   }
 }

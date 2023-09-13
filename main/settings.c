@@ -34,12 +34,12 @@
 #define DEFAULT_RIGHT_MOTOR     256
 #define DEFAULT_OFFSET_GYRO       0
 #define DEFAULT_VOLUME           80
-#define DEFAULT_WHITE_RED      1140
-#define DEFAULT_WHITE_GREEN    1350
-#define DEFAULT_WHITE_BLUE     1110
-#define DEFAULT_BLACK_RED       710
-#define DEFAULT_BLACK_GREEN     940
-#define DEFAULT_BLACK_BLUE      700
+#define DEFAULT_WHITE_RED      11036
+#define DEFAULT_WHITE_GREEN    14470
+#define DEFAULT_WHITE_BLUE     13334
+#define DEFAULT_BLACK_RED       4214
+#define DEFAULT_BLACK_GREEN     6055
+#define DEFAULT_BLACK_BLUE      5312
 #define DEFAULT_RC5_ADDRESS       0
 
 //-----------------------------------------------------------------------------

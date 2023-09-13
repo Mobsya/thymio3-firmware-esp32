@@ -40,6 +40,7 @@
 #include "rc5.h"
 #include "settings.h"
 #include "wifi_manager.h"
+#include "angle_controller.h"
 
 #include "aseba_esp32.h"  // TODO Add GetSpeed in common to remove this line
 
@@ -295,6 +296,7 @@ static void RunBehaviorTask(void* arg)
   while (1)
   {
     RunBehaviors();
+    AngleController_Update();
     vTaskDelay(40 / portTICK_PERIOD_MS);  // MAX_BRIGHTNESS = 16
   }
 }

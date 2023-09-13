@@ -9,7 +9,7 @@
 //! \file    friendly.c
 //! \brief   This module provides the useful functions to use the friendly mode
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -50,7 +50,7 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
-static const char* Tag = "friendly";
+//static const char* Tag = "friendly";
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -87,8 +87,10 @@ void Friendly_Stop(void)
 
 void Friendly_Run(void)
 {
-	static char does_see_friend;
-
+	static char does_see_friend = 0; // Used when communicating with another robot
+  static char sound_done = 0;
+  static unsigned char led_state = 0;
+	static char led_delta = 1;
   int16_t max = vmVariables.prox[0];
   int16_t mi = 0;
   int16_t t;
@@ -110,170 +112,6 @@ void Friendly_Run(void)
   t = 2 - mi;
   speedDiff = t * (speed / 2);
 
-  if (max > 3500) //600)
-  {
-    //speed_l = (600 - max) / 2;
-    speed_l = (3500 - max) / 2;
-  }
-
-  if (max > 4000) //700)
-  {
-    speed_l = -speed;
-  }
-
-  if (max < 3000) //520)
-  {
-    //t = 52 - ((max - 175) / 7);
-    t = 300 - (max - 1000) / 7;
-    speed_l = t;
-  }
-
-  if (max < 2000) //350)
-  {
-    speed_l = speed;
-  }
-
-  if (speed_l > speed)
-  {
-    speed_l = speed;
-  }
-
-  if (speed_l < -speed)
-  {
-    speed_l = -speed;
-  }
-
-  if (max < DETECT)
-  {
-    if (does_see_friend)
-    {
-      Common_SetTargetSpeed(speed, speed);
-    }
-    else
-    {
-      Common_SetTargetSpeed(0, 0);
-    }
-  }
-  else
-  {
-    Common_SetTargetSpeed((speed_l - speedDiff), (speedDiff + speed_l));
-  }
-
-#if 0
-  // LEDs management
-	if(does_see_friend > 0 && sound_done) {
-		unsigned char rgb[3];
-
-		rainbow_get(rgb);
-
-		leds_set_top(rgb[0],rgb[1],rgb[2]);
-		leds_set_bl(rgb[2],rgb[0],rgb[1]);
-		leds_set_br(rgb[1],rgb[2],rgb[0]);
-	} else
-		leds_set_body_rgb(0,body_color_pulse_get(),0);
-
-	if(does_see_friend) {
-		led_state += led_delta;
-		if(led_state >= 31)
-			led_delta = -1;
-		else if(led_state == 0)
-			led_delta = 1;
-
-		leds_set_circle(0, led_state >> 4, led_state >> 3, led_state, 32, led_state, led_state >> 3, led_state >> 4);
-	} else
-		leds_set_circle(0,0,0,32,32,32,0,0);
-#endif
-
-	// Buttons management
-	Common_SetSpeedUsingButtons(&speed, SPEED_INCREMENT, MAX_SPEED, MIN_SPEED);
-
-
-	// Audio management
-  when(max > DETECT)
-  {
-    Codec_PlayMP3FileFromFlash(E_SoundIndex_Detection);
-  }
-#if 0
-	when(max > DETECT)
-		play_sound(SOUND_F_DETECT);
-
-	if(speed_diff == 0 && speed_l == 0 && sound_done == 0 && max > DETECT) {
-		sound_done = 1;
-		play_sound(SOUND_F_OK);
-	}
-	if(speed_diff != 0 || max < DETECT)
-		sound_done = 0;
-#endif
-
-	// "Cliff" detection handling
-  Common_HandleTableEdgeDetection(0u, brightness, 0u);
-
-  if(vmVariables.ground_delta[0] < 130 || vmVariables.ground_delta[1] < 130) {
-	  Common_SetTargetSpeed(0, 0);
-  		//leds_set(LED_R_BOT_L, 32);
-  		//leds_set(LED_R_BOT_R, 32);
-  	} //else {
-  	//	leds_set(LED_R_BOT_L, 0);
-  	//	leds_set(LED_R_BOT_R, 0);
-  	//}
-
-  	if(does_see_friend)
-  		does_see_friend--;
-
-  	if(IS_EVENT(EVENT_STM32)) {
-  		CLEAR_EVENT(EVENT_STM32);
-  		does_see_friend = 0;
-  		mi = 0;
-  		max = vmVariables.intensity[0];
-  		vmVariables.intensity[0] = 0;
-  		for(int i = 1; i < 7; i++) {
-  			if(vmVariables.intensity[i] > max) {
-  				mi = i;
-  				max = vmVariables.intensity[i];
-  			}
-  			vmVariables.intensity[i] = 0;
-  		}
-  		if(max > 3000) {
-  			vmVariables.ir_tx_data = mi;
-  			if(vmVariables.rx_data > 0 && vmVariables.rx_data < 4) {
-  				when(mi == 2) {
-  					//play_sound(SOUND_F_OK);
-  				}
-  				if(mi == 2)
-  					does_see_friend = 6;
-  			}
-  		}
-  	}
-
-#if 0
-  static char sound_done;
-  static char does_see_friend = 1;  // FIXME
-  static unsigned char led_state;
-  static char led_delta = 1;
-  static int16_t speed = 300;
-
-#define DETECT 500
-
-  int i;
-  int speed_diff;
-  int speed_l = 0;
-  int max, mi, t;
-
-  max = vmVariables.prox[0];
-  mi = 0;
-
-  for (i = 1; i < 5; i++)
-  {
-    if (vmVariables.prox[i] > max)
-    {
-      max = vmVariables.prox[i];
-      mi = i;
-    }
-  }
-
-  t = (2 - mi);
-  speed_diff = t * (speed / 2);
-
   if (max > 3500)
   {
     speed_l = (3500 - max) / 2;
@@ -286,7 +124,7 @@ void Friendly_Run(void)
 
   if (max < 3000)
   {
-    t = 300 - ((max - 1000) / 7);
+    t = 300 - (max - 1000) / 7;
     speed_l = t;
   }
 
@@ -305,43 +143,22 @@ void Friendly_Run(void)
     speed_l = -speed;
   }
 
-  if (max < DETECT)
-  {
-    //if (does_see_friend)
-    {
-      Common_SetTargetSpeed(speed, speed);
-    }
-#if 0  // FIXME
-    else
-    {
-      Common_SetTargetSpeed(0, 0);
-    }
-#endif
-  }
-  else
-  {
-    Common_SetTargetSpeed((speed_l - speed_diff), (speed_diff + speed_l));
-  }
+  // LEDs management
+	if(does_see_friend > 0 && sound_done) {
+		//unsigned char rgb[3];
 
-  if ((does_see_friend > 0) && sound_done)
-  {
-    unsigned char rgb[3];
-
-    GetRainbow(rgb);
+    //GetRainbow(rgb);
 
     // FIXME Leds_SetTopBrightness(rgb[0], rgb[1], rgb[2]);
     // FIXME Leds_SetBottomLeftBrightness(rgb[2], rgb[0], rgb[1]);
     // FIXME Leds_SetBottomRightBrightness(rgb[1], rgb[2], rgb[0]);
-  }
-  else
-  {
+	} else {
     Leds_SetBodyBrightness(0, Common_GetBodyColorPulse(), 0);
   }
 
-  if (does_see_friend)
-  {
-    led_state += led_delta;
 
+	if(does_see_friend) {
+		led_state += led_delta;
     if (led_state >= 31)
     {
       led_delta = -1;
@@ -355,89 +172,77 @@ void Friendly_Run(void)
       // Do nothing
     }
 
-    Leds_SetCircleBrightness(0, (led_state >> 4), (led_state >> 3), led_state, MAX_BRIGHTNESS, led_state, (led_state >> 3),
-                             (led_state >> 4));
-  }
-  else
-  {
-    Leds_SetCircleBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u);
+    Leds_SetCircleBrightness(0, (led_state >> 4), (led_state >> 3), led_state, MAX_BRIGHTNESS, led_state, (led_state >> 3), (led_state >> 4));
+	} else {
+		Leds_SetCircleBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u);
   }
 
-  // Buttons management
-  SetSpeedUsingButtons(&speed);
 
+	// Buttons management
+	Common_SetSpeedUsingButtons(&speed, SPEED_INCREMENT, MAX_SPEED, MIN_SPEED);
+
+
+	// Audio management
   when(max > DETECT)
   {
-    // play_sound(SOUND_F_DETECT);  // FIXME
+    Codec_PlayMP3FileFromFlash(E_SoundIndex_Detection);
   }
 
-  if (speed_diff == 0 && speed_l == 0 && sound_done == 0 && max > DETECT)
-  {
-    sound_done = 1;
-    //play_sound(SOUND_F_OK);  // FIXME
+	if(speedDiff == 0 && speed_l == 0 && sound_done == 0 && max > DETECT) {
+		sound_done = 1;
+		//play_sound(SOUND_F_OK); // FIXME
+    Codec_PlayMP3FileFromFlash(E_SoundIndex_Good);
+	}
+	if(speedDiff != 0 || max < DETECT) {
+		sound_done = 0;
   }
 
-  if ((speed_diff != 0) || (max < DETECT))
-  {
-    sound_done = 0;
-  }
-
-  if ((vmVariables.ground_delta[0] < 130) || (vmVariables.ground_delta[1] < 130))
-  {
-    Common_SetTargetSpeed(0, 0);
-    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, MAX_BRIGHTNESS);
-    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, MAX_BRIGHTNESS);
-  }
-  else
-  {
-    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Left, 0u);
-    // FIXME Leds_SetSingleBrightness(E_Led_R_Bottom_Right, 0u);
-  }
-
-  if (does_see_friend)
-  {
-    does_see_friend--;
-  }
-#if 0  // FIXME
-  if (IS_EVENT(EVENT_DATA))
-  {
-    CLEAR_EVENT(EVENT_DATA);
-    does_see_friend = 0;
-    mi = 0;
-    max = vmVariables.intensity[0];
-    vmVariables.intensity[0] = 0;
-
-    for (i = 1; i < 7; i++)
+	// "Cliff" detection handling
+  if(Common_HandleTableEdgeDetection(0u, brightness, 0u) == 0) { // No table edge detected
+    if (max < DETECT)
     {
-      if (vmVariables.intensity[i] > max)
+      if (does_see_friend)
       {
-        mi = i;
-        max = vmVariables.intensity[i];
+        Common_SetTargetSpeed(speed, speed);
       }
-
-      vmVariables.intensity[i] = 0;
-    }
-
-    if (max > 3000)
-    {
-      vmVariables.ir_tx_data = mi;
-
-      if ((vmVariables.rx_data > 0) && (vmVariables.rx_data < 4))
+      else
       {
-        when(mi == 2)
-        {
-          play_sound(SOUND_F_OK);
-        }
-
-        if (mi == 2)
-        {
-          does_see_friend = 6;
-        }
+        Common_SetTargetSpeed(0, 0);
       }
     }
+    else
+    {
+      Common_SetTargetSpeed((speed_l - speedDiff), (speedDiff + speed_l));
+    }
   }
-#endif
-#endif
+
+  if(does_see_friend)
+  	does_see_friend--;
+
+  if(IS_EVENT(EVENT_STM32)) { // IS_EVENT(EVENT_DATA)) { // Data coming from IR communication, this is not implemented in Thymio3
+  	CLEAR_EVENT(EVENT_STM32);
+  	does_see_friend = 0;
+  	mi = 0;
+  	max = vmVariables.intensity[0];
+  	vmVariables.intensity[0] = 0;
+  	for(int i = 1; i < 7; i++) {
+  		if(vmVariables.intensity[i] > max) {
+  			mi = i;
+  			max = vmVariables.intensity[i];
+  		}
+  		vmVariables.intensity[i] = 0;
+  	}
+  	if(max > 3000) {
+  		vmVariables.ir_tx_data = mi;
+  		if(vmVariables.rx_data > 0 && vmVariables.rx_data < 4) {
+  			when(mi == 2) {
+  				//play_sound(SOUND_F_OK); //FIXME
+  			}
+  			if(mi == 2)
+  				does_see_friend = 6;
+  		}
+  	}
+  }
 }
 
 //_____________________________________________________________________________

@@ -32,6 +32,7 @@
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
+#define GYRO_BUFFER_SIZE 128
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -97,6 +98,18 @@ extern void Gyroscope_ResetAngle(void);
 //! \return    None
 extern void Gyroscope_ResetCalibration(void);
 
+//! \brief     Calibrate gyroscope
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    True if calibration performed correctly
+extern bool Gyroscope_Calibrate(void);
+
+//! \brief     Get current calibration values.
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    True if calibration performed correctly
+extern void Gyroscope_GetCalibration(int16_t* values);
+
 //! \brief     Set the offset
 //! \pre       First initialize the gyroscope
 //! \param     offset - Offset
@@ -108,5 +121,17 @@ extern void Gyroscope_SetOffset(int32_t offset);
 //! \param     None
 //! \return    Raw angular velocities values
 T_Axis Gyroscope_GetAngularVelocity(void);
+
+//! \brief     Enable continuous gyro calibration
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    None
+void Gyroscope_EnableContinuousCalib(void);
+
+//! \brief     Disable continuous gyro calibration
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    None
+void Gyroscope_DisableContinuousCalib(void);
 
 #endif // GYROSCOPE_H_

@@ -57,7 +57,7 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
-static const char* Tag = "line_tracker";
+//static const char* Tag = "line_tracker";
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes

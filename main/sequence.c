@@ -49,8 +49,6 @@
 
 #define MAX_ROTATION_SPEED             500  //!< Maximum rotation speed allowed
 
-#define ROTATION_ANGLE               16383  //!< Rotation angle corresponding to 90° (0x3FFF)
-
 #define COLLISION_THRESHOLD            700  //!< Collision threshold
 #define NO_COLLISION_THRESHOLD          10  //!< No collision threshold
 
@@ -106,7 +104,6 @@ static T_State State = E_State_Record;                 //!< State of the main st
 static T_PlayState PlayState = E_PlayState_Replay;     //!< State of the play state machine
 
 static uint8_t Current = 0u;                           //!< Current value of the sequence table
-static int16_t AngleTarget = 0;                        //!< Target used to execute a rotation
 
 static uint8_t Sequence[SEQUENCE_BUFFER_SIZE] = {0u};  //!< Sequence table
 static uint8_t WrPos = 0u;                             //!< Write position cursor
@@ -455,16 +452,14 @@ static void HandleReplay(void)
       if (Current == (1u << E_Button_Left))
       {
         RotationIsInProgress = true;
-        AngleTarget = ROTATION_ANGLE;  // +90°
-        Gyroscope_ResetAngle();
+        AngleController_Start(90, MAX_ROTATION_SPEED);
         PlayState = E_PlayState_Rotation;
       }
 
       if (Current == (1u << E_Button_Right))
       {
         RotationIsInProgress = true;
-        AngleTarget = -ROTATION_ANGLE;  // -90°
-        Gyroscope_ResetAngle();
+        AngleController_Start(-90, MAX_ROTATION_SPEED);
         PlayState = E_PlayState_Rotation;
       }
 
@@ -527,7 +522,7 @@ static void HandleRotation(void)
 
     PlayState = E_PlayState_Collision;
   }
-  else if (AngleController_Update(AngleTarget, MAX_ROTATION_SPEED) == 0)
+  else if (AngleController_Completed())
   {
     ObstacleIsDetected = false;
     RotationIsInProgress = false;

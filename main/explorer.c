@@ -47,7 +47,7 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
-static const char* Tag = "explorer";
+//static const char* Tag = "explorer";
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes

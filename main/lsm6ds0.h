@@ -57,13 +57,13 @@ extern void LSM6DS0_InitAccelerometer(void);
 //! \pre       First initialize the LSM6DS0 device
 //! \param     acceleration - Acceleration
 //! \return    None
-extern void LSM6DS0_GetAcceleration(T_Axis* acceleration);
+extern void LSM6DS0_ReadAcceleration(T_Axis* acceleration);
 
 //! \brief     Get the acceleration tap source
 //! \pre       First initialize the LSM6DS0 device
 //! \param     source - Source of the tap
 //! \return    None
-extern void LSM6DS0_GetTapSource(uint8_t* source);
+extern void LSM6DS0_ReadTapSource(uint8_t* source);
 
 //! \brief     Initialize the gyroscope of the LSM6DS0 device
 //! \pre       None
@@ -75,13 +75,14 @@ extern void LSM6DS0_InitGyroscope(int16_t offset);
 //! \pre       First initialize the LSM6DS0 device
 //! \param     angularPosition - Angular position
 //! \return    None
-extern void LSM6DS0_GetAngularVelocity(T_Axis* angularVelocity);
+//! \image     html ReadAngle.svg
+extern void LSM6DS0_ReadAngularVelocity(T_Axis* angularVelocity);
 
-extern void LSM6DS0_GetAngle(int16_t* angle);
-
-extern void LSM6DS0_ResetAngle(void);
-
-extern void LSM6DS0_ResetCalibration(void);
+//! \brief     Read the buffered data from the gyroscope
+//! \pre       First initialize the LSM6DS0 device
+//! \param     None
+//! \return    Number of samples read
+extern uint16_t LSM6DS0_ReadBufferedAngularPosition(void);
 
 extern void LSM6DS0_SetOffset(int32_t offset);
 
