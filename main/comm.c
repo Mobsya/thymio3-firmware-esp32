@@ -174,8 +174,9 @@ static void RunCommTask(void* arg)
       STM32_SetMotorCurrents(rx, MOTOR_CURRENTS_POSITION);
       STM32_SetPwmDutyCycles(rx, PWM_DUTY_CYCLES_POSITION);
       STM32_SetMicrophoneIntensity(rx[11]);
+      //ESP_LOGE(Tag, "mic = %d", rx[11]);
       //STM32_SetMicrophoneThreshold(rx[13]);
-      STM32_SetMicrophoneMean(rx[12]);
+      STM32_SetMicrophoneMean(rx[12]); // Not implemented in the STM32
       STM32_SetProxIRValues(rx, PROX_IR_POSITION);
       STM32_SetGroundIRValues(rx, GROUND_IR_POSITION);
       STM32_SetProxIRData(rx, PROX_IR_DATA_POSITION);

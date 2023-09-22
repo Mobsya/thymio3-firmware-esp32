@@ -189,7 +189,7 @@ void Gyroscope_ReadAngle(void)
 					}
 					ZeroGyroSum[axis] = 0;
 					ZeroGyroNumSamples[axis] = 0;
-					ESP_LOGE(Tag, "Index : %d, ZeroGyro: %d", axis, ZeroGyro[axis]);
+					//ESP_LOGE(Tag, "Index: %d, ZeroGyro: %d", axis, ZeroGyro[axis]);
 				}
 			}
 		}

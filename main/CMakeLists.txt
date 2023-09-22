@@ -68,6 +68,8 @@ set(COMPONENT_SRCS
     painter.h
     power.c
     power.h
+    python_handler.c
+    python_handler.h
     rc5.c
     rc5.h
     sensors.c

@@ -34,6 +34,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
 #include "esp_task.h"
@@ -59,6 +60,7 @@
 #include "py/repl.h"
 #include "py/gc.h"
 #include "py/mphal.h"
+#include "py/builtin.h"
 #include "shared/readline/readline.h"
 #include "shared/runtime/pyexec.h"
 #include "uart.h"
@@ -82,6 +84,12 @@
 #else
 #define MP_TASK_STACK_LIMIT_MARGIN (1024)
 #endif
+
+static int8_t mp_component_state = -1;
+static EventGroupHandle_t mp_component_event_group;
+uint8_t scriptPresent[7] = {0};
+
+const int EVT_EXEC_MODE = BIT0;
 
 int vprintf_null(const char *format, va_list ap) {
     // do nothing: this is used as a log target during raw repl mode
@@ -175,17 +183,99 @@ soft_reset:
         }
     }
 
+    // Check presence of mainID.py scripts
+    if(mp_import_stat("main1.py") != MP_IMPORT_STAT_FILE) {
+        scriptPresent[0] = 0;
+    } else {
+        scriptPresent[0] = 1;
+    }
+    if(mp_import_stat("main2.py") != MP_IMPORT_STAT_FILE) {
+        scriptPresent[1] = 0;
+    } else {
+        scriptPresent[1] = 1;
+    }    
+    if(mp_import_stat("main3.py") != MP_IMPORT_STAT_FILE) {
+        scriptPresent[2] = 0;
+    } else {
+        scriptPresent[2] = 1;
+    }    
+    if(mp_import_stat("main4.py") != MP_IMPORT_STAT_FILE) {
+        scriptPresent[3] = 0;
+    } else {
+        scriptPresent[3] = 1;
+    }
+    if(mp_import_stat("main5.py") != MP_IMPORT_STAT_FILE) {
+        scriptPresent[4] = 0;
+    } else {
+        scriptPresent[4] = 1;
+    }    
+    if(mp_import_stat("main6.py") != MP_IMPORT_STAT_FILE) {
+        scriptPresent[5] = 0;
+    } else {
+        scriptPresent[5] = 1;
+    }    
+    if(mp_import_stat("main7.py") != MP_IMPORT_STAT_FILE) {
+        scriptPresent[6] = 0;
+    } else {
+        scriptPresent[6] = 1;
+    }    
+
     for (;;) {
-        if (pyexec_mode_kind == PYEXEC_MODE_RAW_REPL) {
-            vprintf_like_t vprintf_log = esp_log_set_vprintf(vprintf_null);
-            if (pyexec_raw_repl() != 0) {
+      
+        // If REPL was chosen then skip the wait event. This is because the REPL can be switched from "raw" to "friendly" or viceversa  
+        // (e.g. when using pyboard.py) and this imply that the code will exit the main loop and restart from "soft_reset".
+        if(mp_component_state == -1) {
+            xEventGroupWaitBits(mp_component_event_group, EVT_EXEC_MODE, true, false, portMAX_DELAY); // Wait for an event to be raised
+            ESP_LOGE("mp_component", "script=%d", mp_component_state);
+        }
+
+        switch(mp_component_state) {
+            case 0: // REPL
+                while(1) {
+                    if (pyexec_mode_kind == PYEXEC_MODE_RAW_REPL) {
+                        vprintf_like_t vprintf_log = esp_log_set_vprintf(vprintf_null);
+                        if (pyexec_raw_repl() != 0) {
+                            break;
+                        }
+                        esp_log_set_vprintf(vprintf_log);
+                    } else {
+                        if (pyexec_friendly_repl() != 0) {
+                            break;
+                        }
+                    }
+                }
+                goto soft_reset_exit;
                 break;
-            }
-            esp_log_set_vprintf(vprintf_log);
-        } else {
-            if (pyexec_friendly_repl() != 0) {
+            case 1: // main1.py           
+                pyexec_file("main1.py");
+                mp_component_state = -1; // Execute the script only once
                 break;
-            }
+            case 2: // main2.py
+                pyexec_file("main2.py");
+                mp_component_state = -1; // Execute the script only once
+                break;
+            case 3: //main3.py
+                pyexec_file("main3.py");
+                mp_component_state = -1; // Execute the script only once
+                break;
+            case 4: //main4.py
+                pyexec_file("main4.py");
+                mp_component_state = -1; // Execute the script only once
+                break;
+            case 5: //main5.py
+                pyexec_file("main5.py");
+                mp_component_state = -1; // Execute the script only once
+                break;
+            case 6: //main6.py
+                pyexec_file("main6.py");
+                mp_component_state = -1; // Execute the script only once
+                break;
+            case 7: //main7.py
+                pyexec_file("main7.py");
+                mp_component_state = -1; // Execute the script only once
+                break;
+            default:
+                break; 
         }
     }
 
@@ -229,6 +319,7 @@ soft_reset_exit:
     goto soft_reset;
 }
 
+
 void boardctrl_startup(void) {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -243,8 +334,11 @@ void init_micropython(void) {
     // This defaults to initialising NVS.
     MICROPY_BOARD_STARTUP();
 
+    mp_component_event_group = xEventGroupCreate();
+
     // Create and transfer control to the MicroPython task.
-    printf("task ret = %d\n", xTaskCreatePinnedToCore(mp_task, "mp_task", MP_TASK_STACK_SIZE / sizeof(StackType_t), NULL, MP_TASK_PRIORITY, &mp_main_task_handle, MP_TASK_COREID));
+    //printf("task ret = %d\n", xTaskCreatePinnedToCore(mp_task, "mp_task", MP_TASK_STACK_SIZE / sizeof(StackType_t), NULL, MP_TASK_PRIORITY, &mp_main_task_handle, MP_TASK_COREID));
+    xTaskCreatePinnedToCore(mp_task, "mp_task", MP_TASK_STACK_SIZE / sizeof(StackType_t), NULL, MP_TASK_PRIORITY, &mp_main_task_handle, MP_TASK_COREID);
 }
 
 void nlr_jump_fail(void *val) {
@@ -273,6 +367,15 @@ void *esp_native_code_commit(void *buf, size_t len, void *reloc) {
     memcpy(p, buf, len);
     return p;
 	//return NULL;
+}
+
+void exec_script(uint8_t id) {
+    mp_component_state = id;
+    xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE); // Tell the main micropython loop to execute REPL or a user script.
+}
+
+uint8_t script_is_present(uint8_t id) {
+    return scriptPresent[id-1];
 }
 
 MP_REGISTER_ROOT_POINTER(mp_obj_t native_code_pointers);
