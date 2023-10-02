@@ -159,6 +159,7 @@ void Sensors_Stop(void)
 
 static void RunSensorsTask(void* arg)
 {
+  int64_t time_start, time_end;
 
   ESP_LOGI(Tag, "Start Sensors Task");
 
@@ -174,11 +175,11 @@ static void RunSensorsTask(void* arg)
 
   while (1)
   {
+    time_start = esp_timer_get_time();
 
     xSemaphoreTake(I2CMutex, portMAX_DELAY);
 
-    // Every 20 [ms], 50 [Hz] (vTaskDelay = 20 [ms])
-    // The delay at the end of the loop doesn't take in consideration the time needed to read the sensors, that takes about 33-39 ms
+    // Time needed to read the sensors takes about 33-39 ms
     Accelerometer_ReadTapSource();
     Accelerometer_ReadAcceleration();
     Gyroscope_ReadAngularVelocity();
@@ -189,7 +190,11 @@ static void RunSensorsTask(void* arg)
 
     xSemaphoreGive(I2CMutex);
 
-    vTaskDelay(20 / portTICK_PERIOD_MS);
+		time_end = esp_timer_get_time();
+		//printf("%lld usec\n", time_end - time_start);
+		if((time_end - time_start) < 62500) { // Run task @ 16 Hz like in T2 (acc rate)
+			vTaskDelay((62500 - (time_end - time_start))/1000 / portTICK_PERIOD_MS);
+		}
   }
 }
 
@@ -204,7 +209,7 @@ static void RunButtonsTask(void* arg) {
 		}
 		time_end = esp_timer_get_time();
 		//printf("%lld usec\n", time_end - time_start);
-		if((time_end - time_start) < 50000) { // Run task @ 20 Hz
+		if((time_end - time_start) < 50000) { // Run task @ 20 Hz like in T2
 			vTaskDelay((50000 - (time_end - time_start))/1000 / portTICK_PERIOD_MS);
 		}
 	}

@@ -119,6 +119,7 @@ static T_ProxIR ProxIR;
 static T_GroundIR GroundIR;
 
 static int16_t Vbat = 0;
+static uint8_t clap_count = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -270,6 +271,15 @@ int16_t STM32_GetRightMotorTarget(void)
 void STM32_SetMicrophoneIntensity(int16_t intensity)
 {
   vmVariables.micro_intensity = intensity;
+  if(clap_count == 0) {
+    if(intensity > CLAP_THR) {
+      SET_EVENT(EVENT_MIC);
+      //ESP_LOGE(Tag, "clap");
+      clap_count = 4; // Avoid many events for the same clap. 4 cycles means 4*20ms=80ms
+    }
+  } else {
+    clap_count--;
+  }
 }
 
 //_____________________________________________________________________________
@@ -340,12 +350,12 @@ void STM32_SetGroundIRValues(int16_t* buffer, uint16_t position)
   GroundIR.LeftDelta      = buffer[position + 4u];
   GroundIR.RightDelta     = buffer[position + 5u];
 
-  vmVariables.ground_ambiant[E_GroundIR_Right]   = GroundIR.LeftAmbiant;
-  vmVariables.ground_ambiant[E_GroundIR_Left]    = GroundIR.RightAmbiant;
-  vmVariables.ground_reflected[E_GroundIR_Right] = GroundIR.LeftReflected;
-  vmVariables.ground_reflected[E_GroundIR_Left]  = GroundIR.RightReflected;
-  vmVariables.ground_delta[E_GroundIR_Right]     = GroundIR.LeftDelta;
-  vmVariables.ground_delta[E_GroundIR_Left]      = GroundIR.RightDelta;
+  vmVariables.ground_ambiant[E_GroundIR_Left]   = GroundIR.LeftAmbiant;
+  vmVariables.ground_ambiant[E_GroundIR_Right]    = GroundIR.RightAmbiant;
+  vmVariables.ground_reflected[E_GroundIR_Left] = GroundIR.LeftReflected;
+  vmVariables.ground_reflected[E_GroundIR_Right]  = GroundIR.RightReflected;
+  vmVariables.ground_delta[E_GroundIR_Left]     = GroundIR.LeftDelta;
+  vmVariables.ground_delta[E_GroundIR_Right]      = GroundIR.RightDelta;
 }
 
 //_____________________________________________________________________________

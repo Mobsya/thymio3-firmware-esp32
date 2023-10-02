@@ -109,26 +109,26 @@ void Friendly_Run(void)
     }
   }
 
-  t = 2 - mi;
+  t = 2 - mi; // Stop rotation when robot is toward the object (=> prox 2 max)
   speedDiff = t * (speed / 2);
 
-  if (max > 3500)
+  if (max > 2800) // Object near the robot, start going backward slowly
   {
-    speed_l = (3500 - max) / 2;
+    speed_l = (2800 - max) / 2;
   }
 
-  if (max > 4000)
+  if (max > 3200) // Object really near to the robot, go backward fast
   {
     speed_l = -speed;
   }
 
-  if (max < 3000)
+  if (max < 1900) // Object far from the robot, start following it slowly
   {
-    t = 300 - (max - 1000) / 7;
+    t = 190 - (max - 1000) / 7;
     speed_l = t;
   }
 
-  if (max < 2000)
+  if (max < 900) // Object really far from the robot, start following it fast
   {
     speed_l = speed;
   }
@@ -183,10 +183,10 @@ void Friendly_Run(void)
 
 
 	// Audio management
-  when(max > DETECT)
-  {
-    Codec_PlayMP3FileFromFlash(E_SoundIndex_Detection);
-  }
+  //when(max > DETECT) // When something detected at long distance then play a sound...remove it because add confusion
+  //{
+  //  Codec_PlayMP3FileFromFlash(E_SoundIndex_Detection);
+  //}
 
 	if(speedDiff == 0 && speed_l == 0 && sound_done == 0 && max > DETECT) {
 		sound_done = 1;

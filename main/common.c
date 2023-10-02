@@ -64,20 +64,20 @@ uint8_t Common_GetBodyColorPulse(void)
   static int16_t pulse = 0;
   int16_t brightness = 0;
 
-  pulse++;
+  pulse++; // Tasks run at 50 Hz => each increment every 20 ms
 
   if (pulse > 0)
   {
-    brightness = pulse;
+    brightness = (pulse>>2);
 
-    if (pulse >= (int16_t)MAX_BRIGHTNESS)
+    if (pulse >= (int16_t)MAX_BRIGHTNESS << 2)  // To get to maximum brightness it takes (16*4)*20 = 1280 ms
     {
-      pulse = -((int16_t)MAX_BRIGHTNESS * 4);
+      pulse = -((int16_t)MAX_BRIGHTNESS << 3);  // To get to minimum birghtness (=0) it takes (16*8)*20 = 2560 ms
     }
   }
   else
   {
-    brightness = -pulse / 4;
+    brightness = -(pulse>>4);
   }
 
   return (uint8_t)brightness;
@@ -137,24 +137,85 @@ void Common_LimitSpeed(int16_t min, int16_t max)
 
 void Common_HandlePositiveSpeed(int16_t speed)
 {
+  static int32_t result = 0;
+  static uint8_t still_counter = 0;
+  static uint8_t escape_action_counter = 0;
+  static int16_t direction = 0, prev_direction = -1;
+  static uint8_t opposite_dir_counter = 0;
+  static uint8_t last_dir_change_counter = 100;
+
   int32_t temp1 = 0;
   int32_t temp2 = 0;
+  int16_t prox[7];
+  GetProximityValues(prox);
 
-  temp1 += (int32_t)vmVariables.prox[0];
-  temp1 += (int32_t)(vmVariables.prox[1] * 2);
-  temp1 += (int32_t)(vmVariables.prox[2] * 3);
-  temp1 += (int32_t)(vmVariables.prox[3] * 2);
-  temp1 += (int32_t)vmVariables.prox[4];
+  temp1 += (int32_t)prox[0];
+  temp1 += (int32_t)prox[1];
+  temp1 += (int32_t)prox[2];
+  temp1 += (int32_t)prox[3];
+  temp1 += (int32_t)prox[4];
 
-  temp2 += (int32_t)(vmVariables.prox[0] * -4);
-  temp2 += (int32_t)(vmVariables.prox[1] * -3);
-  temp2 += (int32_t)(vmVariables.prox[3] * 3);
-  temp2 += (int32_t)(vmVariables.prox[4] * 4);
+  temp2 -= ((int32_t)(prox[0])<<1);
+  temp2 -= ((int32_t)(prox[1])<<1);
+  temp2 -= ((int32_t)(prox[3])<<1);
+  temp2 -= ((int32_t)(prox[4])<<1);
+
+  if((abs(temp2) < 100) && (prox[2] > 750)) { // If almost straight ahead of an obstacle and near it, then give more weight either to left or right sensors in order to avoid to block
+    if(prox[1] > prox[3]) { // If left > right then give more weight to the left sensor
+      temp2 -= 300;
+    } else { // Otherwise give more weight to the right sensor
+      temp2 += 300;
+    }
+  }
 
   //ESP_LOGI(Tag, "speed = %d, temp1 = %d, temp2 = %d", speed, temp1, temp2);
+  result = (((temp1 + temp2) * speed) >> 10); // Divided by 1024
+  vmVariables.target[0] = speed - result;
+  result = (((temp1 - temp2) * speed) >> 10); // Divided by 1024
+  vmVariables.target[1] = speed - result;
 
-  vmVariables.target[0] = speed - (((temp1 + temp2) * speed) / 200); //2000);
-  vmVariables.target[1] = speed - (((temp1 - temp2) * speed) / 200); //2000);
+  // Add some extra conditions in order to escape situations in which the robot could block, e.g. corners.
+
+  // Escape action activated, rotate right for a while.
+  if(escape_action_counter > 0) {
+    escape_action_counter--;
+    vmVariables.target[0] = 200;
+    vmVariables.target[1] = -200;
+  }
+
+  // Check when the robot is somehow still
+  if((abs(vmVariables.target[0]) < 100) && (abs(vmVariables.target[1]) < 100)) {
+    still_counter++;
+    if(still_counter >= 100) { // This is called at 50 hz (from behaviors), thus it means after 2 seconds
+      escape_action_counter = 150; // If after 2 seconds that the robot is somehow blocked (reached a corner?) then try an escape motion => turn right for about 1.5 sec
+    }
+  } else {
+    still_counter = 0;
+  }
+
+  // Check when the robot continuously rotate left, right, left, right, ... within a few time.
+  if((vmVariables.target[0] - vmVariables.target[1]) > 0) { // Positive = right rotation, negative = left rotation, 2=straight or still
+    direction = 1;
+  } else if ((vmVariables.target[0] - vmVariables.target[1]) < 0) {
+    direction = -1;
+  } else {
+    direction = 2;
+  }
+  last_dir_change_counter++;
+  if(((prev_direction + direction) == 0) && (last_dir_change_counter < 100)) { // If direction goes directly from left to right or viceversa within a few time (2 sec)
+    opposite_dir_counter++;
+    if(opposite_dir_counter >= 8) { // If the direction's change happens too many times (blocked in a corner?) then try an escape motion => turn right for about 1.5 sec
+      escape_action_counter = 150;
+    }
+  } 
+  if(last_dir_change_counter >= 100) { // If passed too much time (> 2 sec) then the robot is not blocked
+    opposite_dir_counter = 0;
+    last_dir_change_counter = 100;
+  }
+  if(prev_direction != direction) { // Change previous direction only when there is an actual direction's change because we need to account also for deceleration (direction doesn't change suddenly)
+    prev_direction = direction;
+    last_dir_change_counter = 0;
+  }
 
   //ESP_LOGI(Tag, "target = %d %d", vmVariables.target[0], vmVariables.target[1]);
   Common_LimitSpeed(MIN_LIMIT_SPEED, MAX_LIMIT_SPEED);

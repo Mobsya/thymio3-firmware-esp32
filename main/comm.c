@@ -141,6 +141,7 @@ void Comm_Stop(void)
 static void RunCommTask(void* arg)
 {
   static uint8_t counter = 0;
+  int64_t time_start, time_end;
 
   DMA_ATTR static int16_t tx[DATA_SIZE] = {0x0000};
   DMA_ATTR static int16_t rx[DATA_SIZE] = {0x0000};
@@ -149,6 +150,7 @@ static void RunCommTask(void* arg)
 
   while (1)
   {
+    time_start = esp_timer_get_time();
     Settings_UpdateSettings();
     //STM32_UpdateMotorTargets(); // This is needed to update the motors target speed from Aseba
 
@@ -191,6 +193,10 @@ static void RunCommTask(void* arg)
       SET_EVENT(EVENT_STM32);
     }
 
-    vTaskDelay(20 / portTICK_PERIOD_MS);
+		time_end = esp_timer_get_time();
+		//printf("%lld usec\n", time_end - time_start);
+		if((time_end - time_start) < 20000) { // Run task @ 50 Hz
+			vTaskDelay((20000 - (time_end - time_start))/1000 / portTICK_PERIOD_MS);
+		}
   }
 }

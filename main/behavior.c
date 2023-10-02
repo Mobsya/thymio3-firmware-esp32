@@ -292,12 +292,18 @@ void Behavior_PlaySoundAlarm(uint8_t type)
 static void RunBehaviorTask(void* arg)
 {
   ESP_LOGI(Tag, "Start Behavior Task");
+  int64_t time_start, time_end;
 
   while (1)
   {
+    time_start = esp_timer_get_time();
     RunBehaviors();
     AngleController_Update();
-    vTaskDelay(40 / portTICK_PERIOD_MS);  // MAX_BRIGHTNESS = 16
+		time_end = esp_timer_get_time();
+		//printf("%lld usec\n", time_end - time_start);
+		if((time_end - time_start) < 20000) { // Run behavior task @ 50 Hz like in T2
+			vTaskDelay((20000 - (time_end - time_start))/1000 / portTICK_PERIOD_MS);
+		}
   }
 }
 
@@ -709,18 +715,23 @@ static void UpdateSettings(void)
       count = 0;
     }
 
-  } else {
-    if (buttonState[E_Button_Left] && buttonState[E_Button_Right]) {
-      count++;
-      if (count > 75)  // 75 * 40 [ms] = 3 [s]
-      {
-        Behavior_Disable(B_MODE);
-        count = 0u;
-        start = true;
-        CurrentSetting = E_Setting_Menu;
+  } else { // If settings menu not entered
+    // When in the "investigator mode" (line tracking) the left+right are used to calibrate the ground sensors in a white surface.
+    // So avoid to enter the settings menu while trying to calibrate on the white surface.
+    // The drawback is that you cannot enter the settings menu when the investigator mode is running, but this is not a big problem...
+    if(Mode_get_current() != E_Mode_Investigator) {
+      if (buttonState[E_Button_Left] && buttonState[E_Button_Right]) {
+        count++;
+        if (count > 75)  // 75 * 40 [ms] = 3 [s]
+        {
+          Behavior_Disable(B_MODE);
+          count = 0u;
+          start = true;
+          CurrentSetting = E_Setting_Menu;
+        }
+      } else {
+        count = 0;
       }
-    } else {
-      count = 0;
     }
   }
 }

@@ -9,7 +9,7 @@
 //! \file    line_tracker.c
 //! \brief   This module provides the useful functions to use the line tracker mode
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -45,6 +45,7 @@
 #define DIR_LOST     (10)
 #define DIR_FRONT     (0)
 
+#define HYSTERESIS 150
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -56,16 +57,19 @@
 //-----------------------------------------------------------------------------
 // Private Data
 //-----------------------------------------------------------------------------
-
 //static const char* Tag = "line_tracker";
+static int16_t ground_left_black = 500;
+static int16_t ground_left_white = 650;
+static int16_t ground_right_black = 500;
+static int16_t ground_right_white = 650;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
-static bool CalibrateLevelUsingButtons(uint16_t* blackLevel, uint16_t* whiteLevel);
+static bool CalibrateLevelUsingButtons();
 
-static void GetLineSensorsState(uint16_t* blackLevel, uint16_t* whiteLevel, uint8_t* state);
+static void GetLineSensorsState(uint8_t* state);
 
 static void GetLineDirection(uint8_t* state, int16_t* direction);
 
@@ -104,19 +108,16 @@ void LineTracker_Run(void)
 {
   static uint8_t state[2] = {STATE_WHITE, STATE_WHITE};
   static int16_t dir = DIR_LOST;
-  static uint16_t bs_black_level = 200;  //650; //400;
-  static uint16_t bs_white_level = 300;  //700; //450;
-
   uint8_t brightness = Common_GetBodyColorPulse();
 
   // Cyan pulse
   Leds_SetBodyBrightness(0u, brightness, brightness);
 
-  if (!CalibrateLevelUsingButtons(&bs_black_level, &bs_white_level))
+  if (!CalibrateLevelUsingButtons())
   {
     // Calibration is not in progress
 
-    GetLineSensorsState(&bs_black_level, &bs_white_level, state);
+    GetLineSensorsState(state);
 
     GetLineDirection(state, &dir);
 
@@ -126,34 +127,39 @@ void LineTracker_Run(void)
 
 //_____________________________________________________________________________
 
-static bool CalibrateLevelUsingButtons(uint16_t* blackLevel, uint16_t* whiteLevel)
+static bool CalibrateLevelUsingButtons()
 {
   uint8_t* buttonState;
   bool calibrationIsInProgress = false;
+  bool calibrationFailed = false;
 
   buttonState = Buttons_GetStatus();
 
-  //ESP_LOGI(Tag, "left = %d, right = %d", vmVariables.ground_delta[0], vmVariables.ground_delta[1]);
-
   // Calibration feature
-  if (buttonState[E_Button_Backward] && buttonState[E_Button_Forward])
+  if (buttonState[E_Button_Backward] && buttonState[E_Button_Forward]) // Forward + backward => black
   {
-    *blackLevel = (vmVariables.ground_delta[0] + vmVariables.ground_delta[1]) / 2;
-    *blackLevel += 150u;
+    ground_left_black = vmVariables.ground_delta[0] + HYSTERESIS;  // Add hysteresis offset
+    ground_right_black = vmVariables.ground_delta[1] + HYSTERESIS;
+    if((ground_left_black > 1024) || (ground_right_black > 1024)) {
+      calibrationFailed = true;
+    } else {
+      calibrationFailed = false;
+    }
     calibrationIsInProgress = true;
+    //ESP_LOGD(Tag, "black: l=%d, r=%d", ground_left_black, ground_right_black);
   }
 
-  if (buttonState[E_Button_Left] && buttonState[E_Button_Right])
+  if (buttonState[E_Button_Left] && buttonState[E_Button_Right]) // Left + right => white
   {
-    *whiteLevel = (vmVariables.ground_delta[0] + vmVariables.ground_delta[1]) / 2;
-
-    if (*whiteLevel < 150u)
-    {
-      *whiteLevel = 200u;
-    }
-
-    *whiteLevel -= 150u;
+    ground_left_white = vmVariables.ground_delta[0] - HYSTERESIS; // Subtract hysteresis offset
+    ground_right_white = vmVariables.ground_delta[1] - HYSTERESIS;
+    if((ground_left_white < 0) || (ground_right_white < 0)) {
+      calibrationFailed = true;
+    } else {
+      calibrationFailed = false;
+    }    
     calibrationIsInProgress = true;
+    //ESP_LOGD(Tag, "white: l=%d, r=%d", ground_left_white, ground_right_white);
   }
 
   // if the user is trying to calibrate, then don't try to move
@@ -162,33 +168,40 @@ static bool CalibrateLevelUsingButtons(uint16_t* blackLevel, uint16_t* whiteLeve
     Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
     Common_SetTargetSpeed(0, 0);
   }
+  if(calibrationFailed) { // Signal the user that the calibration failed
+    Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
+  } else {
+    //Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
+    Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  }
 
   return calibrationIsInProgress;
 }
 
 //_____________________________________________________________________________
 
-static void GetLineSensorsState(uint16_t* blackLevel, uint16_t* whiteLevel, uint8_t* state)
+static void GetLineSensorsState(uint8_t* state)
 {
-  if (vmVariables.ground_delta[0] < *blackLevel)
+  if (vmVariables.ground_delta[0] < ground_left_black)
   {
     state[0] = STATE_BLACK;
   }
 
-  if (vmVariables.ground_delta[0] > *whiteLevel)
+  if (vmVariables.ground_delta[0] > ground_left_white)
   {
     state[0] = STATE_WHITE;
   }
 
-  if (vmVariables.ground_delta[1] < *blackLevel)
+  if (vmVariables.ground_delta[1] < ground_right_black)
   {
     state[1] = STATE_BLACK;
   }
 
-  if (vmVariables.ground_delta[1] > *whiteLevel)
+  if (vmVariables.ground_delta[1] > ground_right_white)
   {
     state[1] = STATE_WHITE;
   }
+  //ESP_LOGD(Tag, "state: l=%d, r=%d", state[0], state[1]);
 }
 
 //_____________________________________________________________________________
@@ -230,35 +243,44 @@ static void GetLineDirection(uint8_t* state, int16_t* direction)
 
 static void SetTargetAccordingToDirection(int16_t* direction)
 {
+  static int16_t speed = 0;
+  speed = (vmVariables.ground_delta[0] - vmVariables.ground_delta[1])>>3;
+  //ESP_LOGD(Tag, "ground: l=%d, r=%d", vmVariables.ground_delta[0], vmVariables.ground_delta[1]);
   if (*direction == DIR_FRONT)
   {
-    Common_SetTargetSpeed(SPEED_LINE, SPEED_LINE);
+    Common_SetTargetSpeed(SPEED_LINE+speed, SPEED_LINE-speed);
     Leds_SetCircleBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u);
+    //ESP_LOGD(Tag, "[DIR_FRONT] speed: l=%d, r=%d", SPEED_LINE+speed, SPEED_LINE-speed);
   }
   else if (*direction == DIR_RIGHT)
   {
     Common_SetTargetSpeed(SPEED_LINE, 0);
     Leds_SetCircleBrightness(0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
+    //ESP_LOGD(Tag, "[DIR_RIGHT] speed: l=%d, r=%d", SPEED_LINE, 0);
   }
   else if (*direction == DIR_LEFT)
   {
     Common_SetTargetSpeed(0, SPEED_LINE);
     Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
+    //ESP_LOGD(Tag, "[DIR_LEFT] speed: l=%d, r=%d", 0, SPEED_LINE);
   }
   else if (*direction == DIR_L_LEFT)
   {
     Common_SetTargetSpeed(-SPEED_LINE, SPEED_LINE);
     Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u);
+    //ESP_LOGD(Tag, "[DIR_L_LEFT] speed: l=%d, r=%d", -SPEED_LINE, SPEED_LINE);
   }
   else if (*direction == DIR_L_RIGHT)
   {
     Common_SetTargetSpeed(SPEED_LINE, -SPEED_LINE);
     Leds_SetCircleBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u);
+    //ESP_LOGD(Tag, "[DIR_L_RIGHT] speed: l=%d, r=%d", SPEED_LINE, -SPEED_LINE);
   }
   else if (*direction == DIR_LOST)
   {
     Common_SetTargetSpeed(SPEED_LINE, -SPEED_LINE);
     //leds_set_circle(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+    //ESP_LOGD(Tag, "[DIR_LOST] speed: l=%d, r=%d", SPEED_LINE, -SPEED_LINE);
   }
   else
   {

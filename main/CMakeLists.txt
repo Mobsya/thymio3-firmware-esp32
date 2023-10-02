@@ -8,6 +8,8 @@ set(COMPONENT_SRCS
     aseba_esp32_user.h
     aseba.c
     aseba.h
+    attentive.c
+    attentive.h
     audio_tone_uri.c
     audio_tone_uri.h
     behavior.c
@@ -62,6 +64,8 @@ set(COMPONENT_SRCS
     musician.c
     musician.h
     natives.c
+    obedient.c
+    obedient.h
     ota_update.c
     ota_update.h
     painter.c

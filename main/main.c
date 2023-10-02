@@ -386,7 +386,7 @@ int app_main(void)
 
   //BLE_Start();
   //WIFI_Start();
-  AsebaESP32_Start();
+  //AsebaESP32_Start();
 
   //Test_StartDebugging();
 

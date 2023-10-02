@@ -9,7 +9,7 @@
 //! \file    mode.c
 //! \brief   This module provides the useful functions to use the modes
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -41,6 +41,8 @@
 #include "painter.h"
 #include "sequence.h"
 #include "python_handler.h"
+#include "attentive.h"
+#include "obedient.h"
 #include "mp_component.h"
 #include "codec.h"
 
@@ -51,31 +53,6 @@
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
-
-enum
-{
-  E_Mode_Menu,
-  E_Mode_Friendly,
-  E_Mode_Explorer,
-  E_Mode_Fearful,
-  E_Mode_Attentive,
-  E_Mode_Investigator,
-  E_Mode_Obedient,  
-  E_Mode_Painter,  
-  E_Mode_Sequence,
-  E_Mode_Musician,
-  E_Mode_NN,
-  E_Mode_Python_REPL,
-  E_Mode_Python_Main1,
-  E_Mode_Python_Main2,
-  E_Mode_Python_Main3,
-  E_Mode_Python_Main4,
-  E_Mode_Python_Main5,
-  E_Mode_Python_Main6,
-  E_Mode_Python_Main7,
-  E_Mode_Max = E_Mode_Python_Main7
-};
-typedef int16_t T_Mode;  // Mode selection
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -378,6 +355,7 @@ void Mode_Run(void)
       break;
 
     case E_Mode_Attentive:    // Blue
+      Attentive_Run();
       break;
 
     case E_Mode_Investigator:  // Cyan
@@ -385,6 +363,7 @@ void Mode_Run(void)
       break;
 
     case E_Mode_Obedient:   // Magenta
+      Obedient_Run();
       break;
 
     case E_Mode_Painter:     // White + front lego leds      
@@ -469,6 +448,8 @@ static void StartMode(T_Mode mode)
       break;
 
     case E_Mode_Attentive:
+      Attentive_Start();
+      Behavior_Enable(B_LEDS_PROX);
       break;
 
     case E_Mode_Investigator:
@@ -476,6 +457,8 @@ static void StartMode(T_Mode mode)
       break;
 
     case E_Mode_Obedient:
+      Obedient_Start();
+      Behavior_Enable(B_LEDS_PROX);
       break;
 
     case E_Mode_Painter:
@@ -559,6 +542,8 @@ static void ExitMode(T_Mode mode)
       break;
 
     case E_Mode_Attentive:
+      Attentive_Stop();
+      Behavior_Disable(B_LEDS_PROX);
       break;
 
     case E_Mode_Investigator:
@@ -567,6 +552,8 @@ static void ExitMode(T_Mode mode)
       break;
 
     case E_Mode_Obedient:
+      Obedient_Stop();
+      Behavior_Disable(B_LEDS_PROX);
       break;
 
     case E_Mode_Painter:
@@ -794,6 +781,10 @@ extern void exit_micropython_mode(void) {
   CurrentMode = E_Mode_Menu;
   Behavior_Enable(B_MODE);
   Behavior_Enable(B_SETTING);
+}
+
+T_Mode Mode_get_current(void) {
+  return CurrentMode;
 }
 
 //_____________________________________________________________________________

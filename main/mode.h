@@ -31,6 +31,30 @@
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
+enum
+{
+  E_Mode_Menu,
+  E_Mode_Friendly,
+  E_Mode_Explorer,
+  E_Mode_Fearful,
+  E_Mode_Attentive,
+  E_Mode_Investigator,
+  E_Mode_Obedient,  
+  E_Mode_Painter,  
+  E_Mode_Sequence,
+  E_Mode_Musician,
+  E_Mode_NN,
+  E_Mode_Python_REPL,
+  E_Mode_Python_Main1,
+  E_Mode_Python_Main2,
+  E_Mode_Python_Main3,
+  E_Mode_Python_Main4,
+  E_Mode_Python_Main5,
+  E_Mode_Python_Main6,
+  E_Mode_Python_Main7,
+  E_Mode_Max = E_Mode_Python_Main7
+};
+typedef int16_t T_Mode;  // Mode selection
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -61,6 +85,12 @@ extern void Mode_InitVM(void);
 //! \param     None
 //! \return    None
 extern void Mode_Run(void);
+
+//! \brief     Get the current running mode
+//! \pre       First initialize the modes
+//! \param     None
+//! \return    T_Mode
+extern T_Mode Mode_get_current(void);
 
 extern void enter_micropython_mode(void);
 
