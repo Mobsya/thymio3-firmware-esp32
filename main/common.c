@@ -77,7 +77,7 @@ uint8_t Common_GetBodyColorPulse(void)
   }
   else
   {
-    brightness = -(pulse>>4);
+    brightness = -(pulse>>3);
   }
 
   return (uint8_t)brightness;
@@ -155,10 +155,10 @@ void Common_HandlePositiveSpeed(int16_t speed)
   temp1 += (int32_t)prox[3];
   temp1 += (int32_t)prox[4];
 
-  temp2 -= ((int32_t)(prox[0])<<1);
-  temp2 -= ((int32_t)(prox[1])<<1);
-  temp2 -= ((int32_t)(prox[3])<<1);
-  temp2 -= ((int32_t)(prox[4])<<1);
+  temp2 -= (((int32_t)prox[0])<<1);
+  temp2 -= (((int32_t)prox[1])<<1);
+  temp2 += (((int32_t)prox[3])<<1);
+  temp2 += (((int32_t)prox[4])<<1);
 
   if((abs(temp2) < 100) && (prox[2] > 750)) { // If almost straight ahead of an obstacle and near it, then give more weight either to left or right sensors in order to avoid to block
     if(prox[1] > prox[3]) { // If left > right then give more weight to the left sensor
@@ -187,7 +187,7 @@ void Common_HandlePositiveSpeed(int16_t speed)
   if((abs(vmVariables.target[0]) < 100) && (abs(vmVariables.target[1]) < 100)) {
     still_counter++;
     if(still_counter >= 100) { // This is called at 50 hz (from behaviors), thus it means after 2 seconds
-      escape_action_counter = 150; // If after 2 seconds that the robot is somehow blocked (reached a corner?) then try an escape motion => turn right for about 1.5 sec
+      escape_action_counter = 120; // If after 2 seconds that the robot is somehow blocked (reached a corner?) then try an escape motion => turn right for about 1.5 sec
     }
   } else {
     still_counter = 0;
@@ -205,7 +205,7 @@ void Common_HandlePositiveSpeed(int16_t speed)
   if(((prev_direction + direction) == 0) && (last_dir_change_counter < 100)) { // If direction goes directly from left to right or viceversa within a few time (2 sec)
     opposite_dir_counter++;
     if(opposite_dir_counter >= 8) { // If the direction's change happens too many times (blocked in a corner?) then try an escape motion => turn right for about 1.5 sec
-      escape_action_counter = 150;
+      escape_action_counter = 120;
     }
   } 
   if(last_dir_change_counter >= 100) { // If passed too much time (> 2 sec) then the robot is not blocked

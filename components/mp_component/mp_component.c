@@ -69,6 +69,12 @@
 #include "modmachine.h"
 #include "modnetwork.h"
 #include "mpthreadport.h"
+#include "../main/leds.h"
+#include "../main/behavior.h"
+#include "../main/buttons.h"
+#include "../main/mode.h"
+#include "../main/common.h"
+#include "../main/accelerometer.h"
 
 #if MICROPY_BLUETOOTH_NIMBLE
 #include "extmod/modbluetooth.h"
@@ -88,6 +94,8 @@
 static int8_t mp_component_state = -1;
 static EventGroupHandle_t mp_component_event_group;
 uint8_t scriptPresent[7] = {0};
+static uint8_t main_counter = 0;
+uint8_t* buttonState;
 
 const int EVT_EXEC_MODE = BIT0;
 
@@ -177,9 +185,31 @@ soft_reset:
     pyexec_frozen_module("_boot.py", false);
     pyexec_file_if_exists("boot.py");
     if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
-        int ret = pyexec_file_if_exists("main.py");
-        if (ret & PYEXEC_FORCED_EXIT) {
-            goto soft_reset_exit;
+        if(mp_import_stat("main.py") == MP_IMPORT_STAT_FILE) { // If main.py is present then show the user a LEDs "KITT effect".
+            Leds_SetBodyBrightness(0,0,0);
+            Behavior_Enable(B_LEDS_LEGO_KITT);
+            main_counter = 0;
+            Accelerometer_ClearTapStatus();  // Clear any tap made before if any
+            while(1) {
+                if(main_counter >= 30) { // If the user do not press the center button within 3 seconds, then start the main.py 
+                    Behavior_Disable(B_LEDS_LEGO_KITT);
+                    Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+                    Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);         
+                    int ret = pyexec_file_if_exists("main.py");
+                    if (ret & PYEXEC_FORCED_EXIT) {
+                        goto soft_reset_exit;
+                    }
+                }
+                if (Accelerometer_IsTapDetected()) { // If the user make a tap then avoid starting the main.py script and enable the behaviors menu
+                    Behavior_Disable(B_LEDS_LEGO_KITT);
+                    Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+                    Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+                    exit_micropython_mode();    // Enable the behaviors menu
+                    break;                    
+                }
+                vTaskDelay(100 / portTICK_PERIOD_MS);
+                main_counter++;
+            }
         }
     }
 
@@ -335,6 +365,8 @@ void init_micropython(void) {
     MICROPY_BOARD_STARTUP();
 
     mp_component_event_group = xEventGroupCreate();
+
+    enter_micropython_mode();
 
     // Create and transfer control to the MicroPython task.
     //printf("task ret = %d\n", xTaskCreatePinnedToCore(mp_task, "mp_task", MP_TASK_STACK_SIZE / sizeof(StackType_t), NULL, MP_TASK_PRIORITY, &mp_main_task_handle, MP_TASK_COREID));

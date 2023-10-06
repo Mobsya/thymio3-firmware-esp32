@@ -167,7 +167,7 @@ void AsebaVMResetCB(AsebaVMState* vm)
   leds_set(LED_RC, 0);
 #endif
   Behavior_Enable(B_LEDS_ACC);
-  Behavior_Enable(B_LEDS_LEGO);
+  Behavior_Enable(B_LEDS_LEGO_GYRO);
   Behavior_Enable(B_LED_MIC);
   Behavior_Enable(B_LEDS_PROX);
   Behavior_Enable(B_SOUND_BUTTON);
@@ -333,7 +333,7 @@ static void UpdateLedsLegoFront(void)
     {
       brightness[index] = vmVariables.leds_lego_front[index];
 
-      Behavior_Disable(B_LEDS_LEGO);
+      Behavior_Disable(B_LEDS_LEGO_GYRO);
       Leds_SetSingleBrightness((E_Led_Lego_Front_0 + index), brightness[index]);
     }
   }
@@ -359,7 +359,7 @@ static void UpdateLedsLegoBack(void)
     {
       brightness[index] = vmVariables.leds_lego_back[index];
 
-      Behavior_Disable(B_LEDS_LEGO);
+      Behavior_Disable(B_LEDS_LEGO_GYRO);
       Leds_SetSingleBrightness((E_Led_Lego_Back_0 + index), brightness[index]);
     }
   }

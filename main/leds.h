@@ -219,13 +219,29 @@ extern void Leds_SetBackRightBrightness(uint8_t red, uint8_t green, uint8_t blue
 //! \return    None
 extern void Leds_SetDebugBrightness(uint8_t red, uint8_t green, uint8_t blue);
 
-//! \brief     Set the brightness of the body RGB LED
+//! \brief     Set the brightness of all the RGB LEDs
 //! \pre       First initialize the LEDs
 //! \param     red - Red component of the RGB LED
 //! \param     green - Green component of the RGB LED
 //! \param     blue - Blue component of the RGB LED
 //! \return    None
 void Leds_SetBodyBrightness(uint8_t red, uint8_t green, uint8_t blue);
+
+//! \brief     Set the brightness of the 2 front RGB LEDs
+//! \pre       First initialize the LEDs
+//! \param     red - Red component of the RGB LED
+//! \param     green - Green component of the RGB LED
+//! \param     blue - Blue component of the RGB LED
+//! \return    None
+void Leds_SetFrontBrightness(uint8_t red, uint8_t green, uint8_t blue);
+
+//! \brief     Set the brightness of the 2 back RGB LEDs
+//! \pre       First initialize the LEDs
+//! \param     red - Red component of the RGB LED
+//! \param     green - Green component of the RGB LED
+//! \param     blue - Blue component of the RGB LED
+//! \return    None
+void Leds_SetBackBrightness(uint8_t red, uint8_t green, uint8_t blue);
 
 //! \brief     Get the brightness of a single LED
 //! \pre       First initialize the LEDs

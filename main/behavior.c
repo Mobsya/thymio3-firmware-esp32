@@ -336,7 +336,7 @@ static void RunBehaviors(void)
     SetAccelerometerLeds();
   }
 
-  if (ENABLED(B_LEDS_LEGO))
+  if (ENABLED(B_LEDS_LEGO_GYRO))
   {
     SetGyroscopeLeds();
   }
@@ -345,6 +345,11 @@ static void RunBehaviors(void)
   {
     UpdateSettings();
   }
+
+  if (ENABLED(B_LEDS_LEGO_KITT))
+  {
+    RunLegoLedAnimation();
+  }  
 
   Gpio_ClearButtonStatus();
 }
@@ -1133,121 +1138,121 @@ static void CalibrateColor(void)
 static void RunLegoLedAnimation(void)
 {
   static uint8_t led_state;
+  static uint8_t tick_count = 0;
   uint8_t l[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t fixed;
 
-  led_state += 2;
-  fixed = (led_state / MAX_BRIGHTNESS);
+  tick_count++;
+  if(tick_count > 5) { // Behaviors task run @ 50 Hz => change every 100 ms
+    tick_count = 0;
 
-  l[fixed & 0x7] = MAX_BRIGHTNESS;
-  l[(fixed - 2) & 0x7] = (MAX_BRIGHTNESS - (led_state & (MAX_BRIGHTNESS - 1)));
-  l[(fixed + 2) & 0x7] = (led_state & (MAX_BRIGHTNESS - 1));
-  l[(fixed + 4) & 0x7] = (led_state & (MAX_BRIGHTNESS - 1));
+    switch(led_state) {
+      case 0:
+        l[0] = 0;
+        l[1] = 4;
+        l[2] = 8;
+        l[3] = 12;
+        l[4] = 16;
+        l[5] = 16;
+        l[6] = 16;
+        l[7] = 16;
+        led_state = 1;
+        break;
 
-  Leds_SetLegoFrontBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
-  //Leds_SetLegoBackBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
+      case 1:
+        l[0] = 4;
+        l[1] = 8;
+        l[2] = 12;
+        l[3] = 16;
+        l[4] = 16;
+        l[5] = 16;
+        l[6] = 16;
+        l[7] = 12;
+        led_state = 2;
+        break;
 
-#if 0
-  uint8_t l[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-  static uint8_t count = 0u;
+      case 2:
+        l[0] = 8;
+        l[1] = 12;
+        l[2] = 16;
+        l[3] = 16;
+        l[4] = 16;
+        l[5] = 16;
+        l[6] = 12;
+        l[7] = 8;
+        led_state = 3;
+        break;        
 
-  if ((count == 0u) || (count == 14u))
-  {
-    l[0] = MAX_BRIGHTNESS;
-    l[1] = 0u;
-    l[2] = 0u;
-    l[3] = 0u;
-    l[4] = 0u;
-    l[5] = 0u;
-    l[6] = 0u;
-    l[7] = 0u;
-  }
-  else if ((count == 1u) || (count == 13u))
-  {
-    l[0] = MAX_BRIGHTNESS;
-    l[1] = MAX_BRIGHTNESS;
-    l[2] = 0u;
-    l[3] = 0u;
-    l[4] = 0u;
-    l[5] = 0u;
-    l[6] = 0u;
-    l[7] = 0u;
-  }
-  else if ((count == 2u) || (count == 12u))
-  {
-    l[0] = MAX_BRIGHTNESS;
-    l[1] = MAX_BRIGHTNESS;
-    l[2] = MAX_BRIGHTNESS;
-    l[3] = 0u;
-    l[4] = 0u;
-    l[5] = 0u;
-    l[6] = 0u;
-    l[7] = 0u;
-  }
-  else if ((count == 3u) || (count == 11u))
-  {
-    l[0] = MAX_BRIGHTNESS;
-    l[1] = MAX_BRIGHTNESS;
-    l[2] = MAX_BRIGHTNESS;
-    l[3] = MAX_BRIGHTNESS;
-    l[4] = 0u;
-    l[5] = 0u;
-    l[6] = 0u;
-    l[7] = 0u;
-  }
-  else if ((count == 4u) || (count == 10u))
-  {
-    l[0] = MAX_BRIGHTNESS;
-    l[1] = MAX_BRIGHTNESS;
-    l[2] = MAX_BRIGHTNESS;
-    l[3] = MAX_BRIGHTNESS;
-    l[4] = MAX_BRIGHTNESS;
-    l[5] = 0u;
-    l[6] = 0u;
-    l[7] = 0u;
-  }
-  else if ((count == 5u) || (count == 9u))
-  {
-    l[0] = MAX_BRIGHTNESS;
-    l[1] = MAX_BRIGHTNESS;
-    l[2] = MAX_BRIGHTNESS;
-    l[3] = MAX_BRIGHTNESS;
-    l[4] = MAX_BRIGHTNESS;
-    l[5] = MAX_BRIGHTNESS;
-    l[6] = 0u;
-    l[7] = 0u;
-  }
-  else if ((count == 6u) || (count == 8u))
-  {
-    l[0] = MAX_BRIGHTNESS;
-    l[1] = MAX_BRIGHTNESS;
-    l[2] = MAX_BRIGHTNESS;
-    l[3] = MAX_BRIGHTNESS;
-    l[4] = MAX_BRIGHTNESS;
-    l[5] = MAX_BRIGHTNESS;
-    l[6] = MAX_BRIGHTNESS;
-    l[7] = 0u;
-  }
-  else if (count == 7u)
-  {
-    l[0] = MAX_BRIGHTNESS;
-    l[1] = MAX_BRIGHTNESS;
-    l[2] = MAX_BRIGHTNESS;
-    l[3] = MAX_BRIGHTNESS;
-    l[4] = MAX_BRIGHTNESS;
-    l[5] = MAX_BRIGHTNESS;
-    l[6] = MAX_BRIGHTNESS;
-    l[7] = MAX_BRIGHTNESS;
-  }
+      case 3:
+        l[0] = 12;
+        l[1] = 16;
+        l[2] = 16;
+        l[3] = 16;
+        l[4] = 16;
+        l[5] = 12;
+        l[6] = 8;
+        l[7] = 4;
+        led_state = 4;
+        break; 
 
-  count++;
+      case 4:
+        l[0] = 16;
+        l[1] = 16;
+        l[2] = 16;
+        l[3] = 16;
+        l[4] = 12;
+        l[5] = 8;
+        l[6] = 4;
+        l[7] = 0;
+        led_state = 5;
+        break;
 
-  if (count == 15u)
-  {
-    count = 0u;
+      case 5:
+        l[0] = 12;
+        l[1] = 16;
+        l[2] = 16;
+        l[3] = 16;
+        l[4] = 16;
+        l[5] = 12;
+        l[6] = 8;
+        l[7] = 4;
+        led_state = 6;
+        break;   
+
+      case 6:
+        l[0] = 8;
+        l[1] = 12;
+        l[2] = 16;
+        l[3] = 16;
+        l[4] = 16;
+        l[5] = 16;
+        l[6] = 12;
+        l[7] = 8;
+        led_state = 7;
+        break;                   
+
+      case 7:
+        l[0] = 4;
+        l[1] = 8;
+        l[2] = 12;
+        l[3] = 16;
+        l[4] = 16;
+        l[5] = 16;
+        l[6] = 16;
+        l[7] = 12;
+        led_state = 0;
+        break;       
+    }   
+/*
+    led_state += 2;
+    fixed = (led_state / MAX_BRIGHTNESS);
+
+    l[fixed & 0x7] = MAX_BRIGHTNESS;
+    l[(fixed - 2) & 0x7] = (MAX_BRIGHTNESS - (led_state & (MAX_BRIGHTNESS - 1)));
+    l[(fixed + 2) & 0x7] = (led_state & (MAX_BRIGHTNESS - 1));
+    l[(fixed + 4) & 0x7] = (led_state & (MAX_BRIGHTNESS - 1));
+*/
+    Leds_SetLegoFrontBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
+    Leds_SetLegoBackBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
   }
-
-  Leds_SetLegoFrontBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
-  Leds_SetLegoBackBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
-#endif
 }

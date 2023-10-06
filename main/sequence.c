@@ -251,9 +251,8 @@ void Sequence_Stop(void)
 void Sequence_Run(void)
 {
   uint8_t brightness = Common_GetBodyColorPulse();
-
-  // Magenta pulse
-  Leds_SetBodyBrightness(brightness, 0u, brightness);
+  Leds_SetFrontBrightness(brightness, 0, brightness);
+  Leds_SetBackBrightness(0, brightness, brightness);
 
   switch (State)
   {
@@ -552,7 +551,8 @@ static void HandleCollision(void)
 
   if (CheckCollisionStatus() == E_Collision_Handled)
   {
-    Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
+    Leds_SetFrontBrightness(MAX_BRIGHTNESS, 0, MAX_BRIGHTNESS);
+    Leds_SetBackBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
 
     if (MovementIsInProgress)
     {

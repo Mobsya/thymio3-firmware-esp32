@@ -107,7 +107,8 @@ void Mode_Init(bool enableVM)
 
   StartMode(E_Mode_Menu);
   navigation_state = RUNNING_MENU;
-
+  SelectMode = E_Mode_Friendly;
+/*
   if (VMIsActive)
   {
     SelectMode = E_Mode_Menu;
@@ -117,8 +118,8 @@ void Mode_Init(bool enableVM)
     SelectMode = E_Mode_Friendly;
     SetModeColor(SelectMode);
   }
-
-  Behavior_Enable(B_ALWAYS | B_MODE | B_SETTING);
+*/
+  Behavior_Enable(B_ALWAYS); // | B_MODE | B_SETTING);
 
   if (!first)
   {
@@ -134,7 +135,7 @@ void Mode_Init(bool enableVM)
 void Mode_InitVM(void)
 {
   Behavior_Enable(B_LEDS_ACC);
-  Behavior_Enable(B_LEDS_LEGO);
+  Behavior_Enable(B_LEDS_LEGO_GYRO);
   Behavior_Enable(B_LEDS_PROX);
   Behavior_Enable(B_SOUND_BUTTON);
   Behavior_Enable(B_LED_MIC);
@@ -366,19 +367,19 @@ void Mode_Run(void)
       Obedient_Run();
       break;
 
-    case E_Mode_Painter:     // White + front lego leds      
+    case E_Mode_Painter:     // Blue + yellow     
       Painter_Run();
       break;
 
-    case E_Mode_Sequence:     // White + front lego leds
+    case E_Mode_Sequence:     // Magenta + cyan
       Sequence_Run();
       break;
 
-    case E_Mode_Musician:     // White + front lego leds
+    case E_Mode_Musician:     // Rainbow
       Musician_Run();
       break;
 
-    case E_Mode_NN:     // White + front lego leds
+    case E_Mode_NN:     // White
       break;      
 
     case E_Mode_Python_REPL:     // Black + back lego leds
@@ -443,7 +444,7 @@ static void StartMode(T_Mode mode)
     case E_Mode_Fearful:
       Behavior_Enable(B_LEDS_PROX);
       Behavior_Enable(B_LEDS_ACC);
-      Behavior_Enable(B_LEDS_LEGO);
+      Behavior_Enable(B_LEDS_LEGO_GYRO);
       Fearful_Start();
       break;
 
@@ -467,7 +468,7 @@ static void StartMode(T_Mode mode)
 
     case E_Mode_Sequence:
       Behavior_Enable(B_LEDS_PROX);
-      Behavior_Enable(B_LEDS_LEGO);
+      Behavior_Enable(B_LEDS_LEGO_GYRO);
       Behavior_Enable(B_LED_RC5);
       Sequence_Start();
       break;
@@ -538,7 +539,7 @@ static void ExitMode(T_Mode mode)
       Fearful_Stop();
       Behavior_Disable(B_LEDS_PROX);
       Behavior_Disable(B_LEDS_ACC);
-      Behavior_Disable(B_LEDS_LEGO);
+      Behavior_Disable(B_LEDS_LEGO_GYRO);
       break;
 
     case E_Mode_Attentive:
@@ -564,7 +565,7 @@ static void ExitMode(T_Mode mode)
     case E_Mode_Sequence:
       Sequence_Stop();
       Behavior_Disable(B_LEDS_PROX);
-      Behavior_Disable(B_LEDS_LEGO);
+      Behavior_Disable(B_LEDS_LEGO_GYRO);
       Behavior_Disable(B_LED_RC5);
       break;
 
@@ -641,6 +642,27 @@ static bool IsModeEnabled(T_Mode mode)
   {
     result = false;
   }
+  if((mode==E_Mode_Python_Main1) && !script_is_present(1)) {
+    return false;
+  }
+  if((mode==E_Mode_Python_Main2) && !script_is_present(2)) {
+    return false;
+  }  
+  if((mode==E_Mode_Python_Main3) && !script_is_present(3)) {
+    return false;
+  }
+  if((mode==E_Mode_Python_Main4) && !script_is_present(4)) {
+    return false;
+  }
+  if((mode==E_Mode_Python_Main5) && !script_is_present(5)) {
+    return false;
+  }  
+  if((mode==E_Mode_Python_Main6) && !script_is_present(6)) {
+    return false;
+  }
+  if((mode==E_Mode_Python_Main7) && !script_is_present(7)) {
+    return false;
+  }
 
   return result;
 }
@@ -693,27 +715,32 @@ static void SetModeColor(T_Mode mode)
       Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
       break;
 
-    case E_Mode_Painter:  // White + front lego leds
-      Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    case E_Mode_Painter:  // Blue + yellow
+      Leds_SetFrontBrightness(0, 0, MAX_BRIGHTNESS);
+      Leds_SetBackBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0);
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
       Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
       break;
 
-    case E_Mode_Sequence: // White + front lego leds
-      Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    case E_Mode_Sequence: // Magenta + cyan
+      Leds_SetFrontBrightness(MAX_BRIGHTNESS, 0, MAX_BRIGHTNESS);
+      Leds_SetBackBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
       Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
       break;
 
-    case E_Mode_Musician:  // White + front lego leds
-      Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoFrontBrightness(0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    case E_Mode_Musician:  // Rainbow (blue, green, yellow, red)
+      Leds_SetFrontLeftBrightness(0, 0, MAX_BRIGHTNESS);
+      Leds_SetFrontRightBrightness(0, MAX_BRIGHTNESS, 0);
+      Leds_SetBackRightBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0);
+      Leds_SetBackLeftBrightness(MAX_BRIGHTNESS, 0, 0);
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
       Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
       break;
 
-    case E_Mode_NN:     // White + front lego leds
+    case E_Mode_NN:     // White
       Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
       Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
       break;      
 

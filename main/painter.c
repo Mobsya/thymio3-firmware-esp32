@@ -132,9 +132,12 @@ void Painter_Run(void)
 static void RunWaitState(void)
 {
   uint8_t* buttonState;
+  static uint8_t brightness = 0;
 
+  brightness = Common_GetBodyColorPulse();
+  Leds_SetFrontBrightness(0, 0, brightness);
+  Leds_SetBackBrightness(brightness, brightness, 0);
   Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-  Leds_SetBodyBrightness(0u, 0u, MAX_BRIGHTNESS);
 
   T_Motor vind = STM32_GetInducedVoltage();
 

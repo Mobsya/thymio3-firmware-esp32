@@ -340,6 +340,22 @@ void Leds_SetBodyBrightness(uint8_t red, uint8_t green, uint8_t blue)
 
 //_____________________________________________________________________________
 
+void Leds_SetFrontBrightness(uint8_t red, uint8_t green, uint8_t blue)
+{
+  Leds_SetFrontLeftBrightness(red, green, blue);
+  Leds_SetFrontRightBrightness(red, green, blue);
+}
+
+//_____________________________________________________________________________
+
+void Leds_SetBackBrightness(uint8_t red, uint8_t green, uint8_t blue)
+{
+  Leds_SetBackLeftBrightness(red, green, blue);
+  Leds_SetBackRightBrightness(red, green, blue);
+}
+
+//_____________________________________________________________________________
+
 uint8_t Leds_GetBrightness(T_Led led) {
   return LedsBrightness[led];
 }
