@@ -28,7 +28,6 @@
 #include "stm32_spi.h"
 #include "tcp_server.h"
 #include "uart.h"
-#include "wifi.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -121,7 +120,7 @@ void AsebaFifoCheckConnectionMode(void)
     Fifo8bits_Reset(TCPFifoRx);
     ConnectionMode = MODE_USB;
   }
-  else */if (WIFI_IsConnected())
+  else if (WIFI_IsConnected())
   {
 	  //ESP_LOGE("thymio-buffer", "WiFi connected");
     if (TCPServer_IsSocketAccepted())
@@ -136,12 +135,13 @@ void AsebaFifoCheckConnectionMode(void)
   }
   else
   {
+  */
 	  //ESP_LOGE("thymio-buffer", "Disconnected MODE");
     // No USB-UART, no WIFI
     Fifo8bits_Reset(TCPFifoRx);
 
     ConnectionMode = MODE_DISCONNECTED;
-  }
+  //}
 
 #if 0
   if (usb_uart_serial_port_open())

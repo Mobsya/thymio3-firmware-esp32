@@ -176,7 +176,7 @@ soft_reset:
     MP_STATE_PORT(native_code_pointers) = MP_OBJ_NULL;
 
     // initialise peripherals
-    machine_pins_init();
+    //machine_pins_init();
     #if MICROPY_PY_MACHINE_I2S
     machine_i2s_init0();
     #endif
@@ -210,9 +210,12 @@ soft_reset:
                 vTaskDelay(100 / portTICK_PERIOD_MS);
                 main_counter++;
             }
+        } else { // If main.py not present then enable the behaviors menu
+            Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+            Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+            exit_micropython_mode();    // Enable the behaviors menu
         }
     }
-
     // Check presence of mainID.py scripts
     if(mp_import_stat("main1.py") != MP_IMPORT_STAT_FILE) {
         scriptPresent[0] = 0;
@@ -338,7 +341,7 @@ soft_reset_exit:
     // deinitialise peripherals
     machine_pwm_deinit_all();
     // TODO: machine_rmt_deinit_all();
-    machine_pins_deinit();
+    //machine_pins_deinit();
     machine_deinit();
     #if MICROPY_PY_USOCKET_EVENTS
     usocket_events_deinit();

@@ -65,7 +65,7 @@ void Accelerometer_Init(void)
 {
 	uint8_t data = 0x00u;
 	I2C_ReadFromAddress(0x6B, 0x0F, &data, 1u);
-	//ESP_LOGD(Tag, "LSM6DS id = %x", data);
+	ESP_LOGI(Tag, "LSM6DS id = %x", data);
 	if(data == 0x69) {
 		currAcc = LSM6DS3US;
 		LSM6DS3US_InitAccelerometer();

@@ -284,6 +284,13 @@ void STM32_SetMicrophoneIntensity(int16_t intensity)
 
 //_____________________________________________________________________________
 
+int16_t STM32_GetMicrophoneIntensity(void)
+{
+  return vmVariables.micro_intensity;
+}
+
+//_____________________________________________________________________________
+
 void STM32_SetMicrophoneThreshold(int16_t threshold)
 {
   vmVariables.micro_tresh = threshold;

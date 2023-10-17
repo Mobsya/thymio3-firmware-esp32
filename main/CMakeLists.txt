@@ -66,8 +66,6 @@ set(COMPONENT_SRCS
     natives.c
     obedient.c
     obedient.h
-    ota_update.c
-    ota_update.h
     painter.c
     painter.h
     power.c
@@ -108,10 +106,6 @@ set(COMPONENT_SRCS
     utility.h
     vm-buffer.c
     vm.c
-    wifi.c
-    wifi.h
-    wifi_update.c
-    wifi_update.h
     ../components/thymio-nn/nn/nn.c
     ../components/thymio-nn/nn/nn.h
     ../components/thymio-nn/nn/nn-alloc-stdlib.c

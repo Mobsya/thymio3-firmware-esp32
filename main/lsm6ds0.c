@@ -95,7 +95,7 @@
 #define MD2_CFG_REG_ADDRESS                  0x5Fu  //!< Routing on INT2 register address                                       (Read/Write)
 
 // Manufacturer ID
-#define MANUFACTURER_ID                      0x6Au  //!< Manufacturer ID
+#define MANUFACTURER_ID                      0x6Cu  //!< Manufacturer ID
 
 // Register bits mask
 // CTRL1_XL bits mask
@@ -385,6 +385,12 @@ static void EnableGyroDataReadyInterrupt(T_Interrupt interrupt);
 //! \image     html ReadAccManufacturerId.svg
 static void ReadManufacturerId(uint8_t* data);
 
+//! \brief     Enable basic interrupts (6D/4D, free-fall, wake-up, tap, inactivity).
+//! \pre       None
+//! \param     None
+//! \return    None
+static void EnableInterrupts(void);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -413,6 +419,8 @@ void LSM6DS0_InitAccelerometer(void)
   UpdateTapThreshold(E_Acc_TapThreshold_Mid);
 
   UpdateFreeFall(E_Acc_FreeFallThreshold_312g, 6);
+
+  EnableInterrupts();
 
   ESP_LOGI(Tag, "LSM6DS0 accelerometer is initialized");
 }
@@ -454,6 +462,16 @@ static void ConfigureINT2(uint8_t interrupt)
   uint8_t data = interrupt;
 
   I2C_WriteToAddress(SLAVE_ADDRESS, MD2_CFG_REG_ADDRESS, &data, 1u);
+}
+
+//_____________________________________________________________________________
+
+static void EnableInterrupts(void)
+{
+  uint8_t data = 0x00;
+  I2C_ReadFromAddress(SLAVE_ADDRESS, TAP_CFG2_REG_ADDRESS, &data, 1u);
+  data |= 0x80;
+  I2C_WriteToAddress(SLAVE_ADDRESS, TAP_CFG2_REG_ADDRESS, &data, 1u);
 }
 
 //_____________________________________________________________________________

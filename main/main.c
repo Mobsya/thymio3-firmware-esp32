@@ -48,8 +48,6 @@
 //#include "tracking.h"
 #include "uart.h"
 #include "utility.h"
-#include "wifi.h"
-#include "wifi_update.h"
 #include "mp_component.h"
 
 #include <stdlib.h>

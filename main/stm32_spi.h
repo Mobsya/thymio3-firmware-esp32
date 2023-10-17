@@ -113,6 +113,8 @@ extern int16_t STM32_GetRightMotorTarget(void);
 
 extern void STM32_SetMicrophoneIntensity(int16_t intensity);
 
+int16_t STM32_GetMicrophoneIntensity(void);
+
 extern void STM32_SetMicrophoneThreshold(int16_t threshold);
 
 extern int16_t STM32_GetMicrophoneThreshold(void);
