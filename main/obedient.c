@@ -91,6 +91,7 @@ void Obedient_Run(void)
 	static int16_t toggle = -1;
 	uint8_t *buttonState;
 	uint8_t brightness = Common_GetBodyColorPulse();
+	Leds_SetBodyBrightness(brightness, 0, brightness);
 	int16_t command = RC5_GetCommand(&toggle);	
 	buttonState = Buttons_GetStatus();
 
@@ -172,10 +173,6 @@ void Obedient_Run(void)
 	if (rc5_speed_t < -RC5_SPEED_SAT)
 		rc5_speed_t = -RC5_SPEED_SAT;
 
-	if(Common_HandleTableEdgeDetection(brightness, 0u, brightness) == 0) { // No table edge detected
-		Common_SetTargetSpeed(rc5_speed_l + rc5_speed_t, rc5_speed_l - rc5_speed_t);
-		Leds_SetBodyBrightness(brightness, 0, brightness);
-	}
 }
 
 //_____________________________________________________________________________

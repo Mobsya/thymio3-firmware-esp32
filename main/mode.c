@@ -468,7 +468,6 @@ static void StartMode(T_Mode mode)
 
     case E_Mode_Sequence:
       Behavior_Enable(B_LEDS_PROX);
-      Behavior_Enable(B_LEDS_LEGO_GYRO);
       Behavior_Enable(B_LED_RC5);
       Sequence_Start();
       break;
@@ -565,7 +564,6 @@ static void ExitMode(T_Mode mode)
     case E_Mode_Sequence:
       Sequence_Stop();
       Behavior_Disable(B_LEDS_PROX);
-      Behavior_Disable(B_LEDS_LEGO_GYRO);
       Behavior_Disable(B_LED_RC5);
       break;
 

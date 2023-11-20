@@ -38,21 +38,21 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define SEQUENCE_BUFFER_SIZE           50u  //!< Number of actions stored in the FIFO
+#define SEQUENCE_BUFFER_SIZE 50u //!< Number of actions stored in the FIFO
 
 // Duration of the movement = 1500000 [us] -> TIMER_SCALE * 1500000 [us] = 7500000 (timer_group)
-#define MOVEMENT_DURATION       7500000uLL  //!< Duration of a movement
+#define MOVEMENT_DURATION 7500000uLL //!< Duration of a movement
 
-#define STOP_DURATION_us           500000u  //!< Delay at the end of a movement
+#define STOP_DURATION_us 500000u //!< Delay at the end of a movement
 
-#define MOVEMENT_SPEED                 300  //!< Movement speed
+#define MOVEMENT_SPEED 300 //!< Movement speed
 
-#define MAX_ROTATION_SPEED             500  //!< Maximum rotation speed allowed
+#define MAX_ROTATION_SPEED 500 //!< Maximum rotation speed allowed
 
-#define COLLISION_THRESHOLD            700  //!< Collision threshold
-#define NO_COLLISION_THRESHOLD          10  //!< No collision threshold
+#define COLLISION_THRESHOLD 700   //!< Collision threshold
+#define NO_COLLISION_THRESHOLD 10 //!< No collision threshold
 
-#define DEBOUNCE                        3u  //!< Debounce used to jump to erase state
+#define DEBOUNCE 3u //!< Debounce used to jump to erase state
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -63,7 +63,8 @@ typedef enum
 {
   E_State_Record,
   E_State_Erase,
-  E_State_Play
+  E_State_Play,
+  E_State_Wait_Erase
 } T_State;
 
 //! \details States of the play state machine
@@ -91,23 +92,24 @@ typedef enum
 // Private Data
 //-----------------------------------------------------------------------------
 
-static const char* Tag = "sequence";                 //!< Log tag
+static const char *Tag = "sequence"; //!< Log tag
 
-static bool RecordSequenceIsFinished = false;          //!< True if the the record is finished
-static bool MovementIsInProgress = false;              //!< True if the a movement is in progress
-static bool RotationIsInProgress = false;              //!< True if the a rotation is in progress
-static bool ObstacleIsDetected = false;                //!< True if an obstacle is detected
+static bool RecordSequenceIsFinished = false; //!< True if the the record is finished
+static bool MovementIsInProgress = false;     //!< True if the a movement is in progress
+static bool RotationIsInProgress = false;     //!< True if the a rotation is in progress
+static bool ObstacleIsDetected = false;       //!< True if an obstacle is detected
 
-static T_TimerSw* StopTimer = NULL;                    //!< Timer used to add a delay at the end of a movement
+static T_TimerSw *StopTimer = NULL; //!< Timer used to add a delay at the end of a movement
 
-static T_State State = E_State_Record;                 //!< State of the main state machine
-static T_PlayState PlayState = E_PlayState_Replay;     //!< State of the play state machine
+static T_State State = E_State_Record;             //!< State of the main state machine
+static T_PlayState PlayState = E_PlayState_Replay; //!< State of the play state machine
 
-static uint8_t Current = 0u;                           //!< Current value of the sequence table
+static uint8_t Current = 0u; //!< Current value of the sequence table
 
-static uint8_t Sequence[SEQUENCE_BUFFER_SIZE] = {0u};  //!< Sequence table
-static uint8_t WrPos = 0u;                             //!< Write position cursor
-static uint8_t RdPos = 0u;                             //!< Read position cursor
+static uint8_t Sequence[SEQUENCE_BUFFER_SIZE] = {0u}; //!< Sequence table
+static uint8_t WrPos = 0u;                            //!< Write position cursor
+static uint8_t RdPos = 0u;                            //!< Read position cursor
+static uint8_t eraseCounter = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -178,7 +180,7 @@ static void LaunchRecordAnimation(void);
 //! \param     buttonState - State of the buttons
 //! \param     command - Command of the remote control
 //! \return    None
-static void LaunchOverflowAnimation(uint8_t* buttonState, uint8_t command);
+static void LaunchOverflowAnimation(uint8_t *buttonState, uint8_t command);
 
 //! \brief     Launch the erase animation
 //! \pre       First initialize the mode
@@ -202,13 +204,13 @@ static void LaunchPauseAnimation(void);
 //! \pre       First initialize the mode
 //! \param     arg - Not used
 //! \return    None
-static void IRAM_ATTR ISR_EndOfMovement(void* arg);
+static void IRAM_ATTR ISR_EndOfMovement(void *arg);
 
 //! \brief     Callback called at the end of the delay added after a movement
 //! \pre       First initialize the mode
 //! \param     arg - Not used
 //! \return    None
-static void Callback_TimerStop(void* arg);
+static void Callback_TimerStop(void *arg);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -235,8 +237,12 @@ void Sequence_Init(void)
 
 void Sequence_Start(void)
 {
+  State = E_State_Record;
+  RdPos = 0u;
+  MovementIsInProgress = false;
+  RotationIsInProgress = false;
   RecordSequenceIsFinished = false;
-  Accelerometer_ClearTapStatus();  // Clear any tap made before entering this mode
+  Accelerometer_ClearTapStatus(); // Clear any tap made before entering this mode
 }
 
 //_____________________________________________________________________________
@@ -244,6 +250,7 @@ void Sequence_Start(void)
 void Sequence_Stop(void)
 {
   Common_SetTargetSpeed(0, 0);
+  AngleController_Stop();
 }
 
 //_____________________________________________________________________________
@@ -251,26 +258,39 @@ void Sequence_Stop(void)
 void Sequence_Run(void)
 {
   uint8_t brightness = Common_GetBodyColorPulse();
-  Leds_SetFrontBrightness(brightness, 0, brightness);
-  Leds_SetBackBrightness(0, brightness, brightness);
+  if(State == E_State_Wait_Erase) {
+    eraseCounter++;
+    if(eraseCounter == 100) { // The erase is immediate, but in order to show the user that the erase is performed, then turn on the robot 
+                              // red for 2 seconds
+      State = E_State_Record;
+    }
+    Leds_SetFrontBrightness(brightness, 0, 0);
+    Leds_SetBackBrightness(brightness, 0, 0);    
+  } else {
+    Leds_SetFrontBrightness(brightness, 0, brightness);
+    Leds_SetBackBrightness(0, brightness, brightness);
+  }
 
   switch (State)
   {
-    case E_State_Record:
-      RecordSequence();
-      break;
+  case E_State_Record:
+    RecordSequence();
+    break;
 
-    case E_State_Erase:
-      EraseSequence();
-      break;
+  case E_State_Erase:
+    EraseSequence();
+    break;
 
-    case E_State_Play:
-      PlaySequence();
-      break;
+  case E_State_Play:
+    PlaySequence();
+    break;
 
-    default:
-      // Do nothing
-      break;
+  case E_State_Wait_Erase:
+    break;
+
+  default:
+    // Do nothing
+    break;
   }
 }
 
@@ -279,7 +299,7 @@ void Sequence_Run(void)
 static void RecordSequence(void)
 {
   static int16_t toggle = -1;
-  uint8_t* buttonState;
+  uint8_t *buttonState;
   uint8_t data = 0u;
   int16_t command = RC5_GetCommand(&toggle);
 
@@ -289,7 +309,7 @@ static void RecordSequence(void)
   {
     LaunchRecordAnimation();
 
-    when(buttonState[E_Button_Backward] || (command == E_Command_DownArrow))
+    when(buttonState[E_Button_Backward] || (command == E_Command_DownArrow) || (command == E_Command_8))
     {
       data |= (1u << E_Button_Backward);
       Sequence[WrPos] = data;
@@ -297,7 +317,7 @@ static void RecordSequence(void)
       WrPos++;
     }
 
-    when(buttonState[E_Button_Left] || (command == E_Command_LeftArrow))
+    when(buttonState[E_Button_Left] || (command == E_Command_LeftArrow) || (command == E_Command_4))
     {
       data |= (1u << E_Button_Left);
       Sequence[WrPos] = data;
@@ -305,7 +325,7 @@ static void RecordSequence(void)
       WrPos++;
     }
 
-    when(buttonState[E_Button_Forward] || (command == E_Command_UpArrow))
+    when(buttonState[E_Button_Forward] || (command == E_Command_UpArrow) || (command == E_Command_2))
     {
       data |= (1u << E_Button_Forward);
       Sequence[WrPos] = data;
@@ -313,7 +333,7 @@ static void RecordSequence(void)
       WrPos++;
     }
 
-    when(buttonState[E_Button_Right] || (command == E_Command_RightArrow))
+    when(buttonState[E_Button_Right] || (command == E_Command_RightArrow) || (command == E_Command_6))
     {
       data |= (1u << E_Button_Right);
       Sequence[WrPos] = data;
@@ -321,7 +341,7 @@ static void RecordSequence(void)
       WrPos++;
     }
   }
-  else  // The table is full
+  else // The table is full
   {
     LaunchOverflowAnimation(buttonState, command);
   }
@@ -346,7 +366,7 @@ static void ProcessEraseAction(uint8_t command)
   static uint8_t count = 0u;
   static bool isEraseAllowed = false;
 
-  if (acceleration <= -15000)
+  if (abs(acceleration) >= 15000)
   {
     count++;
 
@@ -356,7 +376,7 @@ static void ProcessEraseAction(uint8_t command)
       count = 0u;
     }
   }
-  else if (command == E_Command_Stop)
+  else if ((command == E_Command_Stop) || (command == E_Command_5))
   {
     isEraseAllowed = true;
     count = 0u;
@@ -383,7 +403,10 @@ static void EraseSequence(void)
   RdPos = 0u;
 
   LaunchEraseAnimation();
-  State = E_State_Record;
+  Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+  Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+  eraseCounter = 0;
+  State = E_State_Wait_Erase;
 
   ESP_LOGI(Tag, "Sequence erased");
 }
@@ -392,27 +415,31 @@ static void EraseSequence(void)
 
 static void PlaySequence(void)
 {
+  static int16_t toggle = -1;
+  int16_t command = RC5_GetCommand(&toggle);
+  ProcessEraseAction(command);
+
   switch (PlayState)
   {
-    case E_PlayState_Replay:
-      HandleReplay();
-      break;
+  case E_PlayState_Replay:
+    HandleReplay();
+    break;
 
-    case E_PlayState_Movement:
-      HandleMovement();
-      break;
+  case E_PlayState_Movement:
+    HandleMovement();
+    break;
 
-    case E_PlayState_Rotation:
-      HandleRotation();
-      break;
+  case E_PlayState_Rotation:
+    HandleRotation();
+    break;
 
-    case E_PlayState_Collision:
-      HandleCollision();
-      break;
+  case E_PlayState_Collision:
+    HandleCollision();
+    break;
 
-    default:
-      // Do nothing
-      break;
+  default:
+    // Do nothing
+    break;
   }
 }
 
@@ -432,11 +459,92 @@ static void HandleReplay(void)
       next = Sequence[RdPos + 1u];
       RdPos++;
 
+      if (RdPos == 1)
+      {
+        Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      }
+      else if (RdPos == 2)
+      {
+        Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      }
+      else if (RdPos == 3)
+      {
+        Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      }
+      else if (RdPos == 4)
+      {
+        Leds_SetLegoFrontBrightness(0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      }
+      else if (RdPos == 5)
+      {
+        Leds_SetLegoFrontBrightness(0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      }
+      else if (RdPos == 6)
+      {
+        Leds_SetLegoFrontBrightness(0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      }
+      else if (RdPos == 7)
+      {
+        Leds_SetLegoFrontBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      }
+      else if (RdPos == 8)
+      {
+        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      }
+      else if (RdPos == 9)
+      {
+        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS);
+      }
+      else if (RdPos == 10)
+      {
+        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      }
+      else if (RdPos == 11)
+      {
+        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      }
+      else if (RdPos == 12)
+      {
+        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      }
+      else if (RdPos == 13)
+      {
+        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      }
+      else if (RdPos == 14)
+      {
+        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      }
+      else if (RdPos == 15)
+      {
+        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      }
+      else if (RdPos == 16)
+      {
+        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        Leds_SetLegoBackBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      }
+
       if (Current == (1u << E_Button_Backward))
       {
         TimerHw_Start(1, 0);
         MovementIsInProgress = true;
-        Common_SetTargetSpeed(-MOVEMENT_SPEED, -MOVEMENT_SPEED);  // TODO Check why the speed in backward direction is slower
+        Common_SetTargetSpeed(-MOVEMENT_SPEED, -MOVEMENT_SPEED); // TODO Check why the speed in backward direction is slower
         PlayState = E_PlayState_Movement;
       }
 
@@ -465,12 +573,14 @@ static void HandleReplay(void)
       LaunchPlayAnimation(next);
     }
   }
-  else  // Handle the last movement or rotation of the sequence
+  else // Handle the last movement or rotation of the sequence
   {
-    RecordSequenceIsFinished = false;  // Allow a new buttons recording sequence
+    RecordSequenceIsFinished = false; // Allow a new buttons recording sequence
     RdPos = 0u;
     State = E_State_Record;
     ESP_LOGI(Tag, "Last movement is finished");
+    Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+    Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
   }
 }
 
@@ -623,16 +733,16 @@ static void LaunchRecordAnimation(void)
 
 //_____________________________________________________________________________
 
-static void LaunchOverflowAnimation(uint8_t* buttonState, uint8_t command)
+static void LaunchOverflowAnimation(uint8_t *buttonState, uint8_t command)
 {
   static uint8_t brightness = 0u;
 
   Leds_SetCircleBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS, 0u);
 
   when(buttonState[E_Button_Backward] || (command == E_Command_DownArrow) ||
-       buttonState[E_Button_Left]     || (command == E_Command_LeftArrow) ||
-       buttonState[E_Button_Forward]  || (command == E_Command_UpArrow)   ||
-       buttonState[E_Button_Right]    || (command == E_Command_RightArrow))
+       buttonState[E_Button_Left] || (command == E_Command_LeftArrow) ||
+       buttonState[E_Button_Forward] || (command == E_Command_UpArrow) ||
+       buttonState[E_Button_Right] || (command == E_Command_RightArrow))
   {
     brightness = 1u;
   }
@@ -655,7 +765,7 @@ static void LaunchOverflowAnimation(uint8_t* buttonState, uint8_t command)
 
 static void LaunchEraseAnimation(void)
 {
-  Codec_PlayMP3FileFromFlash(E_SoundIndex_Detection);
+  Codec_PlayMP3FileFromFlash(E_SoundIndex_Alarm);
 }
 
 //_____________________________________________________________________________
@@ -697,7 +807,7 @@ static void LaunchPauseAnimation(void)
 
 //_____________________________________________________________________________
 
-static void IRAM_ATTR ISR_EndOfMovement(void* arg)
+static void IRAM_ATTR ISR_EndOfMovement(void *arg)
 {
   // Retrieve the interrupt status and the counter value
   // from the timer that reported the interrupt
@@ -721,7 +831,7 @@ static void IRAM_ATTR ISR_EndOfMovement(void* arg)
 
 //_____________________________________________________________________________
 
-static void Callback_TimerStop(void* arg)
+static void Callback_TimerStop(void *arg)
 {
   MovementIsInProgress = false;
   PlayState = E_PlayState_Replay;
