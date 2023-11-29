@@ -206,6 +206,13 @@ void Settings_SetRightMotorSettings(int16_t rightMotor)
 
 //_____________________________________________________________________________
 
+void Settings_SetVolumeSettings(int16_t volume)
+{
+  Settings.Volume = volume;
+}
+
+//_____________________________________________________________________________
+
 int16_t Settings_GetLeftMotorSettings(void)
 {
   return Settings.LeftMotor;
@@ -216,6 +223,13 @@ int16_t Settings_GetLeftMotorSettings(void)
 int16_t Settings_GetRightMotorSettings(void)
 {
   return Settings.RightMotor;
+}
+
+//_____________________________________________________________________________
+
+int16_t Settings_GetVolumeSettings(void)
+{
+  return Settings.Volume;
 }
 
 //_____________________________________________________________________________
@@ -468,6 +482,8 @@ int16_t Settings_ReadVolume(void)
 
   FileSystem_Read(FileVolume, &output, sizeof(int16_t));
 
+  Settings.Volume = output;
+
   return output;
 }
 
@@ -660,6 +676,8 @@ static void WriteFactoryVolume(void)
   int16_t input = DEFAULT_VOLUME;
 
   FileSystem_Write(FileVolume, &input, sizeof(int16_t));
+
+  Settings.Volume = DEFAULT_VOLUME;
 }
 
 //_____________________________________________________________________________

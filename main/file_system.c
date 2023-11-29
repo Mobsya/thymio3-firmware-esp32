@@ -79,7 +79,6 @@ static const char* rangematch(const char* pattern, char test, int flags);
 //-----------------------------------------------------------------------------
 // Functions Implementation
 //-----------------------------------------------------------------------------
-#if 0
 void FileSystem_Init(void)
 {
   esp_vfs_spiffs_conf_t conf =
@@ -126,7 +125,6 @@ void FileSystem_Init(void)
 
   ESP_LOGI(Tag, "File system is initialized");
 }
-#endif
 //_____________________________________________________________________________
 
 bool FileSystem_CreateFile(const char* filename)
@@ -157,15 +155,21 @@ void FileSystem_Write(const char* filename, void* input, long int size)
   ESP_LOGI(Tag, "Opening file");
 
   FILE* file = fopen(filename, "w");
+  int err=0;
 
   if (file != NULL)
   {
-    fwrite(input, size, 1, file);
+    err = fwrite(input, size, 1, file);
+    if(err < 1) {
+      printf("fwrite error=%d\n", err);
+    }
     ESP_LOGI(Tag, "File %s written", filename);
+    printf("File %s written (%ld bytes)", filename, size);
   }
   else
   {
-    ESP_LOGE(Tag, "Failed to open file for writing");
+    //ESP_LOGE(Tag, "Failed to open file for writing");
+    printf("Failed to open file for writing");
   }
 
   fclose(file);
@@ -206,7 +210,7 @@ void FileSystem_Read(const char* filename, void* output, long int size)
 int8_t FileSystem_Read2(const char* filename, void* output, long int *size)
 {
   long int fileSize = 0;
-
+  size_t size_read = 0;
   ESP_LOGI(Tag, "Reading file");
 
   FILE* file = fopen(filename, "r");
@@ -227,7 +231,18 @@ int8_t FileSystem_Read2(const char* filename, void* output, long int *size)
       return -3;
     }
 
-    size_t size_read = fread(output, 1, fileSize, file);
+    if(fileSize > 131072) { // 128 KB
+      uint8_t chunks = (fileSize>>17);
+      uint32_t remaining = fileSize-(fileSize>>17);
+      printf("chunks=%d, remaining=%d\n", chunks, remaining);
+      for(int i=0; i<chunks; i++) {
+        size_read += fread(output+(i*131072), 1, 131072, file);
+      }
+      size_read += fread(output+(chunks*131072), 1, remaining, file);      
+    } else {
+      size_read = fread(output, 1, fileSize, file);    
+    }
+    printf("fileSize=%ld, sizeRead=%d\n", fileSize, size_read);
     fclose(file);
     if(size_read != fileSize) {
       return -4;
@@ -246,7 +261,7 @@ int8_t FileSystem_Read2(const char* filename, void* output, long int *size)
 int8_t FileSystem_Read3(const char* filename, void* output)
 {
   long int fileSize = 0;
-
+  size_t size_read = 0;
   ESP_LOGI(Tag, "Reading file");
 
   FILE* file = fopen(filename, "r");
@@ -261,7 +276,18 @@ int8_t FileSystem_Read3(const char* filename, void* output)
     fseek(file, 0, SEEK_SET);
     ESP_LOGI(Tag, "File %s open. File size: %ld Bytes", filename, fileSize);
 
-    size_t size_read = fread(output, 1, fileSize, file);
+    if(fileSize > 131072) { // 128 KB
+      uint8_t chunks = (fileSize>>17);
+      uint32_t remaining = fileSize-(chunks<<17);
+      printf("chunks=%d, remaining=%d\n", chunks, remaining);
+      for(int i=0; i<chunks; i++) {
+        size_read += fread(output+(i*131072), 1, 131072, file);
+      }
+      size_read += fread(output+(chunks*131072), 1, remaining, file);      
+    } else {
+      size_read = fread(output, 1, fileSize, file);    
+    }
+    printf("fileSize=%ld, sizeRead=%d\n", fileSize, size_read);
     fclose(file);
     if(size_read != fileSize) {
       return -3;

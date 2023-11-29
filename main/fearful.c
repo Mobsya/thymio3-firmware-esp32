@@ -148,12 +148,12 @@ void Fearful_Run(void)
     case 0: // not playing
       break;
     case 1: // start play
-      Codec_PlayMP3FileFromFlash(sound);
+      Codec_PlayOnboardSound(sound);
       play_state = 2;
       play_timeout = 0;
       break;
     case 2: // wait play finish      
-      if(Codec_IsSoundFinished(sound)) {
+      if(Codec_IsSoundFinished()) {
         play_state = 0;
       }
       play_timeout++;

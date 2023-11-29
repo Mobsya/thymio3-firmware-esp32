@@ -828,12 +828,12 @@ uint16_t LSM6DS3US_ReadBufferedAngularPosition(void)
   I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_STATUS1_REG_ADDRESS, len, 2u);
 
   length = (uint16_t)((uint16_t)(len[1] & 0x0F) << 8) | len[0];
-  ESP_LOGI(Tag, "length=%d", length);
+  //ESP_LOGI(Tag, "length=%d", length);
 
   if (length > 0u)
   {
     numSamples = ((length / 3) * 3);  // Get a multiple of 3 (entire part) for the XYZ samples (get maximum number of complete triplets).
-    ESP_LOGI(Tag, "numSamples=%d", numSamples);
+    //ESP_LOGI(Tag, "numSamples=%d", numSamples);
 
     if (numSamples >= 3*GYRO_BUFFER_SIZE) {
     	numSamples = 3*GYRO_BUFFER_SIZE;

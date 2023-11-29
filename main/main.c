@@ -49,6 +49,8 @@
 #include "uart.h"
 #include "utility.h"
 #include "mp_component.h"
+#include "errno.h"
+#include "wav_head.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -89,7 +91,8 @@ static const char* Tag = "main";
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-//uint8_t temp_buff[4096]={0};
+uint8_t temp_buff[24576]={0};
+int64_t time_start, time_end;
 bool printStats = false;
 
 void stats(void*z)
@@ -244,23 +247,15 @@ void stats2(void*z)
 			taskMaxCpuXUsage = 0;
 			maxCpuXUsageTaskId = 0;
 
-			//Heap
-			//printf("heap_free_size %d\n",heap_caps_get_free_size(MALLOC_CAP_8BIT));
-			// Heap statistics
-			// DRAM heap size: use heap_caps_get_total_size(MALLOC_CAP_8BIT) or heap_caps_get_total_size(MALLOC_CAP_8BIT|MALLOC_CAP_32BIT) because only DRAM can handle 8bit access
-			// Total (DRAM + IRAM) heap size: use heap_caps_get_total_size(MALLOC_CAP_32BIT) because both handle 32bit access
-			// IRAM heap size: use (heap_caps_get_total_size(MALLOC_CAP_32BIT) - heap_caps_get_total_size(MALLOC_CAP_8BIT))
-		   	//printf("tot heap=%d, dram heap=%d, iram heap=%d\n", heap_caps_get_total_size(MALLOC_CAP_32BIT), heap_caps_get_total_size(MALLOC_CAP_8BIT), (heap_caps_get_total_size(MALLOC_CAP_32BIT) - heap_caps_get_total_size(MALLOC_CAP_8BIT)));
-		   	//printf("tot free heap=%d, tot dram heap=%d, tot free iram heap=%d\n", heap_caps_get_free_size(MALLOC_CAP_32BIT), heap_caps_get_free_size(MALLOC_CAP_8BIT), (heap_caps_get_free_size(MALLOC_CAP_32BIT) - heap_caps_get_free_size(MALLOC_CAP_8BIT)));
-		   	currHeapSize = heap_caps_get_free_size(MALLOC_CAP_32BIT);
-		   	minHeapSize = heap_caps_get_minimum_free_size(MALLOC_CAP_32BIT);
-		   	printf("free heap=%d, min free heap=%d\n\n", currHeapSize, minHeapSize);
+			printMemInfo();
 
 		}
 
 		vTaskDelay(500 / portTICK_PERIOD_MS);
 	}
 }
+
+	
 
 FRESULT scan_files (
     char* path        /* Start node to be scanned (also used as work area) */
@@ -328,7 +323,7 @@ int app_main(void)
   ESP_LOGI(Tag, "heap (cont.)=%ul, heap (all)=%ul, min_heap=%ul", esp_get_free_heap_size(), esp_get_free_internal_heap_size(), esp_get_minimum_free_heap_size());
 
   TimerSw_Init();
-
+  FileSystem_Init();
   Gpio_Init();
   turnOffAllSensors();
 
@@ -358,7 +353,7 @@ int app_main(void)
   //BLE_Init();
 
   //Codec_SetVolume(100);
-  //Codec_PlayMP3FileFromFlash(E_SoundIndex_Startup);
+  //Codec_PlayOnboardSound(E_SoundIndex_Startup);
 
   // TODO Move to Behavior when entering into settings
   //ESP_ERROR_CHECK(FileServer_Start("/spiffs"));
@@ -398,7 +393,8 @@ int app_main(void)
   Leds_Start();
 
   init_micropython();
-
+  
+  //printMemInfo();
 
 //     // Handle of the wear levelling library instance
 //     static wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
@@ -498,18 +494,8 @@ int app_main(void)
 //     }
 // */
 
-
-
-/*
-  heap_caps_check_integrity_all(true);
-  ESP_LOGI(Tag, "heap (cont.)=%u, heap (all)=%u, min_heap=%u", esp_get_free_heap_size(), esp_get_free_internal_heap_size(), esp_get_minimum_free_heap_size());
-  int min_free_8bit_cap = heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
-  int min_free_32bit_cap = heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_32BIT);
-  printf("||   Miniumum Free DRAM\t|   Minimum Free IRAM\t|| \n");
-  printf("||\t%-6d\t\t|\t%-6d\t\t||\n", min_free_8bit_cap, (min_free_32bit_cap - min_free_8bit_cap));
-*/
-  //Codec_PlayMP3FileFromFlash(0);
-  //Codec_PlayMP3FileFromFlash(E_SoundIndex_Startup);
+  //Codec_PlayOnboardSound(0);
+  //Codec_PlayOnboardSound(E_SoundIndex_Startup);
 
   //xTaskCreatePinnedToCore(stats, "stats", 4096, NULL, 0, NULL, 0);
   //xTaskCreatePinnedToCore(stats2, "stats2", 4096, NULL, 0, NULL, 0);
@@ -535,8 +521,50 @@ int app_main(void)
   ESP_LOGI(Tag, "written 4096.txt");
 */
 
-  //size_t psram_size = esp_spiram_get_size();
-  //printf("PSRAM size: %d bytes\n", psram_size);
+/*
+	// Debug code to analyze writing speed and reliability of spiffs flash.
+	time_start = esp_timer_get_time();
+	FILE* file = fopen("/spiffs/test.bin", "wb");
+	int32_t wlen = fwrite(temp_buff, 24576, 1, file);
+	time_end = esp_timer_get_time();
+	fclose(file);
+	printf("test1.bin write:%d, errno:%d, in %lld usec\n", wlen, errno, time_end - time_start);
+
+	uint8_t* blabla = (uint8_t*)malloc(240000); // 12 KHz sampling rate * 2 bytes per sample * 10 seconds
+	time_start = esp_timer_get_time();
+	file = fopen("/spiffs/test2.bin", "wb");
+	wlen = fwrite(blabla, 1, 45000, file);
+	time_end = esp_timer_get_time();
+	fsync(fileno(file));
+	fclose(file);	
+	printf("test2.bin write:%d, errno:%d, in %lld usec\n", wlen, errno, time_end - time_start);
+
+	wlen = 0;
+	time_start = esp_timer_get_time();
+	uint32_t fileSize = 240000;
+	file = fopen("/spiffs/test3.bin", "wb");
+    //if(fileSize > 32768) { // 32 KB
+      uint8_t chunks = (fileSize>>15);
+      uint32_t remaining = fileSize-(chunks<<15);
+      printf("chunks=%d, remaining=%d\n", chunks, remaining);
+      for(int i=0; i<chunks; i++) {
+		wlen += fwrite(&blabla[i*32768], 1, 32768, file);
+      }
+	  wlen += fwrite(&blabla[chunks*32768], 1, remaining, file);     
+    //}
+	time_end = esp_timer_get_time();
+	fclose(file);
+	printf("test3.bin write:%d, errno:%d, in %lld usec\n", wlen, errno, time_end - time_start);	
+
+	wav_header_t info = {0};
+	printf("size of wav header = %d", sizeof(wav_header_t));
+*/
+	listDir();
+
+
+	//Codec_RecordWAVFile(0, 2);
+	//vTaskDelay(3500 / portTICK_PERIOD_MS);
+	//Codec_PlayWAVFile(0);
 
   return 0;
 }

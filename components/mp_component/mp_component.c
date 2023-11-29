@@ -162,8 +162,9 @@ void mp_task(void *pvParameter) {
         #endif
         mp_task_heap_size = MIN(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT), heap_total / 2);
         mp_task_heap = malloc(mp_task_heap_size);
+        //printf("uPy allocated heap size = %d", mp_task_heap_size);
     }
-
+    
 soft_reset:
     // initialise the stack pointer for the main thread
     mp_stack_set_top((void *)sp);

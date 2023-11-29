@@ -97,7 +97,7 @@ void record_wav(AsebaVMState* vm)
   sd_start_record(name);
 #endif
 
-  Codec_RecordWAVFile(index, duration);
+  //Codec_RecordWAVFile(index, duration);
 }
 
 //_____________________________________________________________________________
@@ -140,7 +140,7 @@ void play_mp3_sys(AsebaVMState* vm)
 
   //ESP_LOGE(Tag, "Number = %d", number);
 
-  Codec_PlayMP3FileFromFlash(number);
+  Codec_PlayOnboardSound(number);
 }
 
 //_____________________________________________________________________________
@@ -162,7 +162,7 @@ void play_mp3(AsebaVMState* vm)
 
   //ESP_LOGE(Tag, "Number = %d", number);
 
-  Codec_PlayMP3File(number);
+  //Codec_PlayMP3File(number);
 }
 
 //_____________________________________________________________________________
@@ -199,7 +199,7 @@ void play_wav(AsebaVMState* vm)
   //Sound_StartReplaying();
   //Sound_Replay();
 //  Codec_StartWAVPlayer(number);
-  Codec_PlayWAVFile(number);
+  //Codec_PlayWAVFile(number);
 }
 
 //_____________________________________________________________________________
@@ -215,7 +215,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3_sys =
 
 void pause_mp3_sys(AsebaVMState* vm)
 {
-  Codec_PauseMP3File();
+  Codec_Pause();
 }
 
 //_____________________________________________________________________________
@@ -231,7 +231,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_pause_mp3 =
 
 void pause_mp3(AsebaVMState* vm)
 {
-  Codec_PauseMP3File();
+  Codec_Pause();
 }
 
 //_____________________________________________________________________________
@@ -247,7 +247,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_pause_wav =
 
 void pause_wav(AsebaVMState* vm)
 {
-  Codec_PauseWAVFile();
+  Codec_Pause();
 }
 
 //_____________________________________________________________________________
@@ -263,7 +263,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3_sys =
 
 void resume_mp3_sys(AsebaVMState* vm)
 {
-  Codec_ResumeMP3File();
+  Codec_Resume();
 }
 
 //_____________________________________________________________________________
@@ -279,7 +279,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_resume_mp3 =
 
 void resume_mp3(AsebaVMState* vm)
 {
-  Codec_ResumeMP3File();
+  Codec_Resume();
 }
 
 //_____________________________________________________________________________
@@ -295,7 +295,7 @@ AsebaNativeFunctionDescription AsebaNativeDescription_resume_wav =
 
 void resume_wav(AsebaVMState* vm)
 {
-  Codec_ResumeWAVFile();
+  Codec_Resume();
 }
 
 //_____________________________________________________________________________

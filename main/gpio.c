@@ -82,7 +82,7 @@ static void IRAM_ATTR ISR_GPIOHandler(void* arg);
 void Gpio_Init(void)
 {
   // Install the GPIO ISR service
-  //gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT); // Already installed when initializing SPIFFS
+  gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
 }
 
 //_____________________________________________________________________________
@@ -321,7 +321,7 @@ static void IRAM_ATTR ISR_GPIOHandler(void* arg)
 
   if (gpio_num == ACC_INT2_PIN)
   {
-    Tap = true;
+    Tap = true;    
     SET_EVENT(EVENT_TAP);
   }
 

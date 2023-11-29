@@ -143,7 +143,7 @@ static void CalculateAngle(int16_t* angle, uint16_t number)
     gyroCorr[axis] = (sum[axis] - (number * ZeroGyro[axis]));
     Teta[axis] += (((Mul + Offset) * gyroCorr[axis]) / Div);
     angle[axis] = Teta[axis];
-    ESP_LOGI(Tag, "x=%d, y=%d, z=%d", Teta[0], Teta[1], Teta[2]);
+    //ESP_LOGI(Tag, "x=%d, y=%d, z=%d", Teta[0], Teta[1], Teta[2]);
   }
 }
 
@@ -206,7 +206,7 @@ void Gyroscope_ReadAngle(void)
     vmVariables.angle_deg[index] = Angle_deg[index];
   }
 
-  ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", vmVariables.angle_deg[0], vmVariables.angle_deg[1], vmVariables.angle_deg[2]);
+  //ESP_LOGI(Tag, "X: %d, Y: %d, Z: %d", vmVariables.angle_deg[0], vmVariables.angle_deg[1], vmVariables.angle_deg[2]);
 
   //SET_EVENT(EVENT_GYRO);
 }

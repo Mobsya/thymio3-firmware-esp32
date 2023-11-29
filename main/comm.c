@@ -151,7 +151,7 @@ static void RunCommTask(void* arg)
   while (1)
   {
     time_start = esp_timer_get_time();
-    Settings_UpdateSettings();
+    //Settings_UpdateSettings();
     //STM32_UpdateMotorTargets(); // This is needed to update the motors target speed from Aseba
 
     // Transmit values to the STM32

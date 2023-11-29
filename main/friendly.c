@@ -183,15 +183,15 @@ void Friendly_Run(void)
 
 
 	// Audio management
-  //when(max > DETECT) // When something detected at long distance then play a sound...remove it because add confusion
-  //{
-  //  Codec_PlayMP3FileFromFlash(E_SoundIndex_Detection);
-  //}
+  when(max > DETECT) // When something detected at long distance then play a sound...remove it because add confusion
+  {
+    Codec_PlayOnboardSound(E_SoundIndex_Detection);
+  }
 
 	if(speedDiff == 0 && speed_l == 0 && sound_done == 0 && max > DETECT) {
 		sound_done = 1;
 		//play_sound(SOUND_F_OK); // FIXME
-    Codec_PlayMP3FileFromFlash(E_SoundIndex_Good);
+    Codec_PlayOnboardSound(E_SoundIndex_Good);
 	}
 	if(speedDiff != 0 || max < DETECT) {
 		sound_done = 0;

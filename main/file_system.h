@@ -53,7 +53,7 @@ extern void listDir(void);
 //! \pre       None
 //! \param     None
 //! \return    None
-//extern void FileSystem_Init(void);
+extern void FileSystem_Init(void);
 
 //! \brief     Create the file
 //! \pre       First initialize the file system

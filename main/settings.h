@@ -9,7 +9,7 @@
 //! \file    settings.h
 //! \brief   This module provides the useful functions to use the settings
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -73,6 +73,12 @@ extern void Settings_SetLeftMotorSettings(int16_t leftMotor);
 //! \return    None
 extern void Settings_SetRightMotorSettings(int16_t rightMotor);
 
+//! \brief     Set the volume (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     volume
+//! \return    None
+extern void Settings_SetVolumeSettings(int16_t volume);
+
 //! \brief     Get the left motor correction
 //! \pre       First initialize the settings
 //! \param     None
@@ -84,6 +90,12 @@ extern int16_t Settings_GetLeftMotorSettings(void);
 //! \param     None
 //! \return    Right motor correction
 extern int16_t Settings_GetRightMotorSettings(void);
+
+//! \brief     Get the volume stored in flash
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    Volume
+extern int16_t Settings_GetVolumeSettings(void);
 
 //! \brief     Create the left motor settings file
 //! \pre       First initialize the settings
