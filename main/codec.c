@@ -60,6 +60,7 @@
 #include "utility.h"
 #include "wav_head.h"
 #include "settings.h"
+#include "behavior.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -84,9 +85,11 @@
 
 #define MAX_RECORD_SIZE 240000 // 12 KHz sampling rate * 2 bytes per sample * 10 seconds
 
-#define STATE_STOPPED 0
-#define STATE_RUNNING 1
-#define STATE_PAUSED 2
+#define STATE_RUNNING 0
+#define STATE_PAUSED 1
+#define STATE_ALMOST_STOPPED 2
+#define STATE_STOPPED 3
+
 
 #define PLAY_NEAR_END_THR 4800 // 12 KHz sampling rae * 2 bytes per sample * 1 second = 24000 bytes/sec => 200 ms = 24000/5 = 4800
 
@@ -239,24 +242,6 @@ static T_RecorderHandle InitRecorder(void);
 //! \return    None
 static void SelectFile(T_SoundIndex index);
 
-//! \brief     Stop playing a MP3 file
-//! \pre       First initialize the codec
-//! \param     None
-//! \return    None
-static esp_err_t StopMP3(void);
-
-//! \brief     Stop playing a WAV file (from the SPI file system)
-//! \pre       First initialize the codec
-//! \param     None
-//! \return    None
-static esp_err_t StopWAV(void);
-
-//! \brief     Stop recording a WAV file (to the SPI file system)
-//! \pre       First initialize the codec
-//! \param     None
-//! \return    None
-static esp_err_t StopWAVRecord(void);
-
 //! \brief     Run the recorder task
 //! \pre       First initialize the codec
 //! \param     arg - Task parameter
@@ -338,8 +323,12 @@ int player_read_cb(audio_element_handle_t self, char *buffer, int len, TickType_
     //  Change immediately the state of the players instead of waiting the related "finished" event.
     //  This is to avoid conflicts between delayed events and actual pipeline state.
     //  For example: 1) play end => read cb "finish" 2) user pause 3) "finish event" not queued, only "paused event" received => pipeline state lost.
-    WavPlayer->state = STATE_STOPPED;
-    Mp3Player->state = STATE_STOPPED;
+    if(WavPlayer->state != STATE_STOPPED) { // If WavPlayer running
+      WavPlayer->state = STATE_ALMOST_STOPPED;
+    }
+    if(Mp3Player->state != STATE_STOPPED) { // If Mp3Player running
+      Mp3Player->state = STATE_ALMOST_STOPPED;
+    }
     return AEL_IO_DONE;
   }
   if ((playerBufferIndex + len) > playerBufferSize)
@@ -436,7 +425,7 @@ esp_err_t Codec_PlayOnboardSound(T_SoundIndex index)
   esp_err_t err = 0;
   // return; // Used for debugging in order to not use the player.
 
-  if ((OnboardPlayer->state == STATE_RUNNING) || (WavPlayer->state == STATE_RUNNING) || (Mp3Player->state == STATE_RUNNING) || (Recorder->state == STATE_RUNNING))
+  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED))
   { // Finish previous play/recording before starting another one.
     return ESP_FAIL;
   }
@@ -469,7 +458,10 @@ esp_err_t Codec_PlayOnboardSound(T_SoundIndex index)
 esp_err_t Codec_PlayMP3File(uint8_t *mp3, uint32_t num_bytes)
 {
   esp_err_t err = 0;
-  if ((OnboardPlayer->state == STATE_RUNNING) || (WavPlayer->state == STATE_RUNNING) || (Mp3Player->state == STATE_RUNNING) || (Recorder->state == STATE_RUNNING))
+
+  //printf("OnboardPlayer state = %d, WavPlayer state = %d, Mp3Player state = %d, Recorder state = %d\n", OnboardPlayer->state, WavPlayer->state, Mp3Player->state, Recorder->state);
+
+  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED))
   { // Finish previous play/recording before starting another one.
     return ESP_FAIL;
   }
@@ -506,7 +498,7 @@ esp_err_t Codec_PlayWAVFile(uint8_t *wav, uint32_t num_bytes)
 {
   esp_err_t err = 0;
   // return; // Used for debugging
-  if ((OnboardPlayer->state == STATE_RUNNING) || (WavPlayer->state == STATE_RUNNING) || (Mp3Player->state == STATE_RUNNING) || (Recorder->state == STATE_RUNNING))
+  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED))
   { // Finish previous play/recording before starting another one.
     return ESP_FAIL;
   }
@@ -541,7 +533,7 @@ esp_err_t Codec_PlayRecorded(void)
 {
   esp_err_t err = 0;
   // return; // Used for debugging
-  if ((OnboardPlayer->state == STATE_RUNNING) || (WavPlayer->state == STATE_RUNNING) || (Mp3Player->state == STATE_RUNNING) || (Recorder->state == STATE_RUNNING))
+  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED))
   { // Finish previous play/recording before starting another one.
     return ESP_FAIL;
   }
@@ -626,12 +618,12 @@ int Codec_GetWAVPlayedTime(void)
 
 void Codec_RecordWAVFile(uint16_t duration_s)
 {
-  if ((OnboardPlayer->state == STATE_RUNNING) || (WavPlayer->state == STATE_RUNNING) || (Mp3Player->state == STATE_RUNNING) || (Recorder->state == STATE_RUNNING))
+  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED))
   { // Finish previous play/recording before starting another one.
     return;
   }
   RecordingDuration_s = duration_s;
-  Sensors_buttons_pause();
+  //Sensors_buttons_pause();
 
   i2s_stream_set_clk(Recorder->I2SStream, RECORD_RATE, RECORD_BITS, RECORD_CHANNEL); // Set the correct recording rate in case it is changed during the play (it should not happen...).
 
@@ -643,6 +635,9 @@ void Codec_RecordWAVFile(uint16_t duration_s)
   writer_info.duration = duration;
   audio_element_setinfo(Recorder->SPIFFSStream, &writer_info);
   */
+
+  Behavior_Disable(B_LED_MIC);
+  Behavior_Enable(B_LED_MIC_STATE); // Turn on MIC LED
 
   //...so we need to measure the time passed manually. This is done inside the recorder event handling task.
   // Once the recording time is elapsed, the task will be terminated.
@@ -665,12 +660,12 @@ void Codec_SetVolume(int16_t volume)
 
 extern bool Codec_IsSoundFinished(void)
 {
-  if ((OnboardPlayer->state == STATE_STOPPED) && (WavPlayer->state == STATE_STOPPED) && (Mp3Player->state == STATE_STOPPED))
-  {
-    return true; // No sound played
-  }
-  else
-  {
+  //if ((OnboardPlayer->state == STATE_STOPPED) && (WavPlayer->state == STATE_STOPPED) && (Mp3Player->state == STATE_STOPPED))
+  //{
+  //  return true; // Return immediately true if no sound played => this wrongly trigger an event in the "micropython Thymio API implementation"
+  //}
+  //else
+  //{
     if (OnboardPlayer->Played || WavPlayer->Played || Mp3Player->Played) // Only one played at a time can run, so it is possible to test all in the same function
     {
       OnboardPlayer->Played = false;
@@ -682,7 +677,7 @@ extern bool Codec_IsSoundFinished(void)
     {
       return false;
     }
-  }
+  //}
 }
 
 //_____________________________________________________________________________
@@ -732,6 +727,7 @@ static T_Mp3PlayerHandle InitMp3Player(void)
 
   ap->Run = false;
   ap->state = STATE_STOPPED;
+  ap->Played = false;
   return ap;
 _mp3_init_failed:
   return NULL;
@@ -793,6 +789,7 @@ static T_OnboardPlayerHandle InitOnboardPlayer(void)
 
   ap->Run = false;
   ap->state = STATE_STOPPED;
+  ap->Played = false;
   return ap;
 _onboard_init_failed:
   return NULL;
@@ -851,6 +848,7 @@ static T_WavPlayerHandle InitWavPlayer(void)
 
   ap->Run = false;
   ap->state = STATE_STOPPED;
+  ap->Played = false;
   return ap;
 _wav_init_failed:
   return NULL;
@@ -903,6 +901,7 @@ static T_RecorderHandle InitRecorder(void)
 
   ap->Run = true;
   ap->state = STATE_STOPPED;
+  ap->Recorded = false;
 
   audio_element_set_write_cb(ap->Encoder, recorder_write_cb, NULL);
 
@@ -1055,11 +1054,10 @@ static void RunMp3PlayerTask(void *arg)
     // Stop when the last pipeline element (I2SStream in this case) receives finished event
     if ((msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT) && (msg.source == (void *)Mp3Player->I2SStream) && (msg.cmd == AEL_MSG_CMD_REPORT_STATUS) && (((int)msg.data == AEL_STATUS_STATE_FINISHED) || ((int)msg.data == AEL_STATUS_ERROR_OPEN)))
     {
-      ESP_LOGE(Tag, "Stop pipeline from task");
+      ESP_LOGI(Tag, "Stop pipeline from task");
       audio_pipeline_stop(Mp3Player->Pipeline);
       audio_pipeline_wait_for_stop(Mp3Player->Pipeline);
       audio_pipeline_reset_ringbuffer(Mp3Player->Pipeline);
-      Sensors_buttons_resume();
       Mp3Player->state = STATE_STOPPED;
       Mp3Player->Played = true;
     }
@@ -1152,7 +1150,6 @@ static void RunOnboardPlayerTask(void *arg)
       audio_pipeline_wait_for_stop(OnboardPlayer->Pipeline);
       audio_pipeline_reset_ringbuffer(OnboardPlayer->Pipeline); // This is needed!
       SoundStatus[OnboardSoundIndex] = E_SoundStatus_Finished;
-      Sensors_buttons_resume();
       OnboardPlayer->state = STATE_STOPPED;
       OnboardPlayer->Played = true;
     }
@@ -1162,7 +1159,7 @@ static void RunOnboardPlayerTask(void *arg)
       ESP_LOGI(Tag, "FlashToneStream finished\n");
       // Set the "stopped state" as soon as one of the audio elements receive "finish event".
       // This avoid to pause/stop between the "flashtonestream" finished and the "i2sstream" not yet finished.
-      OnboardPlayer->state = STATE_STOPPED;
+      OnboardPlayer->state = STATE_ALMOST_STOPPED;
     }
 
     if ((msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT) && (msg.source == (void *)OnboardPlayer->I2SStream) && (msg.cmd == AEL_MSG_CMD_REPORT_STATUS) && ((int)msg.data == AEL_STATUS_STATE_STOPPED))
@@ -1189,7 +1186,6 @@ static void RunOnboardPlayerTask(void *arg)
     audio_pipeline_terminate(OnboardPlayer->Pipeline);
     audio_pipeline_reset_ringbuffer(OnboardPlayer->Pipeline); // This is needed!
     audio_event_iface_discard(OnboardPlayer->Evt);            // Discard the "stopped" event queued after "audio_pipeline_stop"
-    Sensors_buttons_resume();
     OnboardPlayer->Playing = false;
   */
   vTaskDelete(NULL); // Delete this task
@@ -1255,7 +1251,6 @@ static void RunWavPlayerTask(void *arg)
       audio_pipeline_stop(WavPlayer->Pipeline);
       audio_pipeline_wait_for_stop(WavPlayer->Pipeline);
       audio_pipeline_reset_ringbuffer(WavPlayer->Pipeline);
-      Sensors_buttons_resume();
       WavPlayer->state = STATE_STOPPED;
       WavPlayer->Played = true;
     }
@@ -1390,67 +1385,44 @@ static void RunRecordTask(void *arg)
   memcpy(recordBuffer, wav_info, sizeof(wav_header_t));
   free(wav_info);
 
-  Sensors_buttons_resume();
+  //Sensors_buttons_resume();
   Recorder->Recorded = true;
   Recorder->state = STATE_STOPPED;
+  Behavior_Disable(B_LED_MIC_STATE); // Turn off MIC LED
+  
   vTaskDelete(NULL);
 }
 
 //_____________________________________________________________________________
 
-static esp_err_t StopMP3(void)
+esp_err_t Codec_Stop(void)
 {
-  if (Mp3Player->state == STATE_RUNNING)
-  {
-    // ESP_LOGE(Tag, "StopMP3");
-
-    audio_pipeline_stop(Mp3Player->Pipeline);
-    audio_pipeline_wait_for_stop(Mp3Player->Pipeline);
-    audio_element_reset_state(Mp3Player->Mp3Decoder);
-    audio_element_reset_state(Mp3Player->I2SStream);
-    audio_pipeline_reset_ringbuffer(Mp3Player->Pipeline);
-    audio_pipeline_reset_items_state(Mp3Player->Pipeline);
-    audio_pipeline_terminate(Mp3Player->Pipeline);
-  }
-
-  return ESP_OK;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t StopWAV(void)
-{
-  // ESP_LOGE(Tag, "COUCOU STOP WAV");
-
-  if (WavPlayer->state == STATE_RUNNING)
+  if (WavPlayer->state != STATE_STOPPED)
   {
     audio_pipeline_stop(WavPlayer->Pipeline);
     audio_pipeline_wait_for_stop(WavPlayer->Pipeline);
-    audio_element_reset_state(WavPlayer->I2SStream);
     audio_pipeline_reset_ringbuffer(WavPlayer->Pipeline);
-    audio_pipeline_reset_items_state(WavPlayer->Pipeline);
-    audio_pipeline_terminate(WavPlayer->Pipeline);
+    audio_event_iface_discard(WavPlayer->Evt);
     WavPlayer->state = STATE_STOPPED;
   }
 
-  return ESP_OK;
-}
-
-//_____________________________________________________________________________
-
-static esp_err_t StopWAVRecord(void)
-{
-  if (Recorder->state == STATE_RUNNING)
+  if (OnboardPlayer->state != STATE_STOPPED)
   {
-    printMemInfo();
-    ESP_LOGE(Tag, "COUCOU STOP WAV RECORDER");
-    audio_pipeline_stop(Recorder->Pipeline);
-    audio_pipeline_wait_for_stop(Recorder->Pipeline);
-    audio_element_reset_state(Recorder->Encoder);
-    audio_element_reset_state(Recorder->I2SStream);
-    audio_pipeline_reset_ringbuffer(Recorder->Pipeline);
-    audio_pipeline_reset_items_state(Recorder->Pipeline);
-    audio_pipeline_terminate(Recorder->Pipeline);
+    audio_pipeline_stop(OnboardPlayer->Pipeline);
+    audio_pipeline_wait_for_stop(OnboardPlayer->Pipeline);
+    audio_pipeline_reset_ringbuffer(OnboardPlayer->Pipeline);
+    audio_event_iface_discard(OnboardPlayer->Evt);
+    SoundStatus[OnboardSoundIndex] = E_SoundStatus_Finished;
+    OnboardPlayer->state = STATE_STOPPED;
+  }
+
+  if (Mp3Player->state != STATE_STOPPED)
+  {
+    audio_pipeline_stop(Mp3Player->Pipeline);
+    audio_pipeline_wait_for_stop(Mp3Player->Pipeline);
+    audio_pipeline_reset_ringbuffer(Mp3Player->Pipeline);
+    audio_event_iface_discard(Mp3Player->Evt);
+    Mp3Player->state = STATE_STOPPED;
   }
 
   return ESP_OK;
@@ -1508,11 +1480,6 @@ esp_err_t Codec_Pause(void)
   return ESP_OK;
 }
 
-esp_err_t Codec_Stop(void)
-{
-  return ESP_OK;
-}
-
 esp_err_t Codec_Resume(void)
 {
   if (OnboardPlayer->state == STATE_PAUSED)
@@ -1536,4 +1503,13 @@ esp_err_t Codec_Resume(void)
     return ESP_FAIL;
   }
   return ESP_OK;
+}
+
+//_____________________________________________________________________________
+
+void  Codec_ClearEvents(void) {
+  OnboardPlayer->Played = false;
+  WavPlayer->Played = false;
+  Mp3Player->Played = false;  
+  Recorder->Recorded = false;
 }

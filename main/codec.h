@@ -162,6 +162,11 @@ esp_err_t  Codec_Stop(void);
 //! \return    Error code
 esp_err_t  Codec_Resume(void);
 
+//! \brief     Clear audio events (played and recorded).
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
+void  Codec_ClearEvents(void);
 
 
 #endif // CODEC_H_

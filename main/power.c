@@ -93,6 +93,7 @@ void Power_HandlePowerModeRequest(void)
         Sensors_Stop();
         Leds_Stop();
         Common_SetTargetSpeed(0, 0);
+        Codec_Stop();
         if(Codec_PlayOnboardSound(E_SoundIndex_Bye) != ESP_OK) {
           //printf("Cannot play byebye!\n");
         }

@@ -165,6 +165,7 @@ void Mode_Run(void)
         switch(SelectMode) {
           case E_Mode_Python_Main1:
             if(!script_is_present(1)) {
+              Codec_Stop();
               Codec_PlayOnboardSound(E_SoundIndex_Bad);
               ignore = 1;
             }
@@ -172,6 +173,7 @@ void Mode_Run(void)
 
           case E_Mode_Python_Main2:
             if(!script_is_present(2)) {
+              Codec_Stop();
               Codec_PlayOnboardSound(E_SoundIndex_Bad);
               ignore = 1;
             }          
@@ -179,6 +181,7 @@ void Mode_Run(void)
 
           case E_Mode_Python_Main3:
             if(!script_is_present(3)) {
+              Codec_Stop();
               Codec_PlayOnboardSound(E_SoundIndex_Bad);
               ignore = 1;
             }          
@@ -186,6 +189,7 @@ void Mode_Run(void)
 
           case E_Mode_Python_Main4:
             if(!script_is_present(4)) {
+              Codec_Stop();
               Codec_PlayOnboardSound(E_SoundIndex_Bad);
               ignore = 1;
             }          
@@ -193,6 +197,7 @@ void Mode_Run(void)
 
           case E_Mode_Python_Main5:
             if(!script_is_present(5)) {
+              Codec_Stop();
               Codec_PlayOnboardSound(E_SoundIndex_Bad);
               ignore = 1;
             }          
@@ -200,6 +205,7 @@ void Mode_Run(void)
 
           case E_Mode_Python_Main6:
             if(!script_is_present(6)) {
+              Codec_Stop();
               Codec_PlayOnboardSound(E_SoundIndex_Bad);
               ignore = 1;
             }          
@@ -207,6 +213,7 @@ void Mode_Run(void)
 
           case E_Mode_Python_Main7:
             if(!script_is_present(7)) {
+              Codec_Stop();
               Codec_PlayOnboardSound(E_SoundIndex_Bad);
               ignore = 1;
             }          

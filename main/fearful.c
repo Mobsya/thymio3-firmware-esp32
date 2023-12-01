@@ -148,6 +148,7 @@ void Fearful_Run(void)
     case 0: // not playing
       break;
     case 1: // start play
+      Codec_Stop();
       Codec_PlayOnboardSound(sound);
       play_state = 2;
       play_timeout = 0;

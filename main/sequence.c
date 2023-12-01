@@ -655,6 +655,7 @@ static void HandleCollision(void)
 
   if (first)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_Detection);
     first = false;
   }
@@ -765,6 +766,7 @@ static void LaunchOverflowAnimation(uint8_t *buttonState, uint8_t command)
 
 static void LaunchEraseAnimation(void)
 {
+  Codec_Stop();
   Codec_PlayOnboardSound(E_SoundIndex_Alarm);
 }
 

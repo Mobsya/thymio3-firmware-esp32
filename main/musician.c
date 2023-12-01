@@ -109,42 +109,49 @@ void Musician_Run(void)
 
   when(color == E_Color_Red)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_C3);
     Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);
   }
 
   when(color == E_Color_Orange)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_D3);
     Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS / 2u, 0u);
   }
 
   when(color == E_Color_Yellow)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_E3);
     Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
   }
 
   when(color == E_Color_Green)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_F3);
     Leds_SetBodyBrightness(0u, MAX_BRIGHTNESS, 0u);
   }
 
   when(color == E_Color_Cyan)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_G3);
     Leds_SetBodyBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
   }
 
   when(color == E_Color_Blue)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_A3);
     Leds_SetBodyBrightness(0u, 0u, MAX_BRIGHTNESS);
   }
 
   when(color == E_Color_Purple)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_B3);
     Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
   }

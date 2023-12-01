@@ -243,10 +243,12 @@ void Behavior_PlaySoundButtons(uint8_t button)
       (button == E_Button_Forward)  ||
       (button == E_Button_Right))
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_Tick);
   }
   else if (button == E_Button_Center)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_Blop);
   }
   else
@@ -263,6 +265,7 @@ void Behavior_PlaySoundAlarm(uint8_t type)
 
   if (playSound)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_Alarm);
   }
 
@@ -589,26 +592,31 @@ static void PlaySoundButtons(void)
 
   when(buttonState[E_Button_Backward] != 0u)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_Tick);
   }
 
   when(buttonState[E_Button_Left] != 0u)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_Tick);
   }
 
   when(buttonState[E_Button_Center] != 0u)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_Blop);
   }
 
   when(buttonState[E_Button_Forward] != 0u)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_Tick);
   }
 
   when(buttonState[E_Button_Right] != 0u)
   {
+    Codec_Stop();
     Codec_PlayOnboardSound(E_SoundIndex_Tick);
   }
 }
@@ -1076,10 +1084,12 @@ static void CalibrateColor(void)
   {
     if (ColorSensor_Calibrate(0, &calibrationStatus))  // White calibration
     {
+      Codec_Stop();
       Codec_PlayOnboardSound(E_SoundIndex_Good);
     }
     else
     {
+      Codec_Stop();
       Codec_PlayOnboardSound(E_SoundIndex_Bad);
     }
 
@@ -1106,10 +1116,12 @@ static void CalibrateColor(void)
   {
     if (ColorSensor_Calibrate(1, &calibrationStatus))  // Black calibration
     {
+      Codec_Stop();
       Codec_PlayOnboardSound(E_SoundIndex_Good);
     }
     else
     {
+      Codec_Stop();
       Codec_PlayOnboardSound(E_SoundIndex_Bad);
     }
 
