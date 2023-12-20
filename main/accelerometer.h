@@ -74,6 +74,12 @@ extern T_Axis Accelerometer_GetAcceleration(void);
 //! \return    Acceleration on the Y-axis
 extern int16_t Accelerometer_GetAccelerationY(void);
 
+//! \brief     Get the acceleration on Z-axis
+//! \pre       First initialize the accelerometer
+//! \param     None
+//! \return    Acceleration on the Z-axis
+extern int16_t Accelerometer_GetAccelerationZ(void);
+
 //! \brief     Read the acceleration tap source
 //! \pre       First initialize the accelerometer
 //! \param     None

@@ -52,8 +52,6 @@
 #define COLLISION_THRESHOLD 700   //!< Collision threshold
 #define NO_COLLISION_THRESHOLD 10 //!< No collision threshold
 
-#define DEBOUNCE 3u //!< Debounce used to jump to erase state
-
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -62,9 +60,9 @@
 typedef enum
 {
   E_State_Record,
-  E_State_Erase,
   E_State_Play,
-  E_State_Wait_Erase
+  E_State_Erase_All_In_Progress,
+  E_State_Erase_Last_Step_In_Progress
 } T_State;
 
 //! \details States of the play state machine
@@ -109,7 +107,6 @@ static uint8_t Current = 0u; //!< Current value of the sequence table
 static uint8_t Sequence[SEQUENCE_BUFFER_SIZE] = {0u}; //!< Sequence table
 static uint8_t WrPos = 0u;                            //!< Write position cursor
 static uint8_t RdPos = 0u;                            //!< Read position cursor
-static uint8_t eraseCounter = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -126,12 +123,6 @@ static void RecordSequence(void);
 //! \param     command - Command of the remote control
 //! \return    None
 static void ProcessEraseAction(uint8_t command);
-
-//! \brief     Erase the sequence
-//! \pre       First initialize the mode
-//! \param     None
-//! \return    None
-static void EraseSequence(void);
 
 //! \brief     Play the sequence
 //! \pre       First initialize the mode
@@ -181,12 +172,6 @@ static void LaunchRecordAnimation(void);
 //! \param     command - Command of the remote control
 //! \return    None
 static void LaunchOverflowAnimation(uint8_t *buttonState, uint8_t command);
-
-//! \brief     Launch the erase animation
-//! \pre       First initialize the mode
-//! \param     None
-//! \return    None
-static void LaunchEraseAnimation(void);
 
 //! \brief     Launch the play animation
 //! \pre       First initialize the mode
@@ -257,15 +242,11 @@ void Sequence_Stop(void)
 
 void Sequence_Run(void)
 {
+  static int16_t toggle = -1;
+  int16_t command = RC5_GetCommand(&toggle);  
   uint8_t brightness = Common_GetBodyColorPulse();
-  if(State == E_State_Wait_Erase) {
-    eraseCounter++;
-    if(eraseCounter == 100) { // The erase is immediate, but in order to show the user that the erase is performed, then turn on the robot 
-                              // red for 2 seconds
-      State = E_State_Record;
-    }
-    Leds_SetFrontBrightness(brightness, 0, 0);
-    Leds_SetBackBrightness(brightness, 0, 0);    
+  if((State == E_State_Erase_All_In_Progress) || (State == E_State_Erase_Last_Step_In_Progress)) {
+    // Leds handle in "ProcessEraseAction"   
   } else {
     Leds_SetFrontBrightness(brightness, 0, brightness);
     Leds_SetBackBrightness(0, brightness, brightness);
@@ -277,21 +258,116 @@ void Sequence_Run(void)
     RecordSequence();
     break;
 
-  case E_State_Erase:
-    EraseSequence();
-    break;
-
   case E_State_Play:
     PlaySequence();
     break;
 
-  case E_State_Wait_Erase:
+  case E_State_Erase_All_In_Progress:
+    Leds_SetCircleBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+    break;
+
+  case E_State_Erase_Last_Step_In_Progress:
+    Leds_SetCircleBrightness(0, 0, 0, 0, 0, 0, 0, 0);  
     break;
 
   default:
     // Do nothing
     break;
   }
+
+  ProcessEraseAction(command);
+  
+}
+
+//_____________________________________________________________________________
+
+static void UpdateLegoLeds(uint8_t value)
+{
+    if (value == 0)
+    {
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+    }
+    else if (value == 1)
+    {
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+    }
+    else if (value == 2)
+    {
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+    }
+    else if (value == 3)
+    {
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+    }
+    else if (value == 4)
+    {
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+    }
+    else if (value == 5)
+    {
+      Leds_SetLegoFrontBrightness(0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+    }
+    else if (value == 6)
+    {
+      Leds_SetLegoFrontBrightness(0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+    }
+    else if (value == 7)
+    {
+      Leds_SetLegoFrontBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+    }
+    else if (value == 8)
+    {
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+    }
+    else if (value == 9)
+    {
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS);
+    }
+    else if (value == 10)
+    {
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    }
+    else if (value == 11)
+    {
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    }
+    else if (value == 12)
+    {
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    }
+    else if (value == 13)
+    {
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    }
+    else if (value == 14)
+    {
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    }
+    else if (value == 15)
+    {
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    }
+    else if (value == 16)
+    {
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    }
 }
 
 //_____________________________________________________________________________
@@ -340,6 +416,8 @@ static void RecordSequence(void)
       ESP_LOGI(Tag, "Val: %d, Pos: %d", Sequence[WrPos], WrPos);
       WrPos++;
     }
+
+    UpdateLegoLeds(WrPos);
   }
   else // The table is full
   {
@@ -353,72 +431,252 @@ static void RecordSequence(void)
 
     ESP_LOGI(Tag, "End of recording");
   }
-
-  ProcessEraseAction(command);
+  
 }
 
 //_____________________________________________________________________________
 
 static void ProcessEraseAction(uint8_t command)
 {
-  int16_t acceleration = Accelerometer_GetAccelerationY();
+  int16_t accelerationY = Accelerometer_GetAccelerationY();
+  int16_t accelerationZ = Accelerometer_GetAccelerationZ();
 
-  static uint8_t count = 0u;
-  static bool isEraseAllowed = false;
+  static uint8_t eraseAllState = 0;
+  static uint8_t countEraseAll = 0u;
+  static uint8_t eraseLastStepState = 0;
+  static uint8_t countEraseLastStep = 0;
+  static uint8_t countEraseExit = 0;
+  static uint8_t ledCounter = 0;
 
-  if (abs(acceleration) >= 15000)
+  //printf("acc z = %d\r\n", accelerationZ);
+
+  // To erase the last step, place the Thymio on the left or right side.
+  switch(eraseLastStepState) 
   {
-    count++;
+    case 0: // Check accelerometer value
+      if (abs(accelerationY) >= 15000)
+      {
+        countEraseLastStep++;
 
-    if (count > DEBOUNCE)
-    {
-      isEraseAllowed = true;
-      count = 0u;
-    }
+        if (countEraseLastStep > 50) // After  second
+        {
+          eraseLastStepState = 1;
+          countEraseLastStep = 0;
+          State = E_State_Erase_Last_Step_In_Progress;
+          ledCounter = 0;
+          countEraseExit = 0;
+        }
+      }
+      else
+      {
+        countEraseLastStep = 0u;
+      }
+      break;
+    case 1: // Show the user that the last step will be erase in a few seconds
+      countEraseLastStep++;
+      if(countEraseLastStep > 100) { // After 2 seconds remove last step
+        if(WrPos > 0) {
+          WrPos--;
+        }
+        RdPos = 0u;
+        UpdateLegoLeds(WrPos);
+        Codec_PlayOnboardSound(E_SoundIndex_Startup);
+        eraseLastStepState = 2;
+        countEraseExit = 0;
+        Leds_SetFrontBrightness(0, 0, 0);
+        Leds_SetBackBrightness(0, 0, 0);        
+      }
+      if (abs(accelerationY) < 15000) // Exit erase sequence
+      {
+        countEraseExit++;
+        if(countEraseExit > 4)
+        {
+          eraseLastStepState = 0;
+          State = E_State_Record;
+          RdPos = 0;  // Restart from the beginning if already started
+        }
+      } 
+      else 
+      {
+        countEraseExit = 0;
+      }    
+      if(ledCounter < 20) 
+      {
+        ledCounter++;
+      }
+      else
+      {
+        ledCounter = 0;
+      }
+      if(ledCounter < 10) {
+        Leds_SetFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS/2, 0);
+        Leds_SetBackBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS/2, 0);         
+      } else {
+        Leds_SetFrontBrightness(0, 0, 0);
+        Leds_SetBackBrightness(0, 0, 0);           
+      }    
+      break;
+    case 2: // Wait the robot to return in normal position.
+      if (abs(accelerationY) < 15000) // Exit erase sequence
+      {
+        countEraseExit++;
+        if(countEraseExit > 4)
+        {
+          eraseLastStepState = 0;
+          State = E_State_Record;
+          RdPos = 0;  // Restart from the beginning if already started          
+        }
+      } 
+      else 
+      {
+        countEraseExit = 0;
+      }  
+      break;
+    default:
+      break;
   }
-  else if ((command == E_Command_Stop) || (command == E_Command_5))
-  {
-    isEraseAllowed = true;
-    count = 0u;
+
+  // To erase completely the sequence, place the Thymio upside-down or press the stop button on the remote control.
+  switch(eraseAllState) {
+    case 0: // Check accelerometer value and tv remote commands
+      if (accelerationZ <= -13000)
+      {
+        countEraseAll++;
+        if (countEraseAll > 50) // After 1 second
+        {
+          eraseAllState = 1;
+          countEraseExit = 0;
+          State = E_State_Erase_All_In_Progress;
+          countEraseAll = 0u;
+        }
+      }
+      else
+      {
+        countEraseAll = 0u;
+      }  
+      // When receiving a command via tv remote, then erase immediately
+      if ((command == E_Command_Stop) || (command == E_Command_5))
+      {
+        eraseAllState = 4;
+        countEraseAll = 0u;
+      }
+      break;
+    case 1: // Play a sound telling the user the sequence will be erased in a few seconds 
+      Codec_PlayOnboardSound(E_SoundIndex_Alarm);
+      eraseAllState = 2;
+      ledCounter = 0;
+      break;
+    case 2: // Wait for the sound to finish while showing the user that the erase sequence will be performed in a few seconds
+      if(Codec_IsSoundFinished()) {
+        eraseAllState = 3;
+      }
+      if (accelerationZ > -13000) // Exit erase sequence
+      {
+        countEraseExit++;
+        if(countEraseExit > 4)
+        {
+          eraseAllState = 0;
+          State = E_State_Record;
+          RdPos = 0;  // Restart from the beginning if already started          
+        }
+      } 
+      else 
+      {
+        countEraseExit = 0;
+      }
+      if(ledCounter < 20) 
+      {
+        ledCounter++;
+      }
+      else
+      {
+        ledCounter = 0;
+      }
+      if(ledCounter < 10) {
+        Leds_SetFrontBrightness(MAX_BRIGHTNESS, 0, 0);
+        Leds_SetBackBrightness(MAX_BRIGHTNESS, 0, 0);         
+      } else {
+        Leds_SetFrontBrightness(0, 0, 0);
+        Leds_SetBackBrightness(0, 0, 0);           
+      }
+      break;
+    case 3: // Give the user some time to exit the erase sequence, otherwise after 2 seconds perform a complete erase
+      countEraseAll++;
+      if (countEraseAll > 100) // After 2 second erase
+      {
+        eraseAllState = 4;
+        ledCounter = 0;
+        countEraseAll = 0u;
+        countEraseExit = 0;
+      }
+      if (accelerationZ > -13000) // Exit erase sequence
+      {
+        countEraseExit++;
+        if(countEraseExit > 4)
+        {
+          eraseAllState = 0;
+          State = E_State_Record;
+          RdPos = 0;  // Restart from the beginning if already started
+        }
+      } 
+      else 
+      {
+        countEraseExit = 0;
+      }
+      if(ledCounter < 10) 
+      {
+        ledCounter++;
+      }
+      else
+      {
+        ledCounter = 0;
+      }
+      if(ledCounter < 5) {
+        Leds_SetFrontBrightness(MAX_BRIGHTNESS, 0, 0);
+        Leds_SetBackBrightness(MAX_BRIGHTNESS, 0, 0);         
+      } else {
+        Leds_SetFrontBrightness(0, 0, 0);
+        Leds_SetBackBrightness(0, 0, 0);           
+      }
+      break;
+    case 4: // Erase the sequence, this is immediate but show the user red for 2 seconds and then wait the robot to return in normal position.
+      WrPos = 0u;
+      RdPos = 0u;      
+      if(ledCounter < 100) 
+      {
+        Leds_SetFrontBrightness(MAX_BRIGHTNESS, 0, 0);
+        Leds_SetBackBrightness(MAX_BRIGHTNESS, 0, 0);        
+        ledCounter++;
+      }
+      if(ledCounter == 100) {
+        Leds_SetFrontBrightness(0, 0, 0);
+        Leds_SetBackBrightness(0, 0, 0); 
+        UpdateLegoLeds(WrPos);
+      }
+      if (accelerationZ > -13000) // Exit erase sequence
+      {
+        countEraseExit++;
+        if(countEraseExit > 4)
+        {
+          eraseAllState = 0;
+          State = E_State_Record;
+        }
+      } 
+      else 
+      {
+        countEraseExit = 0;
+      }      
+      break;
+    default:
+      break;
   }
-  else
-  {
-    isEraseAllowed = false;
-    count = 0u;
-  }
 
-  // To erase the sequence, place the Thymio on the right side or
-  // press the stop button on the remote control
-  when(isEraseAllowed)
-  {
-    State = E_State_Erase;
-  }
-}
-
-//_____________________________________________________________________________
-
-static void EraseSequence(void)
-{
-  WrPos = 0u;
-  RdPos = 0u;
-
-  LaunchEraseAnimation();
-  Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-  Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-  eraseCounter = 0;
-  State = E_State_Wait_Erase;
-
-  ESP_LOGI(Tag, "Sequence erased");
 }
 
 //_____________________________________________________________________________
 
 static void PlaySequence(void)
 {
-  static int16_t toggle = -1;
-  int16_t command = RC5_GetCommand(&toggle);
-  ProcessEraseAction(command);
-
   switch (PlayState)
   {
   case E_PlayState_Replay:
@@ -459,86 +717,7 @@ static void HandleReplay(void)
       next = Sequence[RdPos + 1u];
       RdPos++;
 
-      if (RdPos == 1)
-      {
-        Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      }
-      else if (RdPos == 2)
-      {
-        Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      }
-      else if (RdPos == 3)
-      {
-        Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      }
-      else if (RdPos == 4)
-      {
-        Leds_SetLegoFrontBrightness(0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      }
-      else if (RdPos == 5)
-      {
-        Leds_SetLegoFrontBrightness(0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      }
-      else if (RdPos == 6)
-      {
-        Leds_SetLegoFrontBrightness(0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      }
-      else if (RdPos == 7)
-      {
-        Leds_SetLegoFrontBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      }
-      else if (RdPos == 8)
-      {
-        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      }
-      else if (RdPos == 9)
-      {
-        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS);
-      }
-      else if (RdPos == 10)
-      {
-        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      }
-      else if (RdPos == 11)
-      {
-        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      }
-      else if (RdPos == 12)
-      {
-        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      }
-      else if (RdPos == 13)
-      {
-        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      }
-      else if (RdPos == 14)
-      {
-        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      }
-      else if (RdPos == 15)
-      {
-        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      }
-      else if (RdPos == 16)
-      {
-        Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-        Leds_SetLegoBackBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      }
+      UpdateLegoLeds(RdPos);
 
       if (Current == (1u << E_Button_Backward))
       {
@@ -760,14 +939,6 @@ static void LaunchOverflowAnimation(uint8_t *buttonState, uint8_t command)
       brightness = 0u;
     }
   }
-}
-
-//_____________________________________________________________________________
-
-static void LaunchEraseAnimation(void)
-{
-  Codec_Stop();
-  Codec_PlayOnboardSound(E_SoundIndex_Alarm);
 }
 
 //_____________________________________________________________________________

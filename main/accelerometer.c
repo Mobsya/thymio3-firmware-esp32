@@ -115,6 +115,13 @@ int16_t Accelerometer_GetAccelerationY(void)
 
 //_____________________________________________________________________________
 
+int16_t Accelerometer_GetAccelerationZ(void)
+{
+  return Acceleration.Z;
+}
+
+//_____________________________________________________________________________
+
 void Accelerometer_ReadTapSource(void)
 {
 	if(currAcc == LSM6DS3US) {

@@ -152,7 +152,9 @@ void STM32_Init(void)
 
 void STM32_SetStatus(uint16_t status)
 {
-  Status = status;
+  // Update only the bits handled by the STM32
+  status &= 0xFFF7;
+  Status |= status;
 }
 
 //_____________________________________________________________________________
