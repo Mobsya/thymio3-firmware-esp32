@@ -66,6 +66,12 @@ static uint8_t Duration[4] = {0u, 0u, 0u, 0u};
 static int16_t LeftSpeed[4] = {0, 0, 0, 0};
 static int16_t RightSpeed[4] = {0, 0, 0, 0};
 
+static int16_t LeftSpeeds[100] = {0}; // Record 10 seconds at 10 hz
+static int16_t RightSpeeds[100] = {0};
+static uint8_t Counter10Hz = 0;
+static uint8_t SpeedsIndex = 0;
+static uint8_t InputMode = 0; // 0 = manually moving motors, 1 = obstacle avoidance, 2 = tv remote, ...
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -141,7 +147,7 @@ static void RunWaitState(void)
 
   T_Motor vind = STM32_GetInducedVoltage();
 
-  if (abs(vind.Left + vind.Right) > 400)
+  if (abs(vind.Left + vind.Right) > 200)
   {
     State = E_PainterState_Record;
 
@@ -153,15 +159,41 @@ static void RunWaitState(void)
       LeftSpeed[index] = 0;
       RightSpeed[index] = 0;
     }
+
+    SpeedsIndex = 0;
+    Counter10Hz = 0;
+    InputMode = 0;
   }
 
   buttonState = Buttons_GetStatus();
 
   when(buttonState[E_Button_Forward])
   {
+
+    State = E_PainterState_Record;
+
+    CurrentStep = 1u;
+    CounterStep = 0u;
+
+    for (uint8_t index = 0u; index < 4u; index++)
+    {
+      LeftSpeed[index] = 0;
+      RightSpeed[index] = 0;
+    }
+
+    SpeedsIndex = 0;
+    Counter10Hz = 0;
+    InputMode = 1;  
+  }
+
+  when(buttonState[E_Button_Right])
+  {
     State = E_PainterState_Play;
     Counter = 0u;
     Index = 1u;
+
+    Counter10Hz = 0;
+    SpeedsIndex = 0;
   }
 }
 
@@ -198,17 +230,38 @@ static void RunRecordState(void)
     // Do nothing
   }
 
+  if(SpeedsIndex < 100) {
+    if(InputMode == 1) {
+      Common_HandlePositiveSpeed(250);  
+    }
+    Counter10Hz++;
+    if(Counter10Hz == 5) {  // Behaviors loop runs at 50 Hz
+      Counter10Hz = 0;
+      LeftSpeeds[SpeedsIndex] = vind.Left;
+      RightSpeeds[SpeedsIndex] = vind.Right;
+      SpeedsIndex++;
+      if(SpeedsIndex == 100) {
+        Common_SetTargetSpeed(0, 0);              
+      }
+    }    
+  } else {
+    if((vind.Left == 0) && (vind.Right == 0)) { // Wait for the speed to be zero before exiting the recording state otherwise this state will be entered again immediately
+      State = E_PainterState_Wait;
+    }
+  }
+
+/*
   if ((abs(vind.Left) > 50) || (abs(vind.Right) > 50))
   {
     CounterStep++;
 
     temp = LeftSpeed[CurrentStep - 1u] + vind.Left;
 
-    if ((LeftSpeed[CurrentStep - 1u] > 0) && (vind.Left > 0) && (temp < 0))
+    if ((LeftSpeed[CurrentStep - 1u] > 0) && (vind.Left > 0) && (temp < 0)) // handle overflow
     {
       LeftSpeed[CurrentStep - 1u] = 32767;
     }
-    else if ((LeftSpeed[CurrentStep - 1u] < 0) && (vind.Left < 0) && (temp > 0))
+    else if ((LeftSpeed[CurrentStep - 1u] < 0) && (vind.Left < 0) && (temp > 0)) // handle underflow
     {
       LeftSpeed[CurrentStep - 1u] = -32767;
     }
@@ -219,11 +272,11 @@ static void RunRecordState(void)
 
     temp = RightSpeed[CurrentStep - 1u] + vind.Right;
 
-    if ((RightSpeed[CurrentStep - 1u] > 0) && (vind.Right > 0) && (temp < 0))
+    if ((RightSpeed[CurrentStep - 1u] > 0) && (vind.Right > 0) && (temp < 0)) // handle overflow
     {
       RightSpeed[CurrentStep - 1u] = 32767;
     }
-    else if ((RightSpeed[CurrentStep - 1u] < 0) && (vind.Right < 0) && (temp > 0))
+    else if ((RightSpeed[CurrentStep - 1u] < 0) && (vind.Right < 0) && (temp > 0)) // handle underflow
     {
       RightSpeed[CurrentStep - 1u] = -32767;
     }
@@ -261,6 +314,8 @@ static void RunRecordState(void)
       State = E_PainterState_Wait;
     }
   }
+*/
+
 }
 
 //_____________________________________________________________________________
@@ -271,6 +326,25 @@ static void RunPlayState(void)
 
   Leds_SetBodyBrightness(0u, MAX_BRIGHTNESS, 0u);
 
+  T_Motor vind = STM32_GetInducedVoltage();
+
+  if(SpeedsIndex < 100) {
+    Counter10Hz++;
+    if(Counter10Hz == 5) {  // Behaviors loop runs at 50 Hz
+      Counter10Hz = 0;
+      Common_SetTargetSpeed(LeftSpeeds[SpeedsIndex] , RightSpeeds[SpeedsIndex]);
+      SpeedsIndex++;
+      if(SpeedsIndex == 100) {
+        Common_SetTargetSpeed(0, 0);
+      }
+    }
+  } else {
+    if((vind.Left == 0) && (vind.Right == 0)) { // Wait for the speed to be zero before exiting the recording state otherwise this state will be entered again immediately
+      State = E_PainterState_Wait;
+    }
+  }
+
+/*
   Common_SetTargetSpeed(LeftSpeed[Index - 1u], RightSpeed[Index - 1u]);
   Counter++;
 
@@ -294,4 +368,5 @@ static void RunPlayState(void)
 
     State = E_PainterState_Wait;
   }
+*/  
 }

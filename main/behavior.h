@@ -32,14 +32,14 @@
 #define B_LEDS_PROX     (1 << 2) // Implemented on STM
 #define B_LEDS_LEGO_GYRO (1 << 3)
 #define B_LEDS_BATTERY  (1 << 4) // Implemented on STM
-#define B_LEDS_CIRCLE   (1 << 5) // Not implemented?
+#define B_LEDS_CIRCLE   (1 << 5) // Not implemented
 #define B_LEDS_ACC      (1 << 6)
-#define B_LEDS_RGB      (1 << 7) // Not implemented?
+#define B_LEDS_RGB      (1 << 7) // Not implemented
 #define B_LED_MIC       (1 << 8) // Implemented on STM, 2 bits [9 8]
 #define B_LED_MIC_STATE (1 << 9) // [0 0] => manual setting LED OFF, [1 0] => manual setting LED ON, [x 1] => LED ON when volume > threshold
 #define B_LED_RC5       (1 << 10)
-#define B_MODE          (1 << 11)
-#define B_SETTING       (1 << 12)
+#define B_MODE          (1 << 11) // Menu behaviors
+#define B_SETTING       (1 << 12) // Menu settings
 #define B_LEDS_LEGO_KITT (1 << 13)
 #define B_LEDS_TEST 	(1 << 14)
 

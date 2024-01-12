@@ -270,6 +270,20 @@ int16_t STM32_GetRightMotorTarget(void)
 
 //_____________________________________________________________________________
 
+int16_t STM32_GetLeftMotorPwm(void)
+{
+  return DutyCycle.Left;
+}
+
+//_____________________________________________________________________________
+
+int16_t STM32_GetRightMotorPwm(void)
+{
+  return DutyCycle.Right;
+}
+
+//_____________________________________________________________________________
+
 void STM32_SetMicrophoneIntensity(int16_t intensity)
 {
   vmVariables.micro_intensity = intensity;
@@ -537,6 +551,36 @@ uint16_t GetGroundValue(uint8_t ground_id) {
       break;
     case 1:
       return GroundIR.RightDelta;
+      break;
+    default:
+      return 0;    
+  }
+}
+
+//_____________________________________________________________________________
+
+uint16_t GetGroundAmbient(uint8_t ground_id) {
+  switch(ground_id) {
+    case 0:
+      return GroundIR.LeftAmbiant;
+      break;
+    case 1:
+      return GroundIR.RightAmbiant;
+      break;
+    default:
+      return 0;    
+  }
+}
+
+//_____________________________________________________________________________
+
+uint16_t GetGroundReflected(uint8_t ground_id) {
+  switch(ground_id) {
+    case 0:
+      return GroundIR.LeftReflected;
+      break;
+    case 1:
+      return GroundIR.RightReflected;
       break;
     default:
       return 0;    

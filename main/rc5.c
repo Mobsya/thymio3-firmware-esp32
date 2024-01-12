@@ -195,6 +195,13 @@ int16_t RC5_GetCommand(int16_t* lastToggle)
 
 //_____________________________________________________________________________
 
+int16_t RC5_GetAddress(void)
+{
+  return Message.Address;
+}
+
+//_____________________________________________________________________________
+
 bool RC5_IsFrameValid(void)
 {
   return FrameIsValid;

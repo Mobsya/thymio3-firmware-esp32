@@ -102,4 +102,10 @@ extern bool RC5_IsFrameValid(void);
 //! \return    None
 extern void RC5_ClearFrameValidity(void);
 
+//! \brief     Get the RC5 address
+//! \pre       First initialize the RC5 driver
+//! \param     None
+//! \return    The address
+int16_t RC5_GetAddress(void);
+
 #endif // RC5_RECEIVER_H_

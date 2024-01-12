@@ -201,8 +201,20 @@ extern void GetGroundValues(int16_t* buffer);
 //! \brief     Get last ground value available.
 //! \pre       None
 //! \param     proximity id (0..1)
-//! \return    proximity value (the higher the value the closer the object)
+//! \return    proximity value (the lower the value, the darker the object)
 extern uint16_t GetGroundValue(uint8_t ground_id);
+
+//! \brief     Get last ground ambient value available.
+//! \pre       None
+//! \param     proximity id (0..1)
+//! \return    proximity ambient value (the higher the value, the brighter the ambient light)
+extern uint16_t GetGroundAmbient(uint8_t ground_id);
+
+//! \brief     Get last ground reflected value available.
+//! \pre       None
+//! \param     proximity id (0..1)
+//! \return    proximity reflected value (the lower the value, the darker the object)
+extern uint16_t GetGroundReflected(uint8_t ground_id);
 
 //! \brief     Set desired motors speed.
 //! \pre       None
@@ -221,6 +233,18 @@ int16_t GetLeftSpeed(void);
 //! \param     None
 //! \return    Right speed
 int16_t GetRightSpeed(void);
+
+//! \brief     Get left PWM duty cycle.
+//! \pre       None
+//! \param     None
+//! \return    Left PWM
+int16_t STM32_GetLeftMotorPwm(void);
+
+//! \brief     Get right PWM duty cycle.
+//! \pre       None
+//! \param     None
+//! \return    Right PWM
+int16_t STM32_GetRightMotorPwm(void);
 
 
 #endif // STM32_SPI_H_
