@@ -110,61 +110,61 @@ void Musician_Run(void)
   when(color == E_Color_Red)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_C3);
+    Codec_PlayOnboardSound(TONE_TYPE_C3);
     Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);
   }
 
   when(color == E_Color_Orange)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_D3);
+    Codec_PlayOnboardSound(TONE_TYPE_D3);
     Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS / 2u, 0u);
   }
 
   when(color == E_Color_Yellow)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_E3);
+    Codec_PlayOnboardSound(TONE_TYPE_E3);
     Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
   }
 
   when(color == E_Color_Green)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_F3);
+    Codec_PlayOnboardSound(TONE_TYPE_F3);
     Leds_SetBodyBrightness(0u, MAX_BRIGHTNESS, 0u);
   }
 
   when(color == E_Color_Cyan)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_G3);
+    Codec_PlayOnboardSound(TONE_TYPE_G3);
     Leds_SetBodyBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
   }
 
   when(color == E_Color_Blue)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_A3);
+    Codec_PlayOnboardSound(TONE_TYPE_A3);
     Leds_SetBodyBrightness(0u, 0u, MAX_BRIGHTNESS);
   }
 
   when(color == E_Color_Purple)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_B3);
+    Codec_PlayOnboardSound(TONE_TYPE_B3);
     Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
   }
 
   when(color == E_Color_White)
   {
-    //Codec_PlayOnboardSound(E_SystemSound_Startup);
+    //Codec_PlayOnboardSound(TONE_TYPE_MAGIC);
     Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
   }
 
   when(color == E_Color_Unknown)
   {
-    //Codec_PlayOnboardSound(E_SystemSound_Startup);
+    //Codec_PlayOnboardSound(TONE_TYPE_MAGIC);
     Leds_SetBodyBrightness(0u, 0u, 0u);
   }
 }

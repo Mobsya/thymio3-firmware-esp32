@@ -1,21 +1,21 @@
 //_____________________________________________________________________________
 //
-// Copyright (C) 2020                   Mobsya                   CH-1020 Renens
+// Copyright (C) 2024                   Mobsya                   CH-1020 Renens
 //_____________________________________________________________________________
 //
 // PROJECT   Thymio-III
 //_____________________________________________________________________________
 //
-//! \file    angle_controller.h
-//! \brief   This module provides the useful functions to control the angle
+//! \file    drawer.h
+//! \brief   This module provides the useful functions to use the drawer mode
 //!
-//! \author  Vincent Gonet, Stefano Morgani
+//! \author  Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
-#ifndef ANGLE_CONTROLLER_H_
-#define ANGLE_CONTROLLER_H_
+#ifndef DRAWER_H_
+#define DRAWER_H_
 
 //-----------------------------------------------------------------------------
 // Include Section
@@ -41,35 +41,28 @@
 // Exported Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Initialize the power
+//! \brief     Initialize the drawer mode
 //! \pre       None
 //! \param     None
 //! \return    None
-extern void AngleController_Init(void);
+extern void Drawer_Init(void);
 
-//! \brief     Activate the angle controller
-//! \pre       First initialize the angle controller
-//! \param     target - Target of the angle on the Z-axis
-//! \return    None
-extern void AngleController_Update();
-
-//! \brief     Start the angle controller with the given parameters
-//! \pre       First initialize the angle controller
-//! \param     angleDeg - Target of the angle on the Z-axis, this is relative to the current position. Positive values for counterclockwise rotations, negative values for clockwise rotations.
-//! \param     max - Maximum speed used by the controller
-//! \return    None
-void AngleController_Start(int16_t angleDeg, int16_t max);
-
-//! \brief     Stop the angle controller
-//! \pre       First initialize the angle controller
+//! \brief     Start the drawer mode
+//! \pre       First initialize the drawer mode
 //! \param     None
 //! \return    None
-void AngleController_Stop(void);
+extern void Drawer_Start(void);
 
-//! \brief     Check if angle controller reached target angle
-//! \pre       First initialize the angle controller
+//! \brief     Stop the drawer mode
+//! \pre       First initialize the drawer mode
 //! \param     None
-//! \return    true if target angle reached
-bool AngleController_Completed(void);
+//! \return    None
+extern void Drawer_Stop(void);
 
-#endif // ANGLE_CONTROLLER_H_
+//! \brief     Run the drawer mode
+//! \pre       First initialize the drawer mode
+//! \param     None
+//! \return    None
+extern void Drawer_Run(void);
+
+#endif // DRAWER_H_

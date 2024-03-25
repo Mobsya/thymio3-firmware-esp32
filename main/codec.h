@@ -21,6 +21,7 @@
 // Include Section
 //-----------------------------------------------------------------------------
 #include "esp_err.h"
+#include "audio_tone_uri.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -29,26 +30,6 @@
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
-
-typedef enum
-{
-  E_SoundIndex_Startup,
-  E_SoundIndex_Tick,
-  E_SoundIndex_Blop,
-  E_SoundIndex_Fall,
-  E_SoundIndex_Detection,
-  E_SoundIndex_Bye,
-  E_SoundIndex_C3,
-  E_SoundIndex_D3,
-  E_SoundIndex_E3,
-  E_SoundIndex_F3,
-  E_SoundIndex_G3,
-  E_SoundIndex_A3,
-  E_SoundIndex_B3,
-  E_SoundIndex_Alarm,
-  E_SoundIndex_Good,
-  E_SoundIndex_Bad
-} T_SoundIndex;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -68,13 +49,13 @@ typedef enum
 //! \return    None
 extern void Codec_Init(void);
 
-extern void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz);
+extern uint32_t Codec_CreateWAVFile(int16_t *buffer, int16_t freq_Hz, uint16_t msec);
 
 //! \brief     Play pre-built sounds (from flash)
 //! \pre       First initialize the codec
 //! \param     None
 //! \return    Error code
-extern esp_err_t Codec_PlayOnboardSound(T_SoundIndex index);
+extern esp_err_t Codec_PlayOnboardSound(tone_type_t index);
 
 //! \brief     Play a MP3 file from RAM memory
 //! \pre       First initialize the codec

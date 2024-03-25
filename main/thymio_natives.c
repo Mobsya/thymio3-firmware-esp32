@@ -118,7 +118,7 @@ void create_wav(AsebaVMState* vm)
   int index     = vm->variables[AsebaNativePopArg(vm)];
   int frequency = vm->variables[AsebaNativePopArg(vm)];
 
-  Codec_CreateWAVFile(index, frequency);
+  //Codec_CreateWAVFile(index, frequency);
 }
 
 //_____________________________________________________________________________

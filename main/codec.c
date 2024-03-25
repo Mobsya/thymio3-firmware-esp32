@@ -194,7 +194,7 @@ uint32_t playerBufferIndex = 0;
 uint8_t *playerBuffer;
 uint32_t playerBufferSize = 0;
 
-static T_SoundStatus SoundStatus[15];
+static T_SoundStatus SoundStatus[TONE_TYPE_MAX];
 int64_t start_rec_time, end_rec_time;
 
 extern bool printStats;
@@ -240,7 +240,7 @@ static T_RecorderHandle InitRecorder(void);
 //! \pre       First initialize the codec
 //! \param     index - Index of the selected file
 //! \return    None
-static void SelectFile(T_SoundIndex index);
+static void SelectFile(tone_type_t index);
 
 //! \brief     Run the recorder task
 //! \pre       First initialize the codec
@@ -368,10 +368,42 @@ uint32_t Codec_GetRecordSize(void)
 }
 
 //_____________________________________________________________________________
+uint32_t Codec_CreateWAVFile(int16_t *buffer, int16_t freq_Hz, uint16_t msec)
+{
+  float amplitude = 2000;
+  float phase = 0;
+  float freq_radians_per_sample = ((freq_Hz * 2 * M_PI) / WAV_PLAYER_RATE);
+  uint32_t num_samples = (uint32_t)(12*msec); //(WAV_PLAYER_RATE*msec)/1000 => 12*msec  
+  buffer = (int16_t *)malloc(num_samples*2+44); // num samples * 2 bytes per sample + wav header
+  //printf("allocated %d\r\n", num_samples*2+44);
 
+  // Fill buffer with a sine wave
+  for (uint16_t i = 0u; i < num_samples; i++)
+  {
+    phase += freq_radians_per_sample;
+    buffer[44+i] = (int16_t)(amplitude * sin(phase)); // Initial 44 bytes reserved for wav header
+  }
+
+  //printf("sizeof wav_header_t=%d\r\n", sizeof(wav_header_t));
+  wav_header_t *wav_info = (wav_header_t *)malloc(sizeof(wav_header_t));
+  wav_head_init(wav_info, 12000, 16, 1);
+  wav_head_size(wav_info, (uint32_t)num_samples*2);
+  memcpy(buffer, wav_info, sizeof(wav_header_t));
+  free(wav_info);
+
+  /*
+  wav_header_t wav_info; // = (wav_header_t *)malloc(44); //sizeof(wav_header_t));
+  wav_head_init(&wav_info, 12000, 16, 1);
+  wav_head_size(&wav_info, (uint32_t)num_samples*2);
+  memcpy(buffer, &wav_info, 44); //sizeof(wav_header_t));  
+  */
+
+  return (num_samples*2+44);
+}
+
+/*
 void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz)
 {
-  /*
   //float t;
   float amplitude = 2000;
   //float freq_Hz = 440;  //440;523.25;
@@ -417,10 +449,10 @@ void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz)
   FileSystem_SelectFile(&fileName, index, E_Extension_WAV);
 
   FileSystem_WriteWAVFile(fileName, 4 * BUF_SIZE, buffer, SAVE_FILE_RATE, WAV_PLAYER_CHANNEL);
-  */
 }
+*/
 
-esp_err_t Codec_PlayOnboardSound(T_SoundIndex index)
+esp_err_t Codec_PlayOnboardSound(tone_type_t index)
 {
   esp_err_t err = 0;
   // return; // Used for debugging in order to not use the player.
@@ -919,80 +951,17 @@ _recorder_init_failed:
 
 //_____________________________________________________________________________
 
-static void SelectFile(T_SoundIndex index)
+static void SelectFile(tone_type_t index)
 {
-  switch (index)
+  if(index >= TONE_TYPE_MAX)
   {
-  case E_SoundIndex_Startup:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_MAGIC]);
-    break;
-
-  case E_SoundIndex_Tick:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_TICK]);
-    break;
-
-  case E_SoundIndex_Blop:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_BLOP]);
-    break;
-
-  case E_SoundIndex_Fall:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_FALL]);
-    break;
-
-  case E_SoundIndex_Detection:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_DETECT]);
-    break;
-
-  case E_SoundIndex_Bye:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_BYE]);
-    break;
-
-  case E_SoundIndex_C3:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_C3]);
-    break;
-
-  case E_SoundIndex_D3:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_D3]);
-    break;
-
-  case E_SoundIndex_E3:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_E3]);
-    break;
-
-  case E_SoundIndex_F3:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_F3]);
-    break;
-
-  case E_SoundIndex_G3:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_G3]);
-    break;
-
-  case E_SoundIndex_A3:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_A3]);
-    break;
-
-  case E_SoundIndex_B3:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_B3]);
-    break;
-
-  case E_SoundIndex_Alarm:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_ALARM]);
-    break;
-
-  case E_SoundIndex_Good:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_GOOD]);
-    break;
-
-  case E_SoundIndex_Bad:
-    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[TONE_TYPE_BAD]);
-    break;
-
-  default:
     ESP_LOGW(Tag, "Not supported index = %d", index);
-    break;
+  } 
+  else 
+  {
+    audio_element_set_uri(OnboardPlayer->FlashToneStream, tone_uri[index]);
+    SoundStatus[index] = E_SoundStatus_Started;
   }
-
-  SoundStatus[index] = E_SoundStatus_Started;
 }
 
 //_____________________________________________________________________________

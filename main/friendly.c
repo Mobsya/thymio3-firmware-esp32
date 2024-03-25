@@ -186,13 +186,13 @@ void Friendly_Run(void)
   when(max > DETECT) // When something detected at long distance then play a sound...remove it because add confusion
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_Detection);
+    Codec_PlayOnboardSound(TONE_TYPE_DETECT);
   }
 
 	if(speedDiff == 0 && speed_l == 0 && sound_done == 0 && max > DETECT) {
 		sound_done = 1;
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_Good);
+    Codec_PlayOnboardSound(TONE_TYPE_GOOD);
 	}
 	if(speedDiff != 0 || max < DETECT) {
 		sound_done = 0;

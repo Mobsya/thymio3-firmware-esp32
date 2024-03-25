@@ -38,7 +38,7 @@
 #include "friendly.h"
 #include "line_tracker.h"
 #include "musician.h"
-#include "painter.h"
+#include "drawer.h"
 #include "sequence.h"
 #include "python_handler.h"
 #include "attentive.h"
@@ -125,6 +125,7 @@ void Mode_Init(bool enableVM)
   {
     first = true;
     Sequence_Init();
+    //Drawer_Init();
   }
 
   ESP_LOGI(Tag, "Mode is initialized");
@@ -166,7 +167,7 @@ void Mode_Run(void)
           case E_Mode_Python_Main1:
             if(!script_is_present(1)) {
               Codec_Stop();
-              Codec_PlayOnboardSound(E_SoundIndex_Bad);
+              Codec_PlayOnboardSound(TONE_TYPE_BAD);
               ignore = 1;
             }
             break;
@@ -174,7 +175,7 @@ void Mode_Run(void)
           case E_Mode_Python_Main2:
             if(!script_is_present(2)) {
               Codec_Stop();
-              Codec_PlayOnboardSound(E_SoundIndex_Bad);
+              Codec_PlayOnboardSound(TONE_TYPE_BAD);
               ignore = 1;
             }          
             break;
@@ -182,7 +183,7 @@ void Mode_Run(void)
           case E_Mode_Python_Main3:
             if(!script_is_present(3)) {
               Codec_Stop();
-              Codec_PlayOnboardSound(E_SoundIndex_Bad);
+              Codec_PlayOnboardSound(TONE_TYPE_BAD);
               ignore = 1;
             }          
             break;
@@ -190,7 +191,7 @@ void Mode_Run(void)
           case E_Mode_Python_Main4:
             if(!script_is_present(4)) {
               Codec_Stop();
-              Codec_PlayOnboardSound(E_SoundIndex_Bad);
+              Codec_PlayOnboardSound(TONE_TYPE_BAD);
               ignore = 1;
             }          
             break;
@@ -198,7 +199,7 @@ void Mode_Run(void)
           case E_Mode_Python_Main5:
             if(!script_is_present(5)) {
               Codec_Stop();
-              Codec_PlayOnboardSound(E_SoundIndex_Bad);
+              Codec_PlayOnboardSound(TONE_TYPE_BAD);
               ignore = 1;
             }          
             break;
@@ -206,7 +207,7 @@ void Mode_Run(void)
           case E_Mode_Python_Main6:
             if(!script_is_present(6)) {
               Codec_Stop();
-              Codec_PlayOnboardSound(E_SoundIndex_Bad);
+              Codec_PlayOnboardSound(TONE_TYPE_BAD);
               ignore = 1;
             }          
             break;
@@ -214,7 +215,7 @@ void Mode_Run(void)
           case E_Mode_Python_Main7:
             if(!script_is_present(7)) {
               Codec_Stop();
-              Codec_PlayOnboardSound(E_SoundIndex_Bad);
+              Codec_PlayOnboardSound(TONE_TYPE_BAD);
               ignore = 1;
             }          
             break;
@@ -375,7 +376,7 @@ void Mode_Run(void)
       break;
 
     case E_Mode_Painter:     // Blue + yellow     
-      Painter_Run();
+      Drawer_Run();
       break;
 
     case E_Mode_Sequence:     // Magenta + cyan
@@ -564,7 +565,7 @@ static void ExitMode(T_Mode mode)
       break;
 
     case E_Mode_Painter:
-      Painter_Stop();
+      Drawer_Stop();
       Behavior_Disable(B_LEDS_PROX);
       break;
 

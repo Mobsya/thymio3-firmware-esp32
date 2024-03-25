@@ -49,6 +49,7 @@ static const char* Tag = "gyroscope";
 
 static T_Axis AngularVelocity;
 static int16_t Angle[3];
+//static float AngleFloat[3];
 static int16_t Angle_deg[3];
 
 static uint8_t currGyro = LSM6DS3US;
@@ -58,7 +59,6 @@ int16_t GyroBuffer[3][GYRO_BUFFER_SIZE];
 int32_t ZeroGyroSum[3] = {0, 0, 0};
 uint16_t ZeroGyroNumSamples[3] = {0, 0, 0};
 int16_t ZeroGyro[3] = {0, 0, 0};
-int16_t Teta[3] = {0, 0, 0};
 
 int32_t Mul = 0;
 int32_t Div = 0;
@@ -141,9 +141,10 @@ static void CalculateAngle(int16_t* angle, uint16_t number)
     }
 
     gyroCorr[axis] = (sum[axis] - (number * ZeroGyro[axis]));
-    Teta[axis] += (((Mul + Offset) * gyroCorr[axis]) / Div);
-    angle[axis] = Teta[axis];
-    //ESP_LOGI(Tag, "x=%d, y=%d, z=%d", Teta[0], Teta[1], Teta[2]);
+    angle[axis] += (((Mul + Offset) * gyroCorr[axis]) / Div);
+	//AngleFloat[axis] += ((((float)Mul + (float)Offset) * ((float)gyroCorr[axis])/2.0) / (float)Div); // Divided by 2 when using 250 dps for gyro configuration
+    //ESP_LOGI(Tag, "x=%d, y=%d, z=%d", angle[0], angle[1], angle[2]);
+	//Angle_deg[axis] = gyroCorr[axis]*250*number/28571/104;
   }
 }
 
@@ -227,6 +228,13 @@ int16_t Gyroscope_GetAngleZ(void)
 
 //_____________________________________________________________________________
 
+//float Gyroscope_GetAngleZFloat(void)
+//{
+//  return AngleFloat[2];
+//}
+
+//_____________________________________________________________________________
+
 int16_t Gyroscope_GetAngleZ_deg(void)
 {
   return Angle_deg[2];
@@ -238,9 +246,9 @@ void Gyroscope_ResetAngle(void)
 {
   for (uint8_t i = 0u; i < 3u; i++)
   {
-    Teta[i] = 0;
 	Angle[i] = 0;
 	Angle_deg[i] = 0;
+	//AngleFloat[i] = 0.0;
   }
 
   vmVariables.angle[0] = 0;

@@ -87,20 +87,20 @@ void Fearful_Run(void)
 {
   uint8_t brightness = Common_GetBodyColorPulse();
   static uint8_t play_state = 0; // 0 = not playing, 1 = play, 2 = wait play finish
-  static T_SoundIndex sound = 0;
+  static tone_type_t sound = 0;
   static uint8_t play_timeout = 0;
 
   if (Accelerometer_IsFreeFallDetected())
   {
     //ESP_LOGE(Tag, "acc = %d", acc);
     //ESP_LOGE(Tag, "FREE FALL DETECTED");
-    sound = E_SoundIndex_Fall;
+    sound = TONE_TYPE_FALL;
     play_state = 1;
   }
 
   if (Accelerometer_IsTapDetected())
   {
-    sound = E_SoundIndex_Alarm;
+    sound = TONE_TYPE_ALARM;
     play_state = 1;
   }
 
@@ -114,7 +114,7 @@ void Fearful_Run(void)
     {
       Common_SetTargetSpeed(0, 0);
       if(play_state == 0) { // If not already playing
-        sound = E_SoundIndex_Alarm;
+        sound = TONE_TYPE_ALARM;
         play_state = 1;
       }
     }

@@ -51,7 +51,7 @@
 #include "mp_component.h"
 #include "errno.h"
 #include "wav_head.h"
-
+#include "audio_tone_uri.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "esp_vfs.h"
@@ -353,7 +353,7 @@ int app_main(void)
   //BLE_Init();
 
   //Codec_SetVolume(100);
-  //Codec_PlayOnboardSound(E_SoundIndex_Startup);
+  //Codec_PlayOnboardSound(TONE_TYPE_MAGIC);
 
   // TODO Move to Behavior when entering into settings
   //ESP_ERROR_CHECK(FileServer_Start("/spiffs"));
@@ -495,7 +495,7 @@ int app_main(void)
 // */
 
   //Codec_PlayOnboardSound(0);
-  //Codec_PlayOnboardSound(E_SoundIndex_Startup);
+  //Codec_PlayOnboardSound(TONE_TYPE_MAGIC);
 
   //xTaskCreatePinnedToCore(stats, "stats", 4096, NULL, 0, NULL, 0);
   //xTaskCreatePinnedToCore(stats2, "stats2", 4096, NULL, 0, NULL, 0);
@@ -559,7 +559,7 @@ int app_main(void)
 	wav_header_t info = {0};
 	printf("size of wav header = %d", sizeof(wav_header_t));
 */
-	listDir();
+	//listDir();
 
 
 	//Codec_RecordWAVFile(0, 2);

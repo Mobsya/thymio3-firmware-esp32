@@ -216,7 +216,8 @@ enum
   E_Gyro_FullScale_250dps,
   E_Gyro_FullScale_500dps,
   E_Gyro_FullScale_1000dps,
-  E_Gyro_FullScale_2000dps
+  E_Gyro_FullScale_2000dps,
+  E_Gyro_FullScale_125dps
 };
 typedef uint8_t T_Gyro_FullScale;  //!< Gyroscope output full-scale
 
@@ -641,6 +642,15 @@ static void UpdateGyroFullScale(T_Gyro_FullScale scale)
 
     I2C_WriteToAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
   }
+  else if(scale == E_Gyro_FullScale_125dps)
+  {
+    I2C_ReadFromAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
+
+    data &= 0xF0;
+    data |= 0x02;
+
+    I2C_WriteToAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
+  }    
   else
   {
     ESP_LOGE(Tag, "Invalid gyroscope full scale: %d", scale);

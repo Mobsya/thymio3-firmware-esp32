@@ -27,6 +27,8 @@ set(COMPONENT_SRCS
     comm.h
     common.c
     common.h
+    drawer.c
+    drawer.h
     dsp.c
     dsp.h
     error.h

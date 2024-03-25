@@ -244,12 +244,12 @@ void Behavior_PlaySoundButtons(uint8_t button)
       (button == E_Button_Right))
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_Tick);
+    Codec_PlayOnboardSound(TONE_TYPE_TICK);
   }
   else if (button == E_Button_Center)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_Blop);
+    Codec_PlayOnboardSound(TONE_TYPE_BLOP);
   }
   else
   {
@@ -266,7 +266,7 @@ void Behavior_PlaySoundAlarm(uint8_t type)
   if (playSound)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_Alarm);
+    Codec_PlayOnboardSound(TONE_TYPE_ALARM);
   }
 
   if (type == 0u)//E_AlarmType_Once)
@@ -593,31 +593,31 @@ static void PlaySoundButtons(void)
   when(buttonState[E_Button_Backward] != 0u)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_Tick);
+    Codec_PlayOnboardSound(TONE_TYPE_TICK);
   }
 
   when(buttonState[E_Button_Left] != 0u)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_Tick);
+    Codec_PlayOnboardSound(TONE_TYPE_TICK);
   }
 
   when(buttonState[E_Button_Center] != 0u)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_Blop);
+    Codec_PlayOnboardSound(TONE_TYPE_BLOP);
   }
 
   when(buttonState[E_Button_Forward] != 0u)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_Tick);
+    Codec_PlayOnboardSound(TONE_TYPE_TICK);
   }
 
   when(buttonState[E_Button_Right] != 0u)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_Tick);
+    Codec_PlayOnboardSound(TONE_TYPE_TICK);
   }
 }
 
@@ -1085,12 +1085,12 @@ static void CalibrateColor(void)
     if (ColorSensor_Calibrate(0, &calibrationStatus))  // White calibration
     {
       Codec_Stop();
-      Codec_PlayOnboardSound(E_SoundIndex_Good);
+      Codec_PlayOnboardSound(TONE_TYPE_GOOD);
     }
     else
     {
       Codec_Stop();
-      Codec_PlayOnboardSound(E_SoundIndex_Bad);
+      Codec_PlayOnboardSound(TONE_TYPE_BAD);
     }
 
     if (calibrationStatus == 2)
@@ -1117,12 +1117,12 @@ static void CalibrateColor(void)
     if (ColorSensor_Calibrate(1, &calibrationStatus))  // Black calibration
     {
       Codec_Stop();
-      Codec_PlayOnboardSound(E_SoundIndex_Good);
+      Codec_PlayOnboardSound(TONE_TYPE_GOOD);
     }
     else
     {
       Codec_Stop();
-      Codec_PlayOnboardSound(E_SoundIndex_Bad);
+      Codec_PlayOnboardSound(TONE_TYPE_BAD);
     }
 
     if (calibrationStatus == 2)  // Successful calibration

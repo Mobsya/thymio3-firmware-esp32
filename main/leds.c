@@ -403,3 +403,176 @@ static void Callback_TimerLedsTask(void* arg)
     portYIELD_FROM_ISR();
   }
 }
+
+//_____________________________________________________________________________
+
+void Leds_SetLegoProgress(uint8_t progress) 
+{
+  if(progress > 16) 
+  {
+    progress = 16;
+  }
+  switch(progress)
+  {
+    case 0:
+      Leds_SetLegoFrontBrightness(0,0,0,0,0,0,0,0);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0); 
+      break;
+    case 1:
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      break;  
+    case 2:
+      Leds_SetLegoFrontBrightness(0,0,0,0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0); 
+      break;   
+    case 3:
+      Leds_SetLegoFrontBrightness(0,0,0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0); 
+      break;   
+    case 4:
+      Leds_SetLegoFrontBrightness(0,0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0); 
+      break; 
+    case 5:
+      Leds_SetLegoFrontBrightness(0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0); 
+      break; 
+    case 6:
+      Leds_SetLegoFrontBrightness(0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0); 
+      break; 
+    case 7:
+      Leds_SetLegoFrontBrightness(0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0); 
+      break; 
+    case 8:
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0); 
+      break; 
+    case 9:
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,MAX_BRIGHTNESS); 
+      break; 
+    case 10:
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS); 
+      break; 
+    case 11:
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS); 
+      break; 
+    case 12:
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS); 
+      break; 
+    case 13:
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS); 
+      break; 
+    case 14:
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS); 
+      break; 
+    case 15:
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS); 
+      break; 
+    case 16:
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      Leds_SetLegoBackBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break; 
+    default:
+      Leds_SetLegoFrontBrightness(0,0,0,0,0,0,0,0);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0); 
+      break;
+  }
+}
+
+//_____________________________________________________________________________
+
+void Leds_SetLegoFrontProgress(uint8_t progress) 
+{
+  if(progress > 8) 
+  {
+    progress = 8;
+  }
+  switch(progress)
+  {
+    case 0:
+      Leds_SetLegoFrontBrightness(0,0,0,0,0,0,0,0);
+      break;
+    case 1:
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0,MAX_BRIGHTNESS);
+      break;  
+    case 2:
+      Leds_SetLegoFrontBrightness(0,0,0,0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break;   
+    case 3:
+      Leds_SetLegoFrontBrightness(0,0,0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break;   
+    case 4:
+      Leds_SetLegoFrontBrightness(0,0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break; 
+    case 5:
+      Leds_SetLegoFrontBrightness(0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break; 
+    case 6:
+      Leds_SetLegoFrontBrightness(0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break; 
+    case 7:
+      Leds_SetLegoFrontBrightness(0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break; 
+    case 8:
+      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break;
+    default:
+      Leds_SetLegoFrontBrightness(0,0,0,0,0,0,0,0);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0); 
+      break;
+  }
+}
+
+//_____________________________________________________________________________
+
+void Leds_SetLegoBackProgress(uint8_t progress) 
+{
+  if(progress > 8) 
+  {
+    progress = 8;
+  }
+  switch(progress)
+  {
+    case 0:
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0); 
+      break;
+    case 1:
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0,MAX_BRIGHTNESS);
+      break;  
+    case 2:
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break;   
+    case 3:
+      Leds_SetLegoBackBrightness(0,0,0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break;   
+    case 4:
+      Leds_SetLegoBackBrightness(0,0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break; 
+    case 5:
+      Leds_SetLegoBackBrightness(0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break; 
+    case 6:
+      Leds_SetLegoBackBrightness(0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break; 
+    case 7:
+      Leds_SetLegoBackBrightness(0,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break; 
+    case 8:
+      Leds_SetLegoBackBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+      break;
+    default:
+      Leds_SetLegoFrontBrightness(0,0,0,0,0,0,0,0);
+      Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0); 
+      break;
+  }
+}

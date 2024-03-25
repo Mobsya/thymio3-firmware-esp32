@@ -108,6 +108,7 @@ static uint8_t Sequence[SEQUENCE_BUFFER_SIZE] = {0u}; //!< Sequence table
 static uint8_t WrPos = 0u;                            //!< Write position cursor
 static uint8_t RdPos = 0u;                            //!< Read position cursor
 
+static uint8_t RotationCompletedDelay = 0;    // Used to make a pause after a rotation of STOP_DURATION_us as done with forward/backward movements.
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -227,6 +228,7 @@ void Sequence_Start(void)
   MovementIsInProgress = false;
   RotationIsInProgress = false;
   RecordSequenceIsFinished = false;
+  PlayState = E_PlayState_Replay;
   Accelerometer_ClearTapStatus(); // Clear any tap made before entering this mode
 }
 
@@ -283,91 +285,7 @@ void Sequence_Run(void)
 
 static void UpdateLegoLeds(uint8_t value)
 {
-    if (value == 0)
-    {
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    else if (value == 1)
-    {
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    else if (value == 2)
-    {
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    else if (value == 3)
-    {
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    else if (value == 4)
-    {
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    else if (value == 5)
-    {
-      Leds_SetLegoFrontBrightness(0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    else if (value == 6)
-    {
-      Leds_SetLegoFrontBrightness(0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    else if (value == 7)
-    {
-      Leds_SetLegoFrontBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    else if (value == 8)
-    {
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-    }
-    else if (value == 9)
-    {
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS);
-    }
-    else if (value == 10)
-    {
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-    }
-    else if (value == 11)
-    {
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-    }
-    else if (value == 12)
-    {
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-    }
-    else if (value == 13)
-    {
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-    }
-    else if (value == 14)
-    {
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-    }
-    else if (value == 15)
-    {
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-    }
-    else if (value == 16)
-    {
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      Leds_SetLegoBackBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-    }
+  Leds_SetLegoProgress(value);
 }
 
 //_____________________________________________________________________________
@@ -480,7 +398,7 @@ static void ProcessEraseAction(uint8_t command)
         }
         RdPos = 0u;
         UpdateLegoLeds(WrPos);
-        Codec_PlayOnboardSound(E_SoundIndex_Startup);
+        Codec_PlayOnboardSound(TONE_TYPE_MAGIC);
         eraseLastStepState = 2;
         countEraseExit = 0;
         Leds_SetFrontBrightness(0, 0, 0);
@@ -562,7 +480,7 @@ static void ProcessEraseAction(uint8_t command)
       }
       break;
     case 1: // Play a sound telling the user the sequence will be erased in a few seconds 
-      Codec_PlayOnboardSound(E_SoundIndex_Alarm);
+      Codec_PlayOnboardSound(TONE_TYPE_ALARM);
       eraseAllState = 2;
       ledCounter = 0;
       break;
@@ -739,6 +657,7 @@ static void HandleReplay(void)
       {
         RotationIsInProgress = true;
         AngleController_Start(90, MAX_ROTATION_SPEED);
+        RotationCompletedDelay = 0;
         PlayState = E_PlayState_Rotation;
       }
 
@@ -746,6 +665,7 @@ static void HandleReplay(void)
       {
         RotationIsInProgress = true;
         AngleController_Start(-90, MAX_ROTATION_SPEED);
+        RotationCompletedDelay = 0;
         PlayState = E_PlayState_Rotation;
       }
 
@@ -812,10 +732,14 @@ static void HandleRotation(void)
   }
   else if (AngleController_Completed())
   {
-    ObstacleIsDetected = false;
-    RotationIsInProgress = false;
+    RotationCompletedDelay++;
+    if(RotationCompletedDelay >= (STOP_DURATION_us/20000)) // Based on behaviors update rate of 50 hz
+    {
+      ObstacleIsDetected = false;
+      RotationIsInProgress = false;
 
-    PlayState = E_PlayState_Replay;
+      PlayState = E_PlayState_Replay;
+    }
   }
   else
   {
@@ -835,7 +759,7 @@ static void HandleCollision(void)
   if (first)
   {
     Codec_Stop();
-    Codec_PlayOnboardSound(E_SoundIndex_Detection);
+    Codec_PlayOnboardSound(TONE_TYPE_DETECT);
     first = false;
   }
 

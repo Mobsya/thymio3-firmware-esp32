@@ -8,6 +8,7 @@ typedef enum {
     TONE_TYPE_ALARM,
     TONE_TYPE_B3,
     TONE_TYPE_BAD,
+    TONE_TYPE_BEEP,
     TONE_TYPE_BLOP,
     TONE_TYPE_BYE,
     TONE_TYPE_C3,
@@ -19,6 +20,8 @@ typedef enum {
     TONE_TYPE_G3,
     TONE_TYPE_GOOD,
     TONE_TYPE_MAGIC,
+    TONE_TYPE_NOTIFY,
+    TONE_TYPE_PING,
     TONE_TYPE_TICK,
     TONE_TYPE_MAX,
 } tone_type_t;
