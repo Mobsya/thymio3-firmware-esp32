@@ -173,6 +173,8 @@ void Obedient_Run(void)
 	if (rc5_speed_t < -RC5_SPEED_SAT)
 		rc5_speed_t = -RC5_SPEED_SAT;
 
+	Common_SetTargetSpeed(rc5_speed_l + rc5_speed_t, rc5_speed_l - rc5_speed_t);
+
 }
 
 //_____________________________________________________________________________
