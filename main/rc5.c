@@ -138,7 +138,7 @@ void RC5_Init(void)
 
   ESP_ERROR_CHECK(rmt_driver_install(rmt_rx.channel, 1000, 0));
 
-  ValidAddress = Settings_ReadRC5Address();
+  //ValidAddress = Settings_GetRC5AddressSettings();
 
   Message.Address = -1;
   Message.Command = -1;

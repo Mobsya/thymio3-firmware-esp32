@@ -95,19 +95,6 @@ void Sensors_Init(void)
 
   Codec_Init();
 
-  Settings_Init();
-  Settings_CreateLeftMotorFile();
-  Settings_CreateRightMotorFile();
-  Settings_CreateOffsetGyroFile();
-  Settings_CreateVolumeFile();
-  Settings_CreateWhiteRedFile();
-  Settings_CreateWhiteGreenFile();
-  Settings_CreateWhiteBlueFile();
-  Settings_CreateBlackRedFile();
-  Settings_CreateBlackGreenFile();
-  Settings_CreateBlackBlueFile();
-  Settings_CreateRC5AddressFile();
-
   Buttons_Init();
 
   ColorSensor_Init();

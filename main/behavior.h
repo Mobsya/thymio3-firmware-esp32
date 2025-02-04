@@ -42,14 +42,15 @@
 #define B_SETTING       (1 << 12) // Menu settings
 #define B_LEDS_LEGO_KITT (1 << 13)
 #define B_LEDS_TEST 	(1 << 14)
+#define B_PYTHON        (1 << 15) // Menu Python
 
-#define B_ALWAYS    (B_LEDS_BATTERY | B_LEDS_BUTTON | B_SOUND_BUTTON | B_LEDS_CIRCLE | B_LEDS_RGB)  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_SOUND_BUTTON | B_LEDS_BUTTON)
+#define B_ALWAYS    (B_LEDS_BATTERY | B_LEDS_BUTTON | B_SOUND_BUTTON | B_LEDS_CIRCLE | B_LEDS_RGB | B_LED_RC5)  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_SOUND_BUTTON | B_LEDS_BUTTON)
 // B_LEDS_RGB not used
 // B_LEDS_CIRCLE not used
 // B_LEDS_BATTERY not used
 
-#define RUNNING_SETTINGS_MENU 0
-#define RUNNING_SETTINGS_BEHAVIOR 1
+#define RUNNING_MENU 0
+#define RUNNING_BEHAVIOR 1
 
 //-----------------------------------------------------------------------------
 // Types Definitions

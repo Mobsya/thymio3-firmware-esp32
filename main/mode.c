@@ -151,7 +151,6 @@ void Mode_Run(void)
 {
   uint8_t* buttonState;
 
-  static uint8_t ignore = 0;
   static bool vmIsRunning = false;
 
   buttonState = Buttons_GetStatus();
@@ -159,85 +158,17 @@ void Mode_Run(void)
   // Handle pre-programmed behavior entering/exiting with the center button
   when(buttonState[E_Button_Center]) {
     if(navigation_state == RUNNING_MENU) {  // Entering a behavior
-      // In case the selected mode is one of user python scripts, then we need to first check if they are present.
-      // In case they are not present, then emit a sound and remain in the menu.
-      ignore = 0;
-      if(SelectMode>=E_Mode_Python_Main1 && SelectMode<= E_Mode_Python_Main7) {
-        switch(SelectMode) {
-          case E_Mode_Python_Main1:
-            if(!script_is_present(1)) {
-              Codec_Stop();
-              Codec_PlayOnboardSound(TONE_TYPE_BAD);
-              ignore = 1;
-            }
-            break;
-
-          case E_Mode_Python_Main2:
-            if(!script_is_present(2)) {
-              Codec_Stop();
-              Codec_PlayOnboardSound(TONE_TYPE_BAD);
-              ignore = 1;
-            }          
-            break;
-
-          case E_Mode_Python_Main3:
-            if(!script_is_present(3)) {
-              Codec_Stop();
-              Codec_PlayOnboardSound(TONE_TYPE_BAD);
-              ignore = 1;
-            }          
-            break;
-
-          case E_Mode_Python_Main4:
-            if(!script_is_present(4)) {
-              Codec_Stop();
-              Codec_PlayOnboardSound(TONE_TYPE_BAD);
-              ignore = 1;
-            }          
-            break;
-
-          case E_Mode_Python_Main5:
-            if(!script_is_present(5)) {
-              Codec_Stop();
-              Codec_PlayOnboardSound(TONE_TYPE_BAD);
-              ignore = 1;
-            }          
-            break;
-
-          case E_Mode_Python_Main6:
-            if(!script_is_present(6)) {
-              Codec_Stop();
-              Codec_PlayOnboardSound(TONE_TYPE_BAD);
-              ignore = 1;
-            }          
-            break;
-
-          case E_Mode_Python_Main7:
-            if(!script_is_present(7)) {
-              Codec_Stop();
-              Codec_PlayOnboardSound(TONE_TYPE_BAD);
-              ignore = 1;
-            }          
-            break;
-        }
-      }
-
-      if(ignore == 0) {
-        navigation_state = RUNNING_BEHAVIOR;
-        if (SelectMode != CurrentMode) {
-          ExitMode(CurrentMode);
-          StartMode(SelectMode);        
-          CurrentMode = SelectMode;
-        }
+      navigation_state = RUNNING_BEHAVIOR;
+      if (SelectMode != CurrentMode) {
+        ExitMode(CurrentMode);
+        StartMode(SelectMode);        
+        CurrentMode = SelectMode;
       }
     } else {  // Entering menu
-      // Once you enter one of the user python scripts or the REPL, then you cannot exit normally but you need to power off the robot.
-      if(SelectMode<E_Mode_Python_REPL) {
-        navigation_state = RUNNING_MENU;
-        ExitMode(CurrentMode);
-        StartMode(E_Mode_Menu);
-        CurrentMode = E_Mode_Menu;
-      }
+      navigation_state = RUNNING_MENU;
+      ExitMode(CurrentMode);
+      StartMode(E_Mode_Menu);
+      CurrentMode = E_Mode_Menu;
     }
   }
 
@@ -388,39 +319,8 @@ void Mode_Run(void)
       break;
 
     case E_Mode_NN:     // White
-      break;      
-
-    case E_Mode_Python_REPL:     // Black + back lego leds
-      PythonHandler_Run(0);
-      break;
-
-    case E_Mode_Python_Main1:     // Black + back lego leds
       PythonHandler_Run(1);
-      break;
-
-    case E_Mode_Python_Main2:     // Black + back lego leds
-      PythonHandler_Run(2);
-      break;
-
-    case E_Mode_Python_Main3:     // Black + back lego leds
-      PythonHandler_Run(3);
-      break;
-
-    case E_Mode_Python_Main4:     // Black + back lego leds
-      PythonHandler_Run(4);
-      break;
-
-    case E_Mode_Python_Main5:     // Black + back lego leds
-      PythonHandler_Run(5);
-      break;
-
-    case E_Mode_Python_Main6:     // Black + back lego leds
-      PythonHandler_Run(6);
-      break;
-
-    case E_Mode_Python_Main7:     // Black + back lego leds
-      PythonHandler_Run(7);
-      break;                        
+      break;                       
 
     default:
       // Do nothing
@@ -481,34 +381,10 @@ static void StartMode(T_Mode mode)
       break;
 
     case E_Mode_Musician:
-      Behavior_Enable(B_LEDS_PROX);
+      //Behavior_Enable(B_LEDS_PROX);
       break;
 
     case E_Mode_NN:
-      break;        
-
-    case E_Mode_Python_REPL:
-      break;
-
-    case E_Mode_Python_Main1:
-      break;
-
-    case E_Mode_Python_Main2:
-      break;
-
-    case E_Mode_Python_Main3:
-      break;
-
-    case E_Mode_Python_Main4:
-      break;
-
-    case E_Mode_Python_Main5:
-      break;
-
-    case E_Mode_Python_Main6:
-      break;
-
-    case E_Mode_Python_Main7:
       break;
 
     default:
@@ -546,7 +422,7 @@ static void ExitMode(T_Mode mode)
       Fearful_Stop();
       Behavior_Disable(B_LEDS_PROX);
       Behavior_Disable(B_LEDS_ACC);
-      Behavior_Disable(B_LEDS_LEGO_GYRO);
+      Behavior_Disable(B_LEDS_LEGO_GYRO);      
       break;
 
     case E_Mode_Attentive:
@@ -581,30 +457,6 @@ static void ExitMode(T_Mode mode)
       break;
 
     case E_Mode_NN:
-      break;        
-
-    case E_Mode_Python_REPL:
-      break;
-
-    case E_Mode_Python_Main1:
-      break;
-
-    case E_Mode_Python_Main2:
-      break;
-
-    case E_Mode_Python_Main3:
-      break;
-
-    case E_Mode_Python_Main4:
-      break;
-
-    case E_Mode_Python_Main5:
-      break;
-
-    case E_Mode_Python_Main6:
-      break;
-
-    case E_Mode_Python_Main7:
       break;
 
     default:
@@ -648,28 +500,6 @@ static bool IsModeEnabled(T_Mode mode)
   {
     result = false;
   }
-  if((mode==E_Mode_Python_Main1) && !script_is_present(1)) {
-    return false;
-  }
-  if((mode==E_Mode_Python_Main2) && !script_is_present(2)) {
-    return false;
-  }  
-  if((mode==E_Mode_Python_Main3) && !script_is_present(3)) {
-    return false;
-  }
-  if((mode==E_Mode_Python_Main4) && !script_is_present(4)) {
-    return false;
-  }
-  if((mode==E_Mode_Python_Main5) && !script_is_present(5)) {
-    return false;
-  }  
-  if((mode==E_Mode_Python_Main6) && !script_is_present(6)) {
-    return false;
-  }
-  if((mode==E_Mode_Python_Main7) && !script_is_present(7)) {
-    return false;
-  }
-
   return result;
 }
 
@@ -748,54 +578,6 @@ static void SetModeColor(T_Mode mode)
       Leds_SetBodyBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
       Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
       Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      break;      
-
-    case E_Mode_Python_REPL:     // Black + back lego leds
-      Leds_SetBodyBrightness(0u, 0u, 0u);
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS);
-      break;
-
-    case E_Mode_Python_Main1:     // Black + back lego leds
-      Leds_SetBodyBrightness(0u, 0u, 0u);
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      break;
-
-    case E_Mode_Python_Main2:     // Black + back lego leds
-      Leds_SetBodyBrightness(0u, 0u, 0u);
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      break;
-
-    case E_Mode_Python_Main3:     // Black + back lego leds
-      Leds_SetBodyBrightness(0u, 0u, 0u);
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      Leds_SetLegoBackBrightness(0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      break;
-
-    case E_Mode_Python_Main4:     // Black + back lego leds
-      Leds_SetBodyBrightness(0u, 0u, 0u);
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      Leds_SetLegoBackBrightness(0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      break;
-
-    case E_Mode_Python_Main5:     // Black + back lego leds
-      Leds_SetBodyBrightness(0u, 0u, 0u);
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      Leds_SetLegoBackBrightness(0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      break;
-
-    case E_Mode_Python_Main6:     // Black + back lego leds
-      Leds_SetBodyBrightness(0u, 0u, 0u);
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      Leds_SetLegoBackBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-      break;
-
-    case E_Mode_Python_Main7:     // Black + back lego leds
-      Leds_SetBodyBrightness(0u, 0u, 0u);
-      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-      Leds_SetLegoBackBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
       break;    
 
     default:
@@ -808,12 +590,14 @@ void enter_micropython_mode(void) {
   ExitMode(CurrentMode);
   Behavior_Disable(B_MODE);
   Behavior_Disable(B_SETTING);
+  Behavior_Disable(B_PYTHON);
 }
 
 extern void exit_micropython_mode(void) {
   CurrentMode = E_Mode_Menu;
   Behavior_Enable(B_MODE);
   Behavior_Enable(B_SETTING);
+  Behavior_Enable(B_PYTHON);
 }
 
 T_Mode Mode_get_current(void) {

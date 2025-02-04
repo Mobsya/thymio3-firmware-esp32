@@ -35,13 +35,12 @@
 typedef enum
 {
   E_Color_Red,
-  E_Color_Orange,
   E_Color_Yellow,
   E_Color_Green,
-  E_Color_Cyan,
   E_Color_Blue,
   E_Color_Purple,
   E_Color_White,
+  E_Color_Black,
   E_Color_Unknown
 } T_Color;
 
@@ -117,5 +116,15 @@ extern T_RawColor ColorSensor_GetWhiteCalibration(void);
 //! \param     None
 //! \return    T_RawColor
 extern T_RawColor ColorSensor_GetBlackCalibration(void);
+
+//! \brief     Calibrate the white
+//! \pre       First initialize the color sensor
+//! \return    None
+void ColorSensor_CalibrateWhite(void);
+
+//! \brief     Calibrate the black
+//! \pre       First initialize the color sensor
+//! \return    None
+void ColorSensor_CalibrateBlack(void);
 
 #endif // COLOR_SENSOR_H_

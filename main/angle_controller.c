@@ -130,13 +130,13 @@ void AngleController_Update()
     output = -maxSpeed;
   }
 
-  //Common_SetTargetSpeed(-output, output);
-  if(output > 0)
-  {
-    Common_SetTargetSpeed(-output*1.15, output);
-  } else {
-    Common_SetTargetSpeed(-output, output*1.15);
-  }
+  Common_SetTargetSpeed(-output, output);
+  //if(output > 0)
+  //{
+  //  Common_SetTargetSpeed(-output*1.15, output);
+  //} else {
+  //  Common_SetTargetSpeed(-output, output*1.15);
+  //}
   
   //ESP_LOGI(Tag, "error: %d, measure: %d, output: %d", error, measure, output);
 

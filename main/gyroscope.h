@@ -108,8 +108,14 @@ extern bool Gyroscope_Calibrate(void);
 //! \brief     Get current calibration values.
 //! \pre       First initialize the gyroscope
 //! \param     None
-//! \return    True if calibration performed correctly
+//! \return    None
 extern void Gyroscope_GetCalibration(int16_t* values);
+
+//! \brief     Set current calibration values.
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    None
+extern void Gyroscope_SetCalibration(int16_t* values);
 
 //! \brief     Set the offset
 //! \pre       First initialize the gyroscope

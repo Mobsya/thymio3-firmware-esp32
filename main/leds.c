@@ -418,7 +418,7 @@ void Leds_SetLegoProgress(uint8_t progress)
       Leds_SetLegoFrontBrightness(0,0,0,0,0,0,0,0);
       Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0); 
       break;
-    case 1:
+    case 1:      
       Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0,MAX_BRIGHTNESS);
       Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
       break;  
@@ -576,3 +576,24 @@ void Leds_SetLegoBackProgress(uint8_t progress)
       break;
   }
 }
+
+void Leds_SetLegoFrontOdd(uint8_t brightness)
+{
+  Leds_SetLegoFrontBrightness(brightness,0,brightness,0,brightness,0,brightness,0);
+}
+
+void Leds_SetLegoFrontEven(uint8_t brightness)
+{
+  Leds_SetLegoFrontBrightness(0,brightness,0,brightness,0,brightness,0,brightness);
+}
+
+void Leds_SetLegoBackOdd(uint8_t brightness)
+{
+  Leds_SetLegoBackBrightness(brightness,0,brightness,0,brightness,0,brightness,0);
+}
+
+void Leds_SetLegoBackEven(uint8_t brightness)
+{
+  Leds_SetLegoBackBrightness(0,brightness,0,brightness,0,brightness,0,brightness);
+}
+

@@ -44,15 +44,7 @@ enum
   E_Mode_Sequence,
   E_Mode_Musician,
   E_Mode_NN,
-  E_Mode_Python_REPL,
-  E_Mode_Python_Main1,
-  E_Mode_Python_Main2,
-  E_Mode_Python_Main3,
-  E_Mode_Python_Main4,
-  E_Mode_Python_Main5,
-  E_Mode_Python_Main6,
-  E_Mode_Python_Main7,
-  E_Mode_Max = E_Mode_Python_Main7
+  E_Mode_Max = E_Mode_NN
 };
 typedef int16_t T_Mode;  // Mode selection
 

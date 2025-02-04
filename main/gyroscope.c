@@ -31,7 +31,7 @@
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
-#define STATIONARY_THR 300 // Threshold used for calibration: when value is lower than the threshold, then robot is stopped and value can be used for calibration.
+#define STATIONARY_THR 650 // Threshold used for calibration: when value is lower than the threshold, then it means the robot is still and value can be used for calibration.
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -65,7 +65,7 @@ int32_t Div = 0;
 int32_t Offset = 0;
 
 bool calibrationInProgress = false;
-bool continuousCalibrationEnabled = true;
+bool continuousCalibrationEnabled = false;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -81,7 +81,7 @@ bool continuousCalibrationEnabled = true;
 
 void Gyroscope_Init(void)
 {
-  int16_t offset = Settings_ReadOffsetGyro();
+  int16_t offset = Settings_GetOffsetGyroSettings();
 
 	uint8_t data = 0x00u;
 	I2C_ReadFromAddress(0x6B, 0x0F, &data, 1u); // WHO_AM_I register
@@ -267,7 +267,7 @@ bool Gyroscope_Calibrate(void) {
 	uint16_t numReadSamples = 0;
 	uint8_t trials = 0;
 
-	if(continuousCalibrationEnabled) {	// Do mix continuous calibration with manual calibration
+	if(continuousCalibrationEnabled) {	// Do not mix continuous calibration with manual calibration
 		numSamplesCalib = 0;
 		return false;
 	}
@@ -365,4 +365,10 @@ void Gyroscope_DisableContinuousCalib(void) {
 
 void Gyroscope_GetCalibration(int16_t* values){
 	memcpy(values, ZeroGyro, 6);
+}
+
+//_____________________________________________________________________________
+
+void Gyroscope_SetCalibration(int16_t* values){
+	memcpy(ZeroGyro, values, 6);
 }

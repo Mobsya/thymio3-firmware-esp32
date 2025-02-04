@@ -41,16 +41,20 @@
 #define SEQUENCE_BUFFER_SIZE 50u //!< Number of actions stored in the FIFO
 
 // Duration of the movement = 1500000 [us] -> TIMER_SCALE * 1500000 [us] = 7500000 (timer_group)
-#define MOVEMENT_DURATION 7500000uLL //!< Duration of a movement
+#define MOVEMENT_DURATION 9000000 //7500000uLL //!< Duration of a movement
 
 #define STOP_DURATION_us 500000u //!< Delay at the end of a movement
 
 #define MOVEMENT_SPEED 300 //!< Movement speed
+#define MOVEMENT_SPEED_BW 312 // Backward speed compensated
 
 #define MAX_ROTATION_SPEED 500 //!< Maximum rotation speed allowed
 
 #define COLLISION_THRESHOLD 700   //!< Collision threshold
 #define NO_COLLISION_THRESHOLD 10 //!< No collision threshold
+
+#define GROUND_IR_THRESHOLD    280 //130
+#define PROX_THRESHOLD 1500
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -68,6 +72,7 @@ typedef enum
 //! \details States of the play state machine
 typedef enum
 {
+  E_PlayState_Prepare,
   E_PlayState_Replay,
   E_PlayState_Movement,
   E_PlayState_Rotation,
@@ -100,7 +105,7 @@ static bool ObstacleIsDetected = false;       //!< True if an obstacle is detect
 static T_TimerSw *StopTimer = NULL; //!< Timer used to add a delay at the end of a movement
 
 static T_State State = E_State_Record;             //!< State of the main state machine
-static T_PlayState PlayState = E_PlayState_Replay; //!< State of the play state machine
+static T_PlayState PlayState = E_PlayState_Replay; //E_PlayState_Prepare; //!< State of the play state machine
 
 static uint8_t Current = 0u; //!< Current value of the sequence table
 
@@ -109,6 +114,11 @@ static uint8_t WrPos = 0u;                            //!< Write position cursor
 static uint8_t RdPos = 0u;                            //!< Read position cursor
 
 static uint8_t RotationCompletedDelay = 0;    // Used to make a pause after a rotation of STOP_DURATION_us as done with forward/backward movements.
+static uint8_t PlayStatePrepareCount = 0;
+static bool PlayStatePrepareToPlay = false;
+static uint8_t LegoLedBlinkCount = 0;
+static uint8_t StartFromProxState = 0;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -130,6 +140,12 @@ static void ProcessEraseAction(uint8_t command);
 //! \param     None
 //! \return    None
 static void PlaySequence(void);
+
+//! \brief     Handle the preparation to replay (red, orange, green)
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
+static void HandlePrepare(void);
 
 //! \brief     Handle the sequence replay
 //! \pre       First initialize the mode
@@ -228,6 +244,7 @@ void Sequence_Start(void)
   MovementIsInProgress = false;
   RotationIsInProgress = false;
   RecordSequenceIsFinished = false;
+  //PlayState = E_PlayState_Prepare;
   PlayState = E_PlayState_Replay;
   Accelerometer_ClearTapStatus(); // Clear any tap made before entering this mode
 }
@@ -250,8 +267,23 @@ void Sequence_Run(void)
   if((State == E_State_Erase_All_In_Progress) || (State == E_State_Erase_Last_Step_In_Progress)) {
     // Leds handle in "ProcessEraseAction"   
   } else {
-    Leds_SetFrontBrightness(brightness, 0, brightness);
-    Leds_SetBackBrightness(0, brightness, brightness);
+    /*
+    if(PlayStatePrepareToPlay) {
+      if(PlayStatePrepareCount == 0) {// Based on behaviors update rate of 50 hz =>  Red
+        Leds_SetFrontBrightness(MAX_BRIGHTNESS, 0, 0);
+        Leds_SetBackBrightness(MAX_BRIGHTNESS, 0, 0);      
+      } else if(PlayStatePrepareCount == 50) { // Based on behaviors update rate of 50 hz =>  orange
+        Leds_SetFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS/2, 0);
+        Leds_SetBackBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS/2, 0);
+      } else if(PlayStatePrepareCount == 100) { // Based on behaviors update rate of 50 hz =>  green
+        Leds_SetFrontBrightness(0, MAX_BRIGHTNESS, 0);
+        Leds_SetBackBrightness(0, MAX_BRIGHTNESS, 0);
+      }
+    } else {
+    */
+      Leds_SetFrontBrightness(brightness, 0, brightness);
+      Leds_SetBackBrightness(0, brightness, brightness);
+    //}
   }
 
   switch (State)
@@ -283,9 +315,38 @@ void Sequence_Run(void)
 
 //_____________________________________________________________________________
 
-static void UpdateLegoLeds(uint8_t value)
-{
-  Leds_SetLegoProgress(value);
+static void UpdateLegoLeds(uint8_t totalSteps, uint8_t currStep)
+{  
+  if(State == E_State_Record) { // Recording sequence
+    Leds_SetLegoProgress(totalSteps);    
+  } else { // Play sequence
+    LegoLedBlinkCount++;
+    if(currStep>=1 && currStep<=8) 
+    {
+      if(LegoLedBlinkCount == 12) {
+        Leds_SetLegoProgress(totalSteps);
+        Leds_SetSingleBrightness(32-currStep, MAX_BRIGHTNESS);
+      } else if(LegoLedBlinkCount == 24) {
+        Leds_SetLegoProgress(totalSteps);
+        Leds_SetSingleBrightness(32-currStep, 0);
+        LegoLedBlinkCount = 0;
+      }   
+    } 
+    else if (currStep>=9 && currStep<=16)
+    {
+      if(LegoLedBlinkCount == 12) {
+        Leds_SetLegoProgress(totalSteps);
+        Leds_SetSingleBrightness(48-currStep, MAX_BRIGHTNESS);
+      } else if(LegoLedBlinkCount == 24) {
+        Leds_SetLegoProgress(totalSteps);
+        Leds_SetSingleBrightness(48-currStep, 0);
+        LegoLedBlinkCount = 0;
+      }
+    } else {
+      LegoLedBlinkCount = 0;
+    }
+  }
+
 }
 
 //_____________________________________________________________________________
@@ -335,21 +396,56 @@ static void RecordSequence(void)
       WrPos++;
     }
 
-    UpdateLegoLeds(WrPos);
+    UpdateLegoLeds(WrPos, RdPos);
   }
   else // The table is full
   {
     LaunchOverflowAnimation(buttonState, command);
   }
 
-  when(Accelerometer_IsTapDetected() || (command == E_Command_Go))
+  when(command == E_Command_Go)
   {
     RecordSequenceIsFinished = true;
     State = E_State_Play;
-
+    //PlayStatePrepareCount = 0;
+    //PlayStatePrepareToPlay = true;
+    //PlayState = E_PlayState_Prepare;
+    PlayState = E_PlayState_Replay;
     ESP_LOGI(Tag, "End of recording");
   }
-  
+
+  switch(StartFromProxState)
+  {
+    case 0:
+      if((GetProximityValue(1) > (PROX_THRESHOLD+200)) && (GetProximityValue(2) > (PROX_THRESHOLD+200)) && (GetProximityValue(3) > (PROX_THRESHOLD+200)))
+      {
+        PlayStatePrepareCount++;  // Based on behaviors update rate of 50 hz
+        if(PlayStatePrepareCount == 5) // After 100 ms
+        {
+          StartFromProxState = 1;
+        }
+      } else {
+        PlayStatePrepareCount = 0;
+      }
+      break;
+    
+    case 1:
+      if((GetProximityValue(1) < (PROX_THRESHOLD-200)) && (GetProximityValue(2) < (PROX_THRESHOLD-200)) && (GetProximityValue(3) < (PROX_THRESHOLD-200)))
+      {
+        PlayStatePrepareCount++;  // Based on behaviors update rate of 50 hz
+        if(PlayStatePrepareCount == 25) // After 0.5 second
+        {
+          RecordSequenceIsFinished = true;
+          State = E_State_Play;
+          PlayState = E_PlayState_Replay;
+          StartFromProxState = 0;
+        }
+      } else {
+        PlayStatePrepareCount = 0;
+      }
+      break;
+  }
+
 }
 
 //_____________________________________________________________________________
@@ -397,7 +493,7 @@ static void ProcessEraseAction(uint8_t command)
           WrPos--;
         }
         RdPos = 0u;
-        UpdateLegoLeds(WrPos);
+        UpdateLegoLeds(WrPos, RdPos);
         Codec_PlayOnboardSound(TONE_TYPE_MAGIC);
         eraseLastStepState = 2;
         countEraseExit = 0;
@@ -569,7 +665,7 @@ static void ProcessEraseAction(uint8_t command)
       if(ledCounter == 100) {
         Leds_SetFrontBrightness(0, 0, 0);
         Leds_SetBackBrightness(0, 0, 0); 
-        UpdateLegoLeds(WrPos);
+        UpdateLegoLeds(WrPos, RdPos);
       }
       if (accelerationZ > -13000) // Exit erase sequence
       {
@@ -597,20 +693,27 @@ static void PlaySequence(void)
 {
   switch (PlayState)
   {
+  case E_PlayState_Prepare:
+    HandlePrepare();
+    break;
   case E_PlayState_Replay:
     HandleReplay();
+    UpdateLegoLeds(WrPos, RdPos);
     break;
 
   case E_PlayState_Movement:
     HandleMovement();
+    UpdateLegoLeds(WrPos, RdPos);
     break;
 
   case E_PlayState_Rotation:
     HandleRotation();
+    UpdateLegoLeds(WrPos, RdPos);
     break;
 
   case E_PlayState_Collision:
     HandleCollision();
+    UpdateLegoLeds(WrPos, RdPos);
     break;
 
   default:
@@ -621,13 +724,38 @@ static void PlaySequence(void)
 
 //_____________________________________________________________________________
 
+static void HandlePrepare(void)
+{
+  /*
+  PlayStatePrepareCount++;  // Based on behaviors update rate of 50 hz
+  if ((GetGroundValue(0) < GROUND_IR_THRESHOLD) ||
+      (GetGroundValue(1) < GROUND_IR_THRESHOLD)) // Robot raised, not start but instead come back to recording mode
+  {
+    PlayStatePrepareToPlay = false;
+    RecordSequenceIsFinished = false; // Allow a new buttons recording sequence
+    RdPos = 0u;
+    State = E_State_Record;
+    //ESP_LOGI(Tag, "Replay aborted");
+    Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+    Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);    
+  }
+  if(PlayStatePrepareCount == 150) 
+  {
+    PlayState = E_PlayState_Replay;
+    PlayStatePrepareToPlay = false;
+  }
+  */
+}
+
+//_____________________________________________________________________________
+
 static void HandleReplay(void)
 {
   uint8_t next = 0u;
 
   if (RdPos < WrPos)
   {
-    ESP_LOGI(Tag, "Val: %d, Pos: %d", Sequence[RdPos], RdPos);
+    ESP_LOGI(Tag, "Val: %d, Pos: %d", Sequence[RdPos], RdPos);    
 
     if (!MovementIsInProgress && !RotationIsInProgress)
     {
@@ -635,13 +763,13 @@ static void HandleReplay(void)
       next = Sequence[RdPos + 1u];
       RdPos++;
 
-      UpdateLegoLeds(RdPos);
+      //UpdateLegoLeds(RdPos);
 
       if (Current == (1u << E_Button_Backward))
       {
         TimerHw_Start(1, 0);
         MovementIsInProgress = true;
-        Common_SetTargetSpeed(-MOVEMENT_SPEED, -MOVEMENT_SPEED); // TODO Check why the speed in backward direction is slower
+        Common_SetTargetSpeed(-MOVEMENT_SPEED_BW, -MOVEMENT_SPEED_BW); // TODO Check why the speed in backward direction is slower
         PlayState = E_PlayState_Movement;
       }
 
@@ -705,7 +833,7 @@ static void HandleMovement(void)
     }
     else if (Current == (1u << E_Button_Backward))
     {
-      Common_SetTargetSpeed(-MOVEMENT_SPEED, -MOVEMENT_SPEED);
+      Common_SetTargetSpeed(-MOVEMENT_SPEED_BW, -MOVEMENT_SPEED_BW);
     }
     else
     {

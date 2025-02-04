@@ -265,6 +265,7 @@ soft_reset:
 
         switch(mp_component_state) {
             case 0: // REPL
+                enter_micropython_mode();
                 while(1) {
                     if (pyexec_mode_kind == PYEXEC_MODE_RAW_REPL) {
                         vprintf_like_t vprintf_log = esp_log_set_vprintf(vprintf_null);

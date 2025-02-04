@@ -41,8 +41,11 @@
 #include "settings.h"
 #include "wifi_manager.h"
 #include "angle_controller.h"
-
+#include "mp_component.h"
+#include "python_handler.h"
 #include "aseba_esp32.h"  // TODO Add GetSpeed in common to remove this line
+#include "gyroscope.h"
+#include "stm32_spi.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -53,6 +56,9 @@
 #define BAT_LOW         340
 
 #define SPEED_STEP      128
+
+#define GROUND_IR_THRESHOLD    280
+#define MOVEMENT_SPEED 300
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -65,9 +71,26 @@ enum
   E_Setting_Motor,
   E_Setting_Color,
   E_Reset_WiFi_Credentials,
-  E_Setting_Max = E_Reset_WiFi_Credentials
+  E_Setting_Gyro,
+  E_Setting_MotorFwBw,
+  E_Setting_Max = E_Setting_MotorFwBw
 };
 typedef int16_t T_Setting;  // Setting selection
+
+enum
+{
+  E_Python_Menu,
+  E_Python_REPL,
+  E_Python_Main1,
+  E_Python_Main2,
+  E_Python_Main3,
+  E_Python_Main4,
+  E_Python_Main5,
+  E_Python_Main6,
+  E_Python_Main7,
+  E_Python_Max = E_Python_Main7
+};
+typedef int16_t T_Python_item;  // Python script selection
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -90,10 +113,16 @@ static uint16_t Behavior = 0u;
 #define DISABLE(b)     (Behavior &= ~b)  // do {behavior &= ~b;} while(0)  //(behavior &= ~b)
 
 static T_Setting CurrentSetting = E_Setting_Menu;
+static T_Python_item CurrentPythonItem = E_Python_Menu;
 
 static T_Settings Setting;
 
 static bool IsColorCalibrationInProgress = false;
+
+static bool start_settings_menu = false;
+static bool start_python_menu = false;
+
+static uint8_t updateSettingsState = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -161,6 +190,20 @@ static void TuneMotors(void);
 
 static void CalibrateColor(void);
 
+static void CalibrateGyro(void);
+
+static void CalibrateMotFwBw(void);
+
+static void UpdatePythonMenu(void);
+
+static T_Python_item SelectNextPythonItem(T_Python_item item, int16_t index);
+
+static bool IsPythonItemEnabled(T_Python_item item);
+
+static void SetPythonItemColor(T_Python_item item);
+
+static void ExitPythonItem(T_Python_item item);
+
 static void RunLegoLedAnimation(void);
 
 //-----------------------------------------------------------------------------
@@ -173,10 +216,10 @@ static void RunLegoLedAnimation(void);
 
 void Behavior_Init(void)
 {
-  Setting.Volume = Settings_ReadVolume();
+  Setting.Volume = Settings_GetVolumeSettings();
 
-  Setting.LeftMotor = Settings_ReadLeftMotor();
-  Setting.RightMotor = Settings_ReadRightMotor();
+  Setting.LeftMotor = Settings_GetLeftMotorSettings();
+  Setting.RightMotor = Settings_GetRightMotorSettings();
 
   TaskIsStarted = false;
   Behavior = 0u;
@@ -354,6 +397,11 @@ static void RunBehaviors(void)
     RunLegoLedAnimation();
   }  
 
+  if (ENABLED(B_PYTHON))
+  {
+    UpdatePythonMenu();
+  }
+
   Gpio_ClearButtonStatus();
 }
 
@@ -461,6 +509,7 @@ static void SetAccelerometerLeds(void)
   int16_t intensity = 0;
   int16_t led = -1;
   int16_t tilt = 0;
+  uint8_t ind = 0;
 
   T_Axis acc = Accelerometer_GetAcceleration();
 
@@ -514,12 +563,27 @@ static void SetAccelerometerLeds(void)
 
     if (led >= 0)
     {
+      /*
       if (previousLed >= 0)
       {
         Leds_SetSingleBrightness(previousLed, 0u);
       }
 
       Leds_SetSingleBrightness(led, intensity);
+      */
+
+      for(ind=E_Led_Circle_N; ind<=E_Led_Circle_NW; ind++)
+      {
+        if(ind == led)
+        {           
+          Leds_SetSingleBrightness(ind, ((4-intensity)<0)?0:(4-intensity));
+        }
+        else
+        {
+          Leds_SetSingleBrightness(ind, MAX_BRIGHTNESS);
+        }
+      }
+
     }
 
     previousLed = led;
@@ -527,12 +591,18 @@ static void SetAccelerometerLeds(void)
   }
   else
   {
+    /*
     if (previousLed >= 0)
     {
       Leds_SetSingleBrightness(previousLed, 0u);
     }
-
+    */
     previousLed = -1;
+
+    for(ind=E_Led_Circle_N; ind<=E_Led_Circle_NW; ind++)
+    {
+      Leds_SetSingleBrightness(ind, MAX_BRIGHTNESS);
+    }
   }
 }
 
@@ -543,36 +613,36 @@ static void SetGyroscopeLeds(void)
   int16_t gyro = Gyroscope_GetAngularVelocityZ();
 
   // Turn left
-  if (gyro >= 20000)
+  if (gyro >= 9000)
   {
     Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
   }
-  else if (gyro >= 10000)
+  else if (gyro >= 6000)
   {
     Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u);
   }
-  else if (gyro >= 5000)
+  else if (gyro >= 3000)
   {
     Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u);
   }
-  else if (gyro >= 2500)
+  else if (gyro >= 1500)
   {
     Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u);
   }
   // Turn right
-  else if (gyro <= -20000)
+  else if (gyro <= -9000)
   {
     Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
   }
-  else if (gyro <= -10000)
+  else if (gyro <= -6000)
   {
     Leds_SetLegoFrontBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
   }
-  else if (gyro <= -5000)
+  else if (gyro <= -3000)
   {
     Leds_SetLegoFrontBrightness(0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
   }
-  else if (gyro <= -2500)
+  else if (gyro <= -1500)
   {
     Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
   }
@@ -627,44 +697,44 @@ static void UpdateSettings(void)
 {
   static uint8_t count = 0u;
   static uint8_t select = 0u;
-  static bool start = false;
-  static uint8_t settings_navigation_state = RUNNING_SETTINGS_MENU;
+  static uint8_t settings_navigation_state = RUNNING_MENU;
+  static uint8_t delayCount = 0;
+
+  if(start_python_menu) { // Settings menu can be accessed only from the main menu
+    return;
+  }
 
   uint8_t* buttonState = Buttons_GetStatus();
-  bool sideState = Gpio_IsButtonPressed();
 
-  if (start)
+  if (start_settings_menu)
   {
     //RunLegoLedAnimation();
+    delayCount++; // Based on 50 Hz behaviors update rate
+    if(delayCount == 25)
+    {
+      Leds_SetLegoFrontOdd(MAX_BRIGHTNESS/2);
+    } 
+    else if(delayCount == 50)
+    {
+      delayCount = 0;
+      Leds_SetLegoFrontEven(MAX_BRIGHTNESS/2);
+    }
 
     // Handle settings entering/exiting with the center button
     when(buttonState[E_Button_Center])
     {
-      if(settings_navigation_state == RUNNING_SETTINGS_MENU) {
-        settings_navigation_state = RUNNING_SETTINGS_BEHAVIOR;
+      if(settings_navigation_state == RUNNING_MENU) {
+        settings_navigation_state = RUNNING_BEHAVIOR;
         if (select != CurrentSetting) {
           CurrentSetting = select;
         }        
       } else {
-        settings_navigation_state = RUNNING_SETTINGS_MENU;
+        settings_navigation_state = RUNNING_MENU;
         ExitSetting(CurrentSetting);
         CurrentSetting = E_Setting_Menu;
       }
 
     }
-
-/*
-    // Exit from a setting
-    when(sideState)
-    {
-      ExitSetting(CurrentSetting);
-
-      if (select == CurrentSetting)
-      {
-        CurrentSetting = E_Setting_Menu;
-      }
-    }
-*/
 
     switch (CurrentSetting)
     {
@@ -708,12 +778,20 @@ static void UpdateSettings(void)
     	  wifi_manager_delete_sta_config();
     	  break;
 
+      case E_Setting_Gyro:
+        CalibrateGyro();
+        break;
+
+      case E_Setting_MotorFwBw:
+        CalibrateMotFwBw();
+        break;
+
       default:
         // Do nothing
         break;
     }
 
-    if (buttonState[E_Button_Left] && buttonState[E_Button_Right])
+    if ((CurrentSetting==E_Setting_Menu) && (buttonState[E_Button_Left] && buttonState[E_Button_Right]))
     {
       count++;
 
@@ -721,26 +799,31 @@ static void UpdateSettings(void)
       {
         Behavior_Enable(B_MODE);
         count = 0u;
-        start = false;
+        start_settings_menu = false;
         CurrentSetting = E_Setting_Menu;
+        Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+        Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);        
       }
     } else {
       count = 0;
     }
 
   } else { // If settings menu not entered
-    // When in the "investigator mode" (line tracking) the left+right are used to calibrate the ground sensors in a white surface.
-    // So avoid to enter the settings menu while trying to calibrate on the white surface.
+    // When in the "investigator mode" (line tracking) the left+right are used to calibrate the ground sensors in a white surface,
+    // thus avoid to enter the settings menu while trying to calibrate on the white surface.
+    // Also in the "obedient mode" the left+right combination is used (to stop the rotation), thus avoid entering the settings menu in this case.
     // The drawback is that you cannot enter the settings menu when the investigator mode is running, but this is not a big problem...
-    if(Mode_get_current() != E_Mode_Investigator) {
+    if((Mode_get_current() != E_Mode_Investigator) && (Mode_get_current() != E_Mode_Obedient)) {
       if (buttonState[E_Button_Left] && buttonState[E_Button_Right]) {
         count++;
         if (count > 75)  // 75 * 40 [ms] = 3 [s]
         {
           Behavior_Disable(B_MODE);
           count = 0u;
-          start = true;
+          start_settings_menu = true;
           CurrentSetting = E_Setting_Menu;
+          Leds_SetLegoFrontEven(MAX_BRIGHTNESS/2);
+          Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
         }
       } else {
         count = 0;
@@ -770,7 +853,7 @@ static T_Setting SelectNextSetting(T_Setting setting, int16_t index)
     }
   }
   while (!IsSettingEnabled(temp));
-
+  updateSettingsState = 0;
   return (T_Setting)temp;
 }
 
@@ -799,20 +882,46 @@ static void SetSettingColor(T_Setting setting)
       break;
 
     case E_Setting_Volume:  // Orange
-      Leds_SetBodyBrightness(MAX_BRIGHTNESS, (MAX_BRIGHTNESS / 2u), 0u);
+      Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, (MAX_BRIGHTNESS / 2u), 0u);
+      Leds_SetFrontRightBrightness(0, 0, 0);
+      Leds_SetBackLeftBrightness(0, 0, 0);
+      Leds_SetBackRightBrightness(0, 0, 0);
       break;
 
     case E_Setting_Motor:  // Green-Yellow
-      Leds_SetBodyBrightness((MAX_BRIGHTNESS / 2u), MAX_BRIGHTNESS, 0u);
+      Leds_SetFrontLeftBrightness(0, 0, 0);
+      Leds_SetFrontRightBrightness((MAX_BRIGHTNESS / 2u), MAX_BRIGHTNESS, 0u);
+      Leds_SetBackLeftBrightness(0, 0, 0);
+      Leds_SetBackRightBrightness(0, 0, 0);
       break;
 
     case E_Setting_Color:  // Purple
-      Leds_SetBodyBrightness((MAX_BRIGHTNESS / 2u), 0u, MAX_BRIGHTNESS);
+      Leds_SetFrontLeftBrightness(0, 0, 0);
+      Leds_SetFrontRightBrightness(0, 0, 0);
+      Leds_SetBackLeftBrightness((MAX_BRIGHTNESS / 2u), 0u, MAX_BRIGHTNESS);
+      Leds_SetBackRightBrightness(0, 0, 0);
       break;
 
     case E_Reset_WiFi_Credentials: // Dark red
-    	Leds_SetBodyBrightness((MAX_BRIGHTNESS / 4u), 0u, 0u);
+      Leds_SetFrontLeftBrightness(0, 0, 0);
+      Leds_SetFrontRightBrightness(0, 0, 0);
+      Leds_SetBackLeftBrightness(0, 0, 0);
+    	Leds_SetBackRightBrightness((MAX_BRIGHTNESS / 4u), 0u, 0u);
     	break;
+
+    case E_Setting_Gyro: // Dark green
+      Leds_SetFrontLeftBrightness(0, (MAX_BRIGHTNESS / 4u), 0u);
+      Leds_SetFrontRightBrightness(0, 0, 0);
+      Leds_SetBackLeftBrightness(0, 0, 0);
+      Leds_SetBackRightBrightness(0, 0, 0);
+      break;
+
+    case E_Setting_MotorFwBw: // Dark blue
+      Leds_SetFrontLeftBrightness(0, 0, 0);
+      Leds_SetFrontRightBrightness(0, 0, (MAX_BRIGHTNESS / 4u));
+      Leds_SetBackLeftBrightness(0, 0, 0);
+      Leds_SetBackRightBrightness(0, 0, 0);
+      break;
 
     default:
       // Do nothing
@@ -824,9 +933,10 @@ static void SetSettingColor(T_Setting setting)
 
 static void ExitSetting(T_Setting setting)
 {
+  static int16_t values[3];
   Leds_SetBodyBrightness(0u, 0u, 0u);
   Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-  Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  //Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
   Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
 
   switch (setting)
@@ -838,7 +948,7 @@ static void ExitSetting(T_Setting setting)
     case E_Setting_Volume:
       // Write to the settings file
       Settings_WriteVolume(Setting.Volume);
-
+      Settings_SetVolumeSettings(Setting.Volume);
       ESP_LOGE(Tag, "Write volume: %d", Setting.Volume);
       break;
 
@@ -859,6 +969,16 @@ static void ExitSetting(T_Setting setting)
     case E_Reset_WiFi_Credentials:
     	break;
 
+    case E_Setting_Gyro: // Dark green      
+      Gyroscope_GetCalibration(values);
+      Settings_WriteZeroOffGyro(values);
+      ESP_LOGI(Tag, "Write zero gyro: %d, %d, %d", values[0], values[1], values[2]);
+      break;
+
+    case E_Setting_MotorFwBw: // Dark blue
+      Settings_WriteMotFwBwFactor(Setting.MotFwBw);
+      break;
+
     default:
       // Do nothing
       break;
@@ -874,7 +994,7 @@ static void AdjustVolume(void)
   uint8_t brightness = Common_GetBodyColorPulse();
 
   // Orange pulse
-  Leds_SetBodyBrightness(brightness, (brightness / 2u), 0u);
+  Leds_SetFrontLeftBrightness(brightness, (brightness / 2u), 0u);
 
   when(buttonState[E_Button_Backward] != 0u)
   {
@@ -984,7 +1104,7 @@ static void TuneMotors(void)
   uint8_t brightness = Common_GetBodyColorPulse();
 
   // Green-Yellow pulse
-  Leds_SetBodyBrightness((brightness / 2u), brightness, 0u);
+  Leds_SetFrontRightBrightness((brightness / 2u), brightness, 0u);
 
   if (vmVariables.target[0] != 0)
   {
@@ -1067,81 +1187,416 @@ static void CalibrateColor(void)
 {
   uint8_t* buttonState = Buttons_GetStatus();
   uint8_t brightness = Common_GetBodyColorPulse();
-  uint8_t calibrationStatus = false;
 
-  if (!IsColorCalibrationInProgress)  // Pulse the four body LEDs
-  {
-    // Purple pulse
-    Leds_SetBodyBrightness((brightness / 2u), 0u, brightness);
-  }
-  else  // Pulse only the back body LEDs
-  {
-    Leds_SetBackLeftBrightness((brightness / 2u), 0u, brightness);
-    Leds_SetBackRightBrightness((brightness / 2u), 0u, brightness);
-  }
+  // Purple pulse
+  Leds_SetBackLeftBrightness((brightness / 2u), 0u, brightness);
 
   when(buttonState[E_Button_Forward] != 0u)
   {
-    if (ColorSensor_Calibrate(0, &calibrationStatus))  // White calibration
-    {
-      Codec_Stop();
-      Codec_PlayOnboardSound(TONE_TYPE_GOOD);
-    }
-    else
-    {
-      Codec_Stop();
-      Codec_PlayOnboardSound(TONE_TYPE_BAD);
-    }
-
-    if (calibrationStatus == 2)
-    {
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
-    }
-    else if (calibrationStatus == 1)
-    {
-      Leds_SetLegoFrontBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u);
-    }
-    else
-    {
-      Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
-    }
-
-    IsColorCalibrationInProgress = true;
-
-    Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
-    Leds_SetFrontRightBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+    ColorSensor_CalibrateWhite();
   }
 
   when(buttonState[E_Button_Backward] != 0u)
   {
-    if (ColorSensor_Calibrate(1, &calibrationStatus))  // Black calibration
+    ColorSensor_CalibrateBlack();
+  }
+  
+}
+
+//_____________________________________________________________________________
+
+static void CalibrateGyro(void)
+{
+  uint8_t* buttonState = Buttons_GetStatus();
+  uint8_t brightness = Common_GetBodyColorPulse();
+  static uint8_t delayCount = 0;
+
+  // Dark green pulse
+  Leds_SetFrontLeftBrightness(0, (brightness / 4u), 0u);
+
+  switch(updateSettingsState)
+  {
+    case 0: // Wait forward button press to start calibration
+      when(buttonState[E_Button_Forward] != 0u)
+      {
+        updateSettingsState = 1;
+        delayCount = 0;
+      }
+      break;
+    
+    case 1: // Wait a bit before actually taking samples in order to avoid interference from the button press and in the meantime show led animation
+      delayCount++;
+      Leds_SetLegoBackProgress(delayCount/6);
+      if(delayCount == 50) // Based on 50 Hz behaviors update rate
+      {
+        Gyroscope_DisableContinuousCalib();
+        Gyroscope_Calibrate();
+        updateSettingsState = 2;
+      }
+      break;
+
+    case 2: // Wait for the center button press in order to save the calibration
+      break;
+
+  }
+}
+
+//_____________________________________________________________________________
+
+static void CalibrateMotFwBw(void)
+{
+  uint8_t* buttonState = Buttons_GetStatus();
+  uint8_t brightness = Common_GetBodyColorPulse();
+  static uint8_t delayCount = 0;
+  static uint8_t fwCount = 0;
+  static uint8_t bwCount = 0;
+
+  // Dark blue pulse
+  Leds_SetFrontRightBrightness(0, 0, (brightness / 4u));  
+
+  switch(updateSettingsState)
+  {
+    case 0: // Wait forward button press to start calibration
+      when(buttonState[E_Button_Forward] != 0u)
+      {
+        updateSettingsState = 1;
+        Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED); 
+        delayCount = 0;
+      }
+      break;
+    
+    case 1: // Go forward, the robot should be able to detect the first black line to start the time needed to travel to the second black line
+      if ((GetGroundValue(0) < GROUND_IR_THRESHOLD) && (GetGroundValue(0) < GROUND_IR_THRESHOLD))
+      {
+        delayCount++;
+        if(delayCount >= 3)
+        {
+          delayCount = 0;
+          updateSettingsState = 2;
+          fwCount = 0;
+        }
+      } else {
+        delayCount = 0;
+      }
+      break;
+
+    case 2: // Wait for the center button press in order to save the calibration
+      fwCount++;
+      if ((GetGroundValue(0) < GROUND_IR_THRESHOLD) && (GetGroundValue(0) < GROUND_IR_THRESHOLD))
+      {
+        delayCount++;
+        if(delayCount >= 3)
+        {
+          Common_SetTargetSpeed(0, 0);
+          updateSettingsState = 3;
+          bwCount = 0;
+        }
+      }      
+      break;
+    case 3:
+      break;
+
+  }  
+}
+
+//_____________________________________________________________________________
+
+static void UpdatePythonMenu(void)
+{
+  static uint8_t count = 0u;
+  static uint8_t select = 0u;
+  static uint8_t python_navigation_state = RUNNING_MENU;
+
+  if(start_settings_menu) { // Python menu can be entered only from the main menu
+    return;
+  }
+
+  uint8_t* buttonState = Buttons_GetStatus();
+
+  if (start_python_menu)
+  {
+
+    // Handle python menu entering/exiting with the center button
+    when(buttonState[E_Button_Center])
     {
-      Codec_Stop();
-      Codec_PlayOnboardSound(TONE_TYPE_GOOD);
-    }
-    else
-    {
-      Codec_Stop();
-      Codec_PlayOnboardSound(TONE_TYPE_BAD);
+      if(python_navigation_state == RUNNING_MENU) {
+        python_navigation_state = RUNNING_BEHAVIOR;
+        if (select != CurrentPythonItem) {
+          CurrentPythonItem = select;
+        }        
+      } else {
+        python_navigation_state = RUNNING_MENU;
+        ExitPythonItem(CurrentPythonItem);
+        CurrentPythonItem = E_Python_Menu;
+      }
+
     }
 
-    if (calibrationStatus == 2)  // Successful calibration
+    // Once you enter one of the user python scripts or the REPL, then you cannot exit normally but you need to power off the robot.
+    switch (CurrentPythonItem)
     {
-      Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
-    }
-    else if (calibrationStatus == 1)  // Partial calibration
-    {
-      Leds_SetLegoFrontBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u);
-    }
-    else  // Bad calibration
-    {
-      Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
+      case E_Python_Menu:
+        when(buttonState[E_Button_Backward])
+        {
+          select = SelectNextPythonItem(select, -1);
+        }
+
+        when(buttonState[E_Button_Left])
+        {
+          select = SelectNextPythonItem(select, -1);
+        }
+
+        when(buttonState[E_Button_Forward])
+        {
+          select = SelectNextPythonItem(select, 1);
+        }
+
+        when(buttonState[E_Button_Right])
+        {
+          select = SelectNextPythonItem(select, 1);
+        }
+
+        SetPythonItemColor(select);
+        break;
+
+      case E_Python_REPL:   // Black + back lego leds
+        PythonHandler_Run(0);
+        break;
+
+      case E_Python_Main1:  // Black + back lego leds
+        PythonHandler_Run(1);
+        break;
+
+      case E_Python_Main2:  // Black + back lego leds
+        PythonHandler_Run(2);
+        break;
+
+      case E_Python_Main3:  // Black + back lego leds
+        PythonHandler_Run(3);
+        break;
+
+      case E_Python_Main4:  // Black + back lego leds
+        PythonHandler_Run(4);
+        break;
+
+      case E_Python_Main5:  // Black + back lego leds
+        PythonHandler_Run(5);
+        break;
+
+      case E_Python_Main6:  // Black + back lego leds
+        PythonHandler_Run(6);
+        break;
+
+      case E_Python_Main7:  // Black + back lego leds
+        PythonHandler_Run(7);
+        break;                        
+
+      default:
+        // Do nothing
+        break;
     }
 
-    IsColorCalibrationInProgress = true;
+    if (buttonState[E_Button_Forward] && buttonState[E_Button_Backward])
+    {
+      count++;
 
-    Leds_SetFrontLeftBrightness(0u, 0u, 0u);
-    Leds_SetFrontRightBrightness(0u, 0u, 0u);
+      if (count > 75)  // 75 * 40 [ms] = 3 [s]
+      {
+        Behavior_Enable(B_MODE);
+        count = 0u;
+        start_python_menu = false;
+        CurrentPythonItem = E_Python_Menu;
+      }
+    } else {
+      count = 0;
+    }
+
+  } else { // If micro Python menu not entered
+    // When in the "investigator mode" (line tracking) the forward+backward are used to calibrate the ground sensors in a black surface,
+    // thus avoid to enter the settings menu while trying to calibrate on the black surface.
+    // Also in the "obedient mode" the forward+backward combination is used (to stop the robot), thus avoid entering the settings menu in this case.
+    // The drawback is that you cannot enter the settings menu when the investigator or obedient modes are running, but this is not a big problem...
+    if((Mode_get_current() != E_Mode_Investigator) && (Mode_get_current() != E_Mode_Obedient)) {
+      if (buttonState[E_Button_Forward] && buttonState[E_Button_Backward]) {
+        count++;
+        if (count > 75)  // 75 * 40 [ms] = 3 [s]
+        {
+          Behavior_Disable(B_MODE);
+          count = 0u;
+          start_python_menu = true;
+          CurrentPythonItem = E_Python_Menu;
+        }
+      } else {
+        count = 0;
+      }
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
+static T_Setting SelectNextPythonItem(T_Python_item item, int16_t index)
+{
+  int16_t temp = (int16_t)item;
+
+  do
+  {
+    temp += index;
+
+    while (temp > E_Python_Max)
+    {
+      temp -= (E_Python_Max + 1);
+    }
+
+    while (temp < 0)
+    {
+      temp += (E_Python_Max + 1);
+    }
+  }
+  while (!IsPythonItemEnabled(temp));
+
+  return (T_Python_item)temp;
+}
+
+//_____________________________________________________________________________
+
+static bool IsPythonItemEnabled(T_Python_item item)
+{
+  bool result = true;
+
+  if (item == E_Python_Menu)
+  {
+    result = false;
+  }
+  if((item==E_Python_Main1) && !script_is_present(1)) {
+    return false;
+  }
+  if((item==E_Python_Main2) && !script_is_present(2)) {
+    return false;
+  }  
+  if((item==E_Python_Main3) && !script_is_present(3)) {
+    return false;
+  }
+  if((item==E_Python_Main4) && !script_is_present(4)) {
+    return false;
+  }
+  if((item==E_Python_Main5) && !script_is_present(5)) {
+    return false;
+  }  
+  if((item==E_Python_Main6) && !script_is_present(6)) {
+    return false;
+  }
+  if((item==E_Python_Main7) && !script_is_present(7)) {
+    return false;
+  }
+  return result;
+}
+
+//_____________________________________________________________________________
+
+static void SetPythonItemColor(T_Python_item item)
+{
+  switch (item)
+  {
+    case E_Python_Menu:
+      Leds_SetBodyBrightness(0u, 0u, 0u);
+      break;
+
+    case E_Python_REPL:   // Black + back lego leds
+      Leds_SetBodyBrightness(0u, 0u, 0u);
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS);    
+      break;
+
+    case E_Python_Main1:  // Black + back lego leds
+      Leds_SetBodyBrightness(0u, 0u, 0u);
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);    
+      break;
+
+    case E_Python_Main2:  // Black + back lego leds
+      Leds_SetBodyBrightness(0u, 0u, 0u);
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);    
+      break;
+
+    case E_Python_Main3:  // Black + back lego leds
+      Leds_SetBodyBrightness(0u, 0u, 0u);
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      Leds_SetLegoBackBrightness(0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);    
+      break;
+
+    case E_Python_Main4:  // Black + back lego leds
+      Leds_SetBodyBrightness(0u, 0u, 0u);
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      Leds_SetLegoBackBrightness(0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);    
+      break;
+
+    case E_Python_Main5:  // Black + back lego leds
+      Leds_SetBodyBrightness(0u, 0u, 0u);
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      Leds_SetLegoBackBrightness(0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);    
+      break;
+
+    case E_Python_Main6:  // Black + back lego leds
+      Leds_SetBodyBrightness(0u, 0u, 0u);
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      Leds_SetLegoBackBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);    
+      break;
+
+    case E_Python_Main7:  // Black + back lego leds
+      Leds_SetBodyBrightness(0u, 0u, 0u);
+      Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+      Leds_SetLegoBackBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);    
+      break;
+
+    default:
+      // Do nothing
+      break;
+  }
+}
+
+//_____________________________________________________________________________
+
+static void ExitPythonItem(T_Python_item item)
+{
+  Leds_SetBodyBrightness(0u, 0u, 0u);
+  Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+
+  switch (item)
+  {
+    case E_Python_Menu:
+      break;
+
+    case E_Python_REPL:
+      break;
+
+    case E_Python_Main1:
+      break;
+
+    case E_Python_Main2: 
+      break;
+
+    case E_Python_Main3: 
+      break;
+
+    case E_Python_Main4: 
+      break;
+
+    case E_Python_Main5: 
+      break;
+
+    case E_Python_Main6: 
+      break;
+
+    case E_Python_Main7:
+      break;
+
+    default:
+      // Do nothing
+      break;
   }
 }
 

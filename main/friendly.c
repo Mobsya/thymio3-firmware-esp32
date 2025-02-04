@@ -26,17 +26,19 @@
 #include "codec.h"
 #include "common.h"
 #include "leds.h"
-
+#include "stm32_spi.h"
 #include "friendly.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define DETECT                  500 //85
+#define DETECT                  100 //500
 #define SPEED_INCREMENT         50
 #define MAX_SPEED              300
 #define MIN_SPEED            (-300)
+#define TARGET_DIST 2200
+#define TARGET_DIST_THR 200
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -91,20 +93,25 @@ void Friendly_Run(void)
   static char sound_done = 0;
   static unsigned char led_state = 0;
 	static char led_delta = 1;
-  int16_t max = vmVariables.prox[0];
+  int16_t max = 0;
   int16_t mi = 0;
   int16_t t;
   uint8_t brightness = Common_GetBodyColorPulse();
   int16_t speedDiff;
   int16_t speed_l = 0;
+  int16_t prox[7];
 
   static int16_t speed = 300;
 
+  
+  GetProximityValues(prox);
+  max = prox[0];
+  mi = 0;
   for (uint8_t index = 1u; index < 5u; index++)
   {
-    if (vmVariables.prox[index] > max)
+    if (prox[index] > max)
     {
-      max = vmVariables.prox[index];
+      max = prox[index];
       mi = index;
     }
   }
@@ -112,6 +119,12 @@ void Friendly_Run(void)
   t = 2 - mi; // Stop rotation when robot is toward the object (=> prox 2 max)
   speedDiff = t * (speed / 2);
 
+  // >3200      => -300 (-speed)
+  // 2800..3200 => 0..-200
+  // 2300..2800 => 0
+  // 2300..1000 => 80..265
+  // <1000      => 300 (speed)
+/*
   if (max > 2800) // Object near the robot, start going backward slowly
   {
     speed_l = (2800 - max) / 2;
@@ -122,16 +135,47 @@ void Friendly_Run(void)
     speed_l = -speed;
   }
 
-  if (max < 1900) // Object far from the robot, start following it slowly
+  if (max < 2300) // Object far from the robot, start following it slowly
   {
-    t = 190 - (max - 1000) / 7;
+    t = 265 - (max - 1000) / 7;
     speed_l = t;
   }
 
-  if (max < 900) // Object really far from the robot, start following it fast
+  if (max < 1000) // Object really far from the robot, start following it fast
   {
     speed_l = speed;
   }
+*/
+
+  if((max > (TARGET_DIST-TARGET_DIST_THR)) && (max < (TARGET_DIST+TARGET_DIST_THR)))
+  {
+    speed_l = 0;
+  } 
+  else if(max > (TARGET_DIST+TARGET_DIST_THR)) // Object near the robot, go backward 
+  {
+    speed_l = (TARGET_DIST - max)>>3;
+  } else // Object far from the robot, go forward 
+  {
+    speed_l = (TARGET_DIST - max)>>1;
+  }
+
+  //if(max > (TARGET_DIST+TARGET_DIST_THR)) // Object near the robot, go backward
+ // {
+    
+  //}
+
+/*
+	if (max > 3500) 
+		speed_l = (3500 - max) / 2;	
+	if (max > 4000)
+		speed_l = -speed;	
+	if (max < 3000) {
+		t = 300 - (max - 1000) / 7;
+		speed_l = t;
+	}	
+	if (max < 2000) 
+		speed_l = speed;
+*/
 
   if (speed_l > speed)
   {
@@ -217,6 +261,7 @@ void Friendly_Run(void)
     }
   }
 
+  /*
   if(does_see_friend)
   	does_see_friend--;
 
@@ -244,6 +289,8 @@ void Friendly_Run(void)
   		}
   	}
   }
+  */
+
 }
 
 //_____________________________________________________________________________

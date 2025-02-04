@@ -26,6 +26,7 @@
 #include "codec.h"
 #include "common.h"
 #include "leds.h"
+#include "rc5.h"
 
 #include "attentive.h"
 
@@ -92,8 +93,10 @@ void Attentive_Stop(void)
 //_____________________________________________________________________________
 
 void Attentive_Run(void) {
+	static int16_t toggle = -1;
 	static char claptime;
 	uint8_t brightness = Common_GetBodyColorPulse();
+	int16_t command = RC5_GetCommand(&toggle);	
 	
 	if(skip_clap_counter > 0) { // Avoid confusing buttons sound with clap when entering attentive mode.
 		skip_clap_counter--;	// The behaviors task is called @ 50 Hz, thus wait 1 second.
@@ -113,11 +116,11 @@ void Attentive_Run(void) {
 		} else if(clap == 1 && 2 < time && time < 30) { // Behaviors run @ 50 Hz, thus between 40 and 600 ms
 			clap = 2;
 			claptime = time + 1;
-			Leds_SetCircleBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,0,0,0,0,0,MAX_BRIGHTNESS);
+			Leds_SetCircleBrightness(0,MAX_BRIGHTNESS,0,0,0,0,0,MAX_BRIGHTNESS);
 			//ESP_LOGD(Tag, "2nd clap");
 		} else if(clap == 2 && claptime < time && time < 40) { // Behaviors run @ 50 Hz, thus at most 800 ms
 			clap = 3;
-			Leds_SetCircleBrightness(MAX_BRIGHTNESS,MAX_BRIGHTNESS,MAX_BRIGHTNESS,0,0,0,MAX_BRIGHTNESS,MAX_BRIGHTNESS);
+			Leds_SetCircleBrightness(MAX_BRIGHTNESS,0,MAX_BRIGHTNESS,0,0,0,MAX_BRIGHTNESS,0);
 			//ESP_LOGD(Tag, "3rd clap");
 		}
 	}
@@ -132,7 +135,7 @@ void Attentive_Run(void) {
 	}	
 	
   // If one clap detected and 100 ms passed then handle "one clap actions"
-	if((clap == 1) && (time == 5)) {		
+	if(((clap == 1) && (time == 5)) || (command == E_Command_1)) {		
 		if(direction == SOUND_RUN) {
 			//ESP_LOGD(Tag, "1 clap actions: SOUND_TURNRIGHT");
 			direction = SOUND_TURNRIGHT;
@@ -145,7 +148,7 @@ void Attentive_Run(void) {
 	}
 
   // If two claps detected and 600 ms passed then handle "two claps actions"
-	if((clap == 2) && (time == 30)) {		
+	if(((clap == 2) && (time == 30)) || (command == E_Command_2)) {		
 		if(direction == SOUND_STOP) {
 			//ESP_LOGD(Tag, "2 claps actions: SOUND_RUN");
 			direction = SOUND_RUN;
@@ -158,7 +161,7 @@ void Attentive_Run(void) {
 	}
 	
   // If three claps detected and 800 ms passed then handle "three claps actions"
-	if((clap == 3) && (time == 40)) {
+	if(((clap == 3) && (time == 40)) || (command == E_Command_3)) {
 		//ESP_LOGD(Tag, "3 claps actions");
 		direction = SOUND_RUN;
 		Common_SetTargetSpeed(SOUND_TURN_SPEED, 0);

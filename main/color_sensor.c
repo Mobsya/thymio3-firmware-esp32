@@ -20,7 +20,7 @@
 
 #include "esp_log.h"
 #include <math.h>
-
+//#include <stdio.h>
 #include "color_sensor.h"
 
 #include "aseba_esp32.h"
@@ -32,8 +32,6 @@
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
-
-#define HUE_DEGREE               1
 
 #define MAX_HSV_COLOR          255
 
@@ -120,16 +118,16 @@ void ColorSensor_Init(void)
   BH1745NUC_Init();
   Leds_SetSingleBrightness(E_Led_White_Sensor, MAX_BRIGHTNESS);
 
-  White.Red   = Settings_ReadWhiteRed();
-  White.Green = Settings_ReadWhiteGreen();
-  White.Blue  = Settings_ReadWhiteBlue();
+  White.Red   = Settings_GetWhiteRedSettings();
+  White.Green = Settings_GetWhiteGreenSettings();
+  White.Blue  = Settings_GetWhiteBlueSettings();
   White.Clear = 220;
 
   ESP_LOGI(Tag, "White values: %d, %d, %d", White.Red, White.Green, White.Blue);
 
-  Black.Red   = Settings_ReadBlackRed();
-  Black.Green = Settings_ReadBlackGreen();
-  Black.Blue  = Settings_ReadBlackBlue();
+  Black.Red   = Settings_GetBlackRedSettings();
+  Black.Green = Settings_GetBlackGreenSettings();
+  Black.Blue  = Settings_GetBlackBlueSettings();
   Black.Clear = 150;
 
   ESP_LOGI(Tag, "Black values: %d, %d, %d", Black.Red, Black.Green, Black.Blue);
@@ -160,6 +158,7 @@ void ColorSensor_ReadColor(void)
 
   ConvertToHSV();
   UpdateColor(Hsv);
+  //printf("color = %d (%d,%d,%d)\n", Color, Hsv.Hue, Hsv.Saturation, Hsv.Value);
 }
 
 //_____________________________________________________________________________
@@ -203,7 +202,8 @@ bool ColorSensor_Calibrate(uint8_t choice, uint8_t* calibrationStatus)
 {
   static bool isWhiteCalibrationDone = false;
   static bool isBlackCalibrationDone = false;
-  bool status = false;
+  static int16_t values[3];
+  bool status = false;  
 
   if (choice == 0)  // White calibration
   {
@@ -296,13 +296,15 @@ bool ColorSensor_Calibrate(uint8_t choice, uint8_t* calibrationStatus)
 
     if ((Range.Red != 0) && (Range.Green != 0) && (Range.Blue != 0))
     {
-      Settings_WriteWhiteRed(White.Red);
-      Settings_WriteWhiteGreen(White.Green);
-      Settings_WriteWhiteBlue(White.Blue);
+      values[0] = White.Red;
+      values[1] = White.Green;
+      values[2] = White.Blue;
+      Settings_WriteWhite(values);
 
-      Settings_WriteBlackRed(Black.Red);
-      Settings_WriteBlackGreen(Black.Green);
-      Settings_WriteBlackBlue(Black.Blue);
+      values[0] = Black.Red;
+      values[1] = Black.Green;
+      values[2] = Black.Blue;
+      Settings_WriteBlack(values);
 
       *calibrationStatus = 2u;
       ESP_LOGE(Tag, "Color calibration is OK");
@@ -325,6 +327,54 @@ bool ColorSensor_Calibrate(uint8_t choice, uint8_t* calibrationStatus)
 
 //_____________________________________________________________________________
 
+void ColorSensor_CalibrateWhite(void)
+{
+  static int16_t values[3];
+
+  White.Red   = RawColor.Red;
+  White.Green = RawColor.Green;
+  White.Blue  = RawColor.Blue;
+  values[0]  = RawColor.Red;
+  values[1] = RawColor.Green;
+  values[2]  = RawColor.Blue;
+  
+  // Range not used anymore to convert from RAW to HSV
+  //Range.Red   = (White.Red - Black.Red);
+  //Range.Green = (White.Green - Black.Green);
+  //Range.Blue  = (White.Blue - Black.Blue);
+
+  Settings_WriteWhite(values);
+  Settings_SetWhiteRedSettings(White.Red);
+  Settings_SetWhiteGreenSettings(White.Green);
+  Settings_SetWhiteBlueSettings(White.Blue);
+}
+
+//_____________________________________________________________________________
+
+void ColorSensor_CalibrateBlack(void)
+{
+  static int16_t values[3];
+
+  Black.Red   = RawColor.Red;
+  Black.Green = RawColor.Green;
+  Black.Blue  = RawColor.Blue;
+  values[0]  = RawColor.Red;
+  values[1] = RawColor.Green;
+  values[2]  = RawColor.Blue;
+
+  // Range not used anymore to convert from RAW to HSV
+  //Range.Red   = (White.Red - Black.Red);
+  //Range.Green = (White.Green - Black.Green);
+  //Range.Blue  = (White.Blue - Black.Blue);
+
+  Settings_WriteBlack(values);
+  Settings_SetBlackRedSettings(Black.Red);
+  Settings_SetBlackGreenSettings(Black.Green);
+  Settings_SetBlackBlueSettings(Black.Blue);
+}
+
+//_____________________________________________________________________________
+
 T_Error ColorSensor_CheckManufacturerId(void)
 {
   T_Error err = E_Error_None;
@@ -343,6 +393,10 @@ T_Error ColorSensor_CheckManufacturerId(void)
 
 static void ConvertToHSV(void)
 {
+  float red   = RawColor.Red;
+  float green = RawColor.Green;
+  float blue  = RawColor.Blue;
+/*
   float red   = (RawColor.Red - Black.Red);
   float green = (RawColor.Green - Black.Green);
   float blue  = (RawColor.Blue - Black.Blue);
@@ -374,11 +428,13 @@ static void ConvertToHSV(void)
   if(blue < 0) {
     blue = 0;
   }  
+*/
 
   float cmin;
   float cmax;
   float delta;
 
+/*
   // Check division by 0
   if ((Range.Red == 0) || (Range.Green == 0) || (Range.Blue == 0))
   {
@@ -387,11 +443,11 @@ static void ConvertToHSV(void)
     Hsv.Value = -1;
     return;
   }
-
+*/
   // Make the RGB values between 0 and 1
-  red   /= Range.Red;
-  green /= Range.Green;
-  blue  /= Range.Blue;
+  red   /= White.Red; //16384; //Range.Red;
+  green /= White.Green; //16384; //Range.Green;
+  blue  /= White.Blue; //16384; //Range.Blue;
   
   cmin = fMin3(red, green, blue);
   cmax = fMax3(red, green, blue);
@@ -427,51 +483,36 @@ static void ConvertToHSV(void)
 
 static void UpdateColor(T_HSV hsv)
 {
-  if ((hsv.Saturation < 50) && (hsv.Value > 200))
+  if ((hsv.Saturation < 40) && (hsv.Value > 75))
   {
     // White
     Color = E_Color_White;
   }
-  else if (hsv.Value < 30)
+  else if (hsv.Value < 40)
   {
     // Black
     Color = E_Color_Unknown;
   }
-  else if (hsv.Saturation > 50)  // Color
+  else if (hsv.Saturation >= 15)  // Color
   {
-    if (((hsv.Hue >= 0) && (hsv.Hue <= 10)) || ((hsv.Hue > 350) && (hsv.Hue < 360)))
+    if (((hsv.Hue >= 0) && (hsv.Hue <= 27)) || ((hsv.Hue > 344) && (hsv.Hue <= 360))) // red [344..27]
     {
-      // Red
       Color = E_Color_Red;
     }
-    else if (hsv.Hue <= 25)
+    else if (hsv.Hue <= 93) // yellow ]27..93]
     {
-      // Yellow
-      Color = E_Color_Orange;
-    }
-    else if (hsv.Hue <= 80)
-    {
-      // Yellow
       Color = E_Color_Yellow;
     }
-    else if (hsv.Hue <= 150)
+    else if (hsv.Hue <= 175) // green ]93..175]
     {
-      // Green
       Color = E_Color_Green;
     }
-    else if (hsv.Hue <= 200)  // 210
+    else if (hsv.Hue <= 268) // blue ]175..268]
     {
-      // Cyan
-      Color = E_Color_Cyan;
-    }
-    else if (hsv.Hue <= 270)
-    {
-      // Blue
       Color = E_Color_Blue;
     }
-    else if (hsv.Hue <= 350)
+    else if (hsv.Hue <= 344) // purple ]268..344]
     {
-      // Purple
       Color = E_Color_Purple;
     }
     else

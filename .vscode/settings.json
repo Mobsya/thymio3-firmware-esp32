@@ -12,6 +12,23 @@
         "timer_sw.h": "c",
         "leds.h": "c",
         "stm32.h": "c",
-        "aseba_esp32.h": "c"
+        "aseba_esp32.h": "c",
+        "audio_tone_uri.h": "c",
+        "*.tcc": "cpp",
+        "*.ipp": "cpp",
+        "optional": "c",
+        "istream": "c",
+        "ostream": "c",
+        "ratio": "c",
+        "system_error": "c",
+        "array": "c",
+        "functional": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "utility": "c",
+        "variant": "c",
+        "mp_component.h": "c",
+        "tcp_server.h": "c",
+        "coroutine": "c"
     }
 }

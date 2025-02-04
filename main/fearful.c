@@ -28,6 +28,7 @@
 #include "aseba_esp32.h"
 #include "codec.h"
 #include "common.h"
+#include "leds.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -79,6 +80,7 @@ void Fearful_Start(void)
 void Fearful_Stop(void)
 {
   Common_SetTargetSpeed(0, 0);
+  Leds_SetCircleBrightness(0, 0, 0, 0, 0, 0, 0, 0);
 }
 
 //_____________________________________________________________________________

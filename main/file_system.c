@@ -134,6 +134,7 @@ bool FileSystem_CreateFile(const char* filename)
 
   if (file == NULL)  // If file does not exist, create it
   {
+    fclose(file);
     file = fopen(filename, "w");
     isCreated = true;
     ESP_LOGI(Tag, "File %s is created", filename);
@@ -196,13 +197,12 @@ void FileSystem_Read(const char* filename, void* output, long int size)
     // Read file contents till end of file
     while (fread(output, size, 1, file))
     {}
-
-    fclose(file);
   }
   else
   {
     ESP_LOGE(Tag, "Failed to open file for reading");
   }
+  fclose(file);
 }
 
 //_____________________________________________________________________________

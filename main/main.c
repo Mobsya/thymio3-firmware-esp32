@@ -42,6 +42,7 @@
 #include "power.h"
 #include "rc5.h"
 #include "sensors.h"
+#include "settings.h"
 #include "tcp_server.h"
 #include "test.h"
 #include "timer_sw.h"
@@ -303,6 +304,11 @@ FRESULT scan_files (
 
 int app_main(void)
 {
+  Gpio_Init();
+  turnOffAllSensors();
+  TimerSw_Init();  
+  Leds_Init();
+
 //*****************************************************************************
 // Initialization
 //*****************************************************************************
@@ -322,15 +328,10 @@ int app_main(void)
 
   ESP_LOGI(Tag, "heap (cont.)=%ul, heap (all)=%ul, min_heap=%ul", esp_get_free_heap_size(), esp_get_free_internal_heap_size(), esp_get_minimum_free_heap_size());
 
-  TimerSw_Init();
   FileSystem_Init();
-  Gpio_Init();
-  turnOffAllSensors();
 
   Aseba_Init();
-
-  Leds_Init();
-
+  Settings_Init();
   RC5_Init();
 
   Sensors_Init();

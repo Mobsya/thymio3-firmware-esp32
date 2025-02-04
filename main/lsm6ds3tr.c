@@ -601,7 +601,7 @@ void LSM6DS3TR_InitGyroscope(int16_t offset)
 	// Set BDU flag
 	I2C_ReadFromAddress(SLAVE_ADDRESS, CTRL3_C_REG_ADDRESS, &data, 1u);
 	data |= 0x40;
-	I2C_WriteToAddress(SLAVE_ADDRESS, CTRL2_G_REG_ADDRESS, &data, 1u);
+	I2C_WriteToAddress(SLAVE_ADDRESS, CTRL3_C_REG_ADDRESS, &data, 1u);
 
 	UpdateFifoMode(E_FifoMode_Bypass); // Set bypass mode during FIFO configuration
 	UpdateFifoOutputDataRate(E_Fifo_OutputDataRate_104Hz);

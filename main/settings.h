@@ -35,6 +35,11 @@ typedef struct
   int16_t LeftMotor;   //!< Correction factor of the left motor
   int16_t RightMotor;  //!< Correction factor of the right motor
   int16_t OffsetGyro;  //!< Offset factor of the gyroscope
+  int16_t White[3];    //!< Offset for color sensor white red, green, blue
+  int16_t Black[3];    //!< Offset for color sensor black red, green, blue
+  int16_t RC5Address;  //!< RC5 default address
+  float MotFwBw;       //!< Forward to backward motors correction
+  int16_t ZeroOffGyro[3]; //!< axes gyro offsets
 } T_Settings;
 
 //-----------------------------------------------------------------------------
@@ -79,6 +84,96 @@ extern void Settings_SetRightMotorSettings(int16_t rightMotor);
 //! \return    None
 extern void Settings_SetVolumeSettings(int16_t volume);
 
+//! \brief     Set the gyro offset (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     offset
+//! \return    None
+extern void Settings_SetOffsetGyroSettings(int16_t offset);
+
+//! \brief     Set the white red offset
+//! \pre       First initialize the settings
+//! \param     offset
+//! \return    None
+extern void Settings_SetWhiteRedSettings(int16_t offset);
+
+//! \brief     Set the white green offset
+//! \pre       First initialize the settings
+//! \param     offset
+//! \return    None
+extern void Settings_SetWhiteGreenSettings(int16_t offset);
+
+//! \brief     Set the white blue offset
+//! \pre       First initialize the settings
+//! \param     offset
+//! \return    None
+extern void Settings_SetWhiteBlueSettings(int16_t offset);
+
+//! \brief     Set the white r,g,b offsets (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_SetWhiteSettings(int16_t* values);
+
+//! \brief     Set the black red offset
+//! \pre       First initialize the settings
+//! \param     offset
+//! \return    None
+extern void Settings_SetBlackRedSettings(int16_t offset);
+
+//! \brief     Set the black green offset
+//! \pre       First initialize the settings
+//! \param     offset
+//! \return    None
+extern void Settings_SetBlackGreenSettings(int16_t offset);
+
+//! \brief     Set the black blue offset
+//! \pre       First initialize the settings
+//! \param     offset
+//! \return    None
+extern void Settings_SetBlackBlueSettings(int16_t offset);
+
+//! \brief     Set the black r,g,b offsets (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_SetBlackSettings(int16_t* values);
+
+//! \brief     Set the RC5 address (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     addr
+//! \return    None
+extern void Settings_SetRC5AddressSettings(int16_t addr);
+
+//! \brief     Set the forward to backward motors correction (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     addr
+//! \return    None
+extern void Settings_SetMotFwBwSettings(float factor);
+
+//! \brief     Set the gyro x axis offset (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     offset
+//! \return    None
+extern void Settings_SetOffsetGyroXSettings(int16_t offset);
+
+//! \brief     Set the gyro y axis offset (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     offset
+//! \return    None
+extern void Settings_SetOffsetGyroYSettings(int16_t offset);
+
+//! \brief     Set the gyro z axis offset (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     offset
+//! \return    None
+extern void Settings_SetOffsetGyroZSettings(int16_t offset);
+
+//! \brief     Set the gyro axes offsets (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_SetZeroOffGyroSettings(int16_t* values);
+
 //! \brief     Get the left motor correction
 //! \pre       First initialize the settings
 //! \param     None
@@ -97,71 +192,149 @@ extern int16_t Settings_GetRightMotorSettings(void);
 //! \return    Volume
 extern int16_t Settings_GetVolumeSettings(void);
 
-//! \brief     Create the left motor settings file
+//! \brief     Get the gyro offset
 //! \pre       First initialize the settings
 //! \param     None
-//! \return    None
-extern void Settings_CreateLeftMotorFile(void);
+//! \return    offset
+extern int16_t Settings_GetOffsetGyroSettings(void);
 
-//! \brief     Create the right motor settings file
+//! \brief     Get the white red offset
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
-extern void Settings_CreateRightMotorFile(void);
+extern int16_t Settings_GetWhiteRedSettings(void);
 
-//! \brief     Create the offset gyroscope settings file
+//! \brief     Get the white green offset
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
-extern void Settings_CreateOffsetGyroFile(void);
+extern int16_t Settings_GetWhiteGreenSettings(void);
 
-//! \brief     Create the volume settings file
+//! \brief     Get the white blue offset
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
-extern void Settings_CreateVolumeFile(void);
+extern int16_t Settings_GetWhiteBlueSettings(void);
 
-//! \brief     Create the white (red) settings file
+//! \brief     Get the white r,g,b offsets
 //! \pre       First initialize the settings
-//! \param     None
+//! \param     offsets
 //! \return    None
-extern void Settings_CreateWhiteRedFile(void);
+extern void Settings_GetWhiteSettings(int16_t* values);
 
-//! \brief     Create the white (green) settings file
+//! \brief     Get the black red offset
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
-extern void Settings_CreateWhiteGreenFile(void);
+extern int16_t Settings_GetBlackRedSettings(void);
 
-//! \brief     Create the white (blue) settings file
+//! \brief     Get the black green offset
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
-extern void Settings_CreateWhiteBlueFile(void);
+extern int16_t Settings_GetBlackGreenSettings(void);
 
-//! \brief     Create the black (red) settings file
+//! \brief     Get the black blue offset
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
-extern void Settings_CreateBlackRedFile(void);
+extern int16_t Settings_GetBlackBlueSettings(void);
 
-//! \brief     Create the black (green) settings file
+//! \brief     Get the black r,g,b offsets
 //! \pre       First initialize the settings
-//! \param     None
+//! \param     offsets
 //! \return    None
-extern void Settings_CreateBlackGreenFile(void);
+extern void Settings_GetBlackSettings(int16_t* values);
 
-//! \brief     Create the black (blue) settings file
+//! \brief     Get the RC5 address
 //! \pre       First initialize the settings
 //! \param     None
-//! \return    None
-extern void Settings_CreateBlackBlueFile(void);
+//! \return    RC5 address
+extern int16_t Settings_GetRC5AddressSettings(void);
 
-//! \brief     Create the remote address settings file
+//! \brief     Get the forward to backward motors correction
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    Forward to backward motors correction
+extern float Settings_GetMotFwBwSettings(void);
+
+//! \brief     Get the gyro x axis offset
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    offset
+extern int16_t Settings_GetOffsetGyroXSettings(void);
+
+//! \brief     Get the gyro y axis offset
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    offset
+extern int16_t Settings_GetOffsetGyroYSettings(void);
+
+//! \brief     Get the gyro z axis offset
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    offset
+extern int16_t Settings_GetOffsetGyroZSettings(void);
+
+//! \brief     Get the gyro axes offsets
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_GetZeroOffGyroSettings(int16_t* values);
+
+//! \brief     Load the left motor settings value, if it doesn't exist create it with default values.
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
-extern void Settings_CreateRC5AddressFile(void);
+extern void Settings_LoadLeftMotorFile(void);
+
+//! \brief     Load the right motor settings value, if it doesn't exist create it with default values.
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_LoadRightMotorFile(void);
+
+//! \brief     Load the offset gyroscope settings file, if it doesn't exist create it with default values.
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_LoadOffsetGyroFile(void);
+
+//! \brief     Load the volume settings file, if it doesn't exist create it with default values.
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_LoadVolumeFile(void);
+
+//! \brief     Load the white (red, green, blue) settings file, if it doesn't exist create it with default values.
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_LoadWhiteFile(void);
+
+//! \brief     Load the black (red, green, blue) settings file, if it doesn't exist create it with default values.
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_LoadBlackFile(void);
+
+//! \brief     Load the remote address settings file, if it doesn't exist create it with default values.
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_LoadRC5AddressFile(void);
+
+//! \brief     Load the forward to backward motors correction settings file, if it doesn't exist create it with default values.
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_LoadMotFwBwFile(void);
+
+//! \brief     Load the gyro axes offsets settings file, if it doesn't exist create it with default values.
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_LoadZeroOffGyroFile(void);
 
 //! \brief     Write the left motor correction to the settings file
 //! \pre       First initialize the settings
@@ -187,47 +360,35 @@ extern void Settings_WriteOffsetGyro(int16_t offsetGyro);
 //! \return    None
 extern void Settings_WriteVolume(int16_t volume);
 
-//! \brief     Write the white (red) value to the settings file
+//! \brief     Write the white (red, green, blue) offsets settings file
 //! \pre       First initialize the settings
-//! \param     whiteRed - White (red) value
+//! \param     offsets
 //! \return    None
-extern void Settings_WriteWhiteRed(int16_t whiteRed);
+extern void Settings_WriteWhite(int16_t* values);
 
-//! \brief     Write the white (green) value to the settings file
+//! \brief     Write the black (red, green, blue) offsets settings file
 //! \pre       First initialize the settings
-//! \param     whiteGreen - White (green) value
+//! \param     offsets
 //! \return    None
-extern void Settings_WriteWhiteGreen(int16_t whiteGreen);
-
-//! \brief     Write the white (blue) value to the settings file
-//! \pre       First initialize the settings
-//! \param     whiteBlue - White (blue) value
-//! \return    None
-extern void Settings_WriteWhiteBlue(int16_t whiteBlue);
-
-//! \brief     Write the black (red) value to the settings file
-//! \pre       First initialize the settings
-//! \param     blackRed - Black (red) value
-//! \return    None
-extern void Settings_WriteBlackRed(int16_t blackRed);
-
-//! \brief     Write the black (green) value to the settings file
-//! \pre       First initialize the settings
-//! \param     blackGreen - Black (green) value
-//! \return    None
-extern void Settings_WriteBlackGreen(int16_t blackGreen);
-
-//! \brief     Write the black (blue) value to the settings file
-//! \pre       First initialize the settings
-//! \param     blackBlue - Black (blue) value
-//! \return    None
-extern void Settings_WriteBlackBlue(int16_t blackBlue);
+extern void Settings_WriteBlack(int16_t* values);
 
 //! \brief     Write the remote address to the settings file
 //! \pre       First initialize the settings
 //! \param     address - Remote address
 //! \return    None
 extern void Settings_WriteRC5Address(int16_t address);
+
+//! \brief     Write the forward to backward motors correction settings file
+//! \pre       First initialize the settings
+//! \param     factor - forward to backward motors correction
+//! \return    None
+extern void Settings_WriteMotFwBwFactor(float factor);
+
+//! \brief     Write the gyro axes offsets settings file
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_WriteZeroOffGyro(int16_t* values);
 
 //! \brief     Read the left motor correction from the settings file
 //! \pre       First initialize the settings
@@ -253,47 +414,35 @@ extern int16_t Settings_ReadOffsetGyro(void);
 //! \return    None
 extern int16_t Settings_ReadVolume(void);
 
-//! \brief     Read the white (red) value from the settings file
+//! \brief     Read the white (red, green, blue) offsets from the settings file
 //! \pre       First initialize the settings
-//! \param     None
+//! \param     offsets
 //! \return    None
-extern int16_t Settings_ReadWhiteRed(void);
+extern void Settings_ReadWhite(int16_t* values);
 
-//! \brief     Read the white (green) value from the settings file
+//! \brief     Read the black (red, green, blue) offsets from the settings file
 //! \pre       First initialize the settings
-//! \param     None
+//! \param     offsets
 //! \return    None
-extern int16_t Settings_ReadWhiteGreen(void);
-
-//! \brief     Read the white (blue) value from the settings file
-//! \pre       First initialize the settings
-//! \param     None
-//! \return    None
-extern int16_t Settings_ReadWhiteBlue(void);
-
-//! \brief     Read the black (red) value from the settings file
-//! \pre       First initialize the settings
-//! \param     None
-//! \return    None
-extern int16_t Settings_ReadBlackRed(void);
-
-//! \brief     Read the black (green) value from the settings file
-//! \pre       First initialize the settings
-//! \param     None
-//! \return    None
-extern int16_t Settings_ReadBlackGreen(void);
-
-//! \brief     Read the black (blue) value from the settings file
-//! \pre       First initialize the settings
-//! \param     None
-//! \return    None
-extern int16_t Settings_ReadBlackBlue(void);
+extern void Settings_ReadBlack(int16_t* values);
 
 //! \brief     Read the remote address from the settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
 extern int16_t Settings_ReadRC5Address(void);
+
+//! \brief     Read the forward to backward motors correction from the settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    forward to backward motors correction
+extern float Settings_ReadMotFwBwFactor(void);
+
+//! \brief     Read the gyro axes offsets from the settings file
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_ReadZeroOffGyro(int16_t* values);
 
 //! \brief     Erase the left motor settings file
 //! \pre       First initialize the settings
@@ -319,46 +468,34 @@ extern void Settings_EraseOffsetGyroFile(void);
 //! \return    None
 extern void Settings_EraseVolumeFile(void);
 
-//! \brief     Erase the white (blue) settings file
+//! \brief     Erase the white settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
-extern void Settings_EraseWhiteRedFile(void);
+extern void Settings_EraseWhiteFile(void);
 
-//! \brief     Erase the white (green) settings file
+//! \brief     Erase the black settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
-extern void Settings_EraseWhiteGreenFile(void);
-
-//! \brief     Erase the white (blue) settings file
-//! \pre       First initialize the settings
-//! \param     None
-//! \return    None
-extern void Settings_EraseWhiteBlueFile(void);
-
-//! \brief     Erase the black (red) settings file
-//! \pre       First initialize the settings
-//! \param     None
-//! \return    None
-extern void Settings_EraseBlackRedFile(void);
-
-//! \brief     Erase the black (green) settings file
-//! \pre       First initialize the settings
-//! \param     None
-//! \return    None
-extern void Settings_EraseBlackGreenFile(void);
-
-//! \brief     Erase the black (blue) settings file
-//! \pre       First initialize the settings
-//! \param     None
-//! \return    None
-extern void Settings_EraseBlackBlueFile(void);
+extern void Settings_EraseBlackFile(void);
 
 //! \brief     Erase the remote address settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
 extern void Settings_EraseRC5AddressFile(void);
+
+//! \brief     Erase the forward to backward motors correction settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_EraseMotFwBwFile(void);
+
+//! \brief     Erase the gyro axes offsets settings file
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_EraseZeroOffGyroFile(void);
 
 #endif // SETTINGS_H_

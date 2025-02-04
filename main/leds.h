@@ -267,4 +267,28 @@ void Leds_SetLegoFrontProgress(uint8_t progress);
 //! \return    None
 void Leds_SetLegoBackProgress(uint8_t progress);
 
+//! \brief     Turn on all the LEDs of the front lego row in odd positions
+//! \pre       First initialize the LEDs
+//! \param     brightness: 0..MAX_BRIGHTNESS
+//! \return    None
+void Leds_SetLegoFrontOdd(uint8_t brightness);
+
+//! \brief     Turn on all the LEDs of the front lego row in even positions
+//! \pre       First initialize the LEDs
+//! \param     brightness: 0..MAX_BRIGHTNESS
+//! \return    None
+void Leds_SetLegoFrontEven(uint8_t brightness);
+
+//! \brief     Turn on all the LEDs of the back lego row in odd positions
+//! \pre       First initialize the LEDs
+//! \param     brightness: 0..MAX_BRIGHTNESS
+//! \return    None
+void Leds_SetLegoBackOdd(uint8_t brightness);
+
+//! \brief     Turn on all the LEDs of the back lego row in even positions
+//! \pre       First initialize the LEDs
+//! \param     brightness: 0..MAX_BRIGHTNESS
+//! \return    None
+void Leds_SetLegoBackEven(uint8_t brightness);
+
 #endif // LEDS_H_
