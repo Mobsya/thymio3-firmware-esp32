@@ -25,6 +25,7 @@
 #include "esp_log.h"
 #include "esp32/spiram.h"
 
+#include "angle_controller.h"
 #include "aseba.h"
 #include "aseba_esp32.h"
 #include "behavior.h"
@@ -313,9 +314,9 @@ int app_main(void)
 // Initialization
 //*****************************************************************************
 
-	esp_log_level_set("*", ESP_LOG_NONE);
+	//esp_log_level_set("*", ESP_LOG_NONE);
 	//esp_log_level_set("*", ESP_LOG_ERROR);
-	//esp_log_level_set("*", ESP_LOG_INFO);
+	esp_log_level_set("*", ESP_LOG_INFO);
 	//esp_log_level_set("*", ESP_LOG_DEBUG);
 	//esp_log_level_set("*", ESP_LOG_VERBOSE);
 
@@ -349,6 +350,8 @@ int app_main(void)
   //WIFI_Init();
 	TCPServer_Init();
   AsebaESP32_Init();
+
+  AngleController_Init();
 
   //Bluetooth_Init();
   //BLE_Init();

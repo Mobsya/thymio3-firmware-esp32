@@ -60,6 +60,15 @@
 #define GROUND_IR_THRESHOLD    280
 #define MOVEMENT_SPEED 300
 
+#define LED_FRONT_LEFT 0
+#define LED_FRONT_RIGHT 1
+#define LED_BACK_RIGHT 2
+#define LED_BACK_LEFT 3
+
+#define SETTINGS_BRIGHTNESS  (MAX_BRIGHTNESS / 3u)
+
+#define HYSTERESIS 75
+
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -69,11 +78,12 @@ enum
   E_Setting_Menu,
   E_Setting_Volume,
   E_Setting_Motor,
+  E_Setting_MotorFwBw,  
   E_Setting_Color,
   E_Reset_WiFi_Credentials,
   E_Setting_Gyro,
-  E_Setting_MotorFwBw,
-  E_Setting_Max = E_Setting_MotorFwBw
+  E_Setting_Ground,
+  E_Setting_Max = E_Setting_Ground
 };
 typedef int16_t T_Setting;  // Setting selection
 
@@ -123,6 +133,11 @@ static bool start_settings_menu = false;
 static bool start_python_menu = false;
 
 static uint8_t updateSettingsState = 0;
+static uint8_t ledUpdateCount = 0;
+static uint8_t ledUpdatePos = 0;
+static int32_t gyroRotFactorZ = 0;
+static uint8_t gyroCalibType = 0; // 0=no calibration done, 1=gyro offsets calibration, 2=gyro rotation calibration
+static int16_t groundTemp[2];
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -192,6 +207,10 @@ static void CalibrateColor(void);
 
 static void CalibrateGyro(void);
 
+static void HandleWifiCredentials(void);
+
+static void CalibrateGround(void);
+
 static void CalibrateMotFwBw(void);
 
 static void UpdatePythonMenu(void);
@@ -218,8 +237,7 @@ void Behavior_Init(void)
 {
   Setting.Volume = Settings_GetVolumeSettings();
 
-  Setting.LeftMotor = Settings_GetLeftMotorSettings();
-  Setting.RightMotor = Settings_GetRightMotorSettings();
+  Settings_GetMotorsSettings(Setting.Motors);
 
   TaskIsStarted = false;
   Behavior = 0u;
@@ -725,6 +743,7 @@ static void UpdateSettings(void)
     {
       if(settings_navigation_state == RUNNING_MENU) {
         settings_navigation_state = RUNNING_BEHAVIOR;
+        updateSettingsState = 0;
         if (select != CurrentSetting) {
           CurrentSetting = select;
         }        
@@ -732,6 +751,7 @@ static void UpdateSettings(void)
         settings_navigation_state = RUNNING_MENU;
         ExitSetting(CurrentSetting);
         CurrentSetting = E_Setting_Menu;
+        updateSettingsState = 0;
       }
 
     }
@@ -762,29 +782,33 @@ static void UpdateSettings(void)
         SetSettingColor(select);
         break;
 
-      case E_Setting_Volume:  // Orange
+      case E_Setting_Volume:
         AdjustVolume();
         break;
 
-      case E_Setting_Motor:   // Green-Yellow
+      case E_Setting_Motor:
         TuneMotors();
         break;
 
-      case E_Setting_Color:   // Purple
+      case E_Setting_MotorFwBw:
+        CalibrateMotFwBw();
+        break;
+
+      case E_Setting_Color:
         CalibrateColor();
         break;
 
       case E_Reset_WiFi_Credentials:
-    	  wifi_manager_delete_sta_config();
+        HandleWifiCredentials();
     	  break;
 
       case E_Setting_Gyro:
         CalibrateGyro();
         break;
 
-      case E_Setting_MotorFwBw:
-        CalibrateMotFwBw();
-        break;
+      case E_Setting_Ground:
+        CalibrateGround();
+        break; 
 
       default:
         // Do nothing
@@ -852,8 +876,7 @@ static T_Setting SelectNextSetting(T_Setting setting, int16_t index)
       temp += (E_Setting_Max + 1);
     }
   }
-  while (!IsSettingEnabled(temp));
-  updateSettingsState = 0;
+  while (!IsSettingEnabled(temp));  
   return (T_Setting)temp;
 }
 
@@ -881,46 +904,53 @@ static void SetSettingColor(T_Setting setting)
       Leds_SetBodyBrightness(0u, 0u, 0u);
       break;
 
-    case E_Setting_Volume:  // Orange
-      Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, (MAX_BRIGHTNESS / 2u), 0u);
-      Leds_SetFrontRightBrightness(0, 0, 0);
-      Leds_SetBackLeftBrightness(0, 0, 0);
-      Leds_SetBackRightBrightness(0, 0, 0);
-      break;
-
-    case E_Setting_Motor:  // Green-Yellow
-      Leds_SetFrontLeftBrightness(0, 0, 0);
-      Leds_SetFrontRightBrightness((MAX_BRIGHTNESS / 2u), MAX_BRIGHTNESS, 0u);
-      Leds_SetBackLeftBrightness(0, 0, 0);
-      Leds_SetBackRightBrightness(0, 0, 0);
-      break;
-
-    case E_Setting_Color:  // Purple
+    case E_Setting_Volume:  // Red
       Leds_SetFrontLeftBrightness(0, 0, 0);
       Leds_SetFrontRightBrightness(0, 0, 0);
-      Leds_SetBackLeftBrightness((MAX_BRIGHTNESS / 2u), 0u, MAX_BRIGHTNESS);
-      Leds_SetBackRightBrightness(0, 0, 0);
+      Leds_SetBackLeftBrightness(SETTINGS_BRIGHTNESS, 0, 0);
+      Leds_SetBackRightBrightness(SETTINGS_BRIGHTNESS, 0, 0);
       break;
 
-    case E_Reset_WiFi_Credentials: // Dark red
+    case E_Setting_Motor:  // Green
       Leds_SetFrontLeftBrightness(0, 0, 0);
       Leds_SetFrontRightBrightness(0, 0, 0);
-      Leds_SetBackLeftBrightness(0, 0, 0);
-    	Leds_SetBackRightBrightness((MAX_BRIGHTNESS / 4u), 0u, 0u);
+      Leds_SetBackLeftBrightness(0, SETTINGS_BRIGHTNESS, 0);
+      Leds_SetBackRightBrightness(0, SETTINGS_BRIGHTNESS, 0);
+      break;
+
+    case E_Setting_MotorFwBw:  // Blue
+      Leds_SetFrontLeftBrightness(0, 0, 0);
+      Leds_SetFrontRightBrightness(0, 0, 0);
+      Leds_SetBackLeftBrightness(0, 0, SETTINGS_BRIGHTNESS);
+      Leds_SetBackRightBrightness(0, 0, SETTINGS_BRIGHTNESS);
+      break;
+
+    case E_Setting_Color: // Cyan
+      Leds_SetFrontLeftBrightness(0, 0, 0);
+      Leds_SetFrontRightBrightness(0, 0, 0);
+      Leds_SetBackLeftBrightness(0, SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS);
+      Leds_SetBackRightBrightness(0, SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS);
     	break;
 
-    case E_Setting_Gyro: // Dark green
-      Leds_SetFrontLeftBrightness(0, (MAX_BRIGHTNESS / 4u), 0u);
+    case E_Reset_WiFi_Credentials: // Magenta
+      Leds_SetFrontLeftBrightness(0, 0, 0);
       Leds_SetFrontRightBrightness(0, 0, 0);
-      Leds_SetBackLeftBrightness(0, 0, 0);
-      Leds_SetBackRightBrightness(0, 0, 0);
+      Leds_SetBackLeftBrightness(SETTINGS_BRIGHTNESS, 0, SETTINGS_BRIGHTNESS);
+      Leds_SetBackRightBrightness(SETTINGS_BRIGHTNESS, 0, SETTINGS_BRIGHTNESS);
       break;
 
-    case E_Setting_MotorFwBw: // Dark blue
+    case E_Setting_Gyro: // Yellow
       Leds_SetFrontLeftBrightness(0, 0, 0);
-      Leds_SetFrontRightBrightness(0, 0, (MAX_BRIGHTNESS / 4u));
-      Leds_SetBackLeftBrightness(0, 0, 0);
-      Leds_SetBackRightBrightness(0, 0, 0);
+      Leds_SetFrontRightBrightness(0, 0, 0);
+      Leds_SetBackLeftBrightness(SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS, 0);
+      Leds_SetBackRightBrightness(SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS, 0);
+      break;      
+
+    case E_Setting_Ground: // White
+      Leds_SetFrontLeftBrightness(0, 0, 0);
+      Leds_SetFrontRightBrightness(0, 0, 0);
+      Leds_SetBackLeftBrightness(SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS);
+      Leds_SetBackRightBrightness(SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS);
       break;
 
     default:
@@ -934,6 +964,7 @@ static void SetSettingColor(T_Setting setting)
 static void ExitSetting(T_Setting setting)
 {
   static int16_t values[3];
+  static int16_t gyroRotFactorTemp = 0;
   Leds_SetBodyBrightness(0u, 0u, 0u);
   Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
   //Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
@@ -954,12 +985,13 @@ static void ExitSetting(T_Setting setting)
 
     case E_Setting_Motor:
       Common_SetTargetSpeed(0, 0);
-
       // Write to the settings file
-      Settings_WriteLeftMotor(Setting.LeftMotor);
-      Settings_WriteRightMotor(Setting.RightMotor);
+      Settings_WriteMotors(Setting.Motors);
+      ESP_LOGE(Tag, "Write motor: %d %d", Setting.Motors[0], Setting.Motors[1]);
+      break;
 
-      ESP_LOGE(Tag, "Write motor: %d %d", Setting.LeftMotor, Setting.RightMotor);
+    case E_Setting_MotorFwBw:
+      Settings_WriteMotFwBwFactor(Setting.MotFwBw);
       break;
 
     case E_Setting_Color:
@@ -969,14 +1001,28 @@ static void ExitSetting(T_Setting setting)
     case E_Reset_WiFi_Credentials:
     	break;
 
-    case E_Setting_Gyro: // Dark green      
-      Gyroscope_GetCalibration(values);
-      Settings_WriteZeroOffGyro(values);
-      ESP_LOGI(Tag, "Write zero gyro: %d, %d, %d", values[0], values[1], values[2]);
+    case E_Setting_Gyro:      
+      // Save data based on actual calibration done
+      if(gyroCalibType == 1)
+      {
+        Gyroscope_GetCalibration(values);
+        Settings_SetZeroOffGyroSettings(values);
+        Settings_WriteZeroOffGyro(values);
+        ESP_LOGI(Tag, "Write zero gyro: %d, %d, %d", values[0], values[1], values[2]);
+      }
+      else if(gyroCalibType == 2)
+      {
+        gyroRotFactorTemp = Settings_GetGyroRotFactorSettings() + ((gyroRotFactorZ - Gyroscope_GetAngleZ())/4); // The robot is tuned for a complete turn (360 degrees), divide by 4 because the factor is related to 90 degrees.
+        Settings_SetGyroRotFactorSettings(gyroRotFactorTemp);
+        Settings_WriteGyroRotFactor(gyroRotFactorTemp);
+        AngleController_UpdateRotFactor(gyroRotFactorTemp);
+        ESP_LOGI(Tag, "Gyro rot stpes, factor, controller: %d, %d", gyroRotFactorTemp, AngleController_GetRotFactor());      
+      }
+      gyroCalibType = 0;
       break;
 
-    case E_Setting_MotorFwBw: // Dark blue
-      Settings_WriteMotFwBwFactor(Setting.MotFwBw);
+    case E_Setting_Ground:  
+
       break;
 
     default:
@@ -991,10 +1037,43 @@ static void AdjustVolume(void)
 {
   uint8_t* buttonState = Buttons_GetStatus();
 
-  uint8_t brightness = Common_GetBodyColorPulse();
-
-  // Orange pulse
-  Leds_SetFrontLeftBrightness(brightness, (brightness / 2u), 0u);
+  // Red
+  ledUpdateCount++;
+  if(ledUpdateCount == 10) // Based on 50 Hz behaviors update rate
+  {
+    ledUpdateCount = 0;
+    switch(ledUpdatePos)
+    {
+      case LED_FRONT_LEFT:
+        Leds_SetFrontLeftBrightness(SETTINGS_BRIGHTNESS, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break; 
+      case LED_FRONT_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(SETTINGS_BRIGHTNESS, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break;  
+      case LED_BACK_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(SETTINGS_BRIGHTNESS, 0, 0);
+        ledUpdatePos++;
+        break;
+      case LED_BACK_LEFT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(SETTINGS_BRIGHTNESS, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos= 0 ;
+        break;                      
+    }
+  }
 
   when(buttonState[E_Button_Backward] != 0u)
   {
@@ -1101,10 +1180,43 @@ static void TuneMotors(void)
   static int16_t correction = 0;
   uint8_t* buttonState = Buttons_GetStatus();
 
-  uint8_t brightness = Common_GetBodyColorPulse();
-
-  // Green-Yellow pulse
-  Leds_SetFrontRightBrightness((brightness / 2u), brightness, 0u);
+  // Green
+  ledUpdateCount++;
+  if(ledUpdateCount == 10) // Based on 50 Hz behaviors update rate
+  {
+    ledUpdateCount = 0;
+    switch(ledUpdatePos)
+    {
+      case LED_FRONT_LEFT:
+        Leds_SetFrontLeftBrightness(0, SETTINGS_BRIGHTNESS, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break; 
+      case LED_FRONT_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, SETTINGS_BRIGHTNESS, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break;  
+      case LED_BACK_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, SETTINGS_BRIGHTNESS, 0);
+        ledUpdatePos++;
+        break;
+      case LED_BACK_LEFT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, SETTINGS_BRIGHTNESS, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos= 0 ;
+        break;                      
+    }
+  }
 
   if (vmVariables.target[0] != 0)
   {
@@ -1153,11 +1265,10 @@ static void TuneMotors(void)
       }
     }
 
-    Setting.LeftMotor  = (256 + correction);
-    Setting.RightMotor = (256 - correction);
+    Setting.Motors[0]  = (256 + correction);
+    Setting.Motors[1] = (256 - correction);
 
-    Settings_SetLeftMotorSettings(Setting.LeftMotor);    // Used to send the value to STM32
-    Settings_SetRightMotorSettings(Setting.RightMotor);  // Used to send the value to STM32
+    Settings_SetMotorsSettings(Setting.Motors);    // Used to send the value to STM32
   }
 
   when(buttonState[E_Button_Backward])
@@ -1186,10 +1297,44 @@ static void TuneMotors(void)
 static void CalibrateColor(void)
 {
   uint8_t* buttonState = Buttons_GetStatus();
-  uint8_t brightness = Common_GetBodyColorPulse();
 
-  // Purple pulse
-  Leds_SetBackLeftBrightness((brightness / 2u), 0u, brightness);
+  // Cyan
+  ledUpdateCount++;
+  if(ledUpdateCount == 10) // Based on 50 Hz behaviors update rate
+  {
+    ledUpdateCount = 0;
+    switch(ledUpdatePos)
+    {
+      case LED_FRONT_LEFT:
+        Leds_SetFrontLeftBrightness(0, SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break; 
+      case LED_FRONT_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break;  
+      case LED_BACK_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS);
+        ledUpdatePos++;
+        break;
+      case LED_BACK_LEFT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos= 0 ;
+        break;                      
+    }
+  }
 
   when(buttonState[E_Button_Forward] != 0u)
   {
@@ -1205,23 +1350,136 @@ static void CalibrateColor(void)
 
 //_____________________________________________________________________________
 
-static void CalibrateGyro(void)
+static void HandleWifiCredentials(void)
 {
   uint8_t* buttonState = Buttons_GetStatus();
-  uint8_t brightness = Common_GetBodyColorPulse();
   static uint8_t delayCount = 0;
 
-  // Dark green pulse
-  Leds_SetFrontLeftBrightness(0, (brightness / 4u), 0u);
+  // Magenta
+  ledUpdateCount++;
+  if(ledUpdateCount == 10) // Based on 50 Hz behaviors update rate
+  {
+    ledUpdateCount = 0;
+    switch(ledUpdatePos)
+    {
+      case LED_FRONT_LEFT:
+        Leds_SetFrontLeftBrightness(SETTINGS_BRIGHTNESS, 0, SETTINGS_BRIGHTNESS);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break; 
+      case LED_FRONT_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(SETTINGS_BRIGHTNESS, 0, SETTINGS_BRIGHTNESS);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break;  
+      case LED_BACK_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(SETTINGS_BRIGHTNESS, 0, SETTINGS_BRIGHTNESS);
+        ledUpdatePos++;
+        break;
+      case LED_BACK_LEFT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(SETTINGS_BRIGHTNESS, 0, SETTINGS_BRIGHTNESS);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos= 0 ;
+        break;                      
+    }
+  }    	  
 
   switch(updateSettingsState)
   {
-    case 0: // Wait forward button press to start calibration
+    case 0: // Wait forward button press to reset wifi credentials
       when(buttonState[E_Button_Forward] != 0u)
       {
         updateSettingsState = 1;
         delayCount = 0;
+      }   
+      break;
+    
+    case 1: // Wait a bit before actually taking samples in order to avoid interference from the button press and in the meantime show led animation
+      delayCount++;
+      Leds_SetLegoBackProgress(delayCount/6);
+      if(delayCount == 50) // Based on 50 Hz behaviors update rate
+      {
+        wifi_manager_delete_sta_config();
+        updateSettingsState = 2;
       }
+      break;
+
+    case 2: // Wait for the center button press in order to exit
+      break;
+  }
+
+}
+
+//_____________________________________________________________________________
+
+static void CalibrateGyro(void)
+{
+  uint8_t* buttonState = Buttons_GetStatus();
+  static uint8_t delayCount = 0;
+  static uint8_t rotCount = 0;
+
+  // Yellow
+  ledUpdateCount++;
+  if(ledUpdateCount == 10) // Based on 50 Hz behaviors update rate
+  {
+    ledUpdateCount = 0;
+    switch(ledUpdatePos)
+    {
+      case LED_FRONT_LEFT:
+        Leds_SetFrontLeftBrightness(SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break; 
+      case LED_FRONT_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break;  
+      case LED_BACK_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS, 0);
+        ledUpdatePos++;
+        break;
+      case LED_BACK_LEFT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos= 0 ;
+        break;                      
+    }
+  }
+
+  switch(updateSettingsState)
+  {
+    case 0: // Wait forward button press to start offsets calibration or right button press to start rotation calibration
+      when(buttonState[E_Button_Forward] != 0u)
+      {
+        updateSettingsState = 1;
+        delayCount = 0;
+        gyroCalibType = 1;
+      }
+      when(buttonState[E_Button_Right] != 0u)
+      {
+        updateSettingsState = 3;
+        AngleController_Start(-360, MOVEMENT_SPEED);
+        gyroCalibType = 2;
+      }      
       break;
     
     case 1: // Wait a bit before actually taking samples in order to avoid interference from the button press and in the meantime show led animation
@@ -1238,6 +1496,136 @@ static void CalibrateGyro(void)
     case 2: // Wait for the center button press in order to save the calibration
       break;
 
+    case 3: // Wait rotation is terminated
+      if(AngleController_Completed())
+      {
+        updateSettingsState = 4;
+        delayCount = 0;
+      }
+      break;
+
+    case 4: // Wait a bit to be sure all is still
+      delayCount++;
+      if(delayCount == 20)
+      {
+        updateSettingsState = 5;
+        delayCount = 0;
+        gyroRotFactorZ = Gyroscope_GetAngleZ();
+      }
+      break;
+
+    case 5: // Wait for rotation tuning (left/right) and calibration end (center button)
+      when(buttonState[E_Button_Right] != 0u)
+      {
+        rotCount = 0;        
+        updateSettingsState = 6;
+        Common_SetTargetSpeed(MOVEMENT_SPEED/2, -MOVEMENT_SPEED/2);
+      }
+      when(buttonState[E_Button_Left] != 0u)
+      {
+        rotCount = 0;
+        updateSettingsState = 6;
+        Common_SetTargetSpeed(-MOVEMENT_SPEED/2, MOVEMENT_SPEED/2);
+      }
+      break;
+
+    case 6: // Wait tuning rotation end
+      rotCount++;
+      if(rotCount == 6)
+      {
+        Common_SetTargetSpeed(0, 0);
+        updateSettingsState = 5;        
+      }    
+      break;      
+
+  }
+
+}
+
+//_____________________________________________________________________________
+
+static void CalibrateGround(void)
+{
+  uint8_t* buttonState = Buttons_GetStatus();
+  static uint8_t delayCount = 0;  
+
+  // White
+  ledUpdateCount++;
+  if(ledUpdateCount == 10) // Based on 50 Hz behaviors update rate
+  {
+    ledUpdateCount = 0;
+    switch(ledUpdatePos)
+    {
+      case LED_FRONT_LEFT:
+        Leds_SetFrontLeftBrightness(SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break; 
+      case LED_FRONT_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break;  
+      case LED_BACK_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS);
+        ledUpdatePos++;
+        break;
+      case LED_BACK_LEFT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS, SETTINGS_BRIGHTNESS);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos= 0 ;
+        break;                      
+    }
+  }
+
+  switch(updateSettingsState)
+  {
+    case 0: // Wait forward button press to start ground white calibration or back button press to start ground black calibration
+      when(buttonState[E_Button_Forward] != 0u)
+      {
+        updateSettingsState = 1;
+        delayCount = 0;
+      }
+      when(buttonState[E_Button_Backward] != 0u)
+      {
+        updateSettingsState = 2;
+        delayCount = 0;
+      }      
+      break;
+    
+    case 1: // Wait a bit before actually taking samples in order to avoid interference from the button press and in the meantime show led animation
+      delayCount++;
+      Leds_SetLegoBackProgress(delayCount/6);
+      if(delayCount == 50) // Based on 50 Hz behaviors update rate
+      {
+        GetGroundValues(groundTemp);
+        Settings_WriteGroundWhite(groundTemp);
+        Settings_SetGroundWhiteSettings(groundTemp);     
+        updateSettingsState = 0;
+      }
+      break;
+
+    case 2: // Wait a bit before actually taking samples in order to avoid interference from the button press and in the meantime show led animation
+      delayCount++;
+      Leds_SetLegoBackProgress(delayCount/6);
+      if(delayCount == 50) // Based on 50 Hz behaviors update rate
+      {
+        GetGroundValues(groundTemp);
+        Settings_WriteGroundBlack(groundTemp);
+        Settings_SetGroundBlackSettings(groundTemp); 
+        updateSettingsState = 0;
+      }
+      break;
+  
   }
 }
 
@@ -1246,13 +1634,48 @@ static void CalibrateGyro(void)
 static void CalibrateMotFwBw(void)
 {
   uint8_t* buttonState = Buttons_GetStatus();
-  uint8_t brightness = Common_GetBodyColorPulse();
   static uint8_t delayCount = 0;
   static uint8_t fwCount = 0;
   static uint8_t bwCount = 0;
+  static int16_t grounds_black[2];
 
-  // Dark blue pulse
-  Leds_SetFrontRightBrightness(0, 0, (brightness / 4u));  
+  // Blue
+  ledUpdateCount++;
+  if(ledUpdateCount == 10) // Based on 50 Hz behaviors update rate
+  {
+    ledUpdateCount = 0;
+    switch(ledUpdatePos)
+    {
+      case LED_FRONT_LEFT:
+        Leds_SetFrontLeftBrightness(0, 0, SETTINGS_BRIGHTNESS);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break; 
+      case LED_FRONT_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, SETTINGS_BRIGHTNESS);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break;  
+      case LED_BACK_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, SETTINGS_BRIGHTNESS);
+        ledUpdatePos++;
+        break;
+      case LED_BACK_LEFT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, SETTINGS_BRIGHTNESS);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos= 0 ;
+        break;                      
+    }
+  } 
 
   switch(updateSettingsState)
   {
@@ -1260,29 +1683,30 @@ static void CalibrateMotFwBw(void)
       when(buttonState[E_Button_Forward] != 0u)
       {
         updateSettingsState = 1;
-        Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED); 
+        Common_SetTargetSpeed(200, 200);
+        Settings_GetGroundBlackSettings(grounds_black);
         delayCount = 0;
       }
       break;
     
     case 1: // Go forward, the robot should be able to detect the first black line to start the time needed to travel to the second black line
-      if ((GetGroundValue(0) < GROUND_IR_THRESHOLD) && (GetGroundValue(0) < GROUND_IR_THRESHOLD))
+      if ((GetGroundValue(0) < (grounds_black[0]+HYSTERESIS)) && (GetGroundValue(1) < (grounds_black[1]+HYSTERESIS)))
       {
-        delayCount++;
-        if(delayCount >= 3)
-        {
-          delayCount = 0;
+        //delayCount++;
+        //if(delayCount >= 3)
+        //{
+        //  delayCount = 0;
           updateSettingsState = 2;
-          fwCount = 0;
-        }
-      } else {
-        delayCount = 0;
+        //  fwCount = 0;
+        //}
+      //} else {
+        //delayCount = 0;
       }
       break;
 
-    case 2: // Wait for the center button press in order to save the calibration
+    case 2: // Wait for the second black line detection
       fwCount++;
-      if ((GetGroundValue(0) < GROUND_IR_THRESHOLD) && (GetGroundValue(0) < GROUND_IR_THRESHOLD))
+      if ((GetGroundValue(0) < (grounds_black[0]+HYSTERESIS)) && (GetGroundValue(1) < (grounds_black[1]+HYSTERESIS)))
       {
         delayCount++;
         if(delayCount >= 3)

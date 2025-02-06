@@ -48,7 +48,7 @@
 static const char* Tag = "gyroscope";
 
 static T_Axis AngularVelocity;
-static int16_t Angle[3];
+static int32_t Angle[3];
 //static float AngleFloat[3];
 static int16_t Angle_deg[3];
 
@@ -128,7 +128,7 @@ T_Axis Gyroscope_GetAngularVelocity(void)
 
 //_____________________________________________________________________________
 
-static void CalculateAngle(int16_t* angle, uint16_t number)
+static void CalculateAngle(int32_t* angle, uint16_t number)
 {
   int32_t sum[3] = {0, 0, 0};
   int64_t gyroCorr[3] = {0, 0, 0};
@@ -221,7 +221,7 @@ int16_t Gyroscope_GetAngularVelocityZ(void)
 
 //_____________________________________________________________________________
 
-int16_t Gyroscope_GetAngleZ(void)
+int32_t Gyroscope_GetAngleZ(void)
 {
   return Angle[2];
 }

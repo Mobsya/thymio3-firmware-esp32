@@ -45,6 +45,7 @@
 #include "obedient.h"
 #include "mp_component.h"
 #include "codec.h"
+#include "ann.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -319,7 +320,8 @@ void Mode_Run(void)
       break;
 
     case E_Mode_NN:     // White
-      PythonHandler_Run(1);
+      ANN_Run();
+      //PythonHandler_Run(1);
       break;                       
 
     default:
@@ -343,10 +345,12 @@ static void StartMode(T_Mode mode)
 
     case E_Mode_Friendly:
       Behavior_Enable(B_LEDS_PROX);
+      Drawer_Start();
       break;
 
     case E_Mode_Explorer:
       Behavior_Enable(B_LEDS_PROX);
+      Explorer_Start();
       break;
 
     case E_Mode_Fearful:
@@ -362,6 +366,7 @@ static void StartMode(T_Mode mode)
       break;
 
     case E_Mode_Investigator:
+      LineTracker_Start();
       Behavior_Enable(B_LEDS_PROX);
       break;
 
@@ -372,6 +377,7 @@ static void StartMode(T_Mode mode)
 
     case E_Mode_Painter:
       Behavior_Enable(B_LEDS_PROX);
+      Drawer_Start();
       break;
 
     case E_Mode_Sequence:
@@ -382,9 +388,12 @@ static void StartMode(T_Mode mode)
 
     case E_Mode_Musician:
       //Behavior_Enable(B_LEDS_PROX);
+      Musician_Start();
       break;
 
     case E_Mode_NN:
+      Behavior_Enable(B_LEDS_PROX);
+      ANN_Start();
       break;
 
     default:
@@ -457,6 +466,8 @@ static void ExitMode(T_Mode mode)
       break;
 
     case E_Mode_NN:
+      ANN_Stop();
+      Behavior_Disable(B_LEDS_PROX);
       break;
 
     default:

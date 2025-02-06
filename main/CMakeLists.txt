@@ -3,6 +3,8 @@ set(COMPONENT_SRCS
     accelerometer.h
     angle_controller.c
     angle_controller.h
+    ann.c
+    ann.h
     aseba_esp32.c
     aseba_esp32.h
     aseba_esp32_user.h

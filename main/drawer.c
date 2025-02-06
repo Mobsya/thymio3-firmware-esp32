@@ -55,6 +55,7 @@
 #define DRAW_STAR 1
 #define STOP_DELAY 300 // ms
 #define DELAY_AFTER_ROTATION 10 // 200 ms (based on 50 Hz behaviors update rate)
+#define PROX_THRESHOLD 1500
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -125,6 +126,8 @@ static int16_t StepsPerStar5[16] = {0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 3, 4, 5, 0, 0,
 static int16_t DegreesPerStepPolygon[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 120, 90, 72, 60, 0, 0};
 static int16_t StepsPerPolygon[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 4, 5, 6, 0, 0};
 static bool useGyroCalib = true;
+static uint8_t StartFromProxState = 0;
+static uint8_t StartFromProxCount = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -170,6 +173,42 @@ void HandleBodyColor(T_Color color, uint8_t brightness);
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
+bool StartFromProx()
+{
+  switch(StartFromProxState)
+  {
+    case 0:
+      if((GetProximityValue(1) > (PROX_THRESHOLD+200)) && (GetProximityValue(2) > (PROX_THRESHOLD+200)) && (GetProximityValue(3) > (PROX_THRESHOLD+200))) // Hand detected
+      {
+        StartFromProxCount++;  // Based on behaviors update rate of 50 hz
+        if(StartFromProxCount == 5) // After 100 ms
+        {
+          StartFromProxState = 1;
+        }
+      } else {
+        StartFromProxCount = 0;
+      }
+      break;
+    
+    case 1:
+      if((GetProximityValue(1) < (PROX_THRESHOLD-200)) && (GetProximityValue(2) < (PROX_THRESHOLD-200)) && (GetProximityValue(3) < (PROX_THRESHOLD-200))) // Hand removed
+      {
+        StartFromProxCount++;  // Based on behaviors update rate of 50 hz
+        if(StartFromProxCount == 25) // After 0.5 second
+        {
+          StartFromProxState = 0;
+          StartFromProxCount = 0;
+          return true;
+
+        }
+      } else {
+        StartFromProxCount = 0;
+      }
+      break;
+  }
+  return false;
+}
+
 void Drawer_Init(void)
 {  
   //TimerHw_Init(1, 0, true, INITIAL_MOTION_DURATION, ISR_EndOfMotion);
@@ -182,7 +221,8 @@ void Drawer_Start(void)
   Leds_SetLegoFrontBrightness(0,0,0,0,0,0,0,0);
   Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0);
   State = E_State_Idle;
-  StepsIndex = 2;
+  StepsIndex = 10;
+  drawSelection = DRAW_STAR;
   Accelerometer_ClearTapStatus(); // Clear any tap made before entering this mode
 }
 
@@ -193,7 +233,8 @@ void Drawer_Stop(void)
   Common_SetTargetSpeed(0, 0);
   AngleController_Stop();
   State = E_State_Idle;
-  StepsIndex = 2;
+  StepsIndex = 10;
+  drawSelection = DRAW_STAR;
   Accelerometer_ClearTapStatus(); // Clear any tap made before entering this mode
 }
 
@@ -296,15 +337,31 @@ void Drawer_Run(void)
     }
     when(buttonState[E_Button_Forward])
     {
-      drawSelection = DRAW_FLOWER;
-      StepsIndex = 2;     
+      if(StepsIndex < 8)
+      {
+        drawSelection = DRAW_STAR;
+        StepsIndex = 10;
+      }
+      else
+      {
+        drawSelection = DRAW_FLOWER;
+        StepsIndex = 2;
+      }
     }
     when(buttonState[E_Button_Backward])
     {
-      drawSelection = DRAW_STAR;
-      StepsIndex = 10;
+      if(StepsIndex < 8)
+      {
+        drawSelection = DRAW_STAR;
+        StepsIndex = 10;
+      }
+      else
+      {
+        drawSelection = DRAW_FLOWER;
+        StepsIndex = 2;
+      }
     }    
-    when(Accelerometer_IsTapDetected())
+    when(Accelerometer_IsTapDetected() || StartFromProx())
     {     
       State = E_State_Drawing;
       if(drawSelection == DRAW_FLOWER) 

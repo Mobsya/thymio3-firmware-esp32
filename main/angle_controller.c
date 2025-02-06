@@ -24,6 +24,7 @@
 
 #include "common.h"
 #include "gyroscope.h"
+#include "settings.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -31,8 +32,6 @@
 
 #define KP     8  //!< Proportional factor
 #define KD     2  //!< Derivative factor
-
-#define ROTATION_ANGLE_90 16383  //!< Rotation angle corresponding to 90 degrees (0x3FFF)
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -52,6 +51,7 @@ static float targetAngleFloat = 0.0;
 static int16_t maxSpeed = 500;
 static bool rotationInProgress = false;
 static int16_t lastError = 0;
+static int32_t rotation_angle_90_ = 0;
 //static float lastErrorFloat = 0.0;
 
 //-----------------------------------------------------------------------------
@@ -69,6 +69,7 @@ static int16_t lastError = 0;
 void AngleController_Init(void)
 {
   ESP_LOGI(Tag, "Angle controller is initialized");
+  rotation_angle_90_ = ROTATION_ANGLE_90 + Settings_GetGyroRotFactorSettings();
 }
 
 //_____________________________________________________________________________
@@ -110,10 +111,10 @@ void AngleController_Update()
   if(!rotationInProgress) {
     return;
   }
-  int16_t measure = Gyroscope_GetAngleZ();
-  int16_t error = (targetAngle - measure) / 182;
-  int16_t proportional = (KP * error);
-  int16_t derivative = KD * (error - lastError);
+  int32_t measure = Gyroscope_GetAngleZ();
+  int32_t error = (targetAngle - measure) / 182;
+  int32_t proportional = (KP * error);
+  int32_t derivative = KD * (error - lastError);
 
   int16_t output = proportional + derivative;
 
@@ -198,8 +199,8 @@ void AngleController_Start(int16_t angleDeg, int16_t max) {
   Gyroscope_ResetAngle();
   lastError = 0;
   //lastErrorFloat = 0.0;
-  targetAngle = ((int32_t)angleDeg)*ROTATION_ANGLE_90/90; // Convert to a range that is usable by the angle controller.
-  //targetAngleFloat = ((float)angleDeg)*(ROTATION_ANGLE_90*1.0)/90.0; // Instead of dividing by 2 "AngleFloat" we can multiply by 2 this value when using 250 dps for the gyro?
+  targetAngle = ((int32_t)angleDeg)*rotation_angle_90_/90; // Convert to a range that is usable by the angle controller.
+  //targetAngleFloat = ((float)angleDeg)*(rotation_angle_90_*1.0)/90.0; // Instead of dividing by 2 "AngleFloat" we can multiply by 2 this value when using 250 dps for the gyro?
   maxSpeed = max;
   rotationInProgress = true;
 }
@@ -215,4 +216,18 @@ void AngleController_Stop() {
 
 bool AngleController_Completed(void) {
   return !rotationInProgress;
+}
+
+//_____________________________________________________________________________
+
+void AngleController_UpdateRotFactor(int16_t factor)
+{
+  rotation_angle_90_ = ROTATION_ANGLE_90 + factor;
+}
+
+//_____________________________________________________________________________
+
+int32_t AngleController_GetRotFactor(void)
+{
+  return rotation_angle_90_;
 }

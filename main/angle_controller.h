@@ -24,6 +24,7 @@
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
+#define ROTATION_ANGLE_90 16383  //!< Rotation angle corresponding to 90 degrees (0x3FFF)
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -71,5 +72,17 @@ void AngleController_Stop(void);
 //! \param     None
 //! \return    true if target angle reached
 bool AngleController_Completed(void);
+
+//! \brief     Update the rotation factor
+//! \pre       First initialize the angle controller
+//! \param     None
+//! \return    None
+void AngleController_UpdateRotFactor(int16_t factor);
+
+//! \brief     Get the rotation factor
+//! \pre       First initialize the angle controller
+//! \param     None
+//! \return    Rotation factor
+int32_t AngleController_GetRotFactor(void);
 
 #endif // ANGLE_CONTROLLER_H_

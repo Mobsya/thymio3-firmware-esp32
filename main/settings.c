@@ -47,6 +47,9 @@
 #define DEFAULT_OFFSET_GYRO_X 0
 #define DEFAULT_OFFSET_GYRO_Y 0
 #define DEFAULT_OFFSET_GYRO_Z 0
+#define DEFAULT_GYRO_ROT_FACTOR 0
+#define DEFAULT_GROUND_BLACK 500
+#define DEFAULT_GROUND_WHITE 650
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -64,8 +67,7 @@ static T_Settings Settings;
 
 static const char* Tag = "settings";
 
-static const char* FileLeftMotor  = "/spiffs/left_motor.dat";
-static const char* FileRightMotor = "/spiffs/right_motor.dat";
+static const char* FileMotors     = "/spiffs/motors.dat";
 static const char* FileOffsetGyro = "/spiffs/offset_gyro.dat";
 static const char* FileVolume     = "/spiffs/volume.dat";
 static const char* FileWhite      = "/spiffs/white.dat";
@@ -73,22 +75,19 @@ static const char* FileBlack      = "/spiffs/black.dat";
 static const char* FileRC5Address = "/spiffs/rc5_address.dat";
 static const char* FileMotFwBw    = "/spiffs/mot_fw_bw.dat";
 static const char* FileZeroOffGyro = "/spiffs/zero_off_gyro.dat";
+static const char* FileGyroRotFactor = "/spiffs/gyro_rot.dat";
+static const char* FileGroundBlack = "/spiffs/ground_black.dat";
+static const char* FileGroundWhite = "/spiffs/ground_white.dat";
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Write the default left motor correction to the file
+//! \brief     Write the default motors corrections to the file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
-static void WriteFactoryLeftMotor(void);
-
-//! \brief     Write the default right motor correction to the file
-//! \pre       First initialize the settings
-//! \param     None
-//! \return    None
-static void WriteFactoryRightMotor(void);
+static void WriteFactoryMotors(void);
 
 //! \brief     Write the default gyroscope offset value to the file
 //! \pre       First initialize the settings
@@ -132,6 +131,24 @@ static void WriteFactoryMotFwBwFactor(void);
 //! \return    None
 static void WriteFactoryZeroOffGyro(void);
 
+//! \brief     Write the default gyro rotation factor to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+static void WriteFactoryGyroRotFactor(void);
+
+//! \brief     Write the default ground black offsets to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+static void WriteFactoryGroundBlack(void);
+
+//! \brief     Write the default ground white offsets to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+static void WriteFactoryGroundWhite(void);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -142,10 +159,8 @@ static void WriteFactoryZeroOffGyro(void);
 
 void Settings_Init(void)
 {
-  Settings_LoadLeftMotorFile();
-  ESP_LOGI(Tag, "Left motor: %d", Settings.LeftMotor);
-  Settings_LoadRightMotorFile();
-  ESP_LOGI(Tag, "Right motor: %d", Settings.RightMotor);
+  Settings_LoadMotorsFile();
+  ESP_LOGI(Tag, "Motors: %d, %d", Settings.Motors[0], Settings.Motors[1]);
   Settings_LoadOffsetGyroFile();
   ESP_LOGI(Tag, "Gyro offset: %d", Settings.OffsetGyro);
   Settings_LoadVolumeFile();
@@ -169,6 +184,12 @@ void Settings_Init(void)
   {
     Gyroscope_SetCalibration(Settings.ZeroOffGyro);
   }
+  Settings_LoadGyroRotFactorFile();
+  ESP_LOGI(Tag, "Gyro rot factor: %d", Settings.GyroRotFactor);  
+  Settings_LoadGroundBlackFile();
+  ESP_LOGI(Tag, "Ground black: %d, %d", Settings.GroundBlack[0], Settings.GroundBlack[1]);  
+  Settings_LoadGroundWhiteFile();
+  ESP_LOGI(Tag, "Ground white: %d, %d", Settings.GroundWhite[0], Settings.GroundWhite[1]);  
 
   ESP_LOGI(Tag, "Settings are initialized");
 }
@@ -179,8 +200,8 @@ void Settings_UpdateSettings(void)
 {
   static int16_t oldSoundVolume = 0;
 
-  Settings.LeftMotor  = vmVariables.settings[0];
-  Settings.RightMotor = vmVariables.settings[1];
+  Settings.Motors[0]  = vmVariables.settings[0];
+  Settings.Motors[1] = vmVariables.settings[1];
   //Settings.OffsetGyro = vmVariables.settings[2];
 
   if (vmVariables.sound_volume != oldSoundVolume)
@@ -210,14 +231,22 @@ void Settings_UpdateSettings(void)
 
 void Settings_SetLeftMotorSettings(int16_t leftMotor)
 {
-  Settings.LeftMotor = leftMotor;
+  Settings.Motors[0] = leftMotor;
 }
 
 //_____________________________________________________________________________
 
 void Settings_SetRightMotorSettings(int16_t rightMotor)
 {
-  Settings.RightMotor = rightMotor;
+  Settings.Motors[1] = rightMotor;
+}
+
+//_____________________________________________________________________________
+
+void Settings_SetMotorsSettings(int16_t* values)
+{
+  Settings.Motors[0] = values[0];
+  Settings.Motors[1] = values[1];
 }
 
 //_____________________________________________________________________________
@@ -334,16 +363,45 @@ void Settings_SetZeroOffGyroSettings(int16_t* values)
 
 //_____________________________________________________________________________
 
+
+void Settings_SetGyroRotFactorSettings(int16_t factor)
+{
+  Settings.GyroRotFactor = factor;
+}
+
+//_____________________________________________________________________________
+
+void Settings_SetGroundBlackSettings(int16_t* values)
+{
+  memcpy(Settings.GroundBlack, values, 4);
+}
+
+//_____________________________________________________________________________
+
+void Settings_SetGroundWhiteSettings(int16_t* values)
+{
+  memcpy(Settings.GroundWhite, values, 4);
+}
+
+//_____________________________________________________________________________
+
 int16_t Settings_GetLeftMotorSettings(void)
 {
-  return Settings.LeftMotor;
+  return Settings.Motors[0];
 }
 
 //_____________________________________________________________________________
 
 int16_t Settings_GetRightMotorSettings(void)
 {
-  return Settings.RightMotor;
+  return Settings.Motors[1];
+}
+
+//_____________________________________________________________________________
+
+void Settings_GetMotorsSettings(int16_t* values)
+{
+  memcpy(values, Settings.Motors, 4);
 }
 
 //_____________________________________________________________________________
@@ -461,31 +519,38 @@ void Settings_GetZeroOffGyroSettings(int16_t* values)
 
 //_____________________________________________________________________________
 
-void Settings_LoadLeftMotorFile(void)
+int16_t Settings_GetGyroRotFactorSettings(void)
 {
-  if (FileSystem_CreateFile(FileLeftMotor))
-  {
-    WriteFactoryLeftMotor();
-    Settings.LeftMotor = DEFAULT_LEFT_MOTOR;
-  } 
-  else 
-  {
-    Settings.LeftMotor = Settings_ReadLeftMotor();
-  }
+  return Settings.GyroRotFactor;
 }
 
 //_____________________________________________________________________________
 
-void Settings_LoadRightMotorFile(void)
+void Settings_GetGroundBlackSettings(int16_t* values)
 {
-  if (FileSystem_CreateFile(FileRightMotor))
+  memcpy(values, Settings.GroundBlack, 4);
+}
+
+//_____________________________________________________________________________
+
+void Settings_GetGroundWhiteSettings(int16_t* values)
+{
+  memcpy(values, Settings.GroundWhite, 4);
+}
+
+//_____________________________________________________________________________
+
+void Settings_LoadMotorsFile(void)
+{
+  if (FileSystem_CreateFile(FileMotors))
   {
-    WriteFactoryRightMotor();
-    Settings.RightMotor = DEFAULT_RIGHT_MOTOR;
+    WriteFactoryMotors();
+    Settings.Motors[0] = DEFAULT_LEFT_MOTOR;
+    Settings.Motors[1] = DEFAULT_RIGHT_MOTOR;
   } 
-  else
+  else 
   {
-    Settings.RightMotor = Settings_ReadRightMotor();
+    Settings_ReadMotors(Settings.Motors);
   }
 }
 
@@ -602,20 +667,56 @@ void Settings_LoadZeroOffGyroFile(void)
 
 //_____________________________________________________________________________
 
-void Settings_WriteLeftMotor(int16_t leftMotor)
+void Settings_LoadGyroRotFactorFile(void)
 {
-  int16_t input = leftMotor;
-
-  FileSystem_Write(FileLeftMotor, &input, sizeof(int16_t));
+  if (FileSystem_CreateFile(FileGyroRotFactor))
+  {
+    WriteFactoryGyroRotFactor();
+    Settings.GyroRotFactor = DEFAULT_GYRO_ROT_FACTOR;
+  }
+  else
+  {
+    Settings.GyroRotFactor = Settings_ReadGyroRotFactor();
+  }  
 }
 
 //_____________________________________________________________________________
 
-void Settings_WriteRightMotor(int16_t rightMotor)
+void Settings_LoadGroundBlackFile(void)
 {
-  int16_t input = rightMotor;
+  if (FileSystem_CreateFile(FileGroundBlack))
+  {
+    WriteFactoryGroundBlack();
+    Settings.GroundBlack[0] = DEFAULT_GROUND_BLACK;
+    Settings.GroundBlack[1] = DEFAULT_GROUND_BLACK;
+  }
+  else
+  {
+    Settings_ReadGroundBlack(Settings.GroundBlack);
+  }
+}
 
-  FileSystem_Write(FileRightMotor, &input, sizeof(int16_t));
+//_____________________________________________________________________________
+
+void Settings_LoadGroundWhiteFile(void)
+{
+  if (FileSystem_CreateFile(FileGroundWhite))
+  {
+    WriteFactoryGroundWhite();
+    Settings.GroundWhite[0] = DEFAULT_GROUND_WHITE;
+    Settings.GroundWhite[1] = DEFAULT_GROUND_WHITE;
+  }
+  else
+  {
+    Settings_ReadGroundWhite(Settings.GroundWhite);
+  }
+}
+
+//_____________________________________________________________________________
+
+void Settings_WriteMotors(int16_t* values)
+{
+  FileSystem_Write(FileMotors, values, 4);
 }
 
 //_____________________________________________________________________________
@@ -677,24 +778,33 @@ void Settings_WriteZeroOffGyro(int16_t* values)
 
 //_____________________________________________________________________________
 
-int16_t Settings_ReadLeftMotor(void)
+void Settings_WriteGyroRotFactor(int16_t factor)
 {
-  int16_t output = 0;
+  int16_t input = factor;
 
-  FileSystem_Read(FileLeftMotor, &output, sizeof(int16_t));
-
-  return output;
+  FileSystem_Write(FileGyroRotFactor, &input, sizeof(int16_t));
 }
 
 //_____________________________________________________________________________
 
-int16_t Settings_ReadRightMotor(void)
+
+void Settings_WriteGroundBlack(int16_t* offsets)
 {
-  int16_t output = 0;
+  FileSystem_Write(FileGroundBlack, offsets, 4);
+}
 
-  FileSystem_Read(FileRightMotor, &output, sizeof(int16_t));
+//_____________________________________________________________________________
 
-  return output;
+void Settings_WriteGroundWhite(int16_t* offsets)
+{
+  FileSystem_Write(FileGroundWhite, offsets, 4);
+}
+
+//_____________________________________________________________________________
+
+void Settings_ReadMotors(int16_t* values)
+{
+  FileSystem_Read(FileMotors, values, 4);
 }
 
 //_____________________________________________________________________________
@@ -766,16 +876,34 @@ void Settings_ReadZeroOffGyro(int16_t* values)
 
 //_____________________________________________________________________________
 
-void Settings_EraseLeftMotorFile(void)
+int16_t Settings_ReadGyroRotFactor()
 {
-  FileSystem_EraseFile(FileLeftMotor);
+  int16_t output = 0;
+
+  FileSystem_Read(FileGyroRotFactor, &output, sizeof(int16_t));
+
+  return output;
 }
 
 //_____________________________________________________________________________
 
-void Settings_EraseRightMotorFile(void)
+void Settings_ReadGroundBlack(int16_t* values)
 {
-  FileSystem_EraseFile(FileRightMotor);
+  FileSystem_Read(FileGroundBlack, values, 4);
+}
+
+//_____________________________________________________________________________
+
+void Settings_ReadGroundWhite(int16_t* values)
+{
+  FileSystem_Read(FileGroundWhite, values, 4);
+}
+
+//_____________________________________________________________________________
+
+void Settings_EraseMotorsFile(void)
+{
+  FileSystem_EraseFile(FileMotors);
 }
 
 //_____________________________________________________________________________
@@ -829,20 +957,32 @@ void Settings_EraseZeroOffGyroFile(void)
 
 //_____________________________________________________________________________
 
-static void WriteFactoryLeftMotor(void)
+void Settings_EraseGyroRotFactorFile(void)
 {
-  int16_t input = DEFAULT_LEFT_MOTOR;
-
-  FileSystem_Write(FileLeftMotor, &input, sizeof(int16_t));
+  FileSystem_EraseFile(FileGyroRotFactor);
 }
 
 //_____________________________________________________________________________
 
-static void WriteFactoryRightMotor(void)
+void Settings_EraseGroundBlackFile(void)
 {
-  int16_t input = DEFAULT_RIGHT_MOTOR;
+  FileSystem_EraseFile(FileGroundBlack);
+}
 
-  FileSystem_Write(FileRightMotor, &input, sizeof(int16_t));
+//_____________________________________________________________________________
+
+void Settings_EraseGroundWhiteFile(void)
+{
+  FileSystem_EraseFile(FileGroundWhite);
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryMotors(void)
+{
+  int16_t input[2] = {DEFAULT_LEFT_MOTOR, DEFAULT_RIGHT_MOTOR};
+
+  FileSystem_Write(FileMotors, input, 4);
 }
 
 //_____________________________________________________________________________
@@ -905,4 +1045,32 @@ static void WriteFactoryZeroOffGyro(void)
 
   FileSystem_Write(FileZeroOffGyro, input, 6);
 }
+
+//_____________________________________________________________________________
+
+static void WriteFactoryGyroRotFactor(void)
+{
+  int16_t input = DEFAULT_GYRO_ROT_FACTOR;
+
+  FileSystem_Write(FileGyroRotFactor, &input, sizeof(int16_t));
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryGroundBlack(void)
+{
+  int16_t input[2] = {DEFAULT_GROUND_BLACK, DEFAULT_GROUND_BLACK};
+
+  FileSystem_Write(FileGroundBlack, input, 4);
+}
+
+//_____________________________________________________________________________
+
+static void WriteFactoryGroundWhite(void)
+{
+  int16_t input[2] = {DEFAULT_GROUND_WHITE, DEFAULT_GROUND_WHITE};
+
+  FileSystem_Write(FileGroundWhite, input, 4);
+}
+
 

@@ -472,7 +472,7 @@ static void ProcessEraseAction(uint8_t command)
       {
         countEraseLastStep++;
 
-        if (countEraseLastStep > 50) // After  second
+        if (countEraseLastStep > 25) // After  1/2 second
         {
           eraseLastStepState = 1;
           countEraseLastStep = 0;
@@ -488,7 +488,7 @@ static void ProcessEraseAction(uint8_t command)
       break;
     case 1: // Show the user that the last step will be erase in a few seconds
       countEraseLastStep++;
-      if(countEraseLastStep > 100) { // After 2 seconds remove last step
+      if(countEraseLastStep > 50) { // After 1 seconds remove last step
         if(WrPos > 0) {
           WrPos--;
         }

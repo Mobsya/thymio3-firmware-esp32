@@ -78,7 +78,7 @@ extern int16_t Gyroscope_GetAngularVelocityZ(void);
 //! \pre       First initialize the gyroscope
 //! \param     None
 //! \return    Angle on the Z-axis
-extern int16_t Gyroscope_GetAngleZ(void);
+extern int32_t Gyroscope_GetAngleZ(void);
 //extern float Gyroscope_GetAngleZFloat(void);
 
 //! \brief     Get the angle in degrees on Z-axis. Range is [180;-180]

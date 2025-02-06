@@ -28,6 +28,7 @@
 #include "buttons.h"
 #include "common.h"
 #include "leds.h"
+#include "settings.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -92,7 +93,29 @@ void LineTracker_Init(void)
 
 void LineTracker_Start(void)
 {
-
+  int16_t groundOffsets[2];
+  Settings_GetGroundBlackSettings(groundOffsets);
+  ground_left_black = groundOffsets[0] + HYSTERESIS;
+  if(ground_left_black > 1023)
+  {
+    ground_left_black = 1023;
+  }
+  ground_right_black = groundOffsets[1] + HYSTERESIS;
+  if(ground_right_black > 1023)
+  {
+    ground_right_black = 1023;
+  }  
+  Settings_GetGroundWhiteSettings(groundOffsets);
+  ground_left_white = groundOffsets[0] - HYSTERESIS;
+  if(ground_left_white < 0)
+  {
+    ground_left_white = 0;
+  }
+  ground_right_white = groundOffsets[1] - HYSTERESIS;
+  if(ground_right_white < 0)
+  {
+    ground_right_white = 0;
+  }  
 }
 
 //_____________________________________________________________________________
@@ -113,8 +136,8 @@ void LineTracker_Run(void)
   // Cyan pulse
   Leds_SetBodyBrightness(0u, brightness, brightness);
 
-  if (!CalibrateLevelUsingButtons())
-  {
+  //if (!CalibrateLevelUsingButtons())
+  //{
     // Calibration is not in progress
 
     GetLineSensorsState(state);
@@ -122,7 +145,7 @@ void LineTracker_Run(void)
     GetLineDirection(state, &dir);
 
     SetTargetAccordingToDirection(&dir);
-  }
+  //}
 }
 
 //_____________________________________________________________________________

@@ -32,14 +32,16 @@
 typedef struct
 {
   int16_t Volume;      //!< Audio Volume
-  int16_t LeftMotor;   //!< Correction factor of the left motor
-  int16_t RightMotor;  //!< Correction factor of the right motor
+  int16_t Motors[2];   //!< Correction factor of the left motor [0] and right motor [1]
   int16_t OffsetGyro;  //!< Offset factor of the gyroscope
   int16_t White[3];    //!< Offset for color sensor white red, green, blue
   int16_t Black[3];    //!< Offset for color sensor black red, green, blue
   int16_t RC5Address;  //!< RC5 default address
   float MotFwBw;       //!< Forward to backward motors correction
   int16_t ZeroOffGyro[3]; //!< axes gyro offsets
+  int16_t GyroRotFactor; //!< gyro rotation factor
+  int16_t GroundBlack[2]; //!< ground left black, ground right black
+  int16_t GroundWhite[2]; //!< ground left white, ground right white
 } T_Settings;
 
 //-----------------------------------------------------------------------------
@@ -77,6 +79,12 @@ extern void Settings_SetLeftMotorSettings(int16_t leftMotor);
 //! \param     rightMotor - Right motor correction
 //! \return    None
 extern void Settings_SetRightMotorSettings(int16_t rightMotor);
+
+//! \brief     Set the left and right motors correction
+//! \pre       First initialize the settings
+//! \param     values - motors corrrections (left, right)
+//! \return    None
+extern void Settings_SetMotorsSettings(int16_t* values);
 
 //! \brief     Set the volume (do not save in flash)
 //! \pre       First initialize the settings
@@ -174,6 +182,24 @@ extern void Settings_SetOffsetGyroZSettings(int16_t offset);
 //! \return    None
 extern void Settings_SetZeroOffGyroSettings(int16_t* values);
 
+//! \brief     Set the gyro rotation factor (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     factor
+//! \return    None
+extern void Settings_SetGyroRotFactorSettings(int16_t factor);
+
+//! \brief     Set the ground black offset (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_SetGroundBlackSettings(int16_t* values);
+
+//! \brief     Set the ground white offset (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_SetGroundWhiteSettings(int16_t* values);
+
 //! \brief     Get the left motor correction
 //! \pre       First initialize the settings
 //! \param     None
@@ -185,6 +211,12 @@ extern int16_t Settings_GetLeftMotorSettings(void);
 //! \param     None
 //! \return    Right motor correction
 extern int16_t Settings_GetRightMotorSettings(void);
+
+//! \brief     Get motors corrections
+//! \pre       First initialize the settings
+//! \param     motors correction (left, right)
+//! \return    None
+extern void Settings_GetMotorsSettings(int16_t* values);
 
 //! \brief     Get the volume stored in flash
 //! \pre       First initialize the settings
@@ -282,17 +314,29 @@ extern int16_t Settings_GetOffsetGyroZSettings(void);
 //! \return    None
 extern void Settings_GetZeroOffGyroSettings(int16_t* values);
 
-//! \brief     Load the left motor settings value, if it doesn't exist create it with default values.
+//! \brief     Get the gyro rotation factor (do not save in flash)
 //! \pre       First initialize the settings
-//! \param     None
+//! \param     factor
 //! \return    None
-extern void Settings_LoadLeftMotorFile(void);
+extern int16_t Settings_GetGyroRotFactorSettings(void);
 
-//! \brief     Load the right motor settings value, if it doesn't exist create it with default values.
+//! \brief     Get the ground black offset (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_GetGroundBlackSettings(int16_t* values);
+
+//! \brief     Get the ground white offset (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_GetGroundWhiteSettings(int16_t* values);
+
+//! \brief     Load the motors settings value, if it doesn't exist create it with default values.
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
-extern void Settings_LoadRightMotorFile(void);
+extern void Settings_LoadMotorsFile(void);
 
 //! \brief     Load the offset gyroscope settings file, if it doesn't exist create it with default values.
 //! \pre       First initialize the settings
@@ -336,17 +380,29 @@ extern void Settings_LoadMotFwBwFile(void);
 //! \return    None
 extern void Settings_LoadZeroOffGyroFile(void);
 
-//! \brief     Write the left motor correction to the settings file
+//! \brief     Load the gyro rotation factor settings file, if it doesn't exist create it with default values.
 //! \pre       First initialize the settings
-//! \param     leftMotor - Left motor correction
+//! \param     None
 //! \return    None
-extern void Settings_WriteLeftMotor(int16_t leftMotor);
+extern void Settings_LoadGyroRotFactorFile(void);
 
-//! \brief     Write the right motor correction to the settings file
+//! \brief     Load the grounds black offsets settings file, if it doesn't exist create it with default values.
 //! \pre       First initialize the settings
-//! \param     rightMotor - Right motor correction
+//! \param     None
 //! \return    None
-extern void Settings_WriteRightMotor(int16_t rightMotor);
+extern void Settings_LoadGroundBlackFile(void);
+
+//! \brief     Load the grounds white offsets settings file, if it doesn't exist create it with default values.
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_LoadGroundWhiteFile(void);
+
+//! \brief     Write the motors corrections to the settings file
+//! \pre       First initialize the settings
+//! \param     values - motors corrections (left, right)
+//! \return    None
+extern void Settings_WriteMotors(int16_t* values);
 
 //! \brief     Write the offset gyroscope value to the settings file
 //! \pre       First initialize the settings
@@ -390,17 +446,29 @@ extern void Settings_WriteMotFwBwFactor(float factor);
 //! \return    None
 extern void Settings_WriteZeroOffGyro(int16_t* values);
 
-//! \brief     Read the left motor correction from the settings file
+//! \brief     Write the gyro rotation factor settings file
 //! \pre       First initialize the settings
-//! \param     None
+//! \param     factor - rotation factor
 //! \return    None
-extern int16_t Settings_ReadLeftMotor(void);
+extern void Settings_WriteGyroRotFactor(int16_t factor);
 
-//! \brief     Read the right motor correction from the settings file
+//! \brief     Write the grounds black offsets settings file
 //! \pre       First initialize the settings
-//! \param     None
+//! \param     offsets
 //! \return    None
-extern int16_t Settings_ReadRightMotor(void);
+extern void Settings_WriteGroundBlack(int16_t* offsets);
+
+//! \brief     Write the grounds white offsets settings file
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_WriteGroundWhite(int16_t* offsets);
+
+//! \brief     Read the motors corrections from the settings file
+//! \pre       First initialize the settings
+//! \param     values - motors corrections (left, right)
+//! \return    None
+extern void Settings_ReadMotors(int16_t* values);
 
 //! \brief     Read the offset gyroscope value from the settings file
 //! \pre       First initialize the settings
@@ -444,17 +512,29 @@ extern float Settings_ReadMotFwBwFactor(void);
 //! \return    None
 extern void Settings_ReadZeroOffGyro(int16_t* values);
 
-//! \brief     Erase the left motor settings file
+//! \brief     Read the gyro rotation factor from the settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
-extern void Settings_EraseLeftMotorFile(void);
+extern int16_t Settings_ReadGyroRotFactor();
 
-//! \brief     Erase the right motor settings file
+//! \brief     Read the ground black offsets from the settings file
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_ReadGroundBlack(int16_t* values);
+
+//! \brief     Read the ground white offsets from the settings file
+//! \pre       First initialize the settings
+//! \param     offsets
+//! \return    None
+extern void Settings_ReadGroundWhite(int16_t* values);
+
+//! \brief     Erase the motors settings file
 //! \pre       First initialize the settings
 //! \param     None
 //! \return    None
-extern void Settings_EraseRightMotorFile(void);
+extern void Settings_EraseMotorsFile(void);
 
 //! \brief     Erase the offset gyroscope settings file
 //! \pre       First initialize the settings
@@ -494,8 +574,26 @@ extern void Settings_EraseMotFwBwFile(void);
 
 //! \brief     Erase the gyro axes offsets settings file
 //! \pre       First initialize the settings
-//! \param     offsets
+//! \param     None
 //! \return    None
 extern void Settings_EraseZeroOffGyroFile(void);
+
+//! \brief     Erase the gyro rotation factor settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_EraseGyroRotFactorFile(void);
+
+//! \brief     Erase the ground black offsets settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_EraseGroundBlackFile(void);
+
+//! \brief     Erase the ground white offsets settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_EraseGroundWhiteFile(void);
 
 #endif // SETTINGS_H_
