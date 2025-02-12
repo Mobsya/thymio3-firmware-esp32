@@ -9,7 +9,7 @@
 //! \file    timer_hw.h
 //! \brief   This module provides the useful functions to use the HW timers
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -70,5 +70,42 @@ extern void TimerHw_Start(int16_t timerNum, int16_t timerIndex);
 //! \param     timerIndex - Timer index (0 or 1)
 //! \return    None
 extern void TimerHw_Stop(int16_t timerNum, int16_t timerIndex);
+
+//! \brief     Set an alarm value for the HW timer
+//! \pre       None
+//! \param     timerGroup - Timer group (0 or 1)
+//! \param     timerIndex - Timer index (0 or 1)
+//! \param     interval - Duration of the timer in microseconds
+//! \return    None
+extern void TimerHw_Set_Alarm(int16_t timerNum, int16_t timerIndex, uint64_t interval_us);
+
+//! \brief     Set an alarm value for the HW timer
+//! \pre       None
+//! \param     timerGroup - Timer group (0 or 1)
+//! \param     timerIndex - Timer index (0 or 1)
+//! \param     interval - Duration of the timer in timer ticks
+//! \return    None
+extern void TimerHw_Set_Alarm_Ticks(int16_t timerNum, int16_t timerIndex, uint64_t interval_ticks);
+
+//! \brief     Deinitialize the HW timer
+//! \pre       None
+//! \param     timerGroup - Timer group (0 or 1)
+//! \param     timerIndex - Timer index (0 or 1)
+//! \return    None
+extern void TimerHw_Deinit(int16_t timerNum, int16_t timerIndex);
+
+//! \brief     Get the counter value of hardware timer
+//! \pre       None
+//! \param     timerGroup - Timer group (0 or 1)
+//! \param     timerIndex - Timer index (0 or 1)
+//! \return    None
+extern uint64_t TimerHw_Get_Counter(int16_t timerNum, int16_t timerIndex);
+
+//! \brief     Reset the counter value of hardware timer
+//! \pre       None
+//! \param     timerGroup - Timer group (0 or 1)
+//! \param     timerIndex - Timer index (0 or 1)
+//! \return    None
+extern void TimerHw_Reset_Counter(int16_t timerNum, int16_t timerIndex);
 
 #endif // TIMER_HW_H_

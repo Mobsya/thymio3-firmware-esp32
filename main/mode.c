@@ -126,7 +126,6 @@ void Mode_Init(bool enableVM)
   {
     first = true;
     Sequence_Init();
-    //Drawer_Init();
   }
 
   ESP_LOGI(Tag, "Mode is initialized");

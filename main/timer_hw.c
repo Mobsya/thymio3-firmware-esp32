@@ -9,7 +9,7 @@
 //! \file    timer_hw.c
 //! \brief   This module provides the useful functions to use the HW timers
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -81,12 +81,15 @@ void TimerHw_Init(int16_t timerGroup, int timerIndex, bool autoReload, uint64_t 
     // Also, if auto_reload is set, this value will be automatically reload on alarm
     ESP_ERROR_CHECK(timer_set_counter_value(timerGroup, timerIndex, TIMER_INITIAL_VALUE));
 
-    // Configure the alarm value and the interrupt on alarm
-    ESP_ERROR_CHECK(timer_set_alarm_value(timerGroup, timerIndex, interval));
-    ESP_ERROR_CHECK(timer_enable_intr(timerGroup, timerIndex));
+    if(interval > 0)
+    {
+      // Configure the alarm value and the interrupt on alarm
+      ESP_ERROR_CHECK(timer_set_alarm_value(timerGroup, timerIndex, interval));
+      ESP_ERROR_CHECK(timer_enable_intr(timerGroup, timerIndex));
 
-    ESP_ERROR_CHECK(timer_isr_register(timerGroup, timerIndex, callback,
-                                       (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL));
+      ESP_ERROR_CHECK(timer_isr_register(timerGroup, timerIndex, callback,
+                                        (void*) timerIndex, ESP_INTR_FLAG_IRAM, NULL));
+    }
 
     ESP_LOGI(Tag, "Group %d Timer %d is initialized", timerGroup, timerIndex);
   }
@@ -108,4 +111,42 @@ void TimerHw_Start(int16_t timerNum, int16_t timerIndex)
 void TimerHw_Stop(int16_t timerNum, int16_t timerIndex)
 {
   timer_pause(timerNum, timerIndex);
+}
+
+//_____________________________________________________________________________
+
+void TimerHw_Set_Alarm(int16_t timerNum, int16_t timerIndex, uint64_t interval_us)
+{
+  uint64_t interval = interval_us*5; //interval_us*TIMER_SCALE/1000000;  
+  ESP_ERROR_CHECK(timer_set_alarm_value(timerNum, timerIndex, interval));
+}
+
+//_____________________________________________________________________________
+
+void TimerHw_Set_Alarm_Ticks(int16_t timerNum, int16_t timerIndex, uint64_t interval_ticks)
+{
+  ESP_ERROR_CHECK(timer_set_alarm_value(timerNum, timerIndex, interval_ticks));  
+}
+
+//_____________________________________________________________________________
+
+void TimerHw_Deinit(int16_t timerNum, int16_t timerIndex)
+{
+  timer_deinit(timerNum, timerIndex);
+}
+
+//_____________________________________________________________________________
+
+uint64_t TimerHw_Get_Counter(int16_t timerNum, int16_t timerIndex)
+{
+  uint64_t temp;
+  timer_get_counter_value(timerNum, timerIndex, &temp);
+  return temp;
+}
+
+//_____________________________________________________________________________
+
+void TimerHw_Reset_Counter(int16_t timerNum, int16_t timerIndex)
+{
+  ESP_ERROR_CHECK(timer_set_counter_value(timerNum, timerIndex, TIMER_INITIAL_VALUE));
 }

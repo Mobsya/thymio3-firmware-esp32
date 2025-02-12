@@ -236,6 +236,82 @@ void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
 
 //_____________________________________________________________________________
 
+void Leds_SetCircleProgress(int8_t progress)
+{
+  if(progress > 0)
+  {
+    switch(progress)
+    {
+      case 1:
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, 0, 0, 0, 0, 0, 0, 0);
+        break;
+      case 2:
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0, 0, 0, 0, 0, 0);
+        break;
+      case 3:
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0, 0, 0, 0, 0);
+        break;
+      case 4:
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0, 0, 0, 0);
+        break;
+      case 5:
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0, 0, 0);
+        break;
+      case 6:
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0, 0);
+        break;
+      case 7:
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0);
+        break;
+      case 9:
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;
+      default:
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;                                                     
+    }
+  }
+  else if(progress < 0)
+  {
+    switch(progress)
+    {
+      case 1:
+        Leds_SetCircleBrightness(0, 0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS);
+        break;
+      case 2:
+        Leds_SetCircleBrightness(0, 0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;
+      case 3:
+        Leds_SetCircleBrightness(0, 0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;
+      case 4:
+        Leds_SetCircleBrightness(0, 0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;
+      case 5:
+        Leds_SetCircleBrightness(0, 0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;
+      case 6:
+        Leds_SetCircleBrightness(0, 0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;
+      case 7:
+        Leds_SetCircleBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;
+      case 9:
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;                                                        
+      default:
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;          
+    }
+  }
+  else
+  {
+    Leds_SetCircleBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+  }
+}
+
+//_____________________________________________________________________________
+
 void Leds_SetButtonsBrightness(uint8_t forward, uint8_t right, uint8_t backward, uint8_t left)
 {
   Leds_SetSingleBrightness(E_Led_Button_Forward, forward);

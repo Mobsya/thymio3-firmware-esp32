@@ -19,19 +19,21 @@
 //-----------------------------------------------------------------------------
 
 #include "esp_log.h"
-
+#include <stdio.h>
 #include "common.h"
 
 #include "aseba_esp32.h"
 #include "buttons.h"
 #include "leds.h"
 #include "stm32_spi.h"
+#include "settings.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
 #define GROUND_IR_THRESHOLD    280 //130
+#define GROUND_EDGE_OFFSET 100
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -267,8 +269,21 @@ void Common_SetSpeedUsingButtons(int16_t* speed, int16_t increment, int16_t max,
 
 uint8_t Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue)
 {
-  if ((vmVariables.ground_delta[0] < GROUND_IR_THRESHOLD) ||
-      (vmVariables.ground_delta[1] < GROUND_IR_THRESHOLD))
+  static bool first = true;
+  static int16_t groundThr[2];
+  
+
+  if(first)
+  {
+    first = false;
+    Settings_GetGroundBlackSettings(groundThr);
+    groundThr[0] += GROUND_EDGE_OFFSET;
+    groundThr[1] += GROUND_EDGE_OFFSET;
+    printf("ground thr: l=%d r=%d", groundThr[0], groundThr[1]);
+  }
+
+  if ((vmVariables.ground_delta[0] < groundThr[0]) ||
+      (vmVariables.ground_delta[1] < groundThr[1]))
   {
     vmVariables.target[0] = 0;
     vmVariables.target[1] = 0;

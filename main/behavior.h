@@ -108,4 +108,9 @@ extern void Behavior_PlaySoundButtons(uint8_t button);
 
 extern void Behavior_PlaySoundAlarm(uint8_t type);
 
+bool Behavior_IsMotionInProgress(void);
+void Behavior_SetMotionInProgress(bool value);
+
+
+
 #endif // BEHAVIOR_H_

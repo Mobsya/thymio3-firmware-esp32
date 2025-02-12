@@ -21,7 +21,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/portmacro.h"
-
 #include "esp_log.h"
 
 #include "comm.h"
@@ -195,8 +194,8 @@ static void RunCommTask(void* arg)
 
 		time_end = esp_timer_get_time();
 		//printf("%lld usec\n", time_end - time_start);
-		if((time_end - time_start) < 20000) { // Run task @ 50 Hz
-			vTaskDelay((20000 - (time_end - time_start))/1000 / portTICK_PERIOD_MS);
+		if((time_end - time_start) < 10000) { // Run task @ 100 Hz
+			vTaskDelay((10000 - (time_end - time_start))/1000 / portTICK_PERIOD_MS);
 		}
   }
 }

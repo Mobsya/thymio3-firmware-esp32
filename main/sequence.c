@@ -21,7 +21,7 @@
 #include "esp_log.h"
 
 #include "sequence.h"
-
+#include "settings.h"
 #include "accelerometer.h"
 #include "angle_controller.h"
 #include "buttons.h"
@@ -33,6 +33,7 @@
 #include "stm32_spi.h"
 #include "timer_sw.h"
 #include "timer_hw.h"
+#include "behavior.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -40,13 +41,9 @@
 
 #define SEQUENCE_BUFFER_SIZE 50u //!< Number of actions stored in the FIFO
 
-// Duration of the movement = 1500000 [us] -> TIMER_SCALE * 1500000 [us] = 7500000 (timer_group)
-#define MOVEMENT_DURATION 9000000 //7500000uLL //!< Duration of a movement
-
-#define STOP_DURATION_us 500000u //!< Delay at the end of a movement
+#define STOP_DURATION_us 700000u //!< Delay at the end of a movement
 
 #define MOVEMENT_SPEED 300 //!< Movement speed
-#define MOVEMENT_SPEED_BW 312 // Backward speed compensated
 
 #define MAX_ROTATION_SPEED 500 //!< Maximum rotation speed allowed
 
@@ -98,11 +95,8 @@ typedef enum
 static const char *Tag = "sequence"; //!< Log tag
 
 static bool RecordSequenceIsFinished = false; //!< True if the the record is finished
-static bool MovementIsInProgress = false;     //!< True if the a movement is in progress
 static bool RotationIsInProgress = false;     //!< True if the a rotation is in progress
 static bool ObstacleIsDetected = false;       //!< True if an obstacle is detected
-
-static T_TimerSw *StopTimer = NULL; //!< Timer used to add a delay at the end of a movement
 
 static T_State State = E_State_Record;             //!< State of the main state machine
 static T_PlayState PlayState = E_PlayState_Replay; //E_PlayState_Prepare; //!< State of the play state machine
@@ -118,6 +112,7 @@ static uint8_t PlayStatePrepareCount = 0;
 static bool PlayStatePrepareToPlay = false;
 static uint8_t LegoLedBlinkCount = 0;
 static uint8_t StartFromProxState = 0;
+uint64_t motionDurations[2]; // Timer ticks to travels 15 cm forward and backward
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -202,17 +197,6 @@ static void LaunchPlayAnimation(uint8_t next);
 //! \return    None
 static void LaunchPauseAnimation(void);
 
-//! \brief     Interrupt called at the end of a movement
-//! \pre       First initialize the mode
-//! \param     arg - Not used
-//! \return    None
-static void IRAM_ATTR ISR_EndOfMovement(void *arg);
-
-//! \brief     Callback called at the end of the delay added after a movement
-//! \pre       First initialize the mode
-//! \param     arg - Not used
-//! \return    None
-static void Callback_TimerStop(void *arg);
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -225,11 +209,7 @@ static void Callback_TimerStop(void *arg);
 void Sequence_Init(void)
 {
   RecordSequenceIsFinished = false;
-  MovementIsInProgress = false;
   RotationIsInProgress = false;
-
-  TimerHw_Init(1, 0, true, MOVEMENT_DURATION, ISR_EndOfMovement);
-  StopTimer = TimerSw_Create(STOP_DURATION_us, Callback_TimerStop);
 
   WrPos = 0u;
   RdPos = 0u;
@@ -241,12 +221,13 @@ void Sequence_Start(void)
 {
   State = E_State_Record;
   RdPos = 0u;
-  MovementIsInProgress = false;
+  Behavior_SetMotionInProgress(false);
   RotationIsInProgress = false;
   RecordSequenceIsFinished = false;
   //PlayState = E_PlayState_Prepare;
   PlayState = E_PlayState_Replay;
   Accelerometer_ClearTapStatus(); // Clear any tap made before entering this mode
+  Settings_GetMot15cmSettings(motionDurations);
 }
 
 //_____________________________________________________________________________
@@ -757,7 +738,7 @@ static void HandleReplay(void)
   {
     ESP_LOGI(Tag, "Val: %d, Pos: %d", Sequence[RdPos], RdPos);    
 
-    if (!MovementIsInProgress && !RotationIsInProgress)
+    if (!Behavior_IsMotionInProgress() && !RotationIsInProgress)
     {
       Current = Sequence[RdPos];
       next = Sequence[RdPos + 1u];
@@ -767,16 +748,18 @@ static void HandleReplay(void)
 
       if (Current == (1u << E_Button_Backward))
       {
-        TimerHw_Start(1, 0);
-        MovementIsInProgress = true;
-        Common_SetTargetSpeed(-MOVEMENT_SPEED_BW, -MOVEMENT_SPEED_BW); // TODO Check why the speed in backward direction is slower
+        TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[1]);
+        TimerHw_Start(1, 1);
+        Behavior_SetMotionInProgress(true);
+        Common_SetTargetSpeed(-MOVEMENT_SPEED, -MOVEMENT_SPEED); // TODO Check why the speed in backward direction is slower
         PlayState = E_PlayState_Movement;
       }
 
       if (Current == (1u << E_Button_Forward))
       {
-        TimerHw_Start(1, 0);
-        MovementIsInProgress = true;
+        TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]);
+        TimerHw_Start(1, 1);
+        Behavior_SetMotionInProgress(true);
         Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
         PlayState = E_PlayState_Movement;
       }
@@ -817,7 +800,7 @@ static void HandleMovement(void)
 {
   if (CheckCollisionStatus() == E_Collision_Detected)
   {
-    TimerHw_Stop(1, 0);
+    TimerHw_Stop(1, 1);
     Common_SetTargetSpeed(0, 0);
 
     PlayState = E_PlayState_Collision;
@@ -825,7 +808,7 @@ static void HandleMovement(void)
   // An obstacle has been detected but it no longer obstructs the passage
   else if (ObstacleIsDetected)
   {
-    TimerHw_Start(1, 0);
+    TimerHw_Start(1, 1);
 
     if (Current == (1u << E_Button_Forward))
     {
@@ -833,7 +816,7 @@ static void HandleMovement(void)
     }
     else if (Current == (1u << E_Button_Backward))
     {
-      Common_SetTargetSpeed(-MOVEMENT_SPEED_BW, -MOVEMENT_SPEED_BW);
+      Common_SetTargetSpeed(-MOVEMENT_SPEED, -MOVEMENT_SPEED);
     }
     else
     {
@@ -841,6 +824,10 @@ static void HandleMovement(void)
     }
 
     ObstacleIsDetected = false;
+  }
+  else if(!Behavior_IsMotionInProgress())
+  {
+    PlayState = E_PlayState_Replay;
   }
   else
   {
@@ -896,7 +883,7 @@ static void HandleCollision(void)
     Leds_SetFrontBrightness(MAX_BRIGHTNESS, 0, MAX_BRIGHTNESS);
     Leds_SetBackBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
 
-    if (MovementIsInProgress)
+    if ((Current == (1u << E_Button_Forward)) || (Current == (1u << E_Button_Backward)))
     {
       PlayState = E_PlayState_Movement;
     }
@@ -1030,34 +1017,3 @@ static void LaunchPauseAnimation(void)
   Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0u, 0u);
 }
 
-//_____________________________________________________________________________
-
-static void IRAM_ATTR ISR_EndOfMovement(void *arg)
-{
-  // Retrieve the interrupt status and the counter value
-  // from the timer that reported the interrupt
-  uint32_t intr_status = TIMERG1.int_st_timers.val;
-  TIMERG1.hw_timer[0].update = 1;
-
-  // Clear the interrupt and update the alarm time for the timer with without reload
-  if (intr_status & BIT(0))
-  {
-    Common_SetTargetSpeed(0, 0);
-
-    TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_us);
-
-    TIMERG1.int_clr_timers.t0 = 1;
-    TimerHw_Stop(1, 0);
-  }
-
-  // After the alarm has been triggered, we need enable it again, so it is triggered the next time
-  TIMERG1.hw_timer[0].config.alarm_en = TIMER_ALARM_EN;
-}
-
-//_____________________________________________________________________________
-
-static void Callback_TimerStop(void *arg)
-{
-  MovementIsInProgress = false;
-  PlayState = E_PlayState_Replay;
-}

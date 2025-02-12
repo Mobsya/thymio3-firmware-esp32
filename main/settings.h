@@ -24,6 +24,25 @@
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
+#define DEFAULT_LEFT_MOTOR      256
+#define DEFAULT_RIGHT_MOTOR     256
+#define DEFAULT_OFFSET_GYRO       0
+#define DEFAULT_VOLUME           80
+#define DEFAULT_WHITE_RED      11036
+#define DEFAULT_WHITE_GREEN    14470
+#define DEFAULT_WHITE_BLUE     13334
+#define DEFAULT_BLACK_RED       4214
+#define DEFAULT_BLACK_GREEN     6055
+#define DEFAULT_BLACK_BLUE      5312
+#define DEFAULT_RC5_ADDRESS       0
+#define DEFAULT_MOT_FW_TO_BW 1.04
+#define DEFAULT_OFFSET_GYRO_X 0
+#define DEFAULT_OFFSET_GYRO_Y 0
+#define DEFAULT_OFFSET_GYRO_Z 0
+#define DEFAULT_GYRO_ROT_FACTOR 0
+#define DEFAULT_GROUND_BLACK 500
+#define DEFAULT_GROUND_WHITE 650
+#define DEFAULT_MOT15CM 9000000 // Duration of the movement = 1800000 [us] -> TIMER_SCALE * 1800000 [us] = 9000000 (timer_group)
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -42,6 +61,7 @@ typedef struct
   int16_t GyroRotFactor; //!< gyro rotation factor
   int16_t GroundBlack[2]; //!< ground left black, ground right black
   int16_t GroundWhite[2]; //!< ground left white, ground right white
+  uint64_t Mot15cm[2];    //!< Timer value for forward [0] and backward[0] motion to travel 15 cm
 } T_Settings;
 
 //-----------------------------------------------------------------------------
@@ -200,6 +220,12 @@ extern void Settings_SetGroundBlackSettings(int16_t* values);
 //! \return    None
 extern void Settings_SetGroundWhiteSettings(int16_t* values);
 
+//! \brief     Set the motors forward and backward timers values to travel 15 cm (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     timer values
+//! \return    None
+extern void Settings_SetMot15cmSettings(uint64_t* values);
+
 //! \brief     Get the left motor correction
 //! \pre       First initialize the settings
 //! \param     None
@@ -332,6 +358,12 @@ extern void Settings_GetGroundBlackSettings(int16_t* values);
 //! \return    None
 extern void Settings_GetGroundWhiteSettings(int16_t* values);
 
+//! \brief     Get the motors forward and backward timers values to travel 15 cm (do not save in flash)
+//! \pre       First initialize the settings
+//! \param     timer values
+//! \return    None
+extern void Settings_GetMot15cmSettings(uint64_t* values);
+
 //! \brief     Load the motors settings value, if it doesn't exist create it with default values.
 //! \pre       First initialize the settings
 //! \param     None
@@ -397,6 +429,12 @@ extern void Settings_LoadGroundBlackFile(void);
 //! \param     None
 //! \return    None
 extern void Settings_LoadGroundWhiteFile(void);
+
+//! \brief     Load the motors forward and backward timers values to travel 15 cm settings file, if it doesn't exist create it with default values.
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_LoadMot15cmFile(void);
 
 //! \brief     Write the motors corrections to the settings file
 //! \pre       First initialize the settings
@@ -464,6 +502,12 @@ extern void Settings_WriteGroundBlack(int16_t* offsets);
 //! \return    None
 extern void Settings_WriteGroundWhite(int16_t* offsets);
 
+//! \brief     Write the motors forward and backward timers values to travel 15 cm settings file
+//! \pre       First initialize the settings
+//! \param     timer values
+//! \return    None
+extern void Settings_WriteMot15cm(uint64_t* values);
+
 //! \brief     Read the motors corrections from the settings file
 //! \pre       First initialize the settings
 //! \param     values - motors corrections (left, right)
@@ -530,6 +574,12 @@ extern void Settings_ReadGroundBlack(int16_t* values);
 //! \return    None
 extern void Settings_ReadGroundWhite(int16_t* values);
 
+//! \brief     Read the motors forward and backward timers values to travel 15 cm from settings file
+//! \pre       First initialize the settings
+//! \param     timer values
+//! \return    None
+extern void Settings_ReadMot15cm(uint64_t* values);
+
 //! \brief     Erase the motors settings file
 //! \pre       First initialize the settings
 //! \param     None
@@ -595,5 +645,83 @@ extern void Settings_EraseGroundBlackFile(void);
 //! \param     None
 //! \return    None
 extern void Settings_EraseGroundWhiteFile(void);
+
+//! \brief     Erase the motors forward and backward timers values to travel 15 cm settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_EraseMot15cm(void);
+
+//! \brief     Write the default gyro axes offsets to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void WriteFactoryZeroOffGyro(void);
+
+//! \brief     Write the default gyro rotation factor to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void WriteFactoryGyroRotFactor(void);
+
+//! \brief     Write the default motors corrections to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void WriteFactoryMotors(void);
+
+//! \brief     Write the default gyroscope offset value to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void WriteFactoryOffsetGyro(void);
+
+//! \brief     Write the default volume value to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void WriteFactoryVolume(void);
+
+//! \brief     Write the default white (red, green, blue) value to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void WriteFactoryWhite(void);
+
+//! \brief     Write the default black (red, green, blue) value to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void WriteFactoryBlack(void);
+
+//! \brief     Write the default remote address to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void WriteFactoryRC5Address(void);
+
+//! \brief     Write the default forward to backward motors correction to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void WriteFactoryMotFwBwFactor(void);
+
+//! \brief     Write the default ground black offsets to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void WriteFactoryGroundBlack(void);
+
+//! \brief     Write the default ground white offsets to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void WriteFactoryGroundWhite(void);
+
+//! \brief     Write the default motors forward and backward timers values to travel 15 cm to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void WriteFactoryMot15cm(void);
 
 #endif // SETTINGS_H_

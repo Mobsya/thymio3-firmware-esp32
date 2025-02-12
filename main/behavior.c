@@ -46,6 +46,8 @@
 #include "aseba_esp32.h"  // TODO Add GetSpeed in common to remove this line
 #include "gyroscope.h"
 #include "stm32_spi.h"
+#include "timer_hw.h"
+#include "timer_sw.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -67,7 +69,9 @@
 
 #define SETTINGS_BRIGHTNESS  (MAX_BRIGHTNESS / 3u)
 
-#define HYSTERESIS 75
+#define MOT_FW_BW_CALIB_STEP (DEFAULT_MOT15CM/100) //90000
+
+#define STOP_DURATION_US 500000u //!< Delay at the end of a movement
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -135,9 +139,17 @@ static bool start_python_menu = false;
 static uint8_t updateSettingsState = 0;
 static uint8_t ledUpdateCount = 0;
 static uint8_t ledUpdatePos = 0;
-static int32_t gyroRotFactorZ = 0;
-static uint8_t gyroCalibType = 0; // 0=no calibration done, 1=gyro offsets calibration, 2=gyro rotation calibration
-static int16_t groundTemp[2];
+static uint8_t gyroCalibType = 0; // 0=no calibration done, 1=gyro offsets calibration, 2=gyro rotation calibration, 3=reset calibration
+bool motionInProgress = false;
+T_TimerSw *StopTimer = NULL; //!< Timer used to add a delay at the end of a movement
+
+// Motors left/right calibration
+static int16_t correction = 0; // motors right/left correction
+
+// Motors forward/backware 15 cm calibration
+static uint8_t motFwBwCalibType = 0; // 0=no calibration done, 1=calibration done, 2=reset calibration
+static int8_t motFwCorrCount = 0;
+static int8_t motBwCorrCount = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -225,6 +237,12 @@ static void ExitPythonItem(T_Python_item item);
 
 static void RunLegoLedAnimation(void);
 
+//! \brief     Interrupt called at the end of a movement
+//! \pre       First initialize the mode
+//! \param     arg - Not used
+//! \return    None
+void IRAM_ATTR ISR_TimerExpired(void *arg);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -232,6 +250,36 @@ static void RunLegoLedAnimation(void);
 //-----------------------------------------------------------------------------
 // Functions Implementation
 //-----------------------------------------------------------------------------
+
+static void Callback_TimerStop(void *arg)
+{
+  motionInProgress = false;
+}
+
+void IRAM_ATTR ISR_TimerExpired(void *para)
+{
+    timer_spinlock_take(TIMER_GROUP_1);
+    //int timer_idx = (int) para;
+
+    /* Retrieve the interrupt status and the counter value
+       from the timer that reported the interrupt */
+    uint32_t timer_intr = timer_group_get_intr_status_in_isr(TIMER_GROUP_1);
+
+    /* Clear the interrupt
+       and update the alarm time for the timer with without reload */
+    if (timer_intr & TIMER_INTR_T1) {
+        timer_group_clr_intr_status_in_isr(TIMER_GROUP_1, TIMER_1);
+        Common_SetTargetSpeed(0, 0);
+        TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_US);
+        TimerHw_Stop(1, 1);
+    }
+
+    /* After the alarm has been triggered
+      we need enable it again, so it is triggered the next time */
+    timer_group_enable_alarm_in_isr(TIMER_GROUP_1, 1);
+
+    timer_spinlock_give(TIMER_GROUP_1);
+}
 
 void Behavior_Init(void)
 {
@@ -243,6 +291,9 @@ void Behavior_Init(void)
   Behavior = 0u;
 
   Codec_SetVolume(Setting.Volume);
+
+  StopTimer = TimerSw_Create(STOP_DURATION_US, Callback_TimerStop);
+  TimerHw_Init(1, 1, true, DEFAULT_MOT15CM, ISR_TimerExpired);
 }
 
 //_____________________________________________________________________________
@@ -717,6 +768,7 @@ static void UpdateSettings(void)
   static uint8_t select = 0u;
   static uint8_t settings_navigation_state = RUNNING_MENU;
   static uint8_t delayCount = 0;
+  static bool onSettingStart = true;
 
   if(start_python_menu) { // Settings menu can be accessed only from the main menu
     return;
@@ -746,6 +798,7 @@ static void UpdateSettings(void)
         updateSettingsState = 0;
         if (select != CurrentSetting) {
           CurrentSetting = select;
+          onSettingStart = true;
         }        
       } else {
         settings_navigation_state = RUNNING_MENU;
@@ -787,10 +840,26 @@ static void UpdateSettings(void)
         break;
 
       case E_Setting_Motor:
+        if(onSettingStart)
+        {
+          onSettingStart = false;
+          correction = 0;
+          Setting.Motors[0]  = (256 + correction);
+          Setting.Motors[1] = (256 - correction);          
+        }      
         TuneMotors();
         break;
 
       case E_Setting_MotorFwBw:
+        if(onSettingStart)
+        {
+          onSettingStart = false;
+          Setting.Mot15cm[0] = DEFAULT_MOT15CM;
+          Setting.Mot15cm[1] = DEFAULT_MOT15CM;
+          motFwCorrCount = 0;
+          motBwCorrCount = 0;
+          Setting.MotFwBw = DEFAULT_MOT_FW_TO_BW;
+        }
         CalibrateMotFwBw();
         break;
 
@@ -803,10 +872,28 @@ static void UpdateSettings(void)
     	  break;
 
       case E_Setting_Gyro:
+        if(onSettingStart)
+        {
+          onSettingStart = false;
+          Setting.ZeroOffGyro[0] = DEFAULT_OFFSET_GYRO_X;
+          Setting.ZeroOffGyro[1] = DEFAULT_OFFSET_GYRO_Y;
+          Setting.ZeroOffGyro[2] = DEFAULT_OFFSET_GYRO_Z;
+          Setting.GyroRotFactor = DEFAULT_GYRO_ROT_FACTOR;
+          Gyroscope_ResetAngle();
+          Setting.GyroRotFactor = DEFAULT_GYRO_ROT_FACTOR;
+        }
         CalibrateGyro();
         break;
 
       case E_Setting_Ground:
+        if(onSettingStart)
+        {
+          onSettingStart = false;
+          Setting.GroundWhite[0] = DEFAULT_GROUND_WHITE;
+          Setting.GroundWhite[1] = DEFAULT_GROUND_WHITE;
+          Setting.GroundBlack[0] = DEFAULT_GROUND_BLACK;
+          Setting.GroundBlack[1] = DEFAULT_GROUND_BLACK;
+        }      
         CalibrateGround();
         break; 
 
@@ -826,7 +913,8 @@ static void UpdateSettings(void)
         start_settings_menu = false;
         CurrentSetting = E_Setting_Menu;
         Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-        Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);        
+        Leds_SetLegoBackBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+        Leds_SetCircleBrightness(0, 0, 0, 0, 0, 0, 0, 0);
       }
     } else {
       count = 0;
@@ -963,8 +1051,6 @@ static void SetSettingColor(T_Setting setting)
 
 static void ExitSetting(T_Setting setting)
 {
-  static int16_t values[3];
-  static int16_t gyroRotFactorTemp = 0;
   Leds_SetBodyBrightness(0u, 0u, 0u);
   Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
   //Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
@@ -991,7 +1077,24 @@ static void ExitSetting(T_Setting setting)
       break;
 
     case E_Setting_MotorFwBw:
-      Settings_WriteMotFwBwFactor(Setting.MotFwBw);
+      // Save data based on actual calibration done
+      //if(motFwBwCalibType == 1)
+      //{
+        Settings_SetMot15cmSettings(Setting.Mot15cm);
+        Settings_WriteMot15cm(Setting.Mot15cm);
+        Setting.MotFwBw = (float)Setting.Mot15cm[1]/(float)Setting.Mot15cm[0];
+        Settings_SetMotFwBwSettings(Setting.MotFwBw);
+        Settings_WriteMotFwBwFactor(Setting.MotFwBw);
+        ESP_LOGE(Tag, "Write mot fw,bw,factor: %lld, %lld, %f", Setting.Mot15cm[0], Setting.Mot15cm[1], Setting.MotFwBw);
+        //printf("Write mot fw,bw,factor: %lld, %lld, %f", Setting.Mot15cm[0], Setting.Mot15cm[1], Setting.MotFwBw);
+        //fflush(stdout);
+      //}
+      //else if(motFwBwCalibType == 2)
+      //{
+      //  WriteFactoryMot15cm();
+      //  WriteFactoryMotFwBwFactor();
+      //}
+      //motFwBwCalibType = 0;
       break;
 
     case E_Setting_Color:
@@ -1003,26 +1106,40 @@ static void ExitSetting(T_Setting setting)
 
     case E_Setting_Gyro:      
       // Save data based on actual calibration done
+      if(gyroCalibType == 0) // No calibration done, reset to default
+      {
+        Settings_SetZeroOffGyroSettings(Setting.ZeroOffGyro);
+        Settings_WriteZeroOffGyro(Setting.ZeroOffGyro);
+        ESP_LOGI(Tag, "Write zero gyro: %d, %d, %d", Setting.ZeroOffGyro[0], Setting.ZeroOffGyro[1], Setting.ZeroOffGyro[2]);
+        Settings_SetGyroRotFactorSettings(Setting.GyroRotFactor);
+        Settings_WriteGyroRotFactor(Setting.GyroRotFactor);
+        AngleController_UpdateRotFactor(Setting.GyroRotFactor);
+        ESP_LOGI(Tag, "Gyro rot stpes, factor, controller: %d, %d", Setting.GyroRotFactor, AngleController_GetRotFactor());         
+      }
       if(gyroCalibType == 1)
       {
-        Gyroscope_GetCalibration(values);
-        Settings_SetZeroOffGyroSettings(values);
-        Settings_WriteZeroOffGyro(values);
-        ESP_LOGI(Tag, "Write zero gyro: %d, %d, %d", values[0], values[1], values[2]);
+        Settings_SetZeroOffGyroSettings(Setting.ZeroOffGyro);
+        Settings_WriteZeroOffGyro(Setting.ZeroOffGyro);
+        ESP_LOGI(Tag, "Write zero gyro: %d, %d, %d", Setting.ZeroOffGyro[0], Setting.ZeroOffGyro[1], Setting.ZeroOffGyro[2]);
       }
       else if(gyroCalibType == 2)
       {
-        gyroRotFactorTemp = Settings_GetGyroRotFactorSettings() + ((gyroRotFactorZ - Gyroscope_GetAngleZ())/4); // The robot is tuned for a complete turn (360 degrees), divide by 4 because the factor is related to 90 degrees.
-        Settings_SetGyroRotFactorSettings(gyroRotFactorTemp);
-        Settings_WriteGyroRotFactor(gyroRotFactorTemp);
-        AngleController_UpdateRotFactor(gyroRotFactorTemp);
-        ESP_LOGI(Tag, "Gyro rot stpes, factor, controller: %d, %d", gyroRotFactorTemp, AngleController_GetRotFactor());      
+        Setting.GyroRotFactor = -Gyroscope_GetAngleZ()/4;
+
+        //gyroRotFactorTemp = Settings_GetGyroRotFactorSettings() + ((gyroRotFactorZ - Gyroscope_GetAngleZ())/4); // The robot is tuned for a complete turn (360 degrees), divide by 4 because the factor is related to 90 degrees.
+        Settings_SetGyroRotFactorSettings(Setting.GyroRotFactor);
+        Settings_WriteGyroRotFactor(Setting.GyroRotFactor);
+        AngleController_UpdateRotFactor(Setting.GyroRotFactor);
+        ESP_LOGI(Tag, "Gyro rot stpes, factor, controller: %d, %d", Setting.GyroRotFactor, AngleController_GetRotFactor());      
       }
       gyroCalibType = 0;
       break;
 
     case E_Setting_Ground:  
-
+      Settings_WriteGroundWhite(Setting.GroundWhite);
+      Settings_SetGroundWhiteSettings(Setting.GroundWhite);  
+      Settings_WriteGroundBlack(Setting.GroundBlack);
+      Settings_SetGroundBlackSettings(Setting.GroundBlack);      
       break;
 
     default:
@@ -1177,7 +1294,6 @@ static void AdjustVolume(void)
 
 static void TuneMotors(void)
 {
-  static int16_t correction = 0;
   uint8_t* buttonState = Buttons_GetStatus();
 
   // Green
@@ -1476,10 +1592,11 @@ static void CalibrateGyro(void)
       }
       when(buttonState[E_Button_Right] != 0u)
       {
+        AngleController_UpdateRotFactor(DEFAULT_GYRO_ROT_FACTOR);
         updateSettingsState = 3;
         AngleController_Start(-360, MOVEMENT_SPEED);
         gyroCalibType = 2;
-      }      
+      }     
       break;
     
     case 1: // Wait a bit before actually taking samples in order to avoid interference from the button press and in the meantime show led animation
@@ -1489,6 +1606,7 @@ static void CalibrateGyro(void)
       {
         Gyroscope_DisableContinuousCalib();
         Gyroscope_Calibrate();
+        Gyroscope_GetCalibration(Setting.ZeroOffGyro);
         updateSettingsState = 2;
       }
       break;
@@ -1510,7 +1628,7 @@ static void CalibrateGyro(void)
       {
         updateSettingsState = 5;
         delayCount = 0;
-        gyroRotFactorZ = Gyroscope_GetAngleZ();
+        Gyroscope_ResetAngle();
       }
       break;
 
@@ -1607,9 +1725,7 @@ static void CalibrateGround(void)
       Leds_SetLegoBackProgress(delayCount/6);
       if(delayCount == 50) // Based on 50 Hz behaviors update rate
       {
-        GetGroundValues(groundTemp);
-        Settings_WriteGroundWhite(groundTemp);
-        Settings_SetGroundWhiteSettings(groundTemp);     
+        GetGroundValues(Setting.GroundWhite);   
         updateSettingsState = 0;
       }
       break;
@@ -1619,9 +1735,7 @@ static void CalibrateGround(void)
       Leds_SetLegoBackProgress(delayCount/6);
       if(delayCount == 50) // Based on 50 Hz behaviors update rate
       {
-        GetGroundValues(groundTemp);
-        Settings_WriteGroundBlack(groundTemp);
-        Settings_SetGroundBlackSettings(groundTemp); 
+        GetGroundValues(Setting.GroundBlack); 
         updateSettingsState = 0;
       }
       break;
@@ -1634,10 +1748,114 @@ static void CalibrateGround(void)
 static void CalibrateMotFwBw(void)
 {
   uint8_t* buttonState = Buttons_GetStatus();
+  static uint8_t currentCalib = 0; // 0=nothing, 1=forward, 2=backward
+
+  // Blue
+  ledUpdateCount++;
+  if(ledUpdateCount == 10) // Based on 50 Hz behaviors update rate
+  {
+    ledUpdateCount = 0;
+    switch(ledUpdatePos)
+    {
+      case LED_FRONT_LEFT:
+        Leds_SetFrontLeftBrightness(0, 0, SETTINGS_BRIGHTNESS);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break; 
+      case LED_FRONT_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, SETTINGS_BRIGHTNESS);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos++;
+        break;  
+      case LED_BACK_RIGHT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, 0);
+        Leds_SetBackRightBrightness(0, 0, SETTINGS_BRIGHTNESS);
+        ledUpdatePos++;
+        break;
+      case LED_BACK_LEFT:
+        Leds_SetFrontLeftBrightness(0, 0, 0);
+        Leds_SetFrontRightBrightness(0, 0, 0);
+        Leds_SetBackLeftBrightness(0, 0, SETTINGS_BRIGHTNESS);
+        Leds_SetBackRightBrightness(0, 0, 0);
+        ledUpdatePos= 0 ;
+        break;                      
+    }
+  }
+
+  switch(updateSettingsState)
+  {
+    case 0: // Wait forward button press to start calibration
+      when((buttonState[E_Button_Forward] != 0u) && !motionInProgress)
+      {        
+        motionInProgress = true;
+        Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
+        TimerHw_Set_Alarm_Ticks(1, 1, Setting.Mot15cm[0]);
+        TimerHw_Reset_Counter(1, 1);  
+        TimerHw_Start(1, 1);
+        currentCalib = 1;
+        Leds_SetCircleProgress(motFwCorrCount/2);
+      }
+      when((buttonState[E_Button_Backward] != 0u) && !motionInProgress)
+      {
+        motionInProgress = true;
+        Common_SetTargetSpeed(-MOVEMENT_SPEED, -MOVEMENT_SPEED);
+        TimerHw_Set_Alarm_Ticks(1, 1, Setting.Mot15cm[1]);
+        TimerHw_Reset_Counter(1, 1);  
+        TimerHw_Start(1, 1);
+        currentCalib = 2;
+        Leds_SetCircleProgress(motBwCorrCount/2);
+      }      
+      when(buttonState[E_Button_Right] != 0u)
+      {
+        if(currentCalib == 1)
+        {
+          Setting.Mot15cm[0] += MOT_FW_BW_CALIB_STEP;
+          motFwCorrCount++;
+          Leds_SetCircleProgress(motFwCorrCount/2);
+        }
+        if(currentCalib == 2)
+        {
+          Setting.Mot15cm[1] += MOT_FW_BW_CALIB_STEP;
+          motBwCorrCount++;
+          Leds_SetCircleProgress(motBwCorrCount/2);
+        }
+      }
+      when(buttonState[E_Button_Left] != 0u)
+      {
+        if(currentCalib == 1)
+        {
+          Setting.Mot15cm[0] -= MOT_FW_BW_CALIB_STEP;
+          motFwCorrCount--;
+          Leds_SetCircleProgress(motFwCorrCount/2);
+        }
+        if(currentCalib == 2)
+        {
+          Setting.Mot15cm[1] -= MOT_FW_BW_CALIB_STEP;
+          motBwCorrCount--;
+          Leds_SetCircleProgress(motBwCorrCount/2);
+        }
+      }
+      break;
+  }
+}
+
+//_____________________________________________________________________________
+
+static void CalibrateMotFwBw2(void)
+{
+  uint8_t* buttonState = Buttons_GetStatus();
   static uint8_t delayCount = 0;
-  static uint8_t fwCount = 0;
-  static uint8_t bwCount = 0;
-  static int16_t grounds_black[2];
+  static int16_t groundsBlack[2];
+  static int16_t groundsWhite[2];
+  static bool timerInitialized = false;
+  static int16_t hysteresisLeft = 0;
+  static int16_t hysteresisRight = 0;
 
   // Blue
   ledUpdateCount++;
@@ -1682,45 +1900,142 @@ static void CalibrateMotFwBw(void)
     case 0: // Wait forward button press to start calibration
       when(buttonState[E_Button_Forward] != 0u)
       {
+        motFwBwCalibType = 1;
         updateSettingsState = 1;
-        Common_SetTargetSpeed(200, 200);
-        Settings_GetGroundBlackSettings(grounds_black);
-        delayCount = 0;
+        Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
+        Settings_GetGroundBlackSettings(groundsBlack);
+        Settings_GetGroundWhiteSettings(groundsWhite);
+        hysteresisLeft = (groundsWhite[0] - groundsBlack[0])/3;
+        hysteresisRight = (groundsWhite[1] - groundsBlack[1])/3;
+        ESP_LOGI(Tag, "ground hyst = %d, %d", hysteresisLeft, hysteresisRight);
+      }
+      when(buttonState[E_Button_Backward] != 0u)
+      {
+        motFwBwCalibType = 2;
+        updateSettingsState = 12;
+      }
+      if(!timerInitialized)
+      {
+        timerInitialized = true;
+        TimerHw_Init(1, 1, true, 0, NULL);
       }
       break;
     
-    case 1: // Go forward, the robot should be able to detect the first black line to start the time needed to travel to the second black line
-      if ((GetGroundValue(0) < (grounds_black[0]+HYSTERESIS)) && (GetGroundValue(1) < (grounds_black[1]+HYSTERESIS)))
+    case 1: // Go forward until the start of the first black line is detected, then stop since the time measurement need to be started from still
+      if ((GetGroundValue(0) < (groundsBlack[0]+hysteresisLeft)) && (GetGroundValue(1) < (groundsBlack[1]+hysteresisRight)))
       {
-        //delayCount++;
-        //if(delayCount >= 3)
-        //{
-        //  delayCount = 0;
-          updateSettingsState = 2;
-        //  fwCount = 0;
-        //}
-      //} else {
-        //delayCount = 0;
+        delayCount = 0;
+        Common_SetTargetSpeed(0, 0);
+        ESP_LOGI(Tag, "detected start first line = %d, %d", GetGroundValue(0), GetGroundValue(1));
+        updateSettingsState = 2;
       }
       break;
 
-    case 2: // Wait for the second black line detection
-      fwCount++;
-      if ((GetGroundValue(0) < (grounds_black[0]+HYSTERESIS)) && (GetGroundValue(1) < (grounds_black[1]+HYSTERESIS)))
+    case 2: // Wait a bit to be stopped, then start the forward time needed to travel to the second black line
+      delayCount++;
+      if(delayCount >= 20) // 400 ms
       {
-        delayCount++;
-        if(delayCount >= 3)
-        {
-          Common_SetTargetSpeed(0, 0);
-          updateSettingsState = 3;
-          bwCount = 0;
-        }
-      }      
-      break;
-    case 3:
+        TimerHw_Reset_Counter(1, 1);  
+        TimerHw_Start(1, 1);
+        Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
+        updateSettingsState = 3;
+      }
       break;
 
-  }  
+    case 3: // During the travel the robot should be able to detect the end of the first black line
+      if ((GetGroundValue(0) > (groundsWhite[0]-hysteresisLeft)) && (GetGroundValue(1) > (groundsWhite[1]-hysteresisRight)))
+      {
+        updateSettingsState = 4;
+        //Common_SetTargetSpeed(0, 0); 
+        ESP_LOGI(Tag, "detected end first line = %d, %d", GetGroundValue(0), GetGroundValue(1));
+      }
+      break;
+
+    case 4: // Wait for the start of the second black line detection, then compute the forward time
+      if ((GetGroundValue(0) < (groundsBlack[0]+hysteresisLeft)) && (GetGroundValue(1) < (groundsBlack[1]+hysteresisRight)))
+      {      
+        Setting.Mot15cm[0] = TimerHw_Get_Counter(1, 1);
+        TimerHw_Stop(1, 1);        
+        //Common_SetTargetSpeed(0, 0);     
+        ESP_LOGI(Tag, "detected start 2nd line = %d, %d", GetGroundValue(0), GetGroundValue(1));  
+        ESP_LOGI(Tag, "fwCounter = %lld", Setting.Mot15cm[0]);
+        delayCount = 0;
+        updateSettingsState = 5;
+      }      
+      break;
+
+    case 5: // // Wait a bit before stopping the robot
+      delayCount++;
+      if(delayCount >= 20) // 400 ms
+      {
+        Common_SetTargetSpeed(0, 0);
+        delayCount = 0;
+        updateSettingsState = 6;
+      } 
+      break;     
+
+    case 6: // // Wait a bit to be stopped, then start going backward
+      delayCount++;
+      if(delayCount >= 20) // 400 ms
+      {
+        Common_SetTargetSpeed(-MOVEMENT_SPEED, -MOVEMENT_SPEED);
+        updateSettingsState = 7;
+      } 
+      break;      
+
+    case 7: // The robot should be able to detect the end of the second black line
+      if ((GetGroundValue(0) < (groundsBlack[0]+hysteresisLeft)) && (GetGroundValue(1) < (groundsBlack[1]+hysteresisRight)))
+      {   
+        updateSettingsState = 8;
+        ESP_LOGI(Tag, "detected end 2nd line = %d, %d", GetGroundValue(0), GetGroundValue(1));
+      }    
+      break;
+
+    case 8: // Continue until the second black line is crossed, then stop since the time measurement need to be started from still
+      if ((GetGroundValue(0) > (groundsWhite[0]-hysteresisLeft)) && (GetGroundValue(1) > (groundsWhite[1]-hysteresisRight)))
+      {
+        updateSettingsState = 9;
+        Common_SetTargetSpeed(0, 0); 
+        ESP_LOGI(Tag, "detected start 2nd line = %d, %d", GetGroundValue(0), GetGroundValue(1));
+        delayCount = 0;
+      }    
+      break;
+
+    case 9: // // Wait a bit to be stopped, then start the backward time needed to travel to the first black line
+      delayCount++;
+      if(delayCount >= 20) // 400 ms
+      {
+        TimerHw_Reset_Counter(1, 1);  
+        TimerHw_Start(1, 1);
+        Common_SetTargetSpeed(-MOVEMENT_SPEED, -MOVEMENT_SPEED);
+        updateSettingsState = 10;
+      } 
+      break;
+
+    case 10: // During the travel the robot should be able to detect the end of the first black line
+      if ((GetGroundValue(0) < (groundsBlack[0]+hysteresisLeft)) && (GetGroundValue(1) < (groundsBlack[1]+hysteresisRight)))
+      {
+        updateSettingsState = 11;
+        ESP_LOGI(Tag, "detected end first line = %d, %d", GetGroundValue(0), GetGroundValue(1));
+      }
+      break;
+
+    case 11: // Wait for the first black line to be crossed, then stop the robot and compute the backward time
+      if ((GetGroundValue(0) > (groundsWhite[0]-hysteresisLeft)) && (GetGroundValue(1) > (groundsWhite[1]-hysteresisRight)))
+      {
+        Setting.Mot15cm[1] = TimerHw_Get_Counter(1, 1);
+        TimerHw_Stop(1, 1);        
+        Common_SetTargetSpeed(0, 0);
+        ESP_LOGI(Tag, "detected start first line = %d, %d", GetGroundValue(0), GetGroundValue(1));
+        ESP_LOGI(Tag, "bwCounter = %lld", Setting.Mot15cm[1]);
+        updateSettingsState = 12;
+      }      
+      break;
+
+    case 12: // Wait for the center buttons to save settings
+      break;
+
+  }
 }
 
 //_____________________________________________________________________________
@@ -2146,4 +2461,14 @@ static void RunLegoLedAnimation(void)
     Leds_SetLegoFrontBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
     Leds_SetLegoBackBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
   }
+}
+
+bool Behavior_IsMotionInProgress(void)
+{
+  return motionInProgress;
+}
+
+void Behavior_SetMotionInProgress(bool value)
+{
+  motionInProgress = value;
 }

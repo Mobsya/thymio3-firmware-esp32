@@ -148,6 +148,12 @@ extern void Leds_SetSingleBrightness(T_Led led, uint8_t brightness);
 extern void Leds_SetCircleBrightness(uint8_t l0, uint8_t l1, uint8_t l2, uint8_t l3,
                                      uint8_t l4, uint8_t l5, uint8_t l6, uint8_t l7);
 
+//! \brief     Set the number of circle leds turned on based on current value showing a "progress bar"
+//! \pre       First initialize the LEDs
+//! \param     progress: positive 0..8 = turn on LEDs progressively clockwise, negative 0..-8 = turn on LEDs progressively counter-clockwise
+//! \return    None
+void Leds_SetCircleProgress(int8_t progress);
+
 //! \brief     Set the brightness of each buttons LED
 //! \pre       First initialize the LEDs
 //! \param     forward - Brightness of the LED associated with the forward button
