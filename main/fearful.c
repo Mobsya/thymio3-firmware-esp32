@@ -111,8 +111,7 @@ void Fearful_Run(void)
     // If all proximities "covered" then stop and play a sound
     if ((vmVariables.prox[1] > ACC_OBSTACLE) && (vmVariables.prox[2] > ACC_OBSTACLE) &&
         (vmVariables.prox[3] > ACC_OBSTACLE) &&
-        ((vmVariables.prox[5] > ACC_OBSTACLE) || (vmVariables.prox[6] > ACC_OBSTACLE))) //&&
-      //(vmVariables.ground_delta[0] > 130 && vmVariables.ground_delta[1] > 130))
+        ((vmVariables.prox[5] > ACC_OBSTACLE) || (vmVariables.prox[6] > ACC_OBSTACLE)))
     {
       Common_SetTargetSpeed(0, 0);
       if(play_state == 0) { // If not already playing

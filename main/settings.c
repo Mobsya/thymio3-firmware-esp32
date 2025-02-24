@@ -108,6 +108,14 @@ void Settings_Init(void)
   ESP_LOGI(Tag, "Ground black: %d, %d", Settings.GroundBlack[0], Settings.GroundBlack[1]);  
   Settings_LoadGroundWhiteFile();
   ESP_LOGI(Tag, "Ground white: %d, %d", Settings.GroundWhite[0], Settings.GroundWhite[1]);  
+  if(Settings.GroundWhite[0] == 0) // Something wrong is happening, start with default values
+  {
+    Settings.GroundWhite[0] = DEFAULT_GROUND_WHITE;
+  }
+  if(Settings.GroundWhite[1] == 0) // Something wrong is happening, start with default values
+  {
+    Settings.GroundWhite[1] = DEFAULT_GROUND_WHITE;
+  }
 
   ESP_LOGI(Tag, "Settings are initialized");
 }
@@ -640,97 +648,97 @@ void Settings_LoadMot15cmFile(void)
 
 //_____________________________________________________________________________
 
-void Settings_WriteMotors(int16_t* values)
+int Settings_WriteMotors(int16_t* values)
 {
-  FileSystem_Write(FileMotors, values, 4);
+  return FileSystem_Write(FileMotors, values, 4);
 }
 
 //_____________________________________________________________________________
 
-void Settings_WriteOffsetGyro(int16_t offsetGyro)
+int Settings_WriteOffsetGyro(int16_t offsetGyro)
 {
   int16_t input = offsetGyro;
 
-  FileSystem_Write(FileOffsetGyro, &input, sizeof(int16_t));
+  return FileSystem_Write(FileOffsetGyro, &input, sizeof(int16_t));
 }
 
 //_____________________________________________________________________________
 
-void Settings_WriteVolume(int16_t volume)
+int Settings_WriteVolume(int16_t volume)
 {
   int16_t input = volume;
 
-  FileSystem_Write(FileVolume, &input, sizeof(int16_t));
+  return FileSystem_Write(FileVolume, &input, sizeof(int16_t));
 }
 
 //_____________________________________________________________________________
 
-void Settings_WriteWhite(int16_t* values)
+int Settings_WriteWhite(int16_t* values)
 {
-  FileSystem_Write(FileWhite, values, 6);
+  return FileSystem_Write(FileWhite, values, 6);
 }
 
 //_____________________________________________________________________________
 
-void Settings_WriteBlack(int16_t* values)
+int Settings_WriteBlack(int16_t* values)
 {
-  FileSystem_Write(FileBlack, values, 6);
+  return FileSystem_Write(FileBlack, values, 6);
 }
 
 //_____________________________________________________________________________
 
-void Settings_WriteRC5Address(int16_t address)
+int Settings_WriteRC5Address(int16_t address)
 {
   int16_t input = address;
 
-  FileSystem_Write(FileRC5Address, &input, sizeof(int16_t));
+  return FileSystem_Write(FileRC5Address, &input, sizeof(int16_t));
 }
 
 //_____________________________________________________________________________
 
-void Settings_WriteMotFwBwFactor(float factor)
+int Settings_WriteMotFwBwFactor(float factor)
 {
   float input = factor;
 
-  FileSystem_Write(FileMotFwBw, &input, sizeof(float));
+  return FileSystem_Write(FileMotFwBw, &input, sizeof(float));
 }
 
 //_____________________________________________________________________________
 
-void Settings_WriteZeroOffGyro(int16_t* values)
+int Settings_WriteZeroOffGyro(int16_t* values)
 {
-  FileSystem_Write(FileZeroOffGyro, values, 6);
+  return FileSystem_Write(FileZeroOffGyro, values, 6);
 }
 
 //_____________________________________________________________________________
 
-void Settings_WriteGyroRotFactor(int16_t factor)
+int Settings_WriteGyroRotFactor(int16_t factor)
 {
   int16_t input = factor;
 
-  FileSystem_Write(FileGyroRotFactor, &input, sizeof(int16_t));
+  return FileSystem_Write(FileGyroRotFactor, &input, sizeof(int16_t));
 }
 
 //_____________________________________________________________________________
 
 
-void Settings_WriteGroundBlack(int16_t* offsets)
+int Settings_WriteGroundBlack(int16_t* offsets)
 {
-  FileSystem_Write(FileGroundBlack, offsets, 4);
+  return FileSystem_Write(FileGroundBlack, offsets, 4);
 }
 
 //_____________________________________________________________________________
 
-void Settings_WriteGroundWhite(int16_t* offsets)
+int Settings_WriteGroundWhite(int16_t* offsets)
 {
-  FileSystem_Write(FileGroundWhite, offsets, 4);
+  return FileSystem_Write(FileGroundWhite, offsets, 4);
 }
 
 //_____________________________________________________________________________
 
-void Settings_WriteMot15cm(uint64_t* values)
+int Settings_WriteMot15cm(uint64_t* values)
 {
-  FileSystem_Write(FileMot15cm, values, 16);
+  return FileSystem_Write(FileMot15cm, values, 16);
 }
 
 //_____________________________________________________________________________

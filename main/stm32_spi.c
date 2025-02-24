@@ -24,7 +24,7 @@
 #include "esp_log.h"
 
 #include "stm32_spi.h"
-
+#include "settings.h"
 #include "aseba_esp32.h"
 #include "pins_def.h"
 #include "spi.h"
@@ -66,6 +66,8 @@
 #define BEHAVIOR_STATUS_MESSAGE_LENGTH         2u  //!< Behavior status message length in bytes
 
 #define PROX_IR_SENSORS_NUM      7u  //!< Number of proximity IR sensors
+
+#define GROUND_MAX_VALUE 1023
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -117,6 +119,9 @@ static T_ProxIR ProxIR;
 //static int16_t ProxIR[PROX_IR_SENSORS_NUM] = {0, 0, 0, 0, 0, 0, 0};
 
 static T_GroundIR GroundIR;
+static int16_t groundsBlack[2];
+static int16_t groundsWhite[2];
+static int16_t groundsDeltaCalib[2];
 
 static int16_t Vbat = 0;
 static uint8_t clap_count = 0;
@@ -146,6 +151,27 @@ void STM32_Init(void)
 
   Current.Left = 0;
   Current.Right = 0;
+
+  Settings_GetGroundBlackSettings(groundsBlack);
+  Settings_GetGroundWhiteSettings(groundsWhite);
+  groundsDeltaCalib[0] = groundsWhite[0] - groundsBlack[0];
+  if(groundsDeltaCalib[0] < 1)
+  {
+    groundsDeltaCalib[0] = 1;
+  }
+  if(groundsDeltaCalib[0] > GROUND_MAX_VALUE)
+  {
+    groundsDeltaCalib[0] = GROUND_MAX_VALUE;
+  }
+  groundsDeltaCalib[1] = groundsWhite[1] - groundsBlack[1];
+  if(groundsDeltaCalib[1] < 1)
+  {
+    groundsDeltaCalib[1] = 1;
+  }
+  if(groundsDeltaCalib[1] > GROUND_MAX_VALUE)
+  {
+    groundsDeltaCalib[1] = GROUND_MAX_VALUE;
+  }
 }
 
 //_____________________________________________________________________________
@@ -364,14 +390,81 @@ T_ProxIR STM32_GetProxIRValues(void)
 
 //_____________________________________________________________________________
 
+void STM32_SetGroundThr(int16_t* white, int16_t* black)
+{
+  memcpy(groundsWhite, white, 4);
+  memcpy(groundsBlack, black, 4);
+  groundsDeltaCalib[0] = groundsWhite[0] - groundsBlack[0];
+  if(groundsDeltaCalib[0] < 1)
+  {
+    groundsDeltaCalib[0] = 1;
+  }
+  if(groundsDeltaCalib[0] > GROUND_MAX_VALUE)
+  {
+    groundsDeltaCalib[0] = GROUND_MAX_VALUE;
+  }
+  groundsDeltaCalib[1] = groundsWhite[1] - groundsBlack[1];
+  if(groundsDeltaCalib[1] < 1)
+  {
+    groundsDeltaCalib[1] = 1;
+  }
+  if(groundsDeltaCalib[1] > GROUND_MAX_VALUE)
+  {
+    groundsDeltaCalib[1] = GROUND_MAX_VALUE;
+  }
+}
+
+//_____________________________________________________________________________
+
 void STM32_SetGroundIRValues(int16_t* buffer, uint16_t position)
 {
+  static int32_t temp = 0;
   GroundIR.LeftAmbiant    = buffer[position];
   GroundIR.RightAmbiant   = buffer[position + 1u];
   GroundIR.LeftReflected  = buffer[position + 2u];
   GroundIR.RightReflected = buffer[position + 3u];
-  GroundIR.LeftDelta      = buffer[position + 4u];
-  GroundIR.RightDelta     = buffer[position + 5u];
+  GroundIR.LeftDelta      = GroundIR.LeftReflected - GroundIR.LeftAmbiant; //buffer[position + 4u]; // This is the calibrated delta from the STM32
+  if(GroundIR.LeftDelta < 0)
+  {
+    GroundIR.LeftDelta = 0;
+  }
+  GroundIR.RightDelta     = GroundIR.RightReflected - GroundIR.RightAmbiant; //buffer[position + 5u]; // This is the calibrated delta from the STM32
+  if(GroundIR.RightDelta < 0)
+  {
+    GroundIR.RightDelta = 0;
+  }
+  //ESP_LOGI(Tag, "1) amb=%d, refl=%d, delta=%d (%d), groundsBlack=%d, groundsDeltaCalib=%d", GroundIR.LeftAmbiant, GroundIR.LeftReflected, GroundIR.LeftDelta, buffer[position + 4u], groundsBlack[0], groundsDeltaCalib[0]);
+  // Put ground values in the range 0...GROUND_MAX_VALUE: (ground value - "on air offset") / "delta calib" * GROUND_MAX_VALUE
+  temp = GroundIR.LeftDelta - groundsBlack[0];
+  if(temp < 0)
+  {
+    GroundIR.LeftDelta = 0;
+  }
+  else
+  {
+    temp = temp*GROUND_MAX_VALUE/groundsDeltaCalib[0];
+    GroundIR.LeftDelta = temp;
+    if(GroundIR.LeftDelta > GROUND_MAX_VALUE)
+    {
+      GroundIR.LeftDelta = GROUND_MAX_VALUE;
+    }
+  }
+  //ESP_LOGI(Tag, "2) amb=%d, refl=%d, delta=%d (%d), groundsBlack=%d, groundsDeltaCalib=%d", GroundIR.LeftAmbiant, GroundIR.LeftReflected, GroundIR.LeftDelta, buffer[position + 4u], groundsBlack[0], groundsDeltaCalib[0]);
+
+  temp = GroundIR.RightDelta - groundsBlack[1];
+  if(temp < 0)
+  {
+    GroundIR.RightDelta = 0;
+  }
+  else
+  {
+    temp = temp*GROUND_MAX_VALUE/groundsDeltaCalib[1];
+    GroundIR.RightDelta = temp;
+    if(GroundIR.RightDelta > GROUND_MAX_VALUE)
+    {
+      GroundIR.RightDelta = GROUND_MAX_VALUE;
+    }    
+  }
 
   vmVariables.ground_ambiant[E_GroundIR_Left]   = GroundIR.LeftAmbiant;
   vmVariables.ground_ambiant[E_GroundIR_Right]    = GroundIR.RightAmbiant;
@@ -559,6 +652,13 @@ uint16_t GetGroundValue(uint8_t ground_id) {
 
 //_____________________________________________________________________________
 
+void GetGroundAmbients(int16_t* buffer) {
+  buffer[0] = GroundIR.LeftAmbiant;
+  buffer[1] = GroundIR.RightAmbiant;
+}
+
+//_____________________________________________________________________________
+
 uint16_t GetGroundAmbient(uint8_t ground_id) {
   switch(ground_id) {
     case 0:
@@ -570,6 +670,13 @@ uint16_t GetGroundAmbient(uint8_t ground_id) {
     default:
       return 0;    
   }
+}
+
+//_____________________________________________________________________________
+
+void GetGroundReflecteds(int16_t* buffer) {
+  buffer[0] = GroundIR.LeftReflected;
+  buffer[1] = GroundIR.RightReflected;
 }
 
 //_____________________________________________________________________________

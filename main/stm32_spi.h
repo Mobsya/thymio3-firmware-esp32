@@ -129,6 +129,8 @@ extern void STM32_SetProxIRValues(int16_t* buffer, uint16_t position);
 //! \return    None
 extern T_ProxIR STM32_GetProxIRValues(void);
 
+extern void STM32_SetGroundThr(int16_t* white, int16_t* black);
+
 extern void STM32_SetGroundIRValues(int16_t* buffer, uint16_t position);
 
 extern void STM32_SetProxIRData(int16_t* buffer, uint16_t position);
@@ -204,11 +206,23 @@ extern void GetGroundValues(int16_t* buffer);
 //! \return    proximity value (the lower the value, the darker the object)
 extern uint16_t GetGroundValue(uint8_t ground_id);
 
+//! \brief     Get last ground ambient values available.
+//! \pre       None
+//! \param     destination buffer
+//! \return    None
+extern void GetGroundAmbients(int16_t* buffer);
+
 //! \brief     Get last ground ambient value available.
 //! \pre       None
 //! \param     proximity id (0..1)
 //! \return    proximity ambient value (the higher the value, the brighter the ambient light)
 extern uint16_t GetGroundAmbient(uint8_t ground_id);
+
+//! \brief     Get last ground reflected values available.
+//! \pre       None
+//! \param     destination buffer
+//! \return    None
+extern void GetGroundReflecteds(int16_t* buffer);
 
 //! \brief     Get last ground reflected value available.
 //! \pre       None

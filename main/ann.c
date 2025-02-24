@@ -34,12 +34,14 @@
 #include "common.h"
 #include "leds.h"
 #include "stm32_spi.h"
+#include "settings.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
 #define MODE_PLAY 1
+#define GROUND_TRAINING_THR 100
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -103,6 +105,8 @@ uint8_t blue[3] = {20,0,0};
 
 bool check_long_press = false;
 uint16_t pressed_counter = 0;
+
+int16_t groundThr[2];
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -312,6 +316,30 @@ void prox(void)
   
   if(running_mode == MODE_PLAY)
   {
+    if((prox_ground_delta[0] < groundThr[0]) || (prox_ground_delta[1] < groundThr[1])) // Blue ground detected
+    {
+      leds_top[0] = red[0];
+      leds_top[1] = green[0];
+      leds_top[2] = blue[0];      
+      if(!training_state)
+      {
+        training_state = true;
+        feedback_received = false;
+      }
+    }
+    else
+    {
+      leds_top[0] = red[1];
+      leds_top[1] = green[1];
+      leds_top[2] = blue[1];       
+      if(training_state)
+      {
+        training_state = false;
+        feedback_received = false;
+      }      
+    }
+
+    /*
     ground_min = 1000;
     // detecting the ground color. If black (or no ground detected) I'm in a training environment, testing otherwise
     for(color_search=1; color_search<3; color_search++)
@@ -336,6 +364,7 @@ void prox(void)
       training_state = false;
       feedback_received = false;
     }
+    */
   }
 }
 
@@ -741,6 +770,9 @@ void ANN_Start(void)
     w_l[i] = 0;
     w_r[i] = 0;
   }
+  Settings_GetGroundBlackSettings(groundThr);
+  groundThr[0] += GROUND_TRAINING_THR;
+  groundThr[1] += GROUND_TRAINING_THR;  
 }
 
 //_____________________________________________________________________________

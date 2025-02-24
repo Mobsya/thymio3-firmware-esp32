@@ -139,7 +139,6 @@ static bool start_python_menu = false;
 static uint8_t updateSettingsState = 0;
 static uint8_t ledUpdateCount = 0;
 static uint8_t ledUpdatePos = 0;
-static uint8_t gyroCalibType = 0; // 0=no calibration done, 1=gyro offsets calibration, 2=gyro rotation calibration, 3=reset calibration
 bool motionInProgress = false;
 T_TimerSw *StopTimer = NULL; //!< Timer used to add a delay at the end of a movement
 
@@ -150,6 +149,9 @@ static int16_t correction = 0; // motors right/left correction
 static uint8_t motFwBwCalibType = 0; // 0=no calibration done, 1=calibration done, 2=reset calibration
 static int8_t motFwCorrCount = 0;
 static int8_t motBwCorrCount = 0;
+
+// Gyro calibration
+bool gyroRotCalibrated = false;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -305,7 +307,7 @@ void Behavior_Start(void)
     "behavior",       // Name of the task
     4096,             // Stack size in words
     NULL,             // Task input parameter
-    4,                // Priority of the task
+    6,                // Priority of the task
     &BehaviorTask,    // Task handle
     0);               // Core where the task should run
 
@@ -875,12 +877,12 @@ static void UpdateSettings(void)
         if(onSettingStart)
         {
           onSettingStart = false;
+          gyroRotCalibrated = false;
           Setting.ZeroOffGyro[0] = DEFAULT_OFFSET_GYRO_X;
           Setting.ZeroOffGyro[1] = DEFAULT_OFFSET_GYRO_Y;
           Setting.ZeroOffGyro[2] = DEFAULT_OFFSET_GYRO_Z;
           Setting.GyroRotFactor = DEFAULT_GYRO_ROT_FACTOR;
           Gyroscope_ResetAngle();
-          Setting.GyroRotFactor = DEFAULT_GYRO_ROT_FACTOR;
         }
         CalibrateGyro();
         break;
@@ -1064,7 +1066,11 @@ static void ExitSetting(T_Setting setting)
 
     case E_Setting_Volume:
       // Write to the settings file
-      Settings_WriteVolume(Setting.Volume);
+      if(Settings_WriteVolume(Setting.Volume) < 0)
+      {
+        Codec_Stop();
+        Codec_PlayOnboardSound(TONE_TYPE_BAD);
+      }
       Settings_SetVolumeSettings(Setting.Volume);
       ESP_LOGE(Tag, "Write volume: %d", Setting.Volume);
       break;
@@ -1072,7 +1078,11 @@ static void ExitSetting(T_Setting setting)
     case E_Setting_Motor:
       Common_SetTargetSpeed(0, 0);
       // Write to the settings file
-      Settings_WriteMotors(Setting.Motors);
+      if(Settings_WriteMotors(Setting.Motors) < 0)
+      {
+        Codec_Stop();
+        Codec_PlayOnboardSound(TONE_TYPE_BAD);
+      }      
       ESP_LOGE(Tag, "Write motor: %d %d", Setting.Motors[0], Setting.Motors[1]);
       break;
 
@@ -1081,10 +1091,18 @@ static void ExitSetting(T_Setting setting)
       //if(motFwBwCalibType == 1)
       //{
         Settings_SetMot15cmSettings(Setting.Mot15cm);
-        Settings_WriteMot15cm(Setting.Mot15cm);
+        if(Settings_WriteMot15cm(Setting.Mot15cm) < 0)
+        {
+          Codec_Stop();
+          Codec_PlayOnboardSound(TONE_TYPE_BAD);
+        }        
         Setting.MotFwBw = (float)Setting.Mot15cm[1]/(float)Setting.Mot15cm[0];
         Settings_SetMotFwBwSettings(Setting.MotFwBw);
-        Settings_WriteMotFwBwFactor(Setting.MotFwBw);
+        if(Settings_WriteMotFwBwFactor(Setting.MotFwBw) < 0)
+        {
+          Codec_Stop();
+          Codec_PlayOnboardSound(TONE_TYPE_BAD);
+        }        
         ESP_LOGE(Tag, "Write mot fw,bw,factor: %lld, %lld, %f", Setting.Mot15cm[0], Setting.Mot15cm[1], Setting.MotFwBw);
         //printf("Write mot fw,bw,factor: %lld, %lld, %f", Setting.Mot15cm[0], Setting.Mot15cm[1], Setting.MotFwBw);
         //fflush(stdout);
@@ -1105,41 +1123,43 @@ static void ExitSetting(T_Setting setting)
     	break;
 
     case E_Setting_Gyro:      
-      // Save data based on actual calibration done
-      if(gyroCalibType == 0) // No calibration done, reset to default
+      Settings_SetZeroOffGyroSettings(Setting.ZeroOffGyro);
+      if(Settings_WriteZeroOffGyro(Setting.ZeroOffGyro) < 0)
       {
-        Settings_SetZeroOffGyroSettings(Setting.ZeroOffGyro);
-        Settings_WriteZeroOffGyro(Setting.ZeroOffGyro);
-        ESP_LOGI(Tag, "Write zero gyro: %d, %d, %d", Setting.ZeroOffGyro[0], Setting.ZeroOffGyro[1], Setting.ZeroOffGyro[2]);
-        Settings_SetGyroRotFactorSettings(Setting.GyroRotFactor);
-        Settings_WriteGyroRotFactor(Setting.GyroRotFactor);
-        AngleController_UpdateRotFactor(Setting.GyroRotFactor);
-        ESP_LOGI(Tag, "Gyro rot stpes, factor, controller: %d, %d", Setting.GyroRotFactor, AngleController_GetRotFactor());         
-      }
-      if(gyroCalibType == 1)
-      {
-        Settings_SetZeroOffGyroSettings(Setting.ZeroOffGyro);
-        Settings_WriteZeroOffGyro(Setting.ZeroOffGyro);
-        ESP_LOGI(Tag, "Write zero gyro: %d, %d, %d", Setting.ZeroOffGyro[0], Setting.ZeroOffGyro[1], Setting.ZeroOffGyro[2]);
-      }
-      else if(gyroCalibType == 2)
+        Codec_Stop();
+        Codec_PlayOnboardSound(TONE_TYPE_BAD);
+      }      
+      ESP_LOGI(Tag, "Write zero gyro: %d, %d, %d", Setting.ZeroOffGyro[0], Setting.ZeroOffGyro[1], Setting.ZeroOffGyro[2]);
+      if(gyroRotCalibrated)
       {
         Setting.GyroRotFactor = -Gyroscope_GetAngleZ()/4;
-
-        //gyroRotFactorTemp = Settings_GetGyroRotFactorSettings() + ((gyroRotFactorZ - Gyroscope_GetAngleZ())/4); // The robot is tuned for a complete turn (360 degrees), divide by 4 because the factor is related to 90 degrees.
-        Settings_SetGyroRotFactorSettings(Setting.GyroRotFactor);
-        Settings_WriteGyroRotFactor(Setting.GyroRotFactor);
-        AngleController_UpdateRotFactor(Setting.GyroRotFactor);
-        ESP_LOGI(Tag, "Gyro rot stpes, factor, controller: %d, %d", Setting.GyroRotFactor, AngleController_GetRotFactor());      
       }
-      gyroCalibType = 0;
+      Settings_SetGyroRotFactorSettings(Setting.GyroRotFactor);
+      if(Settings_WriteGyroRotFactor(Setting.GyroRotFactor) < 0)
+      {
+        Codec_Stop();
+        Codec_PlayOnboardSound(TONE_TYPE_BAD);
+      }      
+      AngleController_UpdateRotFactor(Setting.GyroRotFactor);
+      ESP_LOGI(Tag, "Gyro rot factor, controller: %d, %d", Setting.GyroRotFactor, AngleController_GetRotFactor());               
       break;
 
     case E_Setting_Ground:  
-      Settings_WriteGroundWhite(Setting.GroundWhite);
+      if(Settings_WriteGroundWhite(Setting.GroundWhite) < 0)
+      {
+        Codec_Stop();
+        Codec_PlayOnboardSound(TONE_TYPE_BAD);
+      }      
       Settings_SetGroundWhiteSettings(Setting.GroundWhite);  
-      Settings_WriteGroundBlack(Setting.GroundBlack);
-      Settings_SetGroundBlackSettings(Setting.GroundBlack);      
+      if(Settings_WriteGroundBlack(Setting.GroundBlack) < 0)
+      {
+        Codec_Stop();
+        Codec_PlayOnboardSound(TONE_TYPE_BAD);
+      }      
+      Settings_SetGroundBlackSettings(Setting.GroundBlack);
+      Common_SetGroundThr(Setting.GroundBlack);
+      STM32_SetGroundThr(Setting.GroundWhite, Setting.GroundBlack);
+      ESP_LOGI(Tag, "Ground calib white: %d, %d black: %d, %d", Setting.GroundWhite[0], Setting.GroundWhite[1], Setting.GroundBlack[0], Setting.GroundBlack[1]);
       break;
 
     default:
@@ -1588,14 +1608,12 @@ static void CalibrateGyro(void)
       {
         updateSettingsState = 1;
         delayCount = 0;
-        gyroCalibType = 1;
       }
       when(buttonState[E_Button_Right] != 0u)
       {
         AngleController_UpdateRotFactor(DEFAULT_GYRO_ROT_FACTOR);
-        updateSettingsState = 3;
+        updateSettingsState = 2;
         AngleController_Start(-360, MOVEMENT_SPEED);
-        gyroCalibType = 2;
       }     
       break;
     
@@ -1607,54 +1625,53 @@ static void CalibrateGyro(void)
         Gyroscope_DisableContinuousCalib();
         Gyroscope_Calibrate();
         Gyroscope_GetCalibration(Setting.ZeroOffGyro);
-        updateSettingsState = 2;
+        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+        updateSettingsState = 0;
       }
       break;
 
-    case 2: // Wait for the center button press in order to save the calibration
-      break;
-
-    case 3: // Wait rotation is terminated
+    case 2: // Wait rotation is terminated
       if(AngleController_Completed())
       {
-        updateSettingsState = 4;
+        updateSettingsState = 3;
         delayCount = 0;
       }
       break;
 
-    case 4: // Wait a bit to be sure all is still
+    case 3: // Wait a bit to be sure all is still
       delayCount++;
       if(delayCount == 20)
       {
-        updateSettingsState = 5;
+        updateSettingsState = 4;
         delayCount = 0;
         Gyroscope_ResetAngle();
+        gyroRotCalibrated = true;
       }
       break;
 
-    case 5: // Wait for rotation tuning (left/right) and calibration end (center button)
+    case 4: // Wait for rotation tuning (left/right) and calibration end (center button)
       when(buttonState[E_Button_Right] != 0u)
       {
         rotCount = 0;        
-        updateSettingsState = 6;
+        updateSettingsState = 5;
         Common_SetTargetSpeed(MOVEMENT_SPEED/2, -MOVEMENT_SPEED/2);
       }
       when(buttonState[E_Button_Left] != 0u)
       {
         rotCount = 0;
-        updateSettingsState = 6;
+        updateSettingsState = 5;
         Common_SetTargetSpeed(-MOVEMENT_SPEED/2, MOVEMENT_SPEED/2);
       }
       break;
 
-    case 6: // Wait tuning rotation end
+    case 5: // Wait tuning rotation end
       rotCount++;
       if(rotCount == 6)
       {
         Common_SetTargetSpeed(0, 0);
-        updateSettingsState = 5;        
+        updateSettingsState = 4;        
       }    
-      break;      
+      break;   
 
   }
 
@@ -1665,7 +1682,9 @@ static void CalibrateGyro(void)
 static void CalibrateGround(void)
 {
   uint8_t* buttonState = Buttons_GetStatus();
-  static uint8_t delayCount = 0;  
+  static uint8_t delayCount = 0;
+  static int16_t tempAmbient[2];
+  static int16_t tempReflected[2];
 
   // White
   ledUpdateCount++;
@@ -1725,7 +1744,18 @@ static void CalibrateGround(void)
       Leds_SetLegoBackProgress(delayCount/6);
       if(delayCount == 50) // Based on 50 Hz behaviors update rate
       {
-        GetGroundValues(Setting.GroundWhite);   
+        GetGroundAmbients(tempAmbient);
+        GetGroundReflecteds(tempReflected);
+        Setting.GroundWhite[0] = tempReflected[0] - tempAmbient[0];
+        if(Setting.GroundWhite[0] < 0)
+        {
+          Setting.GroundWhite[0] = 0;
+        }
+        Setting.GroundWhite[1] = tempReflected[1] - tempAmbient[1];
+        if(Setting.GroundWhite[1] < 0)
+        {
+          Setting.GroundWhite[1] = 0;
+        }        
         updateSettingsState = 0;
       }
       break;
@@ -1735,7 +1765,18 @@ static void CalibrateGround(void)
       Leds_SetLegoBackProgress(delayCount/6);
       if(delayCount == 50) // Based on 50 Hz behaviors update rate
       {
-        GetGroundValues(Setting.GroundBlack); 
+        GetGroundAmbients(tempAmbient);
+        GetGroundReflecteds(tempReflected);
+        Setting.GroundBlack[0] = tempReflected[0] - tempAmbient[0];
+        if(Setting.GroundBlack[0] < 0)
+        {
+          Setting.GroundBlack[0] = 0;
+        }
+        Setting.GroundBlack[1] = tempReflected[1] - tempAmbient[1];
+        if(Setting.GroundBlack[1] < 0)
+        {
+          Setting.GroundBlack[1] = 0;
+        }
         updateSettingsState = 0;
       }
       break;

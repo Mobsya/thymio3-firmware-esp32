@@ -46,7 +46,7 @@
 #define DIR_LOST     (10)
 #define DIR_FRONT     (0)
 
-#define HYSTERESIS 150
+#define GROUND_THR 150
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -95,23 +95,23 @@ void LineTracker_Start(void)
 {
   int16_t groundOffsets[2];
   Settings_GetGroundBlackSettings(groundOffsets);
-  ground_left_black = groundOffsets[0] + HYSTERESIS;
+  ground_left_black = groundOffsets[0] + GROUND_THR;
   if(ground_left_black > 1023)
   {
     ground_left_black = 1023;
   }
-  ground_right_black = groundOffsets[1] + HYSTERESIS;
+  ground_right_black = groundOffsets[1] + GROUND_THR;
   if(ground_right_black > 1023)
   {
     ground_right_black = 1023;
   }  
   Settings_GetGroundWhiteSettings(groundOffsets);
-  ground_left_white = groundOffsets[0] - HYSTERESIS;
+  ground_left_white = groundOffsets[0] - GROUND_THR;
   if(ground_left_white < 0)
   {
     ground_left_white = 0;
   }
-  ground_right_white = groundOffsets[1] - HYSTERESIS;
+  ground_right_white = groundOffsets[1] - GROUND_THR;
   if(ground_right_white < 0)
   {
     ground_right_white = 0;
@@ -161,8 +161,8 @@ static bool CalibrateLevelUsingButtons()
   // Calibration feature
   if (buttonState[E_Button_Backward] && buttonState[E_Button_Forward]) // Forward + backward => black
   {
-    ground_left_black = vmVariables.ground_delta[0] + HYSTERESIS;  // Add hysteresis offset
-    ground_right_black = vmVariables.ground_delta[1] + HYSTERESIS;
+    ground_left_black = vmVariables.ground_delta[0] + GROUND_THR;  // Add GROUND_THR offset
+    ground_right_black = vmVariables.ground_delta[1] + GROUND_THR;
     if((ground_left_black > 1024) || (ground_right_black > 1024)) {
       calibrationFailed = true;
     } else {
@@ -174,8 +174,8 @@ static bool CalibrateLevelUsingButtons()
 
   if (buttonState[E_Button_Left] && buttonState[E_Button_Right]) // Left + right => white
   {
-    ground_left_white = vmVariables.ground_delta[0] - HYSTERESIS; // Subtract hysteresis offset
-    ground_right_white = vmVariables.ground_delta[1] - HYSTERESIS;
+    ground_left_white = vmVariables.ground_delta[0] - GROUND_THR; // Subtract GROUND_THR offset
+    ground_right_white = vmVariables.ground_delta[1] - GROUND_THR;
     if((ground_left_white < 0) || (ground_right_white < 0)) {
       calibrationFailed = true;
     } else {

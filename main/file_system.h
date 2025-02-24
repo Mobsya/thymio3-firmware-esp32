@@ -66,8 +66,8 @@ extern bool FileSystem_CreateFile(const char* filename);
 //! \param     fileName - File name
 //! \param     input - Data to write
 //! \param     size - Size of the data
-//! \return    None
-extern void FileSystem_Write(const char* filename, void* input, long int size);
+//! \return    error (0=no error)
+extern int FileSystem_Write(const char* filename, void* input, long int size);
 
 //! \brief     Read number of bytes from the file
 //! \pre       First initialize the file system

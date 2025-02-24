@@ -35,9 +35,9 @@
 
 #define DETECT                  100 //500
 #define SPEED_INCREMENT         50
-#define MAX_SPEED              300
-#define MIN_SPEED            (-300)
-#define TARGET_DIST 2200
+#define MAX_SPEED              370
+#define MIN_SPEED            (-370)
+#define TARGET_DIST 2800
 #define TARGET_DIST_THR 200
 
 //-----------------------------------------------------------------------------
@@ -227,11 +227,11 @@ void Friendly_Run(void)
 
 
 	// Audio management
-  when(max > DETECT) // When something detected at long distance then play a sound...remove it because add confusion
-  {
-    Codec_Stop();
-    Codec_PlayOnboardSound(TONE_TYPE_DETECT);
-  }
+  //when(max > DETECT) // When something detected at long distance then play a sound...remove it because add confusion
+  //{
+  //  Codec_Stop();
+  //  Codec_PlayOnboardSound(TONE_TYPE_DETECT);
+  //}
 
 	if(speedDiff == 0 && speed_l == 0 && sound_done == 0 && max > DETECT) {
 		sound_done = 1;

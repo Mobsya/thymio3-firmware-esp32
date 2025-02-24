@@ -151,9 +151,9 @@ bool FileSystem_CreateFile(const char* filename)
 
 //_____________________________________________________________________________
 
-void FileSystem_Write(const char* filename, void* input, long int size)
+int FileSystem_Write(const char* filename, void* input, long int size)
 {
-  ESP_LOGI(Tag, "Opening file");
+  ESP_LOGI(Tag, "Writing file...");
 
   FILE* file = fopen(filename, "w");
   int err=0;
@@ -164,17 +164,16 @@ void FileSystem_Write(const char* filename, void* input, long int size)
     if(err < 1) {
       printf("fwrite error=%d\n", err);
     }
-    ESP_LOGI(Tag, "File %s written", filename);
-    printf("File %s written (%ld bytes)", filename, size);
+    ESP_LOGI(Tag, "File %s written (%ld bytes)", filename, size);
   }
   else
   {
-    //ESP_LOGE(Tag, "Failed to open file for writing");
-    printf("Failed to open file for writing");
+    ESP_LOGI(Tag, "Failed to open file for writing");
+    err = -1;
   }
 
   fclose(file);
-
+  return err;
 }
 
 //_____________________________________________________________________________

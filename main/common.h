@@ -106,4 +106,10 @@ extern void Common_SetSpeedUsingButtons(int16_t* speed, int16_t increment, int16
 //! \return    None
 extern uint8_t Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue);
 
+//! \brief     Set the ground thresholds used for edge table detection
+//! \pre       None
+//! \param     values - new calibrated values
+//! \return    None
+extern void Common_SetGroundThr(int16_t* values);
+
 #endif // COMMON_H_

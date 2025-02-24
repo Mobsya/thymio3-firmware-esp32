@@ -26,6 +26,7 @@
 #include "aseba_esp32.h"
 #include "behavior.h"
 #include "bh1745nuc.h"
+#include "codec.h"
 #include "leds.h"
 #include "settings.h"
 
@@ -299,12 +300,20 @@ bool ColorSensor_Calibrate(uint8_t choice, uint8_t* calibrationStatus)
       values[0] = White.Red;
       values[1] = White.Green;
       values[2] = White.Blue;
-      Settings_WriteWhite(values);
+      if(Settings_WriteWhite(values) < 0)
+      {
+        Codec_Stop();
+        Codec_PlayOnboardSound(TONE_TYPE_BAD);
+      }      
 
       values[0] = Black.Red;
       values[1] = Black.Green;
       values[2] = Black.Blue;
-      Settings_WriteBlack(values);
+      if(Settings_WriteBlack(values) < 0)
+      {
+        Codec_Stop();
+        Codec_PlayOnboardSound(TONE_TYPE_BAD);
+      }
 
       *calibrationStatus = 2u;
       ESP_LOGE(Tag, "Color calibration is OK");
@@ -343,7 +352,11 @@ void ColorSensor_CalibrateWhite(void)
   //Range.Green = (White.Green - Black.Green);
   //Range.Blue  = (White.Blue - Black.Blue);
 
-  Settings_WriteWhite(values);
+  if(Settings_WriteWhite(values) < 0)
+  {
+    Codec_Stop();
+    Codec_PlayOnboardSound(TONE_TYPE_BAD);
+  }  
   Settings_SetWhiteRedSettings(White.Red);
   Settings_SetWhiteGreenSettings(White.Green);
   Settings_SetWhiteBlueSettings(White.Blue);
@@ -367,7 +380,11 @@ void ColorSensor_CalibrateBlack(void)
   //Range.Green = (White.Green - Black.Green);
   //Range.Blue  = (White.Blue - Black.Blue);
 
-  Settings_WriteBlack(values);
+  if(Settings_WriteBlack(values) < 0)
+  {
+    Codec_Stop();
+    Codec_PlayOnboardSound(TONE_TYPE_BAD);
+  }  
   Settings_SetBlackRedSettings(Black.Red);
   Settings_SetBlackGreenSettings(Black.Green);
   Settings_SetBlackBlueSettings(Black.Blue);

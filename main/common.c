@@ -21,7 +21,7 @@
 #include "esp_log.h"
 #include <stdio.h>
 #include "common.h"
-
+#include "esp_log.h"
 #include "aseba_esp32.h"
 #include "buttons.h"
 #include "leds.h"
@@ -32,7 +32,6 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define GROUND_IR_THRESHOLD    280 //130
 #define GROUND_EDGE_OFFSET 100
 
 //-----------------------------------------------------------------------------
@@ -47,7 +46,8 @@
 // Private Data
 //-----------------------------------------------------------------------------
 
-//static const char* Tag = "common";
+static const char* Tag = "common";
+int16_t groundThr[2];
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -270,8 +270,6 @@ void Common_SetSpeedUsingButtons(int16_t* speed, int16_t increment, int16_t max,
 uint8_t Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue)
 {
   static bool first = true;
-  static int16_t groundThr[2];
-  
 
   if(first)
   {
@@ -279,7 +277,7 @@ uint8_t Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue
     Settings_GetGroundBlackSettings(groundThr);
     groundThr[0] += GROUND_EDGE_OFFSET;
     groundThr[1] += GROUND_EDGE_OFFSET;
-    printf("ground thr: l=%d r=%d", groundThr[0], groundThr[1]);
+    ESP_LOGI(Tag, "ground thr: l=%d r=%d", groundThr[0], groundThr[1]);
   }
 
   if ((vmVariables.ground_delta[0] < groundThr[0]) ||
@@ -301,4 +299,10 @@ uint8_t Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue
     Leds_SetBodyBrightness(red, green, blue);
     return 0;
   }
+}
+
+void Common_SetGroundThr(int16_t* values)
+{
+  groundThr[0] = values[0] + GROUND_EDGE_OFFSET;
+  groundThr[1] = values[1] + GROUND_EDGE_OFFSET;
 }

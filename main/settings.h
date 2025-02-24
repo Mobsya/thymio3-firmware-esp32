@@ -439,74 +439,74 @@ extern void Settings_LoadMot15cmFile(void);
 //! \brief     Write the motors corrections to the settings file
 //! \pre       First initialize the settings
 //! \param     values - motors corrections (left, right)
-//! \return    None
-extern void Settings_WriteMotors(int16_t* values);
+//! \return    error (0=no error)
+extern int Settings_WriteMotors(int16_t* values);
 
 //! \brief     Write the offset gyroscope value to the settings file
 //! \pre       First initialize the settings
 //! \param     offsetGyro - Offset gyroscope value
-//! \return    None
-extern void Settings_WriteOffsetGyro(int16_t offsetGyro);
+//! \return    error (0=no error)
+extern int Settings_WriteOffsetGyro(int16_t offsetGyro);
 
 //! \brief     Write the volume value to the settings file
 //! \pre       First initialize the settings
 //! \param     volume - Volume value
-//! \return    None
-extern void Settings_WriteVolume(int16_t volume);
+//! \return    error (0=no error)
+extern int Settings_WriteVolume(int16_t volume);
 
 //! \brief     Write the white (red, green, blue) offsets settings file
 //! \pre       First initialize the settings
 //! \param     offsets
-//! \return    None
-extern void Settings_WriteWhite(int16_t* values);
+//! \return    error (0=no error)
+extern int Settings_WriteWhite(int16_t* values);
 
 //! \brief     Write the black (red, green, blue) offsets settings file
 //! \pre       First initialize the settings
 //! \param     offsets
-//! \return    None
-extern void Settings_WriteBlack(int16_t* values);
+//! \return    error (0=no error)
+extern int Settings_WriteBlack(int16_t* values);
 
 //! \brief     Write the remote address to the settings file
 //! \pre       First initialize the settings
 //! \param     address - Remote address
-//! \return    None
-extern void Settings_WriteRC5Address(int16_t address);
+//! \return    error (0=no error)
+extern int Settings_WriteRC5Address(int16_t address);
 
 //! \brief     Write the forward to backward motors correction settings file
 //! \pre       First initialize the settings
 //! \param     factor - forward to backward motors correction
-//! \return    None
-extern void Settings_WriteMotFwBwFactor(float factor);
+//! \return    error (0=no error)
+extern int Settings_WriteMotFwBwFactor(float factor);
 
 //! \brief     Write the gyro axes offsets settings file
 //! \pre       First initialize the settings
 //! \param     offsets
-//! \return    None
-extern void Settings_WriteZeroOffGyro(int16_t* values);
+//! \return    error (0=no error)
+extern int Settings_WriteZeroOffGyro(int16_t* values);
 
 //! \brief     Write the gyro rotation factor settings file
 //! \pre       First initialize the settings
 //! \param     factor - rotation factor
-//! \return    None
-extern void Settings_WriteGyroRotFactor(int16_t factor);
+//! \return    error (0=no error)
+extern int Settings_WriteGyroRotFactor(int16_t factor);
 
 //! \brief     Write the grounds black offsets settings file
 //! \pre       First initialize the settings
 //! \param     offsets
-//! \return    None
-extern void Settings_WriteGroundBlack(int16_t* offsets);
+//! \return    error (0=no error)
+extern int Settings_WriteGroundBlack(int16_t* offsets);
 
 //! \brief     Write the grounds white offsets settings file
 //! \pre       First initialize the settings
 //! \param     offsets
-//! \return    None
-extern void Settings_WriteGroundWhite(int16_t* offsets);
+//! \return    error (0=no error)
+extern int Settings_WriteGroundWhite(int16_t* offsets);
 
 //! \brief     Write the motors forward and backward timers values to travel 15 cm settings file
 //! \pre       First initialize the settings
 //! \param     timer values
-//! \return    None
-extern void Settings_WriteMot15cm(uint64_t* values);
+//! \return    error (0=no error)
+extern int Settings_WriteMot15cm(uint64_t* values);
 
 //! \brief     Read the motors corrections from the settings file
 //! \pre       First initialize the settings
