@@ -627,7 +627,7 @@ static void SetAccelerometerLeds(void)
 
     intensity = (16 - (abs(acc.Z) >> 10));
 
-    if ((intensity < 0) || ((abs(acc.X) + abs(acc.Y)) <= 2500))
+    if ((intensity < 0) || ((abs(acc.X) + abs(acc.Y)) <= 1700))
     {
       intensity = 0;
     }
@@ -647,7 +647,8 @@ static void SetAccelerometerLeds(void)
       {
         if(ind == led)
         {           
-          Leds_SetSingleBrightness(ind, ((4-intensity)<0)?0:(4-intensity));
+          //Leds_SetSingleBrightness(ind, ((6-intensity*3)<0)?0:(6-intensity*3));
+          Leds_SetSingleBrightness(ind, ((4-intensity*2)<0)?0:(4-intensity*2));
         }
         else
         {

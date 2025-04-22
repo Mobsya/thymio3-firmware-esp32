@@ -34,14 +34,14 @@
 enum
 {
   E_Mode_Menu,
+  E_Mode_Sequence,  
   E_Mode_Friendly,
   E_Mode_Explorer,
   E_Mode_Fearful,
   E_Mode_Attentive,
   E_Mode_Investigator,
   E_Mode_Obedient,  
-  E_Mode_Painter,  
-  E_Mode_Sequence,
+  E_Mode_Painter,
   E_Mode_Musician,
   E_Mode_NN,
   E_Mode_Max = E_Mode_NN

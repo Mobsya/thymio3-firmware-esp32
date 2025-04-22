@@ -27,7 +27,7 @@
 #include "common.h"
 #include "leds.h"
 #include "rc5.h"
-
+#include "stm32_spi.h"
 #include "attentive.h"
 
 //-----------------------------------------------------------------------------
@@ -97,7 +97,55 @@ void Attentive_Run(void) {
 	static char claptime;
 	uint8_t brightness = Common_GetBodyColorPulse();
 	int16_t command = RC5_GetCommand(&toggle);	
-	
+	static int16_t mic_vol = 0;
+
+	mic_vol = STM32_GetMicrophoneIntensity();
+	if(mic_vol < 10)
+	{
+		Leds_SetLegoBackProgress(0);
+		Leds_SetLegoFrontProgress(0);
+	}
+	else if(mic_vol < 30)
+	{
+		Leds_SetLegoBackProgress(1);
+		Leds_SetLegoFrontProgress(1);
+	}
+	else if(mic_vol < 70)
+	{
+		Leds_SetLegoBackProgress(2);
+		Leds_SetLegoFrontProgress(2);		
+	}	
+	else if(mic_vol < 120)
+	{
+		Leds_SetLegoBackProgress(3);
+		Leds_SetLegoFrontProgress(3);		
+	}
+	else if(mic_vol < 180)
+	{
+		Leds_SetLegoBackProgress(4);
+		Leds_SetLegoFrontProgress(4);		
+	}
+	else if(mic_vol < 250)
+	{
+		Leds_SetLegoBackProgress(5);
+		Leds_SetLegoFrontProgress(5);		
+	}
+	else if(mic_vol < 350)
+	{
+		Leds_SetLegoBackProgress(6);
+		Leds_SetLegoFrontProgress(6);		
+	}
+	else if(mic_vol < 500)
+	{
+		Leds_SetLegoBackProgress(7);
+		Leds_SetLegoFrontProgress(7);		
+	}
+	else
+	{
+		Leds_SetLegoBackProgress(8);
+		Leds_SetLegoFrontProgress(8);			
+	}
+
 	if(skip_clap_counter > 0) { // Avoid confusing buttons sound with clap when entering attentive mode.
 		skip_clap_counter--;	// The behaviors task is called @ 50 Hz, thus wait 1 second.
 		Leds_SetBodyBrightness(0, 0, Common_GetBodyColorPulse());

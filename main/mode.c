@@ -108,7 +108,7 @@ void Mode_Init(bool enableVM)
 
   StartMode(E_Mode_Menu);
   navigation_state = RUNNING_MENU;
-  SelectMode = E_Mode_Friendly;
+  SelectMode = E_Mode_Sequence;
 /*
   if (VMIsActive)
   {

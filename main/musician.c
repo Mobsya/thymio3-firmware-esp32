@@ -9,7 +9,7 @@
 //! \file    musician.c
 //! \brief   This module provides the useful functions to use the musician mode
 //!
-//! \author  Vincent Gonet
+//! \author  Vincent Gonet, Stefano Morgani
 //!
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
@@ -26,6 +26,8 @@
 #include "color_sensor.h"
 #include "common.h"
 #include "leds.h"
+#include "settings.h"
+#include "stm32_spi.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -34,7 +36,7 @@
 #define INITIAL_SPEED          100
 #define MAX_SPEED              500
 #define MIN_SPEED              100
-
+#define GROUND_EDGE_OFFSET 100
 #define SPEED_INCREMENT         50
 #define NEW_COLOR_THR           10 // After 200 ms (behavior run @ 50 hz)
 //-----------------------------------------------------------------------------
@@ -50,6 +52,7 @@
 //-----------------------------------------------------------------------------
 
 static const char* Tag = "musician";
+int16_t groundThr[2];
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -72,7 +75,9 @@ void Musician_Init(void)
 
 void Musician_Start(void)
 {
-
+  Settings_GetGroundBlackSettings(groundThr);
+  groundThr[0] += GROUND_EDGE_OFFSET;
+  groundThr[1] += GROUND_EDGE_OFFSET;  
 }
 
 //_____________________________________________________________________________
@@ -92,7 +97,7 @@ void Musician_Run(void)
   static T_Color showColor = E_Color_Unknown;
 
   T_Color color = ColorSensor_GetColor();
-  T_HSV hsvTemp = ColorSensor_GetHsv();
+  //T_HSV hsvTemp = ColorSensor_GetHsv();
 
   if(color != colorPrev) 
   {
@@ -103,13 +108,20 @@ void Musician_Run(void)
   // Buttons management
   Common_SetSpeedUsingButtons(&speed, SPEED_INCREMENT, MAX_SPEED, MIN_SPEED);
 
-  if (speed >= 0)
+  if ((GetGroundValue(0) < groundThr[0]) || (GetGroundValue(1) < groundThr[1]))
   {
-    Common_HandlePositiveSpeed(speed);
+    Common_SetTargetSpeed(0, 0);
   }
   else
   {
-    Common_HandleNegativeSpeed(speed);
+    if (speed >= 0)
+    {
+      Common_HandlePositiveSpeed(speed);
+    }
+    else
+    {
+      Common_HandleNegativeSpeed(speed);
+    }
   }
 
   if(color == E_Color_Red)

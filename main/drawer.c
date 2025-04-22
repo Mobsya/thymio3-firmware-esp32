@@ -45,12 +45,13 @@
 #define MOVEMENT_SPEED_DELTA 80 //!< Movement speed difference
 #define MAX_ROTATION_SPEED 140 //!< Maximum rotation speed allowed
 #define MAX_ROTATION_SPEED2 100 //!< Maximum rotation speed allowed
-#define DRAW_FLOWER 0
-#define DRAW_STAR 1
+#define DRAW_POLYGONS 0
+#define DRAW_SHAPES 1
 #define STOP_DELAY 300 // ms
 #define DELAY_AFTER_ROTATION 10 // 200 ms (based on 50 Hz behaviors update rate)
 #define PROX_THRESHOLD 1500
 #define DEFAULT_FW_MOTION_DURATION 6000000 // Timer ticks for forward duration
+#define LED_ANIMATION_DELAY 15 // 300 ms (based on 50 Hz behaviors update rate)
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -61,18 +62,8 @@ typedef enum
 {
   E_State_Idle,
   E_State_Drawing,
+  E_State_LedAnimation,
 } T_State;
-
-//! \details States of the play state machine for flower
-typedef enum
-{
-  E_DrawFlowerState_Init,
-  E_DrawFlowerState_DrawPetalFw,
-  E_DrawFlowerState_WaitDrawPetalFw,
-  E_DrawFlowerState_DrawPetalBw,
-  E_DrawFlowerState_WaitDrawPetalBw,
-  E_DrawFlowerState_WaitStepRot,
-} T_DrawFlowerState;
 
 //! \details States of the play state machine for star
 typedef enum
@@ -83,6 +74,15 @@ typedef enum
   E_DrawStarState_WaitFwRot
 } T_DrawStarState;
 
+//! \details States of the play state machine for star
+typedef enum
+{
+  E_DrawPolygonState_Init,
+  E_DrawPolygonState_DrawFw,
+  E_DrawPolygonState_WaitDrawFw,
+  E_DrawPolygonState_WaitFwRot
+} T_DrawPolygonState;
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
@@ -92,20 +92,17 @@ typedef enum
 //-----------------------------------------------------------------------------
 
 static const char *Tag = "drawer"; //!< Log tag
-
+static uint8_t ledAnimationState = 0;
+static uint8_t ledAnimationCounter = 0;
 static T_State State = E_State_Idle;             //!< State of the main state machine
-static uint8_t StepsIndex = 2;
-static int16_t StepStartAngle = 0;
-static int16_t StepDeltaAngle = 0;
+static uint8_t StepsIndex = 0;
 static uint16_t StepsCounter = 0;
-static T_DrawFlowerState DrawState = E_DrawFlowerState_Init; //!< State of the draw state machine
-static uint8_t drawSelection = DRAW_FLOWER;
-static int16_t DegreesPerStepFlower[16] = {0, 0, 120, 90, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static int16_t StepsPerRotationFlower[16] = {0, 0, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static int16_t DegreesPerStepStar[16] = {0, 0, 0, 0, 180-36, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static int16_t StepsPerStar[16] = {0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 3, 4, 5, 0, 0, 0};
-static int16_t DegreesPerStepPolygon[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 120, 90, 72, 60, 0, 0};
-static int16_t StepsPerPolygon[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 4, 5, 6, 0, 0};
+static uint8_t drawSelection = DRAW_POLYGONS;
+uint8_t DrawState = 0;
+// Polygons
+static T_DrawPolygonState DrawPolygonState = E_DrawPolygonState_Init; //!< State of the draw state machine
+static int16_t DegreesPerStepPolygon[16] = {0, 120, 120, 90, 72, 60, 51, 45, 0, 0, 0, 0, 0, 0, 0, 0};
+static int16_t StepsPerPolygon[16] = {1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0};
 //static bool useGyroCalib = true;
 static uint8_t StartFromProxState = 0;
 static uint8_t StartFromProxCount = 0;
@@ -115,18 +112,14 @@ static uint64_t motionDurations[2]; // Timer ticks to travels forward and backwa
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
-//! \brief     Play the sequence to draw a flower
-//! \pre       First initialize the mode
-//! \param     None
-//! \return    None
-static void DrawFlower(void);
-
-//! \brief     Play the sequence to draw a star
-//! \pre       First initialize the mode
-//! \param     None
-//! \return    None
-static void DrawStar(void);
-
+static void DrawCircle(void);
+static void DrawRectangle(void);
+static void DrawDiamond(void);
+static void DrawTrapezoid(void);
+static void DrawStar5(void);
+static void DrawParallelogram(void);
+static void DrawStar7(void);
+static void Draw8shape(void);
 static void DrawPolygon(void);
 
 //! \brief     Change body color based on color detected by color sensor.
@@ -147,7 +140,7 @@ bool StartFromProx()
   switch(StartFromProxState)
   {
     case 0:
-      if((GetProximityValue(1) > (PROX_THRESHOLD+200)) && (GetProximityValue(2) > (PROX_THRESHOLD+200)) && (GetProximityValue(3) > (PROX_THRESHOLD+200))) // Hand detected
+      if((GetProximityValue(5) > (PROX_THRESHOLD+200)) && (GetProximityValue(6) > (PROX_THRESHOLD+200))) // Hand detected
       {
         StartFromProxCount++;  // Based on behaviors update rate of 50 hz
         if(StartFromProxCount == 5) // After 100 ms
@@ -160,7 +153,7 @@ bool StartFromProx()
       break;
     
     case 1:
-      if((GetProximityValue(1) < (PROX_THRESHOLD-200)) && (GetProximityValue(2) < (PROX_THRESHOLD-200)) && (GetProximityValue(3) < (PROX_THRESHOLD-200))) // Hand removed
+      if((GetProximityValue(5) < (PROX_THRESHOLD-200)) && (GetProximityValue(6) < (PROX_THRESHOLD-200))) // Hand removed
       {
         StartFromProxCount++;  // Based on behaviors update rate of 50 hz
         if(StartFromProxCount == 25) // After 0.5 second
@@ -189,9 +182,8 @@ void Drawer_Start(void)
   Leds_SetLegoFrontBrightness(0,0,0,0,0,0,0,0);
   Leds_SetLegoBackBrightness(0,0,0,0,0,0,0,0);
   State = E_State_Idle;
-  StepsIndex = 10;
-  drawSelection = DRAW_STAR;
-  Accelerometer_ClearTapStatus(); // Clear any tap made before entering this mode
+  StepsIndex = 0;
+  drawSelection = DRAW_POLYGONS;
   motionDurations[0] = DEFAULT_FW_MOTION_DURATION;
   float fwBwFactor = Settings_GetMotFwBwSettings();
   motionDurations[1] = (float)DEFAULT_FW_MOTION_DURATION*fwBwFactor;
@@ -206,9 +198,8 @@ void Drawer_Stop(void)
   Common_SetTargetSpeed(0, 0);
   AngleController_Stop();
   State = E_State_Idle;
-  StepsIndex = 10;
-  drawSelection = DRAW_STAR;
-  Accelerometer_ClearTapStatus(); // Clear any tap made before entering this mode
+  StepsIndex = 0;
+  drawSelection = DRAW_POLYGONS;
 }
 
 //_____________________________________________________________________________
@@ -236,20 +227,20 @@ void Drawer_Run(void)
   case E_State_Idle:
     when(buttonState[E_Button_Left])
     {
-      if(drawSelection == DRAW_FLOWER)
+      if(drawSelection == DRAW_POLYGONS)
       {
-        if(StepsIndex == 2)
+        if(StepsIndex == 0)
         {
-          StepsIndex = 4;
+          StepsIndex = 7;
         } else {
           StepsIndex--;
         }
       }       
       else
       {
-        if(StepsIndex == 10)
+        if(StepsIndex == 8)
         {
-          StepsIndex = 13;
+          StepsIndex = 15;
         } else {
           StepsIndex--;
         }
@@ -273,20 +264,20 @@ void Drawer_Run(void)
     }
     when(buttonState[E_Button_Right])
     {
-      if(drawSelection == DRAW_FLOWER) 
+      if(drawSelection == DRAW_POLYGONS) 
       {
-        if(StepsIndex == 4)
+        if(StepsIndex == 7)
         {
-          StepsIndex = 2;
+          StepsIndex = 0;
         } else {
           StepsIndex++;
         }
       }
       else
       {
-        if(StepsIndex == 13)
+        if(StepsIndex == 15)
         {
-          StepsIndex = 10;
+          StepsIndex = 8;
         } else {
           StepsIndex++;
         }
@@ -312,61 +303,142 @@ void Drawer_Run(void)
     {
       if(StepsIndex < 8)
       {
-        drawSelection = DRAW_STAR;
-        StepsIndex = 10;
+        drawSelection = DRAW_SHAPES;
+        StepsIndex = 8;
       }
       else
       {
-        drawSelection = DRAW_FLOWER;
-        StepsIndex = 2;
+        drawSelection = DRAW_POLYGONS;
+        StepsIndex = 0;
       }
     }
     when(buttonState[E_Button_Backward])
     {
       if(StepsIndex < 8)
       {
-        drawSelection = DRAW_STAR;
-        StepsIndex = 10;
+        drawSelection = DRAW_SHAPES;
+        StepsIndex = 8;
       }
       else
       {
-        drawSelection = DRAW_FLOWER;
-        StepsIndex = 2;
+        drawSelection = DRAW_POLYGONS;
+        StepsIndex = 0;
       }
     }    
-    when(Accelerometer_IsTapDetected() || StartFromProx())
+    when(StartFromProx())
     {     
       State = E_State_Drawing;
-      if(drawSelection == DRAW_FLOWER) 
+      if(drawSelection == DRAW_POLYGONS) 
       {
-        DrawState = E_DrawFlowerState_Init;
+        DrawPolygonState = E_DrawPolygonState_Init;
       } 
       else 
       {
-        DrawState = E_DrawStarState_Init;
+        DrawState = 0;
       }
     }
     break;
 
   case E_State_Drawing:
-    if(drawSelection == DRAW_FLOWER) 
+    if(drawSelection == DRAW_POLYGONS) 
     {
-      if(StepsIndex==4) {
-        DrawStar();
-      } else {
-        DrawFlower();
-      }
+      DrawPolygon(); 
     } 
     else
     {
-      DrawPolygon(); 
+      if(StepsIndex == 8)
+      {
+        DrawCircle();
+      }
+      else if(StepsIndex == 9)
+      {
+        DrawRectangle();
+      }
+      else if(StepsIndex == 10)
+      {
+        DrawDiamond();
+      }
+      else if(StepsIndex == 11)
+      {
+        DrawTrapezoid();
+      }      
+      else if(StepsIndex == 12)
+      {
+        DrawStar5();
+      }
+      else if(StepsIndex == 13)
+      {
+        DrawParallelogram();
+      }
+      else if(StepsIndex == 14)
+      {
+        DrawStar7();
+      }  
+      else if(StepsIndex == 15)
+      {
+        Draw8shape();
+      }                
     }
-    when(Accelerometer_IsTapDetected())
+    break;
+
+  case E_State_LedAnimation:
+    if(ledAnimationState == 0)
     {
-      State = E_State_Idle;
-      Common_SetTargetSpeed(0, 0);
-      AngleController_Stop();
+      Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      ledAnimationCounter = 0;
+      ledAnimationState = 1;
     }
+    else if(ledAnimationState == 1)
+    {
+      ledAnimationCounter++;
+      if(ledAnimationCounter >= LED_ANIMATION_DELAY)
+      {
+        Leds_SetCircleBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+        ledAnimationCounter = 0;
+        ledAnimationState = 2;
+      }
+    }
+    else if(ledAnimationState == 2)
+    {
+      ledAnimationCounter++;
+      if(ledAnimationCounter >= LED_ANIMATION_DELAY)
+      {
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        ledAnimationCounter = 0;
+        ledAnimationState = 3;
+      }
+    }  
+    else if(ledAnimationState == 3)
+    {
+      ledAnimationCounter++;
+      if(ledAnimationCounter >= LED_ANIMATION_DELAY)
+      {
+        Leds_SetCircleBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+        ledAnimationCounter = 0;
+        ledAnimationState = 4;
+      }
+    }    
+    else if(ledAnimationState == 4)
+    {
+      ledAnimationCounter++;
+      if(ledAnimationCounter >= LED_ANIMATION_DELAY)
+      {
+        Leds_SetCircleBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        ledAnimationCounter = 0;
+        ledAnimationState = 5;
+      }
+    }  
+    else if(ledAnimationState == 5)
+    {
+      ledAnimationCounter++;
+      if(ledAnimationCounter >= LED_ANIMATION_DELAY)
+      {
+        Leds_SetCircleBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+        ledAnimationCounter = 0;
+        ledAnimationState = 0;
+        State = E_State_Idle;
+      }
+    }       
     break;
 
   default:
@@ -377,91 +449,245 @@ void Drawer_Run(void)
 }
 
 //_____________________________________________________________________________
-// Draw flower by using forward and backward motion.
-// Draw only once with predefined size.
-static void DrawFlower(void)
+// Draw circle only once.
+// Use only forward motion.
+static void DrawCircle(void)
 {
   static uint8_t delayMotorStopped = 0;
   switch (DrawState)
   {
-  case E_DrawFlowerState_Init:
-    Gyroscope_ResetAngle(); // Start from 0 degrees 
-    StepsCounter = 0;
-    DrawState = E_DrawFlowerState_DrawPetalFw;
+  case 0:
+    Gyroscope_ResetAngle(); // Start from 0 degrees
+    DrawState = 1;
     break;
 
-  case E_DrawFlowerState_DrawPetalFw:
-    StepStartAngle = Gyroscope_GetAngleZ_deg();
-    Common_SetTargetSpeed(MOVEMENT_SPEED+MOVEMENT_SPEED_DELTA, MOVEMENT_SPEED-MOVEMENT_SPEED_DELTA);
+  case 1:
+    Common_SetTargetSpeed(MOVEMENT_SPEED, 0);
+    delayMotorStopped = 0;
+    DrawState = 2;
+    break;
+
+  case 2:
+    if(abs(Gyroscope_GetAngleZ_deg()) >= 360)
+    {
+      Common_SetTargetSpeed(0, 0);
+      delayMotorStopped++;
+      if(delayMotorStopped == DELAY_AFTER_ROTATION) {
+        ledAnimationCounter = 0;
+        ledAnimationState = 0;
+        State = E_State_LedAnimation;
+        DrawState = 0;
+        Codec_Stop();
+        Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+        break;
+      }
+    }
+    break;
+
+  default:
+    // Do nothing
+    break;
+  }
+}
+
+//_____________________________________________________________________________
+// Draw rectangle only once.
+// Use only forward motion.
+static void DrawRectangle(void)
+{
+  static uint8_t delayMotorStopped = 0;
+  switch (DrawState)
+  {
+  case 0:
+    Gyroscope_ResetAngle(); // Start from 0 degrees
+    StepsCounter = 0;
+    DrawState = 1;
+    break;
+
+  case 1: // Start forward motion
+    Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
+    Behavior_SetMotionInProgress(true);
+    if((StepsCounter==1) || (StepsCounter==3)) // long edge
+    {
+      TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]*3/2);
+    }
+    else // short edge
+    {
+      TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]);
+    }
+    TimerHw_Reset_Counter(1, 1);  
+    TimerHw_Start(1, 1);
+    DrawState = 2;
+    break;
+
+  case 2: // Wait forward motion end, start rotation
+    if(!Behavior_IsMotionInProgress())
+    {
+      AngleController_Start(90, MAX_ROTATION_SPEED2);
+      delayMotorStopped = 0;
+      DrawState = 3;
+    }
+    break;
+
+  case 3: // Wait rotation end, restart or stop
+    if(AngleController_Completed()) 
+    {
+      delayMotorStopped++;
+      if(delayMotorStopped == DELAY_AFTER_ROTATION) {
+        StepsCounter++;
+        if(StepsCounter == 4)
+        {
+          StepsCounter = 0;
+          ledAnimationCounter = 0;
+          ledAnimationState = 0;
+          State = E_State_LedAnimation;
+          DrawState = 0;
+          Codec_Stop();
+          Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+          break;
+        }
+        DrawState = 1;
+      }
+    }
+    break;
+
+  default:
+    // Do nothing
+    break;
+  }
+}
+
+//_____________________________________________________________________________
+// Draw diamond only once.
+// Use only forward motion.
+static void DrawDiamond(void)
+{
+  static uint8_t delayMotorStopped = 0;
+  switch (DrawState)
+  {
+  case 0:
+    Gyroscope_ResetAngle(); // Start from 0 degrees
+    StepsCounter = 0;
+    DrawState = 1;
+    break;
+
+  case 1: // Start forward motion
+    Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
     Behavior_SetMotionInProgress(true);
     TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]);
     TimerHw_Reset_Counter(1, 1);  
     TimerHw_Start(1, 1);
-    DrawState = E_DrawFlowerState_WaitDrawPetalFw;
+    DrawState = 2;
     break;
 
-  case E_DrawFlowerState_WaitDrawPetalFw:
+  case 2: // Wait forward motion end, start rotation
     if(!Behavior_IsMotionInProgress())
     {
-      StepDeltaAngle = Gyroscope_GetAngleZ_deg() - StepStartAngle;
-      if(StepDeltaAngle > 180)
+      if((StepsCounter==1) || (StepsCounter==3)) // acute edge
       {
-        StepDeltaAngle -= 360;
+        AngleController_Start(60, MAX_ROTATION_SPEED2);
       }
-      AngleController_Start(-StepDeltaAngle, MAX_ROTATION_SPEED);
+      else // obtuse angle
+      {
+        AngleController_Start(120, MAX_ROTATION_SPEED2);
+      }
       delayMotorStopped = 0;
-      DrawState = E_DrawFlowerState_DrawPetalBw;
+      DrawState = 3;
     }
     break;
 
-  case E_DrawFlowerState_DrawPetalBw:
+  case 3: // Wait rotation end, restart or stop
     if(AngleController_Completed()) 
     {
       delayMotorStopped++;
-      if(delayMotorStopped == DELAY_AFTER_ROTATION)
-      {
-        StepStartAngle = Gyroscope_GetAngleZ_deg();
-        Common_SetTargetSpeed(-MOVEMENT_SPEED+MOVEMENT_SPEED_DELTA, -MOVEMENT_SPEED-MOVEMENT_SPEED_DELTA);
-        Behavior_SetMotionInProgress(true);
-        TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[1]);
-        TimerHw_Reset_Counter(1, 1);  
-        TimerHw_Start(1, 1);
-        DrawState = E_DrawFlowerState_WaitDrawPetalBw;
+      if(delayMotorStopped == DELAY_AFTER_ROTATION) {
+        StepsCounter++;
+        if(StepsCounter == 4)
+        {
+          StepsCounter = 0;
+          ledAnimationCounter = 0;
+          ledAnimationState = 0;
+          State = E_State_LedAnimation;
+          DrawState = 0;
+          Codec_Stop();
+          Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+          break;
+        }
+        DrawState = 1;
       }
     }
     break;
 
-  case E_DrawFlowerState_WaitDrawPetalBw:
-    if(!Behavior_IsMotionInProgress()) 
-    {  
-      StepDeltaAngle = Gyroscope_GetAngleZ_deg() - StepStartAngle;
-      if(StepDeltaAngle > 180)
+  default:
+    // Do nothing
+    break;
+  }
+}
+
+//_____________________________________________________________________________
+// Draw trapezoid only once.
+// Use only forward motion.
+static void DrawTrapezoid(void)
+{
+  static uint8_t delayMotorStopped = 0;
+  switch (DrawState)
+  {
+  case 0:
+    Gyroscope_ResetAngle(); // Start from 0 degrees
+    StepsCounter = 0;
+    DrawState = 1;
+    break;
+
+  case 1: // Start forward motion
+    Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
+    Behavior_SetMotionInProgress(true);
+    if((StepsCounter==3)) // major base
+    {
+      TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]*5/2);
+    }
+    else // others edeges
+    {
+      TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]);
+    }
+    TimerHw_Reset_Counter(1, 1);  
+    TimerHw_Start(1, 1);
+    DrawState = 2;
+    break;
+
+  case 2: // Wait forward motion end, start rotation
+    if(!Behavior_IsMotionInProgress())
+    {
+      if((StepsCounter==0) || (StepsCounter==1))
       {
-        StepDeltaAngle -= 360;
-      }      
-      AngleController_Start(-(DegreesPerStepFlower[StepsIndex]+StepDeltaAngle), MAX_ROTATION_SPEED);
+        AngleController_Start(42, MAX_ROTATION_SPEED2);
+      }
+      else
+      {
+        AngleController_Start(138, MAX_ROTATION_SPEED2);
+      }
       delayMotorStopped = 0;
-      DrawState = E_DrawFlowerState_WaitStepRot;
+      DrawState = 3;
     }
     break;
 
-  case E_DrawFlowerState_WaitStepRot:
+  case 3: // Wait rotation end, restart or stop
     if(AngleController_Completed()) 
-    {    
+    {
       delayMotorStopped++;
-      if(delayMotorStopped == DELAY_AFTER_ROTATION)
-      {
+      if(delayMotorStopped == DELAY_AFTER_ROTATION) {
         StepsCounter++;
-        if(StepsCounter == StepsPerRotationFlower[StepsIndex])
+        if(StepsCounter == 4)
         {
           StepsCounter = 0;
+          ledAnimationCounter = 0;
+          ledAnimationState = 0;
+          State = E_State_LedAnimation;
+          DrawState = 0;
           Codec_Stop();
-          Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion duration increases  
-          State = E_State_Idle;
-          DrawState = E_DrawFlowerState_Init;
+          Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
           break;
         }
-        DrawState = E_DrawFlowerState_DrawPetalFw;
+        DrawState = 1;
       }
     }
     break;
@@ -474,9 +700,9 @@ static void DrawFlower(void)
 
 //_____________________________________________________________________________
 
-// Draw star only once.
+// Draw 5-pointed star only once.
 // Use only forward motion.
-static void DrawStar(void)
+static void DrawStar5(void)
 {
   static uint8_t delayMotorStopped = 0;
   switch (DrawState)
@@ -498,7 +724,7 @@ static void DrawStar(void)
   case E_DrawStarState_WaitDrawFw:
     if(!Behavior_IsMotionInProgress())
     {
-      AngleController_Start(DegreesPerStepStar[StepsIndex], MAX_ROTATION_SPEED2);
+      AngleController_Start((180-36), MAX_ROTATION_SPEED2);
       delayMotorStopped = 0;
       DrawState = E_DrawStarState_WaitFwRot;
     }
@@ -511,10 +737,12 @@ static void DrawStar(void)
       if(delayMotorStopped == DELAY_AFTER_ROTATION)
       {
         StepsCounter++;
-        if(StepsCounter == StepsPerStar[StepsIndex])
+        if(StepsCounter == 5)
         {
           StepsCounter = 0;
-          State = E_State_Idle;
+          ledAnimationCounter = 0;
+          ledAnimationState = 0;
+          State = E_State_LedAnimation;
           DrawState = E_DrawStarState_Init;
           Codec_Stop();
           Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
@@ -532,17 +760,90 @@ static void DrawStar(void)
 }
 
 //_____________________________________________________________________________
-
-// Draw polygon only once.
+// Draw parallelogram only once.
 // Use only forward motion.
-static void DrawPolygon(void)
+static void DrawParallelogram(void)
+{
+  static uint8_t delayMotorStopped = 0;
+  switch (DrawState)
+  {
+  case 0:
+    Gyroscope_ResetAngle(); // Start from 0 degrees
+    StepsCounter = 0;
+    DrawState = 1;
+    break;
+
+  case 1: // Start forward motion
+    Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
+    Behavior_SetMotionInProgress(true);
+    if((StepsCounter==1) || (StepsCounter==3)) // long edge
+    {
+      TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]*3/2);
+    }
+    else // short edge
+    {
+      TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]);
+    }
+    TimerHw_Reset_Counter(1, 1);  
+    TimerHw_Start(1, 1);
+    DrawState = 2;
+    break;
+
+  case 2: // Wait forward motion end, start rotation
+    if(!Behavior_IsMotionInProgress())
+    {
+      if((StepsCounter==1) || (StepsCounter==3)) // acute edge
+      {
+        AngleController_Start(60, MAX_ROTATION_SPEED2);
+      }
+      else // obtuse angle
+      {
+        AngleController_Start(120, MAX_ROTATION_SPEED2);
+      }
+      delayMotorStopped = 0;
+      DrawState = 3;
+    }
+    break;
+
+  case 3: // Wait rotation end, restart or stop
+    if(AngleController_Completed()) 
+    {
+      delayMotorStopped++;
+      if(delayMotorStopped == DELAY_AFTER_ROTATION) {
+        StepsCounter++;
+        if(StepsCounter == 4)
+        {
+          StepsCounter = 0;
+          ledAnimationCounter = 0;
+          ledAnimationState = 0;
+          State = E_State_LedAnimation;
+          DrawState = 0;
+          Codec_Stop();
+          Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+          break;
+        }
+        DrawState = 1;
+      }
+    }
+    break;
+
+  default:
+    // Do nothing
+    break;
+  }
+}
+
+//_____________________________________________________________________________
+
+// Draw 7-pointed star only once.
+// Use only forward motion.
+static void DrawStar7(void)
 {
   static uint8_t delayMotorStopped = 0;
   switch (DrawState)
   {
   case E_DrawStarState_Init:
     Gyroscope_ResetAngle(); // Start from 0 degrees
-    StepsCounter = 0;
     DrawState = E_DrawStarState_DrawFw;
     break;
 
@@ -558,13 +859,149 @@ static void DrawPolygon(void)
   case E_DrawStarState_WaitDrawFw:
     if(!Behavior_IsMotionInProgress())
     {
-      AngleController_Start(DegreesPerStepPolygon[StepsIndex], MAX_ROTATION_SPEED2);
+      AngleController_Start((180-26), MAX_ROTATION_SPEED2);
       delayMotorStopped = 0;
       DrawState = E_DrawStarState_WaitFwRot;
     }
     break;
 
   case E_DrawStarState_WaitFwRot:
+    if(AngleController_Completed()) 
+    {
+      delayMotorStopped++;
+      if(delayMotorStopped == DELAY_AFTER_ROTATION)
+      {
+        StepsCounter++;
+        if(StepsCounter == 7)
+        {
+          StepsCounter = 0;
+          ledAnimationCounter = 0;
+          ledAnimationState = 0;
+          State = E_State_LedAnimation;
+          DrawState = E_DrawStarState_Init;
+          Codec_Stop();
+          Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+          break;
+        }
+        DrawState = E_DrawStarState_DrawFw;
+      }
+    }
+    break;
+
+  default:
+    // Do nothing
+    break;
+  }
+}
+
+//_____________________________________________________________________________
+// Draw 8 shape only once.
+// Use only forward motion.
+static void Draw8shape(void)
+{
+  static uint8_t delayMotorStopped = 0;
+  switch (DrawState)
+  {
+  case 0:
+    Gyroscope_ResetAngle(); // Start from 0 degrees
+    DrawState = 1;
+    break;
+
+  case 1:
+    Common_SetTargetSpeed(MOVEMENT_SPEED, 0);
+    delayMotorStopped = 0;
+    DrawState = 2;
+    break;
+
+  case 2:
+    if(abs(Gyroscope_GetAngleZ_deg()) >= 360)
+    {
+      Common_SetTargetSpeed(0, 0);
+      delayMotorStopped++;
+      if(delayMotorStopped == DELAY_AFTER_ROTATION) {
+        Gyroscope_ResetAngle(); // Start from 0 degrees
+        Common_SetTargetSpeed(0, MOVEMENT_SPEED);
+        delayMotorStopped = 0;
+        DrawState = 3;     
+        break;
+      }
+    }
+    break;
+
+  case 3:
+    if(abs(Gyroscope_GetAngleZ_deg()) >= 360)
+    {
+      Common_SetTargetSpeed(0, 0);
+      delayMotorStopped++;
+      if(delayMotorStopped == DELAY_AFTER_ROTATION) {
+        ledAnimationCounter = 0;
+        ledAnimationState = 0;
+        State = E_State_LedAnimation;
+        DrawState = 0;
+        Codec_Stop();
+        Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+        break;
+      }
+    }
+    break;    
+
+  default:
+    // Do nothing
+    break;
+  }
+}
+
+//_____________________________________________________________________________
+// Draw polygon only once.
+// Use only forward motion.
+static void DrawPolygon(void)
+{
+  static uint8_t delayMotorStopped = 0;
+  switch (DrawPolygonState)
+  {
+  case E_DrawPolygonState_Init:
+    Gyroscope_ResetAngle(); // Start from 0 degrees
+    StepsCounter = 0;
+    DrawPolygonState = E_DrawPolygonState_DrawFw;
+    break;
+
+  case E_DrawPolygonState_DrawFw:
+    Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
+    Behavior_SetMotionInProgress(true);
+    if(StepsIndex >= 5) // From pentagon onward, reduce the size to be able to draw within an A4 sheet
+    {
+      TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]/2);
+    }
+    else
+    {
+      TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]);
+    }
+    TimerHw_Reset_Counter(1, 1);  
+    TimerHw_Start(1, 1);
+    DrawPolygonState = E_DrawPolygonState_WaitDrawFw;
+    break;
+
+  case E_DrawPolygonState_WaitDrawFw:
+    if(!Behavior_IsMotionInProgress())
+    {
+      if(DegreesPerStepPolygon[StepsIndex] == 0) // Line special case
+      {
+        StepsCounter = 0;
+        ledAnimationCounter = 0;
+        ledAnimationState = 0;
+        State = E_State_LedAnimation;
+        DrawPolygonState = E_DrawPolygonState_Init;
+        Codec_Stop();
+        Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+        break;
+      }
+      AngleController_Start(DegreesPerStepPolygon[StepsIndex], MAX_ROTATION_SPEED2);
+      delayMotorStopped = 0;
+      DrawPolygonState = E_DrawPolygonState_WaitFwRot;
+    }
+    break;
+
+  case E_DrawPolygonState_WaitFwRot:
     if(AngleController_Completed()) 
     {
       delayMotorStopped++;
@@ -573,13 +1010,15 @@ static void DrawPolygon(void)
         if(StepsCounter == StepsPerPolygon[StepsIndex])
         {
           StepsCounter = 0;
-          State = E_State_Idle;
-          DrawState = E_DrawStarState_Init;
+          ledAnimationCounter = 0;
+          ledAnimationState = 0;
+          State = E_State_LedAnimation;
+          DrawPolygonState = E_DrawPolygonState_Init;
           Codec_Stop();
           Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
           break;
         }
-        DrawState = E_DrawStarState_DrawFw;
+        DrawPolygonState = E_DrawPolygonState_DrawFw;
       }
     }
     break;

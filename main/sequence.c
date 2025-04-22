@@ -226,7 +226,6 @@ void Sequence_Start(void)
   RecordSequenceIsFinished = false;
   //PlayState = E_PlayState_Prepare;
   PlayState = E_PlayState_Replay;
-  Accelerometer_ClearTapStatus(); // Clear any tap made before entering this mode
   Settings_GetMot15cmSettings(motionDurations);
 }
 
@@ -398,7 +397,7 @@ static void RecordSequence(void)
   switch(StartFromProxState)
   {
     case 0:
-      if((GetProximityValue(1) > (PROX_THRESHOLD+200)) && (GetProximityValue(2) > (PROX_THRESHOLD+200)) && (GetProximityValue(3) > (PROX_THRESHOLD+200)))
+      if((GetProximityValue(5) > (PROX_THRESHOLD+200)) && (GetProximityValue(6) > (PROX_THRESHOLD+200)))
       {
         PlayStatePrepareCount++;  // Based on behaviors update rate of 50 hz
         if(PlayStatePrepareCount == 5) // After 100 ms
@@ -411,7 +410,7 @@ static void RecordSequence(void)
       break;
     
     case 1:
-      if((GetProximityValue(1) < (PROX_THRESHOLD-200)) && (GetProximityValue(2) < (PROX_THRESHOLD-200)) && (GetProximityValue(3) < (PROX_THRESHOLD-200)))
+      if((GetProximityValue(5) < (PROX_THRESHOLD-200)) && (GetProximityValue(6) < (PROX_THRESHOLD-200)))
       {
         PlayStatePrepareCount++;  // Based on behaviors update rate of 50 hz
         if(PlayStatePrepareCount == 25) // After 0.5 second
@@ -780,7 +779,8 @@ static void HandleReplay(void)
         PlayState = E_PlayState_Rotation;
       }
 
-      LaunchPlayAnimation(next);
+      LaunchPlayAnimation(Current);
+      //LaunchPlayAnimation(next);
     }
   }
   else // Handle the last movement or rotation of the sequence
@@ -798,13 +798,14 @@ static void HandleReplay(void)
 
 static void HandleMovement(void)
 {
+  /*
   if (CheckCollisionStatus() == E_Collision_Detected)
   {
     TimerHw_Stop(1, 1);
     Common_SetTargetSpeed(0, 0);
 
     PlayState = E_PlayState_Collision;
-  }
+  }  
   // An obstacle has been detected but it no longer obstructs the passage
   else if (ObstacleIsDetected)
   {
@@ -825,7 +826,9 @@ static void HandleMovement(void)
 
     ObstacleIsDetected = false;
   }
-  else if(!Behavior_IsMotionInProgress())
+  else
+  */
+  if(!Behavior_IsMotionInProgress())
   {
     PlayState = E_PlayState_Replay;
   }
@@ -839,13 +842,15 @@ static void HandleMovement(void)
 
 static void HandleRotation(void)
 {
+  /*
   if (CheckCollisionStatus() == E_Collision_Detected)
   {
     Common_SetTargetSpeed(0, 0);
 
     PlayState = E_PlayState_Collision;
   }
-  else if (AngleController_Completed())
+  else */
+  if (AngleController_Completed())
   {
     RotationCompletedDelay++;
     if(RotationCompletedDelay >= (STOP_DURATION_us/20000)) // Based on behaviors update rate of 50 hz
