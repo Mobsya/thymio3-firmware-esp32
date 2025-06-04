@@ -85,6 +85,7 @@ static T_Mode SelectNextMode(T_Mode mode, int16_t index);
 static bool IsModeEnabled(T_Mode mode);
 
 static void SetModeColor(T_Mode mode);
+static void SetModeColor2(int16_t index);
 
 #if 0
 static void GetRainbow(uint8_t* rgb);
@@ -266,7 +267,8 @@ void Mode_Run(void)
 
       when(buttonState[E_Button_Left])
       {
-        SelectMode = SelectNextMode(SelectMode, -1);
+        //SelectMode = SelectNextMode(SelectMode, -1);
+        SetModeColor2(-1);
       }
 
       when(buttonState[E_Button_Forward])
@@ -276,9 +278,9 @@ void Mode_Run(void)
 
       when(buttonState[E_Button_Right])
       {
-        SelectMode = SelectNextMode(SelectMode, 1);
+        //SelectMode = SelectNextMode(SelectMode, 1);
+        SetModeColor2(1);
       }
-
       SetModeColor(SelectMode);
       break;
 
@@ -514,6 +516,74 @@ static bool IsModeEnabled(T_Mode mode)
 }
 
 //_____________________________________________________________________________
+
+static void SetModeColor2(int16_t index)
+{
+  static int8_t currentState = 0;
+
+  currentState += index;
+
+  while (currentState > E_Mode_Max)
+  {
+    currentState -= (E_Mode_Max + 1);
+  }
+
+  while (currentState < 0)
+  {
+    currentState += (E_Mode_Max + 1);
+  }
+
+  switch (currentState)
+  {
+    case E_Mode_Menu:
+      Leds_SetDebugBrightness(0u, 0u, 0u);
+      break;
+
+    case E_Mode_Friendly:  // Green
+      Leds_SetDebugBrightness(0u, MAX_BRIGHTNESS, 0u);
+      break;
+
+    case E_Mode_Explorer:  // Yellow
+      Leds_SetDebugBrightness(MAX_BRIGHTNESS, 12u, 0u);
+      break;
+
+    case E_Mode_Fearful:  // Red
+      Leds_SetDebugBrightness(MAX_BRIGHTNESS, 0u, 0u);
+      break;
+
+    case E_Mode_Attentive:  // Dark blue
+      Leds_SetDebugBrightness(0u, 0u, MAX_BRIGHTNESS);
+      break;
+
+    case E_Mode_Investigator:  // Cyan
+      Leds_SetDebugBrightness(0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      break;
+
+    case E_Mode_Obedient:  // Magenta
+      Leds_SetDebugBrightness(MAX_BRIGHTNESS, 0u, MAX_BRIGHTNESS);
+      break;
+
+    case E_Mode_Painter:  // Blue + yellow
+      Leds_SetDebugBrightness(0, 0, MAX_BRIGHTNESS);
+      break;
+
+    case E_Mode_Sequence: // Magenta + cyan
+      Leds_SetDebugBrightness(MAX_BRIGHTNESS, 0, MAX_BRIGHTNESS);
+      break;
+
+    case E_Mode_Musician:  // Rainbow (blue, green, yellow, red)
+      Leds_SetDebugBrightness(0, 0, 0);
+      break;
+
+    case E_Mode_NN:     // White
+      Leds_SetDebugBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+      break;    
+
+    default:
+      // Do nothing
+      break;
+  }
+}
 
 static void SetModeColor(T_Mode mode)
 {

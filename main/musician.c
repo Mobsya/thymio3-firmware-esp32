@@ -33,11 +33,11 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define INITIAL_SPEED          100
+#define INITIAL_SPEED          50
 #define MAX_SPEED              500
-#define MIN_SPEED              100
+#define MIN_SPEED              50
 #define GROUND_EDGE_OFFSET 100
-#define SPEED_INCREMENT         50
+#define SPEED_INCREMENT         25
 #define NEW_COLOR_THR           10 // After 200 ms (behavior run @ 50 hz)
 //-----------------------------------------------------------------------------
 // Types Definitions

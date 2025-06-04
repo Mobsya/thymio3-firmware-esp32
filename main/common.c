@@ -186,7 +186,7 @@ void Common_HandlePositiveSpeed(int16_t speed)
   }
 
   // Check when the robot is somehow still
-  if((abs(vmVariables.target[0]) < 100) && (abs(vmVariables.target[1]) < 100)) {
+  if((abs(vmVariables.target[0]) < 40) && (abs(vmVariables.target[1]) < 40)) {
     still_counter++;
     if(still_counter >= 100) { // This is called at 50 hz (from behaviors), thus it means after 2 seconds
       escape_action_counter = 120; // If after 2 seconds that the robot is somehow blocked (reached a corner?) then try an escape motion => turn right for about 1.5 sec
@@ -287,8 +287,10 @@ uint8_t Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue
     vmVariables.target[1] = 0;
     SetMotorTargets(vmVariables.target[0], vmVariables.target[1]);
 
-    Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, 0u, 0u);
-    Leds_SetFrontRightBrightness(MAX_BRIGHTNESS, 0u, 0u);
+    //Leds_SetFrontLeftBrightness(MAX_BRIGHTNESS, 0u, 0u);
+    //Leds_SetFrontRightBrightness(MAX_BRIGHTNESS, 0u, 0u);
+    Leds_SetFrontLeftBrightness(red, green, blue);
+    Leds_SetFrontRightBrightness(red, green, blue);
     Leds_SetBackLeftBrightness(red, green, blue);
     Leds_SetBackRightBrightness(red, green, blue);
     return 1;

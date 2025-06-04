@@ -153,7 +153,7 @@ void Friendly_Run(void)
   } 
   else if(max > (TARGET_DIST+TARGET_DIST_THR)) // Object near the robot, go backward 
   {
-    speed_l = (TARGET_DIST - max)>>3;
+    speed_l = (TARGET_DIST - max)>>2;
   } else // Object far from the robot, go forward 
   {
     speed_l = (TARGET_DIST - max)>>1;
@@ -235,8 +235,8 @@ void Friendly_Run(void)
 
 	if(speedDiff == 0 && speed_l == 0 && sound_done == 0 && max > DETECT) {
 		sound_done = 1;
-    Codec_Stop();
-    Codec_PlayOnboardSound(TONE_TYPE_GOOD);
+    //Codec_Stop();
+    //Codec_PlayOnboardSound(TONE_TYPE_GOOD);
 	}
 	if(speedDiff != 0 || max < DETECT) {
 		sound_done = 0;

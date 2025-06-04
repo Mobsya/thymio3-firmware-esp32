@@ -536,7 +536,7 @@ static void ProcessEraseAction(uint8_t command)
       if (accelerationZ <= -13000)
       {
         countEraseAll++;
-        if (countEraseAll > 50) // After 1 second
+        if (countEraseAll > 25) // After 0.5 second
         {
           eraseAllState = 1;
           countEraseExit = 0;
@@ -596,7 +596,7 @@ static void ProcessEraseAction(uint8_t command)
       break;
     case 3: // Give the user some time to exit the erase sequence, otherwise after 2 seconds perform a complete erase
       countEraseAll++;
-      if (countEraseAll > 100) // After 2 second erase
+      if (countEraseAll > 50) // After 1 second erase
       {
         eraseAllState = 4;
         ledCounter = 0;
@@ -791,6 +791,8 @@ static void HandleReplay(void)
     ESP_LOGI(Tag, "Last movement is finished");
     Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
     Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+    Codec_Stop();
+    Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends 
   }
 }
 
