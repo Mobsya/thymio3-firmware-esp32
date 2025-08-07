@@ -67,7 +67,7 @@
 #include "usb.h"
 #include "usb_serial_jtag.h"
 #include "modmachine.h"
-#include "modnetwork.h"
+//#include "modnetwork.h"
 #include "mpthreadport.h"
 #include "../main/leds.h"
 #include "../main/behavior.h"

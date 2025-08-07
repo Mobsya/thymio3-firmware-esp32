@@ -62,6 +62,7 @@
 
 #include "vfs_fat_internal.h"
 #include "diskio_impl.h"
+#include "ble_spp.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -395,6 +396,8 @@ int app_main(void)
   Comm_Start();
 
   Leds_Start();
+
+  ble_spp_init();
 
   init_micropython();
   

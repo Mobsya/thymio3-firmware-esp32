@@ -18,6 +18,7 @@ set(COMPONENT_SRCS
     behavior.h
     bh1745nuc.c
     bh1745nuc.h
+    ble_spp.c
     pins_def.h
     buttons.c
     buttons.h

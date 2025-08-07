@@ -3,7 +3,7 @@ set(MICROPY_BOARD GENERIC_SPIRAM)
 set(MICROPY_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/micropython/lib/micropython-lib/) # micropython-lib directory
 set(MICROPY_DIR ${CMAKE_CURRENT_LIST_DIR}/micropython) # The mpy submodule's directory
 set(MICROPY_PORT_DIR ${CMAKE_CURRENT_LIST_DIR}/micropython/ports/esp32) # The mpy esp32 port directory
-set(MICROPY_BOARD_DIR ${CMAKE_CURRENT_LIST_DIR}/micropython/ports/esp32/boards/GENERIC_SPIRAM) # The mpy esp32 port board directory
+set(MICROPY_BOARD_DIR ${CMAKE_CURRENT_LIST_DIR}/micropython/ports/esp32/boards/THYMIO) # The mpy esp32 port board directory
 #set(MICROPY_FROZEN_MANIFEST ${MICROPY_PORT_DIR}/boards/manifest.py) # default manifest
 set(MICROPY_FROZEN_MANIFEST ${CMAKE_CURRENT_LIST_DIR}/manifest.py) # custom manifest
 
@@ -29,7 +29,7 @@ set(MICROPY_QSTRDEFS_PORT
 
 set(MICROPY_SOURCE_SHARED
     ${MICROPY_DIR}/shared/readline/readline.c
-    ${MICROPY_DIR}/shared/netutils/netutils.c
+    #${MICROPY_DIR}/shared/netutils/netutils.c
     ${MICROPY_DIR}/shared/timeutils/timeutils.c
     ${MICROPY_DIR}/shared/runtime/interrupt_char.c
     ${MICROPY_DIR}/shared/runtime/stdout_helpers.c
@@ -58,8 +58,8 @@ set(MICROPY_SOURCE_DRIVERS
 set(MICROPY_SOURCE_PORT
     #${PROJECT_DIR}/main.c
     ${MICROPY_DIR}/ports/esp32/uart.c
-    ${MICROPY_DIR}/ports/esp32/usb.c
-    ${MICROPY_DIR}/ports/esp32/usb_serial_jtag.c
+    #${MICROPY_DIR}/ports/esp32/usb.c
+    #${MICROPY_DIR}/ports/esp32/usb_serial_jtag.c
     ${MICROPY_DIR}/ports/esp32/gccollect.c
     ${MICROPY_DIR}/ports/esp32/mphalport.c
     ${MICROPY_DIR}/ports/esp32/fatfs_port.c
@@ -76,13 +76,13 @@ set(MICROPY_SOURCE_PORT
     ${MICROPY_DIR}/ports/esp32/machine_i2s.c
     ${MICROPY_DIR}/ports/esp32/machine_uart.c
     ${MICROPY_DIR}/ports/esp32/modmachine.c
-    ${MICROPY_DIR}/ports/esp32/network_common.c
-    ${MICROPY_DIR}/ports/esp32/network_lan.c
-    ${MICROPY_DIR}/ports/esp32/network_ppp.c
-    ${MICROPY_DIR}/ports/esp32/network_wlan.c
-    ${MICROPY_DIR}/ports/esp32/mpnimbleport.c
-    ${MICROPY_DIR}/ports/esp32/modsocket.c
-    ${MICROPY_DIR}/ports/esp32/modesp.c
+    #${MICROPY_DIR}/ports/esp32/network_common.c
+    #${MICROPY_DIR}/ports/esp32/network_lan.c
+    #${MICROPY_DIR}/ports/esp32/network_ppp.c
+    #${MICROPY_DIR}/ports/esp32/network_wlan.c
+    #${MICROPY_DIR}/ports/esp32/mpnimbleport.c
+    #${MICROPY_DIR}/ports/esp32/modsocket.c
+    #${MICROPY_DIR}/ports/esp32/modesp.c
     ${MICROPY_DIR}/ports/esp32/esp32_nvs.c
     ${MICROPY_DIR}/ports/esp32/esp32_partition.c
     ${MICROPY_DIR}/ports/esp32/esp32_rmt.c
@@ -92,7 +92,7 @@ set(MICROPY_SOURCE_PORT
     ${MICROPY_DIR}/ports/esp32/machine_wdt.c
     ${MICROPY_DIR}/ports/esp32/mpthreadport.c
     ${MICROPY_DIR}/ports/esp32/machine_rtc.c
-    ${MICROPY_DIR}/ports/esp32/machine_sdcard.c
+    #${MICROPY_DIR}/ports/esp32/machine_sdcard.c
     ${MICROPY_DIR}/ports/esp32/thymio_leds_circle.c
     ${MICROPY_DIR}/ports/esp32/thymio_proximity.c
     ${MICROPY_DIR}/ports/esp32/thymio_ground.c
@@ -127,28 +127,28 @@ set(MICROPY_SOURCE_QSTR
 set(IDF_COMPONENTS
     app_update
     bootloader_support
-    bt
+    #bt
     driver
     esp_adc_cal
     esp_common
-    esp_eth
+    #esp_eth
     esp_event
     esp_ringbuf
     esp_rom
-    esp_wifi
+    #esp_wifi
     #fatfs
     freertos
     heap
     log
-    lwip
+    #lwip
     mbedtls
-    mdns
+    #mdns
     newlib
     nvs_flash
-    sdmmc
+    #sdmmc
     soc
     spi_flash
-    tcpip_adapter
+    #tcpip_adapter
     ulp
     vfs
     xtensa

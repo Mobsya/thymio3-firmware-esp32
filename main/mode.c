@@ -267,8 +267,8 @@ void Mode_Run(void)
 
       when(buttonState[E_Button_Left])
       {
-        //SelectMode = SelectNextMode(SelectMode, -1);
-        SetModeColor2(-1);
+        SelectMode = SelectNextMode(SelectMode, -1);
+        //SetModeColor2(-1);
       }
 
       when(buttonState[E_Button_Forward])
@@ -278,8 +278,8 @@ void Mode_Run(void)
 
       when(buttonState[E_Button_Right])
       {
-        //SelectMode = SelectNextMode(SelectMode, 1);
-        SetModeColor2(1);
+        SelectMode = SelectNextMode(SelectMode, 1);
+        //SetModeColor2(1);
       }
       SetModeColor(SelectMode);
       break;
@@ -674,6 +674,7 @@ void enter_micropython_mode(void) {
 }
 
 extern void exit_micropython_mode(void) {
+  
   CurrentMode = E_Mode_Menu;
   Behavior_Enable(B_MODE);
   Behavior_Enable(B_SETTING);
