@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Button Click Events</title>
+  <script src="thymio.js"></script>
+  <script>
+    function connectClick() {
+      requestAndConnect();
+    }
+
+    function sendClick() {
+      sendData(
+        " Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis nibh ex, feugiat ac imperdiet nec, cursus sed sem. Aliquam sed venenatis justo. Phasellus volutpat rhoncus facilisis. Nam eget pulvinar augue, nec porta nulla. Vivamus non eleifend nulla, ut maximus nunc. Duis pretium quam eu leo vulputate, id scelerisque felis sodales. Nunc ullamcorper euismod interdum. Donec tincidunt bibendum enim vel pulvinar. Nam id nisi nulla. Nam quis sem id turpis feugiat cursus. Integer tincidunt sollicitudin congue. Quisque ut nunc efficitur, scelerisque magna ut, consectetur magna.Proin molestie tincidunt turpis, consequat cursus ex congue sed. Nam dignissim, diam id iaculis gravida, lacus metus hendrerit lectus, nec pellentesque leo lectus a nisi. Mauris quis lorem in ipsum sollicitudin viverra ac quis orci. Suspendisse potenti. In sit amet urna nec sem scelerisque luctus. Pellentesque in justo vitae dolor auctor tincidunt. Donec aliquam nec ante et viverra. Etiam efficitur, lorem eget rutrum faucibus, velit nisi malesuada mauris, vitae egestas ex orci sit amet arcu. Praesent risus mauris, feugiat eu dolor vel, commodo dapibus ante. Vivamus ac justo consectetur, euismod nibh id, pulvinar nibh. Mauris sollicitudin facilisis mi, a cursus est congue sit amet. In mattis arcu non sem tempor, at fermentum sapien placerat. Sed pellentesque metus eget odio tincidunt lacinia. "
+      );
+    }
+
+    function readClick() {
+      readFakeData();
+    }
+  </script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 50px;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #ddd;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Click the Buttons Below</h1>
+
+  <button onclick="connectClick()">Connect</button>
+  <button onclick="sendClick()">Send</button>
+  <button onclick="readClick()">Read</button>
+
+  <input type="file" id="fileInput" />
+  <button onclick="sendFileData()">Send File</button>
+
+</body>
+</html>
