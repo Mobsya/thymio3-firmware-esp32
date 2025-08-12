@@ -17,11 +17,14 @@ extern "C" {
 /* 16 Bit SPP Service UUID */
 #define BLE_SVC_SPP_UUID16                                  0xABF0
 
-/* 16 Bit SPP Service RX Characteristic UUID */
-#define BLE_SVC_SPP_RX_CHR_UUID16                              0xABF1
+/* 16 Bit SPP Service commands Characteristic UUID */
+#define BLE_SVC_CMD_CHR_UUID16                              0xABF1
 
-/* 16 Bit SPP Service TX Characteristic UUID */
-#define BLE_SVC_SPP_TX_CHR_UUID16                              0xABF2
+/* 16 Bit SPP Service sensors stream Characteristic UUID */
+#define BLE_SVC_SENSORS_STREAM_CHR_UUID16                   0xABF2
+
+/* 16 Bit SPP Service python scripts Characteristic UUID */
+#define BLE_SVC_PYTHON_CHR_UUID16                           0xABF3
 
 struct ble_hs_cfg;
 struct ble_gatt_register_ctxt;

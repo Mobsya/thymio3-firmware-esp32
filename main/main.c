@@ -63,6 +63,9 @@
 #include "vfs_fat_internal.h"
 #include "diskio_impl.h"
 #include "ble_spp.h"
+//#include "ble_python_handler.h"
+
+#include "py/runtime.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -400,7 +403,51 @@ int app_main(void)
   ble_spp_init();
 
   init_micropython();
+
+  //init_python_handler();
+
+  /*
+  vTaskDelay(2000/portTICK_PERIOD_MS);
+
+  message_t start_msg_print = {.command = CMD_START,.script_data = "import time\n\nwhile 1:\n\tprint(\"Hello world\")\n\ttime.sleep(1)" };
+  mp_exec_script_from_ram(start_msg_print);
   
+  vTaskDelay(5000/portTICK_PERIOD_MS);
+
+  mp_sched_keyboard_interrupt();
+
+  vTaskDelay(2000/portTICK_PERIOD_MS);
+
+  mp_exec_script_from_ram(start_msg_print);
+
+  vTaskDelay(5000/portTICK_PERIOD_MS);
+
+  mp_sched_keyboard_interrupt();
+
+  vTaskDelay(2000/portTICK_PERIOD_MS);
+  
+  message_t start_msg_exception = {.command = CMD_START,.script_data = "import time\n\ntime.sleep(2)\nraise ValueError('Blabla.')" };
+  mp_exec_script_from_ram(start_msg_exception);  
+  
+  vTaskDelay(5000/portTICK_PERIOD_MS); 
+  
+  message_t start_msg_loop = {.command = CMD_START,.script_data = "import time\n\na = 0\nwhile 1:\n\ta = a + 1\nprint(\"a=\" + str(a))" };
+  mp_exec_script_from_ram(start_msg_loop);  
+  
+  vTaskDelay(10000/portTICK_PERIOD_MS); 
+  
+  mp_sched_keyboard_interrupt();
+  
+  vTaskDelay(2000/portTICK_PERIOD_MS);
+
+  message_t start_msg_err = {.command = CMD_START,.script_data = "import time\n\n   a= \n3" };
+  mp_exec_script_from_ram(start_msg_err);    
+
+  //message_t start_msg = {.command = CMD_START,.script_data = "import time\n\nprint(\"Hello world\")" };
+  //add_to_queue(start_msg);
+
+*/
+
   //printMemInfo();
 
 //     // Handle of the wear levelling library instance

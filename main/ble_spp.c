@@ -1,8 +1,20 @@
-/*
- * SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: Apache-2.0
- */
+//_____________________________________________________________________________
+//
+// Copyright (C) 2025                   Mobsya                   CH-1020 Renens
+//_____________________________________________________________________________
+//
+// PROJECT   Thymio-III
+//_____________________________________________________________________________
+//
+//! \file    ble_spp.c
+//! \brief   This module provides the useful functions to use handle BLE connection
+//!
+//! \author  Stefano Morgani
+//!
+//! \license This project is released under the GNU Lesser General Public License
+//_____________________________________________________________________________
+
+
 
 #include "esp_log.h"
 #include "nvs_flash.h"
@@ -26,19 +38,30 @@
 #include "rc5.h"
 #include "mode.h"
 #include "utility.h"
+#include "mp_component.h"
 
 static const char *TAG = "THYMIO_BLUETOOTH";
 
-uint8_t bt_rx_data[CMD_SET_MOST_ACTUATORS_LEN+1]; // Received commands from the device (e.g. from phone)
-uint8_t bt_tx_data[RSP_MOST_SENSORS_LEN+1]; // Data sent to the device (e.g. to phone)
-bool bt_received = false;
+#define MAX_BT_RX_BUFF (CMD_SET_MOST_ACTUATORS_LEN)
+#define MAX_BT_TX_BUFF (RSP_MOST_SENSORS_LEN)
+
+uint8_t bt_rx_data[MAX_BT_RX_BUFF]; // Received commands from the device (e.g. from phone)
+uint8_t bt_rx_data_temp[MAX_BT_RX_BUFF]; // Double buffer for parsing the data while receiving new data without corruption
+uint8_t bt_tx_data[MAX_BT_TX_BUFF]; // Data sent to the device (e.g. to phone)
+bool bt_cmd_received = false;
+uint8_t bt_cmd_len = 0;
+bool bt_sensors_stream_en = false;
 
 static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg);
 static uint8_t own_addr_type;
-QueueHandle_t spp_common_uart_queue = NULL;
 static bool is_connect = false;
 uint16_t connection_handle;
-static uint16_t ble_spp_svc_gatt_read_val_handle;
+static uint16_t ble_sensors_stream_val_handle;
+static uint16_t ble_python_val_handle;
+char mp_script[MAX_MP_SCRIPT_LEN];
+uint16_t mp_script_tot_len = 0;
+uint16_t mp_script_curr_len = 0;
+bool mp_receiving_script = false;
 
 void ble_store_config_init(void);
 
@@ -268,36 +291,75 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
     uuid = ctxt->chr->uuid;
 
     // Determine which characteristic is being accessed by examining its 16-bit UUID.
-    if (ble_uuid_cmp(uuid, BLE_UUID16_DECLARE(BLE_SVC_SPP_RX_CHR_UUID16)) == 0) {
+    if (ble_uuid_cmp(uuid, BLE_UUID16_DECLARE(BLE_SVC_CMD_CHR_UUID16)) == 0) {
         switch (ctxt->op) {
-        case BLE_GATT_ACCESS_OP_WRITE_CHR:
-            //MODLOG_DFLT(INFO, "Data received in write event,conn_handle = %x,attr_handle = %x", conn_handle, attr_handle);
-            ESP_LOGI(TAG, "write buf len = %d (%d)", ctxt->om->om_len, ctxt->om->om_pkthdr_len);
-            ESP_LOG_BUFFER_HEX(TAG, ctxt->om->om_data, ctxt->om->om_len);
-            //if(ctxt->om->om_len == CMD_SET_MOST_ACTUATORS_LEN+1) {
-            if(ctxt->om->om_data[0] == CMD_SET_MOST_ACTUATORS)
-            {
-                memcpy(bt_rx_data, &ctxt->om->om_data[1], CMD_SET_MOST_ACTUATORS_LEN);
-                bt_received = true;
-            }
-            break;
+            case BLE_GATT_ACCESS_OP_WRITE_CHR:
+                //MODLOG_DFLT(INFO, "Data received in write event,conn_handle = %x,attr_handle = %x", conn_handle, attr_handle);
+                ESP_LOGI(TAG, "CMD buf len = %d (%d)", ctxt->om->om_len, ctxt->om->om_pkthdr_len);
+                ESP_LOG_BUFFER_HEX(TAG, ctxt->om->om_data, ctxt->om->om_len);
+                memset(bt_rx_data, 0x00, MAX_BT_RX_BUFF);
+                memcpy(bt_rx_data, ctxt->om->om_data, ctxt->om->om_len);
+                bt_cmd_len = ctxt->om->om_len;
+                bt_cmd_received = true;
+                break;
 
-        default:
-            //MODLOG_DFLT(INFO, "\nDefault Callback");
-            break;
+            default:
+                //MODLOG_DFLT(INFO, "\nDefault Callback");
+                break;
         }
     }
-    if (ble_uuid_cmp(uuid, BLE_UUID16_DECLARE(BLE_SVC_SPP_TX_CHR_UUID16)) == 0) {
+    if (ble_uuid_cmp(uuid, BLE_UUID16_DECLARE(BLE_SVC_PYTHON_CHR_UUID16)) == 0) {
         switch (ctxt->op) {
-        case BLE_GATT_ACCESS_OP_READ_CHR:
-            //MODLOG_DFLT(INFO, "Callback for read");
-            break;
+            case BLE_GATT_ACCESS_OP_WRITE_CHR:
+                //MODLOG_DFLT(INFO, "Data received in write event,conn_handle = %x,attr_handle = %x", conn_handle, attr_handle);
+                ESP_LOGI(TAG, "PY buf len = %d (%d)", ctxt->om->om_len, ctxt->om->om_pkthdr_len);
+                ESP_LOG_BUFFER_HEX(TAG, ctxt->om->om_data, ctxt->om->om_len);
+                if(mp_receiving_script)
+                {
+                    // copy remaining chunk of data
+                    memcpy(mp_script + mp_script_curr_len, &ctxt->om->om_data[0], ctxt->om->om_len);
+                    mp_script_curr_len += ctxt->om->om_len;
+                    if(mp_script_curr_len == mp_script_tot_len)
+                    {
+                        mp_receiving_script = false;
+                    }                    
+                }
+                else
+                {
+                    if(ctxt->om->om_data[0] == CMD_LOAD_SCRIPT)
+                    {
+                        mp_script_tot_len = (ctxt->om->om_data[1] << 8) | ctxt->om->om_data[2];
+                        memset(mp_script, 0x0, MAX_MP_SCRIPT_LEN);
+                        mp_script_curr_len = 0;
+                        mp_receiving_script = true;
+                        // copy first chunk of data
+                        memcpy(mp_script + mp_script_curr_len, &ctxt->om->om_data[3], ctxt->om->om_len-3);
+                        mp_script_curr_len += ctxt->om->om_len - 3;
+                        if(mp_script_curr_len == mp_script_tot_len)
+                        {
+                            mp_receiving_script = false;
+                        }
 
-        default:
-            //MODLOG_DFLT(INFO, "\nDefault Callback");
-            break;
+                    } else if(ctxt->om->om_data[0] == CMD_EXEC_SCRIPT)
+                    {
+                        mp_exec_script_from_ram(mp_script);
+
+                    } else if(ctxt->om->om_data[0] == CMD_STOP_SCRIPT)
+                    {
+                        mp_stop_script();
+                    }
+                    break;         
+                }
+
+            case BLE_GATT_ACCESS_OP_READ_CHR:
+                //MODLOG_DFLT(INFO, "Callback for read");
+                break;
+
+            default:
+                //MODLOG_DFLT(INFO, "\nDefault Callback");
+                break;
         }
-    }
+    } 
     return 0;    
 
 }
@@ -310,16 +372,22 @@ static const struct ble_gatt_svc_def new_ble_svc_gatt_defs[] = {
         .uuid = BLE_UUID16_DECLARE(BLE_SVC_SPP_UUID16),
         .characteristics = (struct ble_gatt_chr_def[])
         { {
-                /* RX characteristic (from device to Thymio) */
-                .uuid = BLE_UUID16_DECLARE(BLE_SVC_SPP_RX_CHR_UUID16),
+                /* commands characteristic (from device to Thymio) */
+                .uuid = BLE_UUID16_DECLARE(BLE_SVC_CMD_CHR_UUID16),
                 .access_cb = ble_svc_gatt_handler,
-                .flags = BLE_GATT_CHR_F_WRITE_NO_RSP,
+                .flags = BLE_GATT_CHR_F_WRITE,
             }, {
-                /* TX characteristic (from Thymio to device) */
-                .uuid = BLE_UUID16_DECLARE(BLE_SVC_SPP_TX_CHR_UUID16),
+                /* sensors stream characteristic (from Thymio to device) */
+                .uuid = BLE_UUID16_DECLARE(BLE_SVC_SENSORS_STREAM_CHR_UUID16),
                 .access_cb = ble_svc_gatt_handler,
-                .val_handle = &ble_spp_svc_gatt_read_val_handle,
+                .val_handle = &ble_sensors_stream_val_handle,
                 .flags = BLE_GATT_CHR_F_NOTIFY,
+            }, {
+                /* sensors stream characteristic (from Thymio to device) */
+                .uuid = BLE_UUID16_DECLARE(BLE_SVC_PYTHON_CHR_UUID16),
+                .access_cb = ble_svc_gatt_handler,
+                .val_handle = &ble_python_val_handle,
+                .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
             }, {
                 0, /* No more characteristics */
             }
@@ -386,124 +454,181 @@ static void bt_rx_tx_task(void *pvParameters)
     int rc = 0;
     while(1)
     {
-        if(bt_received) // Handle commands coming from the device
+        if(bt_cmd_received) // Handle commands coming from the device
         {
-            bt_received = false;
-            Leds_SetCircleBrightness(
-                (bt_rx_data[0]&0x0F), 
-                (bt_rx_data[0]&0xF0)>>4,
-                (bt_rx_data[1]&0x0F),
-                (bt_rx_data[1]&0xF0)>>4,
-                (bt_rx_data[2]&0x0F),
-                (bt_rx_data[2]&0xF0)>>4,
-                (bt_rx_data[3]&0x0F),
-                (bt_rx_data[3]&0xF0)>>4);
+            bt_cmd_received = false;
+            switch(bt_rx_data[0])
+            {
+                case CMD_SET_MOST_ACTUATORS:
+                    if(bt_cmd_len == CMD_SET_MOST_ACTUATORS_LEN) // Check correct size is received
+                    {
+                        memcpy(bt_rx_data_temp, bt_rx_data, bt_cmd_len);
+                        Leds_SetCircleBrightness(
+                            (bt_rx_data_temp[1]&0x0F), 
+                            (bt_rx_data_temp[1]&0xF0)>>4,
+                            (bt_rx_data_temp[2]&0x0F),
+                            (bt_rx_data_temp[2]&0xF0)>>4,
+                            (bt_rx_data_temp[3]&0x0F),
+                            (bt_rx_data_temp[3]&0xF0)>>4,
+                            (bt_rx_data_temp[4]&0x0F),
+                            (bt_rx_data_temp[4]&0xF0)>>4);
+                        
+                        Leds_SetLegoFrontBrightness(
+                            (bt_rx_data_temp[5]&0x0F), 
+                            (bt_rx_data_temp[5]&0xF0)>>4,
+                            (bt_rx_data_temp[6]&0x0F),
+                            (bt_rx_data_temp[6]&0xF0)>>4,
+                            (bt_rx_data_temp[7]&0x0F),
+                            (bt_rx_data_temp[7]&0xF0)>>4,
+                            (bt_rx_data_temp[8]&0x0F),
+                            (bt_rx_data_temp[8]&0xF0)>>4);
+
+                        Leds_SetLegoBackBrightness(
+                            (bt_rx_data_temp[9]&0x0F), 
+                            (bt_rx_data_temp[9]&0xF0)>>4,
+                            (bt_rx_data_temp[10]&0x0F),
+                            (bt_rx_data_temp[10]&0xF0)>>4,
+                            (bt_rx_data_temp[11]&0x0F),
+                            (bt_rx_data_temp[11]&0xF0)>>4,
+                            (bt_rx_data_temp[12]&0x0F),
+                            (bt_rx_data_temp[12]&0xF0)>>4);
+
+                        Leds_SetFrontLeftBrightness((bt_rx_data_temp[13]&0x0F), (bt_rx_data_temp[13]&0xF0)>>4, (bt_rx_data_temp[14]&0x0F));
+                        Leds_SetFrontRightBrightness((bt_rx_data_temp[15]&0x0F), (bt_rx_data_temp[15]&0xF0)>>4, (bt_rx_data_temp[16]&0x0F));
+                        Leds_SetBackLeftBrightness((bt_rx_data_temp[17]&0x0F), (bt_rx_data_temp[17]&0xF0)>>4, (bt_rx_data_temp[18]&0x0F));
+                        Leds_SetBackRightBrightness((bt_rx_data_temp[19]&0x0F), (bt_rx_data_temp[19]&0xF0)>>4, (bt_rx_data_temp[20]&0x0F));
+
+                        SetMotorTargets(bt_rx_data_temp[21]|(bt_rx_data_temp[22]<<8), bt_rx_data_temp[23]|(bt_rx_data_temp[24]<<8));
+
+                        // Play sound based on bt_rx_data_temp[25]
+                    }
+                    break;
+
+                case CMD_SET_OTHERS_ACTUATORS:
+                    if(bt_cmd_len == CMD_SET_OTHERS_ACTUATORS_LEN) // Check correct size is received
+                    {
+                        memcpy(bt_rx_data_temp, bt_rx_data, bt_cmd_len);
+                    }                
+                    break;
+
+                case CMD_SETUP_NOTIF:
+                    if(bt_cmd_len == CMD_SETUP_NOTIF_LEN) // Check correct size is received
+                    {
+                        if((bt_rx_data[1] & 0x01) == 0x01) // Enable sensors stream
+                        {
+                            bt_sensors_stream_en = true;
+                        }
+                        else // Disable sensors stream
+                        {
+                            bt_sensors_stream_en = false;
+                        }
+                    }                 
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        if(bt_sensors_stream_en)
+        {
+            bt_tx_data[0] = RSP_MOST_SENSORS;
+            // Send update to the device
+            T_HSV hsv_temp = ColorSensor_GetHsv();
+            bt_tx_data[1] = hsv_temp.Hue&0xFF;
+            bt_tx_data[2] = hsv_temp.Hue>>8;
+            bt_tx_data[3] = hsv_temp.Saturation;
+            bt_tx_data[4] = hsv_temp.Value;
+
+            uint16_t prox_temp = GetGroundValue(0);
+            bt_tx_data[5] = prox_temp&0xFF;
+            bt_tx_data[6] = prox_temp>>8;
+            prox_temp = GetGroundValue(1);
+            bt_tx_data[7] = prox_temp&0xFF;
+            bt_tx_data[8] = prox_temp>>8;
+
+            T_Axis acc_temp, gyro_temp;
+            acc_temp = Accelerometer_GetAcceleration();
+            bt_tx_data[9] = acc_temp.X&0xFF;
+            bt_tx_data[10] = acc_temp.X>>8;
+            bt_tx_data[11] = acc_temp.Y&0xFF;
+            bt_tx_data[12] = acc_temp.Y>>8;
+            bt_tx_data[13] = acc_temp.Z&0xFF;
+            bt_tx_data[14] = acc_temp.Z>>8;
+            gyro_temp = Gyroscope_GetAngularVelocity();
+            bt_tx_data[15] = gyro_temp.X&0xFF;
+            bt_tx_data[16] = gyro_temp.X>>8;
+            bt_tx_data[17] = gyro_temp.Y&0xFF;
+            bt_tx_data[18] = gyro_temp.Y>>8;
+            bt_tx_data[19] = gyro_temp.Z&0xFF;
+            bt_tx_data[20] = gyro_temp.Z>>8;
+
+            //uint8_t* status_temp = Buttons_GetStatus()
+            // bt_tx_data[21] = ...
+
+            int16_t vol = STM32_GetMicrophoneIntensity();
+            bt_tx_data[22] = vol&0xFF;
+            bt_tx_data[23] = vol>>8;
+
+            prox_temp = GetProximityValue(0);
+            bt_tx_data[24] = prox_temp&0xFF;
+            bt_tx_data[25] = prox_temp>>8;
+            prox_temp = GetProximityValue(1);
+            bt_tx_data[26] = prox_temp&0xFF;
+            bt_tx_data[27] = prox_temp>>8;        
+            prox_temp = GetProximityValue(2);
+            bt_tx_data[28] = prox_temp&0xFF;
+            bt_tx_data[29] = prox_temp>>8;   
             
-            Leds_SetLegoFrontBrightness(
-                (bt_rx_data[4]&0x0F), 
-                (bt_rx_data[4]&0xF0)>>4,
-                (bt_rx_data[5]&0x0F),
-                (bt_rx_data[5]&0xF0)>>4,
-                (bt_rx_data[6]&0x0F),
-                (bt_rx_data[6]&0xF0)>>4,
-                (bt_rx_data[7]&0x0F),
-                (bt_rx_data[7]&0xF0)>>4);
+            prox_temp = GetProximityValue(3);
+            bt_tx_data[30] = prox_temp&0xFF;
+            bt_tx_data[31] = prox_temp>>8;    
+            prox_temp = GetProximityValue(4);
+            bt_tx_data[32] = prox_temp&0xFF;
+            bt_tx_data[33] = prox_temp>>8;    
+            prox_temp = GetProximityValue(5);
+            bt_tx_data[34] = prox_temp&0xFF;
+            bt_tx_data[35] = prox_temp>>8;
+            prox_temp = GetProximityValue(6);
+            bt_tx_data[36] = prox_temp&0xFF;
+            bt_tx_data[37] = prox_temp>>8;            
 
-            Leds_SetLegoBackBrightness(
-                (bt_rx_data[8]&0x0F), 
-                (bt_rx_data[8]&0xF0)>>4,
-                (bt_rx_data[9]&0x0F),
-                (bt_rx_data[9]&0xF0)>>4,
-                (bt_rx_data[10]&0x0F),
-                (bt_rx_data[10]&0xF0)>>4,
-                (bt_rx_data[11]&0x0F),
-                (bt_rx_data[11]&0xF0)>>4);
+            int16_t toggle = -1;
+            bt_tx_data[38] = RC5_GetCommand(&toggle);
 
-            Leds_SetFrontLeftBrightness((bt_rx_data[12]&0x0F), (bt_rx_data[12]&0xF0)>>4, (bt_rx_data[13]&0x0F));
-            Leds_SetFrontRightBrightness((bt_rx_data[14]&0x0F), (bt_rx_data[14]&0xF0)>>4, (bt_rx_data[15]&0x0F));
-            Leds_SetBackLeftBrightness((bt_rx_data[16]&0x0F), (bt_rx_data[16]&0xF0)>>4, (bt_rx_data[17]&0x0F));
-            Leds_SetBackRightBrightness((bt_rx_data[18]&0x0F), (bt_rx_data[18]&0xF0)>>4, (bt_rx_data[19]&0x0F));
-
-            SetMotorTargets(bt_rx_data[20]|(bt_rx_data[21]<<8), bt_rx_data[22]|(bt_rx_data[23]<<8));
-
-            // Play sound based on bt_rx_data[24]
+            struct os_mbuf *txom;
+            txom = ble_hs_mbuf_from_flat(bt_tx_data, sizeof(bt_tx_data));
+            rc = ble_gattc_notify_custom(connection_handle, ble_sensors_stream_val_handle, txom);
+            if( rc == 0)
+            {
+                ESP_LOGI(TAG,"Notification sent successfully");
+            }
+            else 
+            {
+                ESP_LOGI(TAG,"Error in sending notification");
+            }
         }
-
-        // Send update to the device
-        T_HSV hsv_temp = ColorSensor_GetHsv();
-        bt_tx_data[0] = hsv_temp.Hue&0xFF;
-        bt_tx_data[1] = hsv_temp.Hue>>8;
-        bt_tx_data[2] = hsv_temp.Saturation;
-        bt_tx_data[3] = hsv_temp.Value;
-
-        uint16_t prox_temp = GetGroundValue(0);
-        bt_tx_data[4] = prox_temp&0xFF;
-        bt_tx_data[5] = prox_temp>>8;
-        prox_temp = GetGroundValue(1);
-        bt_tx_data[6] = prox_temp&0xFF;
-        bt_tx_data[7] = prox_temp>>8;
-
-        T_Axis acc_temp, gyro_temp;
-        acc_temp = Accelerometer_GetAcceleration();
-        bt_tx_data[8] = acc_temp.X&0xFF;
-        bt_tx_data[9] = acc_temp.X>>8;
-        bt_tx_data[10] = acc_temp.Y&0xFF;
-        bt_tx_data[11] = acc_temp.Y>>8;
-        bt_tx_data[12] = acc_temp.Z&0xFF;
-        bt_tx_data[13] = acc_temp.Z>>8;
-        gyro_temp = Gyroscope_GetAngularVelocity();
-        bt_tx_data[14] = gyro_temp.X&0xFF;
-        bt_tx_data[15] = gyro_temp.X>>8;
-        bt_tx_data[16] = gyro_temp.Y&0xFF;
-        bt_tx_data[17] = gyro_temp.Y>>8;
-        bt_tx_data[18] = gyro_temp.Z&0xFF;
-        bt_tx_data[19] = gyro_temp.Z>>8;
-
-        //uint8_t* status_temp = Buttons_GetStatus()
-        // bt_tx_data[20] = ...
-
-        int16_t vol = STM32_GetMicrophoneIntensity();
-        bt_tx_data[21] = vol&0xFF;
-        bt_tx_data[22] = vol>>8;
-
-        prox_temp = GetProximityValue(0);
-        bt_tx_data[23] = prox_temp&0xFF;
-        bt_tx_data[24] = prox_temp>>8;
-        prox_temp = GetProximityValue(1);
-        bt_tx_data[25] = prox_temp&0xFF;
-        bt_tx_data[26] = prox_temp>>8;        
-        prox_temp = GetProximityValue(2);
-        bt_tx_data[27] = prox_temp&0xFF;
-        bt_tx_data[28] = prox_temp>>8;    
-        prox_temp = GetProximityValue(3);
-        bt_tx_data[29] = prox_temp&0xFF;
-        bt_tx_data[30] = prox_temp>>8;    
-        prox_temp = GetProximityValue(4);
-        bt_tx_data[31] = prox_temp&0xFF;
-        bt_tx_data[32] = prox_temp>>8;    
-        prox_temp = GetProximityValue(5);
-        bt_tx_data[33] = prox_temp&0xFF;
-        bt_tx_data[34] = prox_temp>>8;
-        prox_temp = GetProximityValue(6);
-        bt_tx_data[35] = prox_temp&0xFF;
-        bt_tx_data[36] = prox_temp>>8;            
-
-        int16_t toggle = -1;
-        bt_tx_data[37] = RC5_GetCommand(&toggle);
-
-        struct os_mbuf *txom;
-        txom = ble_hs_mbuf_from_flat(bt_tx_data, sizeof(bt_tx_data));
-        rc = ble_gattc_notify_custom(connection_handle, ble_spp_svc_gatt_read_val_handle, txom);
-        if( rc == 0){
-            ESP_LOGI(TAG,"Notification sent successfully");
-        }
-        else {
-            ESP_LOGI(TAG,"Error in sending notification");
-        }  
      
         vTaskDelay(20/portTICK_PERIOD_MS); // 50 hz update
     }
     vTaskDelete(NULL);
+}
+
+void ble_notify_python_end(uint8_t value)
+{
+    int rc = 0;
+    struct os_mbuf *txom;
+    uint8_t temp[2] = {RSP_SCRIPT_FINISH, value};
+    txom = ble_hs_mbuf_from_flat(temp, sizeof(temp));
+    rc = ble_gattc_notify_custom(connection_handle, ble_python_val_handle, txom);
+    if( rc == 0)
+    {
+        ESP_LOGI(TAG,"Notification sent successfully");
+    }
+    else 
+    {
+        ESP_LOGI(TAG,"Error in sending notification");
+    }
 }
 
 void ble_spp_init(void)

@@ -35,6 +35,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/queue.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
 #include "esp_task.h"
@@ -75,6 +76,7 @@
 #include "../main/mode.h"
 #include "../main/common.h"
 #include "../main/accelerometer.h"
+#include "../main/ble_spp.h"
 
 #if MICROPY_BLUETOOTH_NIMBLE
 #include "extmod/modbluetooth.h"
@@ -96,15 +98,57 @@ static EventGroupHandle_t mp_component_event_group;
 uint8_t scriptPresent[7] = {0};
 static uint8_t main_counter = 0;
 uint8_t* buttonState;
+char* ram_script;
 
 const int EVT_EXEC_MODE = BIT0;
+
+// Funzione helper per l'esecuzione dello script MicroPython
+void run_micropython_script(char* script_content) {
+    //if (mp_globals == NULL) {
+    //    mp_globals = mp_globals_new();
+    //}
+    
+    // Creazione del lexer a partire dalla stringa C
+    mp_lexer_t *lex = mp_lexer_new_from_str_len(MP_QSTR__lt_string_gt_, script_content, strlen(script_content), 0);
+    if (lex == NULL) {
+        printf("Errore: Impossibile creare il lexer\n");
+        return;
+    }
+
+    // Inizializzazione del parse tree
+    mp_parse_tree_t parse_tree = mp_parse(lex, MP_PARSE_FILE_INPUT);
+
+    // Esecuzione del codice
+    qstr source_name = qstr_from_str("prova");
+    mp_obj_t script_result = mp_compile(&parse_tree, source_name, false);
+    mp_call_function_0(script_result);
+
+    // Libera la memoria del lexer
+    //mp_lexer_free(lex); // Already done by mp_parse!!
+}
+
 
 int vprintf_null(const char *format, va_list ap) {
     // do nothing: this is used as a log target during raw repl mode
     return 0;
 }
 
+void mp_exec_script_task(void *pvParameter) {
+    char* script_data = (char*) pvParameter;
+    nlr_buf_t nlr;
+    if (nlr_push(&nlr) == 0) {
+        run_micropython_script(script_data);
+        nlr_pop();
+    } else {
+        // Un'eccezione è stata sollevata (es. KeyboardInterrupt)
+        printf("Script interrotto.\n");
+        mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
+    }
+    vTaskDelete(NULL);
+}
+
 void mp_task(void *pvParameter) {
+    nlr_buf_t nlr;
     volatile uint32_t sp = (uint32_t)get_sp();
     #if MICROPY_PY_THREAD
     mp_thread_init(pxTaskGetStackStart(NULL), MP_TASK_STACK_SIZE / sizeof(uintptr_t));
@@ -255,7 +299,7 @@ soft_reset:
     }    
 
     for (;;) {
-      
+
         // If REPL was chosen then skip the wait event. This is because the REPL can be switched from "raw" to "friendly" or viceversa  
         // (e.g. when using pyboard.py) and this imply that the code will exit the main loop and restart from "soft_reset".
         if(mp_component_state == -1) {
@@ -309,9 +353,23 @@ soft_reset:
                 pyexec_file("main7.py");
                 mp_component_state = -1; // Execute the script only once
                 break;
+            case 8: //script from RAM
+                // Exception handled by Micropython by using NLR method
+                if (nlr_push(&nlr) == 0) {
+                    run_micropython_script(ram_script);
+                    nlr_pop();
+                    ble_notify_python_end(0);
+                } else {
+                    // Exception raised (es. KeyboardInterrupt)
+                    mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
+                    ble_notify_python_end(1);
+                }                
+                mp_component_state = -1; // Execute the script only once
+                break;
             default:
                 break; 
         }
+        
     }
 
 soft_reset_exit:
@@ -413,6 +471,25 @@ void exec_script(uint8_t id) {
 
 uint8_t script_is_present(uint8_t id) {
     return scriptPresent[id-1];
+}
+
+void mp_exec_script_from_ram(char* script)
+{
+    if(mp_component_state == -1) // Run only one script at a time
+    {
+        ram_script = script;
+        mp_component_state = 8;
+        xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE); // Tell the main micropython loop to execute REPL or a user script.
+    }
+    else
+    {
+        ble_notify_python_end(2);
+    }
+}
+
+void mp_stop_script(void)
+{
+    mp_sched_keyboard_interrupt();
 }
 
 MP_REGISTER_ROOT_POINTER(mp_obj_t native_code_pointers);
