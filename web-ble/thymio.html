@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thymio 3</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007BFF;
+            color: white;
+            transition: background-color 0.3s;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #proximityData {
+            margin-top: 20px;
+            font-size: 18px;
+            text-align: center;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            width: 80%;
+            max-width: 400px;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Thymio 3</h1>
+    <button id="connectButton">Connect to Thymio</button>
+    <p id="status">Status: Disconnected</p>
+    <div id="proximityData">Proximity values will appear here.</div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const connectButton = document.getElementById('connectButton');
+            const statusElement = document.getElementById('status');
+            const proximityDataElement = document.getElementById('proximityData');
+
+            // UUIDs from the ble_spp_server.h file
+            const SPP_SERVICE_UUID = '0000abf0-0000-1000-8000-00805f9b34fb';
+            const SENSORS_STREAM_CHR_UUID = '0000abf2-0000-1000-8000-00805f9b34fb';
+            const COMMANDS_CHR_UUID = '0000abf1-0000-1000-8000-00805f9b34fb';
+
+            let device, server, sensorsCharacteristic, commandsCharacteristic;
+
+            async function connectToThymio() {
+                try {
+                    statusElement.textContent = 'Status: Connecting...';
+                    connectButton.disabled = true;
+
+                    // Request the device
+                    device = await navigator.bluetooth.requestDevice({
+                        filters: [{ services: [SPP_SERVICE_UUID] }]
+                    });
+                    
+                    statusElement.textContent = `Status: Found device ${device.name}, connecting...`;
+
+                    // Handle disconnection event
+                    device.addEventListener('gattserverdisconnected', onDisconnected);
+
+                    // Connect to the GATT server
+                    server = await device.gatt.connect();
+
+                    // Get the SPP Service and characteristics
+                    const service = await server.getPrimaryService(SPP_SERVICE_UUID);
+                    sensorsCharacteristic = await service.getCharacteristic(SENSORS_STREAM_CHR_UUID);
+                    commandsCharacteristic = await service.getCharacteristic(COMMANDS_CHR_UUID);
+
+                    statusElement.textContent = 'Status: Connected! Enabling sensor stream...';
+                    connectButton.textContent = 'Disconnect';
+                    connectButton.disabled = false;
+
+                    // Enable the sensors stream
+                    // CMD_SETUP_NOTIF is 0x03, and the second byte's bit0 is for enabling/disabling the stream
+                    const enableStreamCommand = new Uint8Array([0x03, 0x01]);
+                    await commandsCharacteristic.writeValue(enableStreamCommand);
+
+                    // Set up a listener for notifications
+                    await sensorsCharacteristic.startNotifications();
+                    sensorsCharacteristic.addEventListener('characteristicvaluechanged', handleProximityData);
+
+                    statusElement.textContent = 'Status: Connected and streaming proximity data.';
+                } catch (error) {
+                    console.error(error);
+                    statusElement.textContent = `Error: ${error.message}`;
+                    connectButton.disabled = false;
+                    connectButton.textContent = 'Connect to Thymio';
+                }
+            }
+            
+            function disconnectFromThymio() {
+                if (device && device.gatt.connected) {
+                    device.gatt.disconnect();
+                }
+            }
+
+            function onDisconnected() {
+                statusElement.textContent = 'Status: Disconnected.';
+                connectButton.textContent = 'Connect to Thymio';
+                connectButton.disabled = false;
+                proximityDataElement.innerHTML = 'Proximity values will appear here.';
+                // Stop the sensor stream notification to be sure
+                if (sensorsCharacteristic) {
+                    sensorsCharacteristic.removeEventListener('characteristicvaluechanged', handleProximityData);
+                    sensorsCharacteristic.stopNotifications();
+                }
+                // Also, explicitly send a command to disable the stream on the robot side
+                if (commandsCharacteristic) {
+                    const disableStreamCommand = new Uint8Array([0x03, 0x00]);
+                    commandsCharacteristic.writeValue(disableStreamCommand).catch(e => console.error("Failed to disable stream:", e));
+                }
+                console.log('Disconnected from Thymio.');
+            }
+
+            function handleProximityData(event) {
+                const value = event.target.value;
+                const buffer = new Uint8Array(value.buffer);
+                
+                // The proximity values start at byte 24 in the RSP_MOST_SENSORS response.
+                // Each proximity value is 2 bytes (uint16_t)
+                
+                // Proximity sensor 0 (left)
+                const prox0 = buffer[24] | (buffer[25] << 8);
+                // Proximity sensor 1 (front left)
+                const prox1 = buffer[26] | (buffer[27] << 8);
+                // Proximity sensor 2 (center)
+                const prox2 = buffer[28] | (buffer[29] << 8);
+                // Proximity sensor 3 (front right)
+                const prox3 = buffer[30] | (buffer[31] << 8);
+                // Proximity sensor 4 (right)
+                const prox4 = buffer[32] | (buffer[33] << 8);
+                // Proximity sensor 5 (back left)
+                const prox5 = buffer[34] | (buffer[35] << 8);
+                // Proximity sensor 6 (back right)
+                const prox6 = buffer[36] | (buffer[37] << 8);
+                
+                proximityDataElement.innerHTML = `
+                    <p>Left: ${prox0}</p>
+                    <p>Front Left: ${prox1}</p>
+                    <p>Center: ${prox2}</p>
+                    <p>Front Right: ${prox3}</p>
+                    <p>Right: ${prox4}</p>
+                    <p>Back Left: ${prox5}</p>
+                    <p>Back Right: ${prox6}</p>
+                `;
+            }
+
+            connectButton.addEventListener('click', () => {
+                if (connectButton.textContent === 'Connect to Thymio') {
+                    connectToThymio();
+                } else {
+                    disconnectFromThymio();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

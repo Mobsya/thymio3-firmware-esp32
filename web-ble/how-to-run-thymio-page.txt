@@ -1,0 +1,9 @@
+Chrome:
+pre-requisites:
+1) go to chrome://flags and enable Web Bluetooth. Realunch browser
+visualize page:
+just open the thymio.html with Chrome
+
+If a local web server is needed:
+1) go to this directory and run a local http server: python -m http.server 8000
+2) open link in chrome: http://localhost:8000/test.html
