@@ -103,8 +103,8 @@
 
                     // Enable the sensors stream
                     // CMD_SETUP_NOTIF is 0x03, and the second byte's bit0 is for enabling/disabling the stream
-                    const enableStreamCommand = new Uint8Array([0x03, 0x01]);
-                    await commandsCharacteristic.writeValue(enableStreamCommand);
+                    const enableStreamCommand = new Uint8Array([0x01, 0x01]);
+                    await sensorsCharacteristic.writeValue(enableStreamCommand);
 
                     // Set up a listener for notifications
                     await sensorsCharacteristic.startNotifications();
@@ -136,9 +136,9 @@
                     sensorsCharacteristic.stopNotifications();
                 }
                 // Also, explicitly send a command to disable the stream on the robot side
-                if (commandsCharacteristic) {
-                    const disableStreamCommand = new Uint8Array([0x03, 0x00]);
-                    commandsCharacteristic.writeValue(disableStreamCommand).catch(e => console.error("Failed to disable stream:", e));
+                if (sensorsCharacteristic) {
+                    const disableStreamCommand = new Uint8Array([0x01, 0x00]);
+                    sensorsCharacteristic.writeValue(disableStreamCommand).catch(e => console.error("Failed to disable stream:", e));
                 }
                 console.log('Disconnected from Thymio.');
             }

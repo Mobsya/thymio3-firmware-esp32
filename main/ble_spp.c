@@ -38,19 +38,30 @@
 #include "rc5.h"
 #include "mode.h"
 #include "utility.h"
+#include "buttons.h"
 #include "mp_component.h"
+#include "esp_rom_crc.h"
+#include "aseba_esp32.h"
 
 static const char *TAG = "THYMIO_BLUETOOTH";
 
-#define MAX_BT_RX_BUFF (CMD_SET_MOST_ACTUATORS_LEN)
-#define MAX_BT_TX_BUFF (RSP_MOST_SENSORS_LEN)
+#define MAX_BT_RX_BUFF (CMD_WRITE_MOST_ACTUATORS_LEN)
+#define MAX_BT_TX_BUFF (STREAM_NOTIFY_MOST_SENSORS_LEN)
+
+#define MP_SCRIPT_LOAD_OK 0
+#define MP_SCRIPT_LOAD_CRC_ERR 1
+#define MP_SCRIPT_LOAD_NOT_COMPLETE 2
+#define MP_SCRIPT_LOAD_WRONG_SEQ 3
+#define MP_SCRIPT_LOAD_TOO_BIG 4
 
 uint8_t bt_rx_data[MAX_BT_RX_BUFF]; // Received commands from the device (e.g. from phone)
 uint8_t bt_rx_data_temp[MAX_BT_RX_BUFF]; // Double buffer for parsing the data while receiving new data without corruption
 uint8_t bt_tx_data[MAX_BT_TX_BUFF]; // Data sent to the device (e.g. to phone)
 bool bt_cmd_received = false;
 uint8_t bt_cmd_len = 0;
-bool bt_sensors_stream_en = false;
+bool bt_most_sensors_stream_en = false;
+bool bt_others_sensors_stream_en = false;
+static uint8_t rx_buff_temp[500];
 
 static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg);
 static uint8_t own_addr_type;
@@ -62,6 +73,21 @@ char mp_script[MAX_MP_SCRIPT_LEN];
 uint16_t mp_script_tot_len = 0;
 uint16_t mp_script_curr_len = 0;
 bool mp_receiving_script = false;
+bool mp_script_indicate = false;
+uint8_t mp_script_load_res = MP_SCRIPT_LOAD_OK;
+uint32_t mp_script_crc = 0;
+uint16_t mp_script_seq_id = 0;
+uint16_t mp_script_seq_id_prev = 0;
+uint16_t mp_script_timeout = 0;
+bool mp_script_ready = false;
+
+// Initial CRC value
+// Note: ESP32's ROM functions for CRC require some bitwise manipulation to match standard CRC32 implementations.
+// The initial value is usually 0xFFFFFFFF for CRC-32/ISO-HDLC.
+// For the ESP32 ROM function, you need to bitwise NOT the initial value.
+static uint32_t initial_crc = ~(0xFFFFFFFF);
+uint32_t calculated_crc = 0;
+
 
 void ble_store_config_init(void);
 
@@ -134,7 +160,7 @@ static void ble_spp_server_advertise(void)
     fields.name_is_complete = 1;
 
     fields.uuids16 = (ble_uuid16_t[]) {
-        BLE_UUID16_INIT(BLE_SVC_SPP_UUID16)
+        BLE_UUID16_INIT(BLE_SVC_THYMIO_UUID16)
     };
     fields.num_uuids16 = 1;
     fields.uuids16_is_complete = 1;
@@ -203,6 +229,8 @@ ble_spp_server_gap_event(struct ble_gap_event *event, void *arg)
         MODLOG_DFLT(INFO, "disconnect; reason=%d ", event->disconnect.reason);
         ble_spp_server_print_conn_desc(&event->disconnect.conn);
         MODLOG_DFLT(INFO, "\n");
+
+        mp_receiving_script = false;
 
         /* Connection terminated; resume advertising. */
         ble_spp_server_advertise();
@@ -295,7 +323,7 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
         switch (ctxt->op) {
             case BLE_GATT_ACCESS_OP_WRITE_CHR:
                 //MODLOG_DFLT(INFO, "Data received in write event,conn_handle = %x,attr_handle = %x", conn_handle, attr_handle);
-                ESP_LOGI(TAG, "CMD buf len = %d (%d)", ctxt->om->om_len, ctxt->om->om_pkthdr_len);
+                ESP_LOGI(TAG, "CMD buf len = %d (%d) [%d]", ctxt->om->om_len, ctxt->om->om_pkthdr_len, OS_MBUF_PKTLEN(ctxt->om));
                 ESP_LOG_BUFFER_HEX(TAG, ctxt->om->om_data, ctxt->om->om_len);
                 memset(bt_rx_data, 0x00, MAX_BT_RX_BUFF);
                 memcpy(bt_rx_data, ctxt->om->om_data, ctxt->om->om_len);
@@ -312,43 +340,113 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
         switch (ctxt->op) {
             case BLE_GATT_ACCESS_OP_WRITE_CHR:
                 //MODLOG_DFLT(INFO, "Data received in write event,conn_handle = %x,attr_handle = %x", conn_handle, attr_handle);
-                ESP_LOGI(TAG, "PY buf len = %d (%d)", ctxt->om->om_len, ctxt->om->om_pkthdr_len);
+                ESP_LOGI(TAG, "PY buf len = %d (%d) [%d]s", ctxt->om->om_len, ctxt->om->om_pkthdr_len, OS_MBUF_PKTLEN(ctxt->om));
                 ESP_LOG_BUFFER_HEX(TAG, ctxt->om->om_data, ctxt->om->om_len);
+                ble_hs_mbuf_to_flat(ctxt->om, rx_buff_temp, 500, NULL);
+                ESP_LOG_BUFFER_HEX(TAG, rx_buff_temp, OS_MBUF_PKTLEN(ctxt->om));
+
                 if(mp_receiving_script)
                 {
-                    // copy remaining chunk of data
-                    memcpy(mp_script + mp_script_curr_len, &ctxt->om->om_data[0], ctxt->om->om_len);
-                    mp_script_curr_len += ctxt->om->om_len;
-                    if(mp_script_curr_len == mp_script_tot_len)
+                    mp_script_timeout = 0; // Reset timeout
+                    mp_script_seq_id = (ctxt->om->om_data[0] << 8) | ctxt->om->om_data[1];
+                    if(mp_script_seq_id != (mp_script_seq_id_prev+1))
                     {
                         mp_receiving_script = false;
-                    }                    
+                        mp_script_load_res = MP_SCRIPT_LOAD_WRONG_SEQ;
+                        mp_script_indicate = true;
+                        break;      
+                    }
+                    mp_script_seq_id_prev++;
+                    // copy remaining chunk of data
+                    os_mbuf_copydata(ctxt->om, 2, OS_MBUF_PKTLEN(ctxt->om) - 2, mp_script + mp_script_curr_len);
+                    mp_script_curr_len += OS_MBUF_PKTLEN(ctxt->om) - 2; // Each packet contains also a sequence id (2 bytes)
+                    if(mp_script_curr_len == mp_script_tot_len)
+                    {
+                        mp_receiving_script = false;                        
+                        // Check the integrity of the data once all the script is received.
+                        calculated_crc = esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len);
+                        calculated_crc = ~calculated_crc; // The final CRC value needs to be bitwise NOT-ed to get the standard CRC32 result.
+                        ESP_LOGI(TAG, "calc crc=%x", calculated_crc);
+                        //ESP_LOGI(TAG, "le) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_le(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_le(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_le(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_le(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
+                        //ESP_LOGI(TAG, "be) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
+                        if(calculated_crc == mp_script_crc)
+                        {
+                            mp_script_load_res = MP_SCRIPT_LOAD_OK;
+                            mp_script_indicate = true; 
+                            mp_script_ready = true;
+                        }
+                        else
+                        {
+                            mp_script_load_res = MP_SCRIPT_LOAD_CRC_ERR;
+                            mp_script_indicate = true; 
+                        }
+                    }             
                 }
                 else
                 {
-                    if(ctxt->om->om_data[0] == CMD_LOAD_SCRIPT)
+                    if(ctxt->om->om_data[0] == PYTHON_WRITE_LOAD)
                     {
+                        mp_script_timeout = 0; // Reset timeout
                         mp_script_tot_len = (ctxt->om->om_data[1] << 8) | ctxt->om->om_data[2];
-                        memset(mp_script, 0x0, MAX_MP_SCRIPT_LEN);
-                        mp_script_curr_len = 0;
-                        mp_receiving_script = true;
-                        // copy first chunk of data
-                        memcpy(mp_script + mp_script_curr_len, &ctxt->om->om_data[3], ctxt->om->om_len-3);
-                        mp_script_curr_len += ctxt->om->om_len - 3;
-                        if(mp_script_curr_len == mp_script_tot_len)
+                        mp_script_crc = (ctxt->om->om_data[3] << 24) | (ctxt->om->om_data[4] << 16) | (ctxt->om->om_data[5] << 8) | ctxt->om->om_data[6];
+                        mp_script_seq_id = (ctxt->om->om_data[7] << 8) | ctxt->om->om_data[8];
+                        mp_script_load_res = MP_SCRIPT_LOAD_OK;
+                        ESP_LOGI(TAG,"tot len=%d, crc=%x, seq=%d", mp_script_tot_len, mp_script_crc, mp_script_seq_id);
+                        mp_script_seq_id_prev = 0;
+                        if(mp_script_tot_len > MAX_MP_SCRIPT_LEN)
                         {
-                            mp_receiving_script = false;
+                            mp_script_load_res = MP_SCRIPT_LOAD_TOO_BIG;
+                            mp_script_indicate = true;
+                        }
+                        else if(mp_script_seq_id != 0)
+                        {
+                            mp_script_load_res = MP_SCRIPT_LOAD_WRONG_SEQ;
+                            mp_script_indicate = true;
+                        }
+                        else
+                        {
+                            mp_script_ready = false;
+                            memset(mp_script, 0x0, MAX_MP_SCRIPT_LEN);  // Reset buffer
+                            mp_script_curr_len = 0;
+                            mp_receiving_script = true;
+                            // copy first chunk of data
+                            os_mbuf_copydata(ctxt->om, 9, OS_MBUF_PKTLEN(ctxt->om) - 9, mp_script + mp_script_curr_len);
+                            mp_script_curr_len += OS_MBUF_PKTLEN(ctxt->om) - 9; // Firt packet contains also command id (1); script len (2), crc (4), sequence id (2) = 9 bytes                        
+                            if(mp_script_curr_len == mp_script_tot_len) // All the script data received in the first packet (small script)
+                            {
+                                mp_receiving_script = false;                        
+                                // Check the integrity of the data once all the script is received.
+                                calculated_crc = esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len);
+                                calculated_crc = ~calculated_crc; // The final CRC value needs to be bitwise NOT-ed to get the standard CRC32 result.
+                                ESP_LOGI(TAG, "calc crc=%x", calculated_crc);
+                                //ESP_LOGI(TAG, "le) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_le(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_le(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_le(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_le(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
+                                //ESP_LOGI(TAG, "be) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
+                                if(calculated_crc == mp_script_crc)
+                                {
+                                    mp_script_load_res = MP_SCRIPT_LOAD_OK;
+                                    mp_script_indicate = true; 
+                                    mp_script_ready = true;
+                                }
+                                else
+                                {
+                                    mp_script_load_res = MP_SCRIPT_LOAD_CRC_ERR;
+                                    mp_script_indicate = true; 
+                                }
+                            }
                         }
 
-                    } else if(ctxt->om->om_data[0] == CMD_EXEC_SCRIPT)
+                    } else if(ctxt->om->om_data[0] == PYTHON_WRITE_EXEC)
                     {
-                        mp_exec_script_from_ram(mp_script);
+                        if(mp_script_ready)
+                        {
+                            mp_exec_script_from_ram(mp_script);
+                        }
 
-                    } else if(ctxt->om->om_data[0] == CMD_STOP_SCRIPT)
+                    } else if(ctxt->om->om_data[0] == PYTHON_WRITE_STOP)
                     {
                         mp_stop_script();
                     }
-                    break;         
+                    break;
                 }
 
             case BLE_GATT_ACCESS_OP_READ_CHR:
@@ -356,10 +454,42 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                 break;
 
             default:
-                //MODLOG_DFLT(INFO, "\nDefault Callback");
+                MODLOG_DFLT(INFO, "\nDefault Callback");
                 break;
         }
     } 
+    if (ble_uuid_cmp(uuid, BLE_UUID16_DECLARE(BLE_SVC_SENSORS_STREAM_CHR_UUID16)) == 0) {
+        switch (ctxt->op) {
+            case BLE_GATT_ACCESS_OP_WRITE_CHR:
+                if(ctxt->om->om_data[0] == STREAM_WRITE_STATE)
+                {
+                    if(ctxt->om->om_len == STREAM_WRITE_STATE_LEN) // Check correct size is received
+                    {
+                        if((ctxt->om->om_data[1] & 0x01) == 0x01) // Enable most sensors stream
+                        {
+                            bt_most_sensors_stream_en = true;
+                        }
+                        else // Disable most sensors stream
+                        {
+                            bt_most_sensors_stream_en = false;
+                        }
+                        if((ctxt->om->om_data[1] & 0x02) == 0x02) // Enable others sensors stream
+                        {
+                            bt_others_sensors_stream_en = true;
+                        }
+                        else // Disable others sensors stream
+                        {
+                            bt_others_sensors_stream_en = false;
+                        }
+                    }
+                }
+                break;
+
+            default:
+                //MODLOG_DFLT(INFO, "\nDefault Callback");
+                break;
+        }
+    }    
     return 0;    
 
 }
@@ -369,7 +499,7 @@ static const struct ble_gatt_svc_def new_ble_svc_gatt_defs[] = {
     {
         /*** Service: SPP */
         .type = BLE_GATT_SVC_TYPE_PRIMARY,
-        .uuid = BLE_UUID16_DECLARE(BLE_SVC_SPP_UUID16),
+        .uuid = BLE_UUID16_DECLARE(BLE_SVC_THYMIO_UUID16),
         .characteristics = (struct ble_gatt_chr_def[])
         { {
                 /* commands characteristic (from device to Thymio) */
@@ -381,13 +511,13 @@ static const struct ble_gatt_svc_def new_ble_svc_gatt_defs[] = {
                 .uuid = BLE_UUID16_DECLARE(BLE_SVC_SENSORS_STREAM_CHR_UUID16),
                 .access_cb = ble_svc_gatt_handler,
                 .val_handle = &ble_sensors_stream_val_handle,
-                .flags = BLE_GATT_CHR_F_NOTIFY,
+                .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY,
             }, {
-                /* sensors stream characteristic (from Thymio to device) */
+                /* python characteristic (from Thymio to device) */
                 .uuid = BLE_UUID16_DECLARE(BLE_SVC_PYTHON_CHR_UUID16),
                 .access_cb = ble_svc_gatt_handler,
                 .val_handle = &ble_python_val_handle,
-                .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
+                .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_INDICATE,
             }, {
                 0, /* No more characteristics */
             }
@@ -459,8 +589,8 @@ static void bt_rx_tx_task(void *pvParameters)
             bt_cmd_received = false;
             switch(bt_rx_data[0])
             {
-                case CMD_SET_MOST_ACTUATORS:
-                    if(bt_cmd_len == CMD_SET_MOST_ACTUATORS_LEN) // Check correct size is received
+                case CMD_WRITE_MOST_ACTUATORS:
+                    if(bt_cmd_len == CMD_WRITE_MOST_ACTUATORS_LEN) // Check correct size is received
                     {
                         memcpy(bt_rx_data_temp, bt_rx_data, bt_cmd_len);
                         Leds_SetCircleBrightness(
@@ -504,25 +634,11 @@ static void bt_rx_tx_task(void *pvParameters)
                     }
                     break;
 
-                case CMD_SET_OTHERS_ACTUATORS:
-                    if(bt_cmd_len == CMD_SET_OTHERS_ACTUATORS_LEN) // Check correct size is received
+                case CMD_WRITE_OTHERS_ACTUATORS:
+                    if(bt_cmd_len == CMD_WRITE_OTHERS_ACTUATORS_LEN) // Check correct size is received
                     {
                         memcpy(bt_rx_data_temp, bt_rx_data, bt_cmd_len);
                     }                
-                    break;
-
-                case CMD_SETUP_NOTIF:
-                    if(bt_cmd_len == CMD_SETUP_NOTIF_LEN) // Check correct size is received
-                    {
-                        if((bt_rx_data[1] & 0x01) == 0x01) // Enable sensors stream
-                        {
-                            bt_sensors_stream_en = true;
-                        }
-                        else // Disable sensors stream
-                        {
-                            bt_sensors_stream_en = false;
-                        }
-                    }                 
                     break;
 
                 default:
@@ -530,9 +646,10 @@ static void bt_rx_tx_task(void *pvParameters)
             }
         }
 
-        if(bt_sensors_stream_en)
+        if(bt_most_sensors_stream_en)
         {
-            bt_tx_data[0] = RSP_MOST_SENSORS;
+            memset(bt_tx_data, 0x00, MAX_BT_TX_BUFF);
+            bt_tx_data[0] = STREAM_NOTIFY_MOST_SENSORS;
             // Send update to the device
             T_HSV hsv_temp = ColorSensor_GetHsv();
             bt_tx_data[1] = hsv_temp.Hue&0xFF;
@@ -563,8 +680,28 @@ static void bt_rx_tx_task(void *pvParameters)
             bt_tx_data[19] = gyro_temp.Z&0xFF;
             bt_tx_data[20] = gyro_temp.Z>>8;
 
-            //uint8_t* status_temp = Buttons_GetStatus()
-            // bt_tx_data[21] = ...
+            uint8_t* status_temp = Buttons_GetStatus();
+            bt_tx_data[21] = 0;
+            if(status_temp[0] == 1)
+            {
+                bt_tx_data[21] |= 0x01;
+            }
+            if(status_temp[1] == 1)
+            {
+                bt_tx_data[21] |= 0x02;
+            }
+            if(status_temp[2] == 1)
+            {
+                bt_tx_data[21] |= 0x04;
+            }
+            if(status_temp[3] == 1)
+            {
+                bt_tx_data[21] |= 0x08;
+            }
+            if(status_temp[4] == 1)
+            {
+                bt_tx_data[21] |= 0x10;
+            }
 
             int16_t vol = STM32_GetMicrophoneIntensity();
             bt_tx_data[22] = vol&0xFF;
@@ -601,14 +738,126 @@ static void bt_rx_tx_task(void *pvParameters)
             rc = ble_gattc_notify_custom(connection_handle, ble_sensors_stream_val_handle, txom);
             if( rc == 0)
             {
-                ESP_LOGI(TAG,"Notification sent successfully");
+                ESP_LOGI(TAG,"Most sensors notif sent successfully");
             }
             else 
             {
-                ESP_LOGI(TAG,"Error in sending notification");
+                ESP_LOGI(TAG,"Error in sending most sensors notif");
+            }
+        }
+
+        if(bt_others_sensors_stream_en)
+        {
+            memset(bt_tx_data, 0x00, MAX_BT_TX_BUFF);
+            bt_tx_data[0] = STREAM_NOTIFY_OTHERS_SENSORS;
+            // Send update to the device
+            T_RawColor raw_temp = ColorSensor_GetRaw();
+            bt_tx_data[1] = raw_temp.Red & 0xFF;
+            bt_tx_data[2] = raw_temp.Red >> 8;
+            bt_tx_data[3] = raw_temp.Green & 0xFF;
+            bt_tx_data[4] = raw_temp.Green >> 8;
+            bt_tx_data[5] = raw_temp.Blue & 0xFF;
+            bt_tx_data[6] = raw_temp.Blue >> 8;
+            bt_tx_data[7] = raw_temp.Clear & 0xFF;
+            bt_tx_data[8] = raw_temp.Clear >> 8;
+
+            bt_tx_data[9] = ColorSensor_GetColor();
+
+            uint16_t prox_temp = GetGroundAmbient(0);
+            bt_tx_data[10] = prox_temp&0xFF;
+            bt_tx_data[11] = prox_temp>>8;
+            prox_temp = GetGroundAmbient(1);
+            bt_tx_data[12] = prox_temp&0xFF;
+            bt_tx_data[13] = prox_temp>>8;
+
+            prox_temp = GetGroundReflected(0);
+            bt_tx_data[14] = prox_temp&0xFF;
+            bt_tx_data[15] = prox_temp>>8;
+            prox_temp = GetGroundReflected(1);
+            bt_tx_data[16] = prox_temp&0xFF;
+            bt_tx_data[17] = prox_temp>>8;
+
+            int16_t temp_val = Gyroscope_GetAngleZ_deg();
+            bt_tx_data[18] = temp_val&0xFF;
+            bt_tx_data[19] = temp_val>>8;
+
+            bt_tx_data[20] = 0;
+            if(Gpio_IsTapDetected())
+            {
+                bt_tx_data[20] |= 0x01;
+            }
+            if(Gpio_IsFreeFallDetected())
+            {
+                bt_tx_data[20] |= 0x02;
+            }
+            if(IS_EVENT(EVENT_MIC))
+            {
+                bt_tx_data[20] |= 0x04;
+            }
+
+            temp_val = GetLeftSpeed();
+            bt_tx_data[21] = temp_val&0xFF;
+            bt_tx_data[22] = temp_val>>8;
+
+            temp_val = GetRightSpeed();
+            bt_tx_data[23] = temp_val&0xFF;
+            bt_tx_data[24] = temp_val>>8;
+
+            temp_val = STM32_GetLeftMotorPwm();
+            bt_tx_data[25] = temp_val&0xFF;
+            bt_tx_data[26] = temp_val>>8;
+
+            temp_val = STM32_GetRightMotorPwm();
+            bt_tx_data[27] = temp_val&0xFF;
+            bt_tx_data[28] = temp_val>>8;            
+
+            temp_val = STM32_GetBatteryVoltage();
+            bt_tx_data[29] = temp_val&0xFF;
+            bt_tx_data[30] = temp_val>>8;            
+
+            struct os_mbuf *txom;
+            txom = ble_hs_mbuf_from_flat(bt_tx_data, STREAM_NOTIFY_OTHERS_SENSORS_LEN);
+            rc = ble_gattc_notify_custom(connection_handle, ble_sensors_stream_val_handle, txom);
+            if( rc == 0)
+            {
+                ESP_LOGI(TAG,"Others sensors notif sent successfully");
+            }
+            else 
+            {
+                ESP_LOGI(TAG,"Error in sending others sensors notif");
+            }            
+        }
+
+        if(mp_script_indicate)
+        {
+            mp_script_indicate = false;
+            bt_tx_data[0] = PYTHON_IND_LOAD_RES;
+            bt_tx_data[1] = mp_script_load_res;
+            struct os_mbuf *txom;
+            txom = ble_hs_mbuf_from_flat(bt_tx_data, 2);
+            rc = ble_gattc_indicate_custom(connection_handle, ble_python_val_handle, txom);
+            if( rc == 0)
+            {
+                ESP_LOGI(TAG,"Indication sent successfully");
+            }
+            else 
+            {
+                ESP_LOGI(TAG,"Error in sending indication");
             }
         }
      
+        if(mp_receiving_script)
+        {
+            mp_script_timeout++;
+            if(mp_script_timeout == 1500) // 50 hz * 30 seconds = 1500
+            {
+                mp_script_timeout = 0;
+                mp_receiving_script = false;
+                mp_script_load_res = MP_SCRIPT_LOAD_NOT_COMPLETE;
+                mp_script_indicate = true;
+            }
+        }
+
         vTaskDelay(20/portTICK_PERIOD_MS); // 50 hz update
     }
     vTaskDelete(NULL);
@@ -618,16 +867,16 @@ void ble_notify_python_end(uint8_t value)
 {
     int rc = 0;
     struct os_mbuf *txom;
-    uint8_t temp[2] = {RSP_SCRIPT_FINISH, value};
+    uint8_t temp[2] = {PYTHON_IND_END_RES, value};
     txom = ble_hs_mbuf_from_flat(temp, sizeof(temp));
-    rc = ble_gattc_notify_custom(connection_handle, ble_python_val_handle, txom);
+    rc = ble_gattc_indicate_custom(connection_handle, ble_python_val_handle, txom);
     if( rc == 0)
     {
-        ESP_LOGI(TAG,"Notification sent successfully");
+        ESP_LOGI(TAG,"Indication sent successfully");
     }
     else 
     {
-        ESP_LOGI(TAG,"Error in sending notification");
+        ESP_LOGI(TAG,"Error in sending indication");
     }
 }
 

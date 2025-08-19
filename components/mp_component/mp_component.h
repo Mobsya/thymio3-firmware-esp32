@@ -1,5 +1,5 @@
 
-#define MAX_MP_SCRIPT_LEN 1024
+#define MAX_MP_SCRIPT_LEN 2048
 
 void init_micropython(void);
 void exec_script(uint8_t id);

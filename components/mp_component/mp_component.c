@@ -107,7 +107,9 @@ void run_micropython_script(char* script_content) {
     //if (mp_globals == NULL) {
     //    mp_globals = mp_globals_new();
     //}
-    
+
+    mp_handle_pending(false); // Do not raise exception
+
     // Creazione del lexer a partire dalla stringa C
     mp_lexer_t *lex = mp_lexer_new_from_str_len(MP_QSTR__lt_string_gt_, script_content, strlen(script_content), 0);
     if (lex == NULL) {

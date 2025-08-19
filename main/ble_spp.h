@@ -17,8 +17,8 @@
 #ifndef BLE_SPP_H_
 #define BLE_SPP_H_
 
-// Commands definition: from the device (e.g. phone) to the Thymio
-#define CMD_SET_MOST_ACTUATORS 0x01
+// Command characteristic
+#define CMD_WRITE_MOST_ACTUATORS 0x01
 // Circle LEDs => 4 bytes, brightness from 0..15
 // Front lego LEDs => 4 bytes, brightness from 0..15
 // Rear lego LEDs => 4 bytes, brightness from 0..15
@@ -45,9 +45,9 @@
 //    13 = Alarm,
 //    14 = Good,
 //    15 = Bad)
-#define CMD_SET_MOST_ACTUATORS_LEN 26 // Including ID
+#define CMD_WRITE_MOST_ACTUATORS_LEN 26 // Including ID
 
-#define CMD_SET_OTHERS_ACTUATORS 0x02
+#define CMD_WRITE_OTHERS_ACTUATORS 0x02
 // Rotate => 4 bytes => 2 bytes (angle -360..360), 2 bytes (speed -1000..1000)
 // IMU flags => 1 byte => bit0: reset angle, bit1: clear tap event, bit2: clear freefall event
 // RGB small bottom => 2 bytes (r bit0..3, g bit4..7, b bit8..11)
@@ -56,24 +56,12 @@
 // Receiver LED + microphone LED => 1 byte (receiver bit0..3, microphone bit4)
 // Set volume => 1 byte => vol = 0..10 (bit0..3), save volume in flash bit4
 // Behaviors enabling/disabling => 2 bytes
-#define CMD_SET_OTHERS_ACTUATORS_LEN 18 // Including ID
+#define CMD_WRITE_OTHERS_ACTUATORS_LEN 18 // Including ID
 
-#define CMD_SETUP_NOTIF 0x03
-// Notification enabling/disabling => 1 byte => bit0: enable/disable sensors stream 
-#define CMD_SETUP_NOTIF_LEN 2 // Including ID
-
-#define CMD_LOAD_SCRIPT 0x04 
-// CMD_LOAD_SCRIPT | SCRIPT LEN MSB | SCRIPT LEN LSB | SCRIPT
-#define CMD_LOAD_SCRIPT_LEN 0 // Variable length...
-
-#define CMD_EXEC_SCRIPT 0x05
-#define CMD_EXEC_SCRIPT_LEN 1 // Including ID
-
-#define CMD_STOP_SCRIPT 0x06
-#define CMD_STOP_SCRIPT_LEN 1 // Including ID
-
-// Responses definition: from the Thymio to the device (e.g. phone)
-#define RSP_MOST_SENSORS 0x01
+// Stream characteristic
+#define STREAM_WRITE_STATE 0x01
+#define STREAM_WRITE_STATE_LEN 2 // Including ID
+#define STREAM_NOTIFY_MOST_SENSORS 0x01
 // color sensor => 4 bytes => H (2), S (1), V (1)
 // ground sensors => 4 bytes => left (2), right (2)
 // acceleration raw => 6 bytes => x (2), y (2), z (2)
@@ -82,9 +70,9 @@
 // microphone volume => 2 bytes
 // proximity sensors => 14 bytes => left (2), front left (2), center (2), front right (2), right (2), back left (2), back right (2)
 // tv remote => 1 byte
-#define RSP_MOST_SENSORS_LEN 39 // Including ID
+#define STREAM_NOTIFY_MOST_SENSORS_LEN 39 // Including ID
 
-#define RSP_OTHERS_SENSORS 0x02
+#define STREAM_NOTIFY_OTHERS_SENSORS 0x02
 // color raw values => 8 bytes (red, green, blue, clear)
 // color detected => 1 byte
 // ground ambient => 4 bytes => left (2), right (2)
@@ -96,11 +84,15 @@
 // motor left pwm duty => 2 bytes
 // motor right pwm duty => 2 bytes
 // battery voltage => 2 bytes
-#define RSP_OTHERS_SENSORS_LEN 31 // Including ID
+#define STREAM_NOTIFY_OTHERS_SENSORS_LEN 31 // Including ID
 
-#define RSP_SCRIPT_FINISH 0x03 
-// Result: 0=terminated normally, 1=exception, 2=another python script already running
-#define RSP_SCRIPT_FINISH_LEN 2 // Including ID
+// Pyhton characteristic
+#define PYTHON_WRITE_LOAD 0x01
+#define PYTHON_WRITE_EXEC 0x02
+#define PYTHON_WRITE_STOP 0x03
+#define PYTHON_WRITE_SAVE 0x04
+#define PYTHON_IND_LOAD_RES 0x01
+#define PYTHON_IND_END_RES 0x02
 
 void ble_spp_init(void);
 void ble_notify_python_end(uint8_t value);

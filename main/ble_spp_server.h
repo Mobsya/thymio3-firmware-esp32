@@ -14,8 +14,8 @@
 extern "C" {
 #endif
 
-/* 16 Bit SPP Service UUID */
-#define BLE_SVC_SPP_UUID16                                  0xABF0
+/* 16 Bit Thymio Service UUID */
+#define BLE_SVC_THYMIO_UUID16                                  0xABF0
 
 /* 16 Bit SPP Service commands Characteristic UUID */
 #define BLE_SVC_CMD_CHR_UUID16                              0xABF1

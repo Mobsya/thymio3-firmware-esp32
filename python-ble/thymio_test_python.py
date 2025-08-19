@@ -4,7 +4,7 @@ import struct
 import time
 
 # UUIDs from the C code
-# Service UUID: BLE_SVC_SPP_UUID16 -> 0xABF0
+# Service UUID: BLE_SVC_THYMIO_UUID16 -> 0xABF0
 SERVICE_UUID = "0000abf0-0000-1000-8000-00805f9b34fb"
 # Commands Characteristic UUID -> 0xABF1
 CMD_CHARACTERISTIC_UUID = "0000abf1-0000-1000-8000-00805f9b34fb"
@@ -13,6 +13,15 @@ SENSORS_STREAM_CHARACTERISTIC_UUID = "0000abf2-0000-1000-8000-00805f9b34fb"
 # Python Characteristic UUID -> 0xABF3
 PYTHON_CHARACTERISTIC_UUID = "0000abf3-0000-1000-8000-00805f9b34fb"
 
+def crc32mpeg2(buf, crc=0xFFFFFFFF):
+    for val in buf:
+        crc ^= val << 24
+        for _ in range(8):
+            if (crc & 0x80000000) == 0:
+                crc = crc << 1
+            else:
+                crc = (crc << 1) ^ 0x04C11DB7
+    return crc & 0xFFFFFFFF
 
 # Callback for receiving notifications
 def notification_handler(sender, data):
@@ -37,11 +46,17 @@ async def find_thymio_device():
 
 async def main():
 
-    packet_size = 251
+    packet_size = 500 # Packet splitted in packet_size chunks
+
+    sequence_id = 0
+
+    # packet for "execute script" command
     cmd_packet_exec = bytearray([0] * 1)
-    cmd_packet_exec[0] = 0x05
+    cmd_packet_exec[0] = 0x02
+
+    # packet fro "stop script" command
     cmd_packet_stop = bytearray([0] * 1)
-    cmd_packet_stop[0] = 0x06
+    cmd_packet_stop[0] = 0x03
 
     script_thymio = """
 import thymio
@@ -56,6 +71,47 @@ while 1:
 \ttime.sleep(0.2)
 \trgb_fl.set_intensity(0, 0, 1)
 \ttime.sleep(0.2)
+"""
+
+    script_thymio2 = """
+import thymio
+import time
+
+mot = thymio.MOTORS()
+mot.set_speed(200, -200)
+
+rgb_fl = thymio.LEDS_RGB(0)
+rgb_fr = thymio.LEDS_RGB(1)
+rgb_bl = thymio.LEDS_RGB(2)
+rgb_br = thymio.LEDS_RGB(3)
+
+rgb_fl.set_intensity(1, 0, 0)
+time.sleep(0.5)
+rgb_fl.set_intensity(0, 1, 0)
+time.sleep(0.5)
+rgb_fl.set_intensity(0, 0, 1)
+time.sleep(0.5)
+
+rgb_fr.set_intensity(1, 0, 0)
+time.sleep(0.5)
+rgb_fr.set_intensity(0, 1, 0)
+time.sleep(0.5)
+rgb_fr.set_intensity(0, 0, 1)
+time.sleep(0.5)
+
+rgb_bl.set_intensity(1, 0, 0)
+time.sleep(0.5)
+rgb_bl.set_intensity(0, 1, 0)
+time.sleep(0.5)
+rgb_bl.set_intensity(0, 0, 1)
+time.sleep(0.5)
+
+rgb_br.set_intensity(1, 0, 0)
+time.sleep(0.5)
+rgb_br.set_intensity(0, 1, 0)
+time.sleep(0.5)
+rgb_br.set_intensity(0, 0, 1)
+time.sleep(0.5)
 """
 
     script_hello = "import time\n\nwhile 1:\n\tprint(\"Hello world\")\n\ttime.sleep(1)"
@@ -195,20 +251,142 @@ while 1:
             # await asyncio.sleep(10)
 
 
-            # script_thymio test
-            print("script_thymio test")
-            byte_script = script_thymio.encode('utf-8')
-            size_msb = (len(byte_script) >> 8) & 0xFF
-            size_lsb = len(byte_script) & 0xFF
+            # # script_thymio test
+            # print("script_thymio test")
+            # byte_script = script_thymio.encode('utf-8')
+            # crc32_checksum = crc32mpeg2(byte_script)
+            # print(f"Hexadecimal MPEG-2 CRC32: {hex(crc32_checksum)}")
+            # crc32_bytes = bytearray(4)
+            # crc32_bytes[3] = crc32_checksum & 0xFF
+            # crc32_bytes[2] = (crc32_checksum >> 8) & 0xFF
+            # crc32_bytes[1] = (crc32_checksum >> 16) & 0xFF
+            # crc32_bytes[0] = (crc32_checksum >> 24) & 0xFF
+            # size_script = bytearray(2)
+            # size_script[1] = len(byte_script) & 0xFF
+            # size_script[0] = (len(byte_script) >> 8) & 0xFF
+            # sequence_id = 0
+            # sequence_id_bytes = bytearray(2)
+            # sequence_id_bytes[0] = (sequence_id >> 8) & 0xFF            
+            # sequence_id_bytes[1] = sequence_id & 0xFF
+
+            # print("script size = " + str(len(byte_script)))
+            # header = bytes([0x01]) + size_script + crc32_bytes + sequence_id_bytes
+            # print("header = " + str(header))
+            # cmd_packet = header + byte_script
+
+            # print(f"Loading script...")
+
+            # # Handle the first chunk separately
+            # first_chunk = cmd_packet[:packet_size]
+            # await client.write_gatt_char(PYTHON_CHARACTERISTIC_UUID, first_chunk, response=True)
+            # print(f"Sent first chunk of size: {len(first_chunk)}")
+
+            # for i in range(packet_size, len(cmd_packet), (packet_size-2)):
+            #     sequence_id += 1            
+            #     chunk = cmd_packet[i:i + (packet_size-2)] # 2 bytes used for sequence id
+            #     sequence_id_bytes[0] = (sequence_id >> 8) & 0xFF            
+            #     sequence_id_bytes[1] = sequence_id & 0xFF
+            #     chunk_with_seq_id = sequence_id_bytes + chunk
+            #     await client.write_gatt_char(PYTHON_CHARACTERISTIC_UUID, chunk_with_seq_id, response=True)
+            #     print(f"Sent subsequent chunk with seq_id {sequence_id}, size: {len(chunk_with_seq_id)}")
+
+            # await asyncio.sleep(5)
+            # print(f"Executing script...")
+            # await client.write_gatt_char(PYTHON_CHARACTERISTIC_UUID, cmd_packet_exec, response=True)
+
+            # await asyncio.sleep(10)
+            # print(f"Stop script...")
+            # await client.write_gatt_char(PYTHON_CHARACTERISTIC_UUID, cmd_packet_stop, response=True)
+
+
+            # # script_thymio2 test
+            # print("script_thymio2 test")
+            # byte_script = script_thymio2.encode('utf-8')
+            # crc32_checksum = crc32mpeg2(byte_script)
+            # print(f"Hexadecimal MPEG-2 CRC32: {hex(crc32_checksum)}")
+            # crc32_bytes = bytearray(4)
+            # crc32_bytes[3] = crc32_checksum & 0xFF
+            # crc32_bytes[2] = (crc32_checksum >> 8) & 0xFF
+            # crc32_bytes[1] = (crc32_checksum >> 16) & 0xFF
+            # crc32_bytes[0] = (crc32_checksum >> 24) & 0xFF
+            # size_script = bytearray(2)
+            # size_script[1] = len(byte_script) & 0xFF
+            # size_script[0] = (len(byte_script) >> 8) & 0xFF
+            # sequence_id = 0
+            # sequence_id_bytes = bytearray(2)
+            # sequence_id_bytes[0] = (sequence_id >> 8) & 0xFF            
+            # sequence_id_bytes[1] = sequence_id & 0xFF
+
+            # print("script size = " + str(len(byte_script)))
+            # header = bytes([0x01]) + size_script + crc32_bytes + sequence_id_bytes
+            # print("header = " + str(header))
+            # cmd_packet = header + byte_script
+
+            # print(f"Loading script...")
+
+            # # Handle the first chunk separately
+            # first_chunk = cmd_packet[:packet_size]
+            # await client.write_gatt_char(PYTHON_CHARACTERISTIC_UUID, first_chunk, response=True)
+            # print(f"Sent first chunk of size: {len(first_chunk)}")
+
+            # for i in range(packet_size, len(cmd_packet), (packet_size-2)):
+            #     sequence_id += 1
+            #     chunk = cmd_packet[i:i + (packet_size-2)] # 2 bytes used for sequence id
+            #     sequence_id_bytes[0] = (sequence_id >> 8) & 0xFF            
+            #     sequence_id_bytes[1] = sequence_id & 0xFF
+            #     chunk_with_seq_id = sequence_id_bytes + chunk
+            #     await client.write_gatt_char(PYTHON_CHARACTERISTIC_UUID, chunk_with_seq_id, response=True)
+            #     print(f"Sent subsequent chunk with seq_id {sequence_id}, size: {len(chunk_with_seq_id)}")
+
+            # await asyncio.sleep(5)
+            # print(f"Executing script...")
+            # await client.write_gatt_char(PYTHON_CHARACTERISTIC_UUID, cmd_packet_exec, response=True)
+
+            # await asyncio.sleep(10)
+            # print(f"Stop script...")
+            # await client.write_gatt_char(PYTHON_CHARACTERISTIC_UUID, cmd_packet_stop, response=True)
+
+            # test python loading errors
+            print("python loading errors test")
+            byte_script = script_thymio2.encode('utf-8')
+            crc32_checksum = crc32mpeg2(byte_script)
+            #crc32_checksum = 0 # to test wrong checksum
+            print(f"Hexadecimal MPEG-2 CRC32: {hex(crc32_checksum)}")
+            crc32_bytes = bytearray(4)
+            crc32_bytes[3] = crc32_checksum & 0xFF
+            crc32_bytes[2] = (crc32_checksum >> 8) & 0xFF
+            crc32_bytes[1] = (crc32_checksum >> 16) & 0xFF
+            crc32_bytes[0] = (crc32_checksum >> 24) & 0xFF
+            size_script = bytearray(2)
+            size_script[1] = len(byte_script) & 0xFF
+            size_script[0] = (len(byte_script) >> 8) & 0xFF
+            #size_script[0] = 0xFF # to test too big size
+            sequence_id = 0
+            sequence_id_bytes = bytearray(2)
+            sequence_id_bytes[0] = (sequence_id >> 8) & 0xFF            
+            sequence_id_bytes[1] = sequence_id & 0xFF
+
             print("script size = " + str(len(byte_script)))
-            header = bytes([0x04, size_msb, size_lsb])
+            header = bytes([0x01]) + size_script + crc32_bytes + sequence_id_bytes
+            print("header = " + str(header))
             cmd_packet = header + byte_script
 
             print(f"Loading script...")
-            #if(len(cmd_packet) > 256):
-            for i in range(0, len(cmd_packet), packet_size):
-                chunk = cmd_packet[i:i + packet_size]              
-                await client.write_gatt_char(PYTHON_CHARACTERISTIC_UUID, chunk, response=True)
+
+            # Handle the first chunk separately
+            first_chunk = cmd_packet[:packet_size]
+            await client.write_gatt_char(PYTHON_CHARACTERISTIC_UUID, first_chunk, response=True)
+            print(f"Sent first chunk of size: {len(first_chunk)}")
+
+            for i in range(packet_size, len(cmd_packet), (packet_size-2)):
+                #time.sleep(35) # uncomment to test partial upload error
+                sequence_id += 1 # comment this to test wrong sequence id
+                chunk = cmd_packet[i:i + (packet_size-2)] # 2 bytes used for sequence id
+                sequence_id_bytes[0] = (sequence_id >> 8) & 0xFF            
+                sequence_id_bytes[1] = sequence_id & 0xFF
+                chunk_with_seq_id = sequence_id_bytes + chunk
+                await client.write_gatt_char(PYTHON_CHARACTERISTIC_UUID, chunk_with_seq_id, response=True)
+                print(f"Sent subsequent chunk with seq_id {sequence_id}, size: {len(chunk_with_seq_id)}")
 
             await asyncio.sleep(5)
             print(f"Executing script...")

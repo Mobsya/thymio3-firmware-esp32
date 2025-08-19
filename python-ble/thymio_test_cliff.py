@@ -4,7 +4,7 @@ import struct
 import time
 
 # UUIDs from the C code
-# Service UUID: BLE_SVC_SPP_UUID16 -> 0xABF0
+# Service UUID: BLE_SVC_THYMIO_UUID16 -> 0xABF0
 SERVICE_UUID = "0000abf0-0000-1000-8000-00805f9b34fb"
 # Commands Characteristic UUID -> 0xABF1
 CMD_CHARACTERISTIC_UUID = "0000abf1-0000-1000-8000-00805f9b34fb"
@@ -14,9 +14,9 @@ SENSORS_STREAM_CHARACTERISTIC_UUID = "0000abf2-0000-1000-8000-00805f9b34fb"
 PYTHON_CHARACTERISTIC_UUID = "0000abf3-0000-1000-8000-00805f9b34fb"
 
 # Packet lengths
-CMD_SET_MOST_ACTUATORS_LEN = 26 # Length of the command packet for actuators
-CMD_SETUP_NOTIF_LEN = 2
-RSP_MOST_SENSORS_LEN = 39 # Length of the response packet from all sensors
+CMD_WRITE_MOST_ACTUATORS_LEN = 26 # Length of the command packet for actuators
+STREAM_WRITE_STATE_LEN = 2
+STREAM_NOTIFY_MOST_SENSORS_LEN = 39 # Length of the response packet from all sensors
 
 # Global variable to store the last notification time
 last_notification_time = 0.0
@@ -41,7 +41,7 @@ def notification_handler(sender, data):
     
     last_notification_time = current_time
 
-    if len(data) == RSP_MOST_SENSORS_LEN:
+    if len(data) == STREAM_NOTIFY_MOST_SENSORS_LEN:
         # Proximity sensor values start at index 24 and are 7x uint16_t
         proximity_values = struct.unpack('<HHHHHHH', data[24:38])
         
@@ -81,8 +81,8 @@ async def main():
 
     print(f"Connecting to {ble_address}...")
 
-    cmd_actuators = bytearray([0] * CMD_SET_MOST_ACTUATORS_LEN)
-    cmd_notif = bytearray([0] * CMD_SETUP_NOTIF_LEN)
+    cmd_actuators = bytearray([0] * CMD_WRITE_MOST_ACTUATORS_LEN)
+    cmd_notif = bytearray([0] * STREAM_WRITE_STATE_LEN)
 
     try:
         async with BleakClient(ble_address) as client:
@@ -92,9 +92,9 @@ async def main():
             await client.start_notify(SENSORS_STREAM_CHARACTERISTIC_UUID, notification_handler)
             print("Subscribed to notifications from SENSORS STREAM characteristic.")
 
-            cmd_notif[0] = 0x03 # setup notification command
-            cmd_notif[1] = 0x01 # enable sensors stream
-            await client.write_gatt_char(CMD_CHARACTERISTIC_UUID, cmd_notif, response=True)
+            cmd_notif[0] = 0x01 # setup notification command
+            cmd_notif[1] = 0x01 # enable most sensors stream
+            await client.write_gatt_char(SENSORS_STREAM_CHARACTERISTIC_UUID, cmd_notif, response=True)
 
             # Define colors to cycle through (Red, Green, Blue)
             colors = [(15, 0, 0), (0, 15, 0), (0, 0, 15)]
@@ -154,8 +154,8 @@ async def main():
                 # Wait for 1 second before the next update
                 await asyncio.sleep(0.02)
 
-            cmd_notif[0] = 0x03 # setup notification command
-            cmd_notif[1] = 0x00 # disable sensors stream
+            cmd_notif[0] = 0x01 # setup notification command
+            cmd_notif[1] = 0x00 # disable most sensors stream
             await client.write_gatt_char(CMD_CHARACTERISTIC_UUID, cmd_notif, response=True)
 
     except Exception as e:
