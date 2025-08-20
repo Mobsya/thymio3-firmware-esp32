@@ -42,6 +42,8 @@
 #include "mp_component.h"
 #include "esp_rom_crc.h"
 #include "aseba_esp32.h"
+#include "codec.h"
+#include "behavior.h"
 
 static const char *TAG = "THYMIO_BLUETOOTH";
 
@@ -631,6 +633,10 @@ static void bt_rx_tx_task(void *pvParameters)
                         SetMotorTargets(bt_rx_data_temp[21]|(bt_rx_data_temp[22]<<8), bt_rx_data_temp[23]|(bt_rx_data_temp[24]<<8));
 
                         // Play sound based on bt_rx_data_temp[25]
+                        if((bt_rx_data_temp[25] > 0) && (bt_rx_data_temp[15] <= 16))
+                        {
+                            Codec_PlayOnboardSound(bt_rx_data_temp[25] - 1);
+                        }
                     }
                     break;
 
@@ -638,6 +644,30 @@ static void bt_rx_tx_task(void *pvParameters)
                     if(bt_cmd_len == CMD_WRITE_OTHERS_ACTUATORS_LEN) // Check correct size is received
                     {
                         memcpy(bt_rx_data_temp, bt_rx_data, bt_cmd_len);
+                        
+                        Leds_SetColorSensorBrightness((bt_rx_data_temp[1]&0x0F), (bt_rx_data_temp[1]&0xF0)>>4, (bt_rx_data_temp[2]&0x0F));
+                        Leds_SetDebugBrightness((bt_rx_data_temp[3]&0x0F), (bt_rx_data_temp[3]&0xF0)>>4, (bt_rx_data_temp[4]&0x0F));
+                        
+                        //Behavior_Disable(B_LEDS_BUTTON); // Otherwise the buttons leds cannot be controlled
+                        Leds_SetSingleBrightness(E_Led_Button_Forward, bt_rx_data_temp[5]&0x0F);
+                        Leds_SetSingleBrightness(E_Led_Button_Right, (bt_rx_data_temp[5]&0xF0)>>4);
+                        Leds_SetSingleBrightness(E_Led_Button_Backward, bt_rx_data_temp[6]&0x0F);
+                        Leds_SetSingleBrightness(E_Led_Button_Left, (bt_rx_data_temp[6]&0xF0)>>4);
+
+                        //Behavior_Disable(B_LED_RC5); // Otherwise the RC5 led cannot be controlled
+                        Leds_SetSingleBrightness(E_Led_RC5, bt_rx_data_temp[7]&0x0F);
+
+                        if((bt_rx_data_temp[7]&0x10) == 0x10)
+                        {
+                            Behavior_Disable(B_LED_MIC);
+                            Behavior_Enable(B_LED_MIC_STATE); 
+                        }
+                        else
+                        {
+                            Behavior_Disable(B_LED_MIC);
+                            Behavior_Disable(B_LED_MIC_STATE); 
+                        }
+
                     }                
                     break;
 

@@ -48,15 +48,11 @@
 #define CMD_WRITE_MOST_ACTUATORS_LEN 26 // Including ID
 
 #define CMD_WRITE_OTHERS_ACTUATORS 0x02
-// Rotate => 4 bytes => 2 bytes (angle -360..360), 2 bytes (speed -1000..1000)
-// IMU flags => 1 byte => bit0: reset angle, bit1: clear tap event, bit2: clear freefall event
 // RGB small bottom => 2 bytes (r bit0..3, g bit4..7, b bit8..11)
 // RGB small back => 2 bytes (r bit0..3, g bit4..7, b bit8..11)
-// Buttons LEDs => 4 bytes, brightness from 0..15
+// Buttons LEDs => 2 bytes, brightness from 0..15
 // Receiver LED + microphone LED => 1 byte (receiver bit0..3, microphone bit4)
-// Set volume => 1 byte => vol = 0..10 (bit0..3), save volume in flash bit4
-// Behaviors enabling/disabling => 2 bytes
-#define CMD_WRITE_OTHERS_ACTUATORS_LEN 18 // Including ID
+#define CMD_WRITE_OTHERS_ACTUATORS_LEN 8 // Including ID
 
 // Stream characteristic
 #define STREAM_WRITE_STATE 0x01
