@@ -10,6 +10,7 @@
 #define WRITE_CHAR_UUID  "12345678-1234-1234-1234-1234567890ac"
 #define READ_CHAR_UUID   "12345678-1234-1234-1234-1234567890ad"
 #define ACK_CHAR_UUID    "12345678-1234-1234-1234-1234567890ae"
+#define OTA_SERVICE_UUID "8018"
 
 BLECharacteristic* readCharacteristic;
 BLECharacteristic* ackCharacteristic;
@@ -17,6 +18,9 @@ std::map<int, std::string> receivedChunks;
 bool messageComplete = false;
 uint32_t receivedChecksum = 0;
 bool bluetoothConnected = false;
+
+#include <NimBLEOta.h>
+static NimBLEOta bleOta;
 
 #define TASK_STACK_SIZE 3000
 #define AVAILABLE = 0;
@@ -126,10 +130,60 @@ class ReadValueCallback : public BLECharacteristicCallbacks {
   }
 };
 
+class OtaCallbacks : public NimBLEOtaCallbacks {
+  void onStart(NimBLEOta* ota, uint32_t firmwareSize, NimBLEOta::Reason reason) override {
+
+    if(reason == NimBLEOta::StartCmd) {
+      Serial.printf("Started the OTA transmission with OTA size: %d...\n", firmwareSize);
+      return;
+    }
+
+    if(reason == NimBLEOta::Reconnected) {
+      Serial.printf("Reconnected, resuming update...\n");
+      ota->stopAbortTimer();
+      return;
+    }
+  }
+
+  void onProgress(NimBLEOta* ota, uint32_t current, uint32_t total) override {
+    Serial.printf("OTA progress: %.1f%%, cur: %u, tot: %u\n", static_cast<float>(current) / total * 100, current, total);
+  }
+
+  void onStop(NimBLEOta* ota, NimBLEOta::Reason reason) override {
+    if(reason == NimBLEOta::Disconnected) {
+      Serial.println("Stopped the OTA transmission, client disconnected.");
+      ota->startAbortTimer(30);
+      return;
+    }
+
+    if(reason == NimBLEOta::StopCmd) {
+      Serial.println("Stopped the OTA transmission, received stop command.");
+      ota->abortUpdate();
+      return;
+    }
+  }
+
+  void onComplete(NimBLEOta* ota) override {
+    Serial.println("OTA update complete - restarting in 2 seconds");
+    delay(2000);
+    ESP.restart();
+  }
+
+  void onError(NimBLEOta* ota, esp_err_t err, NimBLEOta::Reason reason) override {
+    Serial.printf("OTA error: %d\n", err);
+    if (reason == NimBLEOta::FlashError) {
+      Serial.println("Flash error, aborting OTA update");
+      ota->abortUpdate();
+    }
+  }
+} otaCallbacks;
+
 void setup() {
   M5.begin();
   Serial.begin(115200);
   delay(10);
+
+  M5.Lcd.println("New version");
 
   startMillis = millis();
 
@@ -159,8 +213,12 @@ void setup() {
 
   pService->start();
 
+  bleOta.start(&otaCallbacks);
+  Serial.println("Started the OTA service.");
+
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->addServiceUUID(OTA_SERVICE_UUID);
   pAdvertising->setName("ESP32-BLE-Server");
   pAdvertising->start();
   Serial.println("Advertising...");
