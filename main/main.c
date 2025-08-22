@@ -404,8 +404,6 @@ int app_main(void)
 
   init_micropython();
 
-  //init_python_handler();
-
   /*
   vTaskDelay(2000/portTICK_PERIOD_MS);
 

@@ -26,6 +26,13 @@ extern "C" {
 /* 16 Bit SPP Service python scripts Characteristic UUID */
 #define BLE_SVC_PYTHON_CHR_UUID16                           0xABF3
 
+
+#define BLE_OTA_SERVICE_UUID                0x8018
+#define RECV_FW_UUID                        0x8020
+#define OTA_BAR_UUID                        0x8021
+#define COMMAND_UUID                        0x8022
+#define CUSTOMER_UUID                       0x8023
+
 struct ble_hs_cfg;
 struct ble_gatt_register_ctxt;
 

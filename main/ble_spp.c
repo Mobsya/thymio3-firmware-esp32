@@ -18,6 +18,10 @@
 
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/ringbuf.h"
+#include "freertos/semphr.h"
+#include "esp_timer.h"
 /* BLE */
 #include "esp_nimble_hci.h"
 #include "nimble/nimble_port.h"
@@ -26,6 +30,8 @@
 #include "host/util/util.h"
 #include "console/console.h"
 #include "services/gap/ble_svc_gap.h"
+#include "esp_ota_ops.h"
+#include "ble_ota.h"
 #include "ble_spp_server.h"
 #include "ble_spp.h"
 #include "esp_mac.h" 
@@ -83,6 +89,31 @@ uint16_t mp_script_seq_id_prev = 0;
 uint16_t mp_script_timeout = 0;
 bool mp_script_ready = false;
 
+// OTA variables
+static bool counter = false;
+static uint16_t ota_handle_table[OTA_IDX_NB];
+static uint16_t attribute_handle;
+static uint16_t receive_fw_val;
+static uint16_t ota_status_val;
+static uint16_t command_val;
+static uint16_t custom_val;
+static bool start_ota = false;
+static uint32_t cur_sector = 0;
+static uint32_t cur_packet = 0;
+static uint8_t *fw_buf = NULL;
+static uint32_t fw_buf_offset = 0;
+static uint32_t ota_total_len = 0;
+static uint32_t ota_block_size = BUF_LENGTH;
+esp_ble_ota_notification_check_t ota_notification = {
+    .recv_fw_ntf_enable = false,
+    .process_bar_ntf_enable = false,
+    .command_ntf_enable = false,
+    .customer_ntf_enable = false,
+};
+static RingbufHandle_t s_ringbuf = NULL;
+SemaphoreHandle_t notify_sem;
+static esp_ota_handle_t out_handle;
+
 // Initial CRC value
 // Note: ESP32's ROM functions for CRC require some bitwise manipulation to match standard CRC32 implementations.
 // The initial value is usually 0xFFFFFFFF for CRC-32/ISO-HDLC.
@@ -92,12 +123,41 @@ uint32_t calculated_crc = 0;
 
 
 void ble_store_config_init(void);
+static uint16_t crc16_ccitt(const unsigned char *buf, int len);
+static esp_ble_ota_char_t find_ota_char_and_desr_by_handle(uint16_t handle);
+static int esp_ble_ota_notification_data(uint16_t conn_handle, uint16_t attr_handle, uint8_t cmd_ack[], esp_ble_ota_char_t ota_char);
+size_t write_to_ringbuf(const uint8_t *data, size_t size);
+
+/*
+ * This is a workaround for the missing os_mbuf_len function in NimBLE.
+ * It is not present in NimBLE 1.3, but is present in NimBLE 1.4.
+ * This function is used to get the length of an os_mbuf.
+ */
+uint16_t os_mbuf_len(const struct os_mbuf *om)
+{
+    uint16_t len;
+
+    len = 0;
+    while (om != NULL) {
+        len += om->om_len;
+        om = SLIST_NEXT(om, om_next);
+    }
+
+    return len;
+}
+
+static void esp_ble_ota_fill_handle_table(void)
+{
+    ota_handle_table[RECV_FW_CHAR] = receive_fw_val;
+    ota_handle_table[OTA_STATUS_CHAR] = ota_status_val;
+    ota_handle_table[CMD_CHAR] = command_val;
+    ota_handle_table[CUS_CHAR] = custom_val;
+}
 
 /**
  * Logs information about a connection to the console.
  */
-static void
-ble_spp_server_print_conn_desc(struct ble_gap_conn_desc *desc)
+static void ble_spp_server_print_conn_desc(struct ble_gap_conn_desc *desc)
 {
     MODLOG_DFLT(INFO, "handle=%d our_ota_addr_type=%d our_ota_addr=",
                 desc->conn_handle, desc->our_ota_addr.type);
@@ -205,6 +265,7 @@ ble_spp_server_gap_event(struct ble_gap_event *event, void *arg)
 {
     struct ble_gap_conn_desc desc;
     int rc;
+    esp_ble_ota_char_t ota_char;
 
     switch (event->type) {
     case BLE_GAP_EVENT_CONNECT:
@@ -216,8 +277,19 @@ ble_spp_server_gap_event(struct ble_gap_event *event, void *arg)
             rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
             assert(rc == 0);
             ble_spp_server_print_conn_desc(&desc);
-	    is_connect=true;
-	    connection_handle = event->connect.conn_handle;
+	        is_connect=true;
+	        connection_handle = event->connect.conn_handle;
+
+            // Define the connection parameters
+            struct ble_gap_upd_params params = {
+                .itvl_min = 10,         // Minimum connection interval: 10 * 1.25ms = 12.5ms
+                .itvl_max = 40,         // Maximum connection interval: 40 * 1.25ms = 50ms
+                .latency = 0,           // Slave latency: 0
+                .supervision_timeout = 800,  // Supervision timeout: 800 * 10ms = 8 seconds needed because esp_ota_begin takes about 5 seconds.
+                .max_ce_len = 0,
+                .min_ce_len = 0
+            };
+            ble_gap_update_params(event->connect.conn_handle, &params);  
         }
         MODLOG_DFLT(INFO, "\n");
         if (event->connect.status != 0) {
@@ -225,6 +297,7 @@ ble_spp_server_gap_event(struct ble_gap_event *event, void *arg)
             ble_spp_server_advertise();
         }
         enter_micropython_mode();
+        esp_ble_ota_fill_handle_table();
         return 0;
 
     case BLE_GAP_EVENT_DISCONNECT:
@@ -238,6 +311,10 @@ ble_spp_server_gap_event(struct ble_gap_event *event, void *arg)
         ble_spp_server_advertise();
         turnOffAllSensors();
         exit_micropython_mode();
+        if(start_ota)
+        {
+            start_ota = false;
+        }
         return 0;
 
     case BLE_GAP_EVENT_CONN_UPDATE:
@@ -254,6 +331,38 @@ ble_spp_server_gap_event(struct ble_gap_event *event, void *arg)
         MODLOG_DFLT(INFO, "advertise complete; reason=%d",
                     event->adv_complete.reason);
         ble_spp_server_advertise();
+        return 0;
+
+    case BLE_GAP_EVENT_SUBSCRIBE:
+        ota_char = find_ota_char_and_desr_by_handle(event->subscribe.attr_handle);
+        ESP_LOGI(TAG, "client subscribe ble_gap_event, ota_char: %d", ota_char);
+
+        ESP_LOGI(TAG, "subscribe event; conn_handle=%d attr_handle=%d "
+                 "reason=%d prevn=%d curn=%d previ=%d curi=%d\n",
+                 event->subscribe.conn_handle,
+                 event->subscribe.attr_handle,
+                 event->subscribe.reason,
+                 event->subscribe.prev_notify,
+                 event->subscribe.cur_notify,
+                 event->subscribe.prev_indicate,
+                 event->subscribe.cur_indicate);
+
+        switch (ota_char) {
+            case RECV_FW_CHAR:
+                ota_notification.recv_fw_ntf_enable = true;
+                break;
+            case OTA_STATUS_CHAR:
+                ota_notification.process_bar_ntf_enable = true;
+                break;
+            case CMD_CHAR:
+                ota_notification.command_ntf_enable = true;
+                break;
+            case CUS_CHAR:
+                ota_notification.customer_ntf_enable = true;
+                break;
+            case INVALID_CHAR:
+                break;
+        }
         return 0;
 
     case BLE_GAP_EVENT_MTU:
@@ -496,6 +605,279 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
 
 }
 
+static esp_ble_ota_char_t find_ota_char_and_desr_by_handle(uint16_t handle)
+{
+    esp_ble_ota_char_t ret = INVALID_CHAR;
+
+    for (int i = 0; i < OTA_IDX_NB ; i++) {
+        if (handle == ota_handle_table[i]) {
+            switch (i) {
+            case RECV_FW_CHAR_VAL_IDX:
+                ret = RECV_FW_CHAR;
+                break;
+            case OTA_STATUS_CHAR_VAL_IDX:
+                ret = OTA_STATUS_CHAR;
+                break;
+            case CMD_CHAR_VAL_IDX:
+                ret = CMD_CHAR;
+                break;
+            case CUS_CHAR_VAL_IDX:
+                ret = CUS_CHAR;
+                break;
+            default:
+                ret = INVALID_CHAR;
+                break;
+            }
+        }
+    }
+    return ret;
+}
+
+static int esp_ble_ota_notification_data(uint16_t conn_handle, uint16_t attr_handle, uint8_t cmd_ack[], esp_ble_ota_char_t ota_char)
+{
+    struct os_mbuf *txom;
+    bool notify_enable = false;
+    int rc;
+    txom = ble_hs_mbuf_from_flat(cmd_ack, CMD_ACK_LENGTH);
+
+    switch (ota_char) {
+    case RECV_FW_CHAR:
+        if (ota_notification.recv_fw_ntf_enable) {
+            notify_enable = true;
+        }
+        break;
+    case OTA_STATUS_CHAR:
+        if (ota_notification.process_bar_ntf_enable) {
+            notify_enable = true;
+        }
+        break;
+    case CMD_CHAR:
+        if (ota_notification.command_ntf_enable) {
+            notify_enable = true;
+        }
+        break;
+    case CUS_CHAR:
+        if (ota_notification.customer_ntf_enable) {
+            notify_enable = true;
+        }
+        break;
+    case INVALID_CHAR:
+        break;
+    }
+
+    if (notify_enable) {
+        rc = ble_gattc_notify_custom(conn_handle, attr_handle, txom);
+        if (rc == 0) {
+            ESP_LOGD(TAG, "Notification sent, attr_handle = %d", attr_handle);
+        } else {
+            ESP_LOGE(TAG, "Error in sending notification, rc = %d", rc);
+        }
+        return rc;
+    }
+
+    /* If notifications are disabled return ESP_FAIL */
+    ESP_LOGI(TAG, "Notify is disabled");
+    return ESP_FAIL;
+}
+
+static void ble_ota_start_write_chr(struct os_mbuf *om)
+{
+    uint8_t cmd_ack[CMD_ACK_LENGTH] = {0x03, 0x00, 0x00, 0x00, 0x00,
+                                       0x00, 0x00, 0x00, 0x00, 0x00,
+                                       0x00, 0x00, 0x00, 0x00, 0x00,
+                                       0x00, 0x00, 0x00, 0x00, 0x00
+                                      };
+    uint16_t crc16;
+
+    esp_ble_ota_char_t ota_char = find_ota_char_and_desr_by_handle(attribute_handle);
+    if ((om->om_data[0] == 0x01) && (om->om_data[1] == 0x00)) {
+        start_ota = true;
+
+        ota_total_len = (om->om_data[2]) + (om->om_data[3] * 256) +
+                        (om->om_data[4] * 256 * 256) + (om->om_data[5] * 256 * 256 * 256);
+
+        ESP_LOGI(TAG, "recv ota start cmd, fw_length = %" PRIu32 "", ota_total_len);
+
+        if (fw_buf == NULL) {
+            fw_buf = (uint8_t *)malloc(ota_block_size * sizeof(uint8_t));
+            if (fw_buf == NULL) 
+            {
+                ESP_LOGE(TAG, "%s -  malloc fail", __func__);
+            }
+        } else {
+            memset(fw_buf, 0x0, ota_block_size);
+        }
+        cur_sector = 0;
+        cur_packet = 0;
+
+        cmd_ack[2] = 0x01;
+        cmd_ack[3] = 0x00;
+        crc16 = crc16_ccitt(cmd_ack, 18);
+        cmd_ack[18] = crc16 & 0xff;
+        cmd_ack[19] = (crc16 & 0xff00) >> 8;
+        esp_ble_ota_notification_data(connection_handle, attribute_handle, cmd_ack, ota_char);
+            
+    } else if ((om->om_data[0] == 0x02) && (om->om_data[1] == 0x00)) {
+        printf("\nCMD_CHAR -> 0 : %d, 1 : %d", om->om_data[0],
+               om->om_data[1]);
+
+        xSemaphoreTake(notify_sem, portMAX_DELAY);
+
+        start_ota = false;
+        ota_total_len = 0;
+
+        xSemaphoreGive(notify_sem);
+
+        ESP_LOGD(TAG, "recv ota stop cmd");
+        cmd_ack[2] = 0x02;
+        cmd_ack[3] = 0x00;
+        crc16 = crc16_ccitt(cmd_ack, 18);
+        cmd_ack[18] = crc16 & 0xff;
+        cmd_ack[19] = (crc16 & 0xff00) >> 8;
+        esp_ble_ota_notification_data(connection_handle, attribute_handle, cmd_ack, ota_char);
+        free(fw_buf);
+        fw_buf = NULL;
+    }
+}
+
+static void esp_ble_ota_write_chr(struct os_mbuf *om)
+{
+    esp_ble_ota_char_t ota_char = find_ota_char_and_desr_by_handle(attribute_handle);
+
+    uint8_t cmd_ack[CMD_ACK_LENGTH] = {0x03, 0x00, 0x00, 0x00, 0x00,
+                                       0x00, 0x00, 0x00, 0x00, 0x00,
+                                       0x00, 0x00, 0x00, 0x00, 0x00,
+                                       0x00, 0x00, 0x00, 0x00, 0x00
+                                      };
+    uint16_t crc16;
+
+    if ((om->om_data[0] + (om->om_data[1] * 256)) != cur_sector) {
+        // sector error
+        if ((om->om_data[0] == 0xff) && (om->om_data[1] == 0xff)) {
+            // last sector
+            ESP_LOGD(TAG, "Last sector");
+        } else {
+            // sector error
+            ESP_LOGE(TAG, "%s - sector index error, cur: %" PRIu32 ", recv: %d", __func__,
+                     cur_sector, (om->om_data[0] + (om->om_data[1] * 256)));
+            cmd_ack[0] = om->om_data[0];
+            cmd_ack[1] = om->om_data[1];
+            cmd_ack[2] = 0x02; //sector index error
+            cmd_ack[3] = 0x00;
+            cmd_ack[4] = cur_sector & 0xff;
+            cmd_ack[5] = (cur_sector & 0xff00) >> 8;
+            crc16 = crc16_ccitt(cmd_ack, 18);
+            cmd_ack[18] = crc16 & 0xff;
+            cmd_ack[19] = (crc16 & 0xff00) >> 8;
+            esp_ble_ota_notification_data(connection_handle, attribute_handle, cmd_ack, ota_char);
+        }
+    }
+
+    if (om->om_data[2] != cur_packet) { // packet seq error
+        if (om->om_data[2] == 0xff) { // last packet
+            ESP_LOGD(TAG, "last packet");
+            goto write_ota_data;
+        } else { // packet seq error
+            ESP_LOGE(TAG, "%s - packet index error, cur: %" PRIu32 ", recv: %d", __func__,
+                     cur_packet, om->om_data[2]);
+        }
+    }
+
+write_ota_data:
+    os_mbuf_copydata(om, 3, os_mbuf_len(om) - 3, fw_buf + fw_buf_offset);
+    fw_buf_offset += os_mbuf_len(om) - 3;
+
+    ESP_LOGD(TAG, "DEBUG: Sector:%" PRIu32 ", total length:%" PRIu32 ", length:%d", cur_sector,
+             fw_buf_offset, os_mbuf_len(om) - 3);
+
+    if (om->om_data[2] == 0xff) {
+        cur_packet = 0;
+        cur_sector++;
+        ESP_LOGD(TAG, "DEBUG: recv %" PRIu32 " sector", cur_sector);
+        goto sector_end;
+    } else {
+        ESP_LOGD(TAG, "DEBUG: wait next packet");
+        cur_packet++;
+    }
+    return;
+
+sector_end:
+    if (fw_buf_offset < ota_block_size) {
+        write_to_ringbuf(fw_buf, fw_buf_offset);
+    } else {
+        write_to_ringbuf(fw_buf, 4096);
+    }
+
+    fw_buf_offset = 0;
+    memset(fw_buf, 0x0, ota_block_size);
+
+    cmd_ack[0] = om->om_data[0];
+    cmd_ack[1] = om->om_data[1];
+    cmd_ack[2] = 0x00; //success
+    cmd_ack[3] = 0x00;
+    crc16 = crc16_ccitt(cmd_ack, 18);
+    cmd_ack[18] = crc16 & 0xff;
+    cmd_ack[19] = (crc16 & 0xff00) >> 8;
+    counter = true;
+    esp_ble_ota_notification_data(connection_handle, attribute_handle, cmd_ack, ota_char);
+}
+
+static uint16_t crc16_ccitt(const unsigned char *buf, int len)
+{
+    uint16_t crc16 = 0;
+    int32_t i;
+
+    while (len--) {
+        crc16 ^= *buf++ << 8;
+
+        for (i = 0; i < 8; i++) {
+            if (crc16 & 0x8000) {
+                crc16 = (crc16 << 1) ^ 0x1021;
+            } else {
+                crc16 = crc16 << 1;
+            }
+        }
+    }
+
+    return crc16;
+}
+
+static int ble_ota_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
+{
+    esp_ble_ota_char_t ota_char;
+
+    attribute_handle = attr_handle;
+
+    switch (ctxt->op) {
+        case BLE_GATT_ACCESS_OP_READ_CHR:
+            ota_char = find_ota_char_and_desr_by_handle(attr_handle);
+            ESP_LOGI(TAG, "client read, ota_char: %d", ota_char);
+            break;
+
+        case BLE_GATT_ACCESS_OP_WRITE_CHR:
+
+            ota_char = find_ota_char_and_desr_by_handle(attr_handle);
+            ESP_LOGD(TAG, "client write; len = %d", os_mbuf_len(ctxt->om));
+
+            if (ota_char == RECV_FW_CHAR) {
+                if (start_ota) {
+                    esp_ble_ota_write_chr(ctxt->om);
+
+                } else {
+                    ESP_LOGE(TAG, "%s -  don't receive the start cmd", __func__);
+                }
+            } else if (ota_char == CMD_CHAR) {
+                ble_ota_start_write_chr(ctxt->om);
+            }
+            break;
+
+        default:
+            return BLE_ATT_ERR_UNLIKELY;
+    }
+    return 0;
+}
+
+
 /* Define new custom service */
 static const struct ble_gatt_svc_def new_ble_svc_gatt_defs[] = {
     {
@@ -525,6 +907,41 @@ static const struct ble_gatt_svc_def new_ble_svc_gatt_defs[] = {
             }
         },
     },
+    {
+        /* OTA Service Declaration */
+        .type = BLE_GATT_SVC_TYPE_PRIMARY,
+        .uuid = BLE_UUID16_DECLARE(BLE_OTA_SERVICE_UUID),
+        .characteristics = (struct ble_gatt_chr_def[])
+        {
+            {
+                /* Receive Firmware Characteristic */
+                .uuid = BLE_UUID16_DECLARE(RECV_FW_UUID),
+                .access_cb = ble_ota_gatt_handler,
+                .val_handle = &receive_fw_val,
+                .flags = BLE_GATT_CHR_F_INDICATE | BLE_GATT_CHR_F_WRITE,
+            }, {
+                /* OTA Characteristic */
+                .uuid = BLE_UUID16_DECLARE(OTA_BAR_UUID),
+                .access_cb = ble_ota_gatt_handler,
+                .val_handle = &ota_status_val,
+                .flags = BLE_GATT_CHR_F_INDICATE | BLE_GATT_CHR_F_READ,
+            }, {
+                /* Command Characteristic */
+                .uuid = BLE_UUID16_DECLARE(COMMAND_UUID),
+                .access_cb = ble_ota_gatt_handler,
+                .val_handle = &command_val,
+                .flags = BLE_GATT_CHR_F_INDICATE | BLE_GATT_CHR_F_WRITE,
+            }, {
+                /* Customer characteristic */
+                .uuid = BLE_UUID16_DECLARE(CUSTOMER_UUID),
+                .access_cb = ble_ota_gatt_handler,
+                .val_handle = &custom_val,
+                .flags = BLE_GATT_CHR_F_INDICATE | BLE_GATT_CHR_F_WRITE,
+            }, {
+                0, /* No more characteristics in this service */
+            }
+        },
+    },    
     {
         0, /* No more services. */
     },
@@ -893,6 +1310,181 @@ static void bt_rx_tx_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
+bool ble_ota_ringbuf_init(uint32_t ringbuf_size)
+{
+    s_ringbuf = xRingbufferCreate(ringbuf_size, RINGBUF_TYPE_BYTEBUF);
+    if (s_ringbuf == NULL) {
+        return false;
+    }
+
+    return true;
+}
+
+size_t write_to_ringbuf(const uint8_t *data, size_t size)
+{
+    BaseType_t done = xRingbufferSend(s_ringbuf, (void *)data, size, (TickType_t)portMAX_DELAY);
+    if (done) {
+        return size;
+    } else {
+        return 0;
+    }
+}
+
+void ota_task(void *arg)
+{
+    esp_partition_t *partition_ptr = NULL;
+    esp_partition_t partition;
+    const esp_partition_t *next_partition = NULL;
+    static uint8_t ota_task_state = 0;
+
+    uint32_t recv_len = 0;
+    uint8_t *data = NULL;
+    size_t item_size = 0;
+    int64_t start_time = 0;
+    int64_t end_time = 0;
+    ESP_LOGI(TAG, "ota_task start");
+
+    start_time = esp_timer_get_time();
+    notify_sem = xSemaphoreCreateCounting(100, 0);
+    xSemaphoreGive(notify_sem);
+
+    if (!ble_ota_ringbuf_init(OTA_RINGBUF_SIZE)) {
+        ESP_LOGE(TAG, "%s init ringbuf fail", __func__);
+        return;
+    }
+    end_time = esp_timer_get_time();
+    ESP_LOGI(TAG, "Semaphore and ringbuf init time %lld us", (end_time-start_time));
+
+    start_time = esp_timer_get_time();
+    partition_ptr = (esp_partition_t *)esp_ota_get_boot_partition();
+    if (partition_ptr == NULL) {
+        ESP_LOGE(TAG, "boot partition NULL!\r\n");
+        goto OTA_ERROR;
+    }
+    if (partition_ptr->type != ESP_PARTITION_TYPE_APP) {
+        ESP_LOGE(TAG, "esp_current_partition->type != ESP_PARTITION_TYPE_APP\r\n");
+        goto OTA_ERROR;
+    }
+    end_time = esp_timer_get_time();
+    ESP_LOGI(TAG, "esp_ota_get_boot_partition time %lld us", (end_time-start_time));
+
+    start_time = esp_timer_get_time();
+    if (partition_ptr->subtype == ESP_PARTITION_SUBTYPE_APP_FACTORY) {
+        partition.subtype = ESP_PARTITION_SUBTYPE_APP_OTA_0;
+    } else {
+        next_partition = esp_ota_get_next_update_partition(partition_ptr); // Get info from "OTA data" partition
+        if (next_partition) {
+            partition.subtype = next_partition->subtype;
+        } else {
+            partition.subtype = ESP_PARTITION_SUBTYPE_APP_OTA_0;
+        }
+    }
+    printf("next partition subtype = %d\n", partition.subtype);
+    partition.type = ESP_PARTITION_TYPE_APP;
+    end_time = esp_timer_get_time();
+    ESP_LOGI(TAG, "esp_ota_get_next_update_partition time %lld us", (end_time-start_time));    
+
+    start_time = esp_timer_get_time();
+    // Verify that the partition returned by "esp_ota_get_next_update_partition" actually exist and is valid...needed?
+    partition_ptr = (esp_partition_t *)esp_partition_find_first(partition.type, partition.subtype, NULL);
+    if (partition_ptr == NULL) {
+        ESP_LOGE(TAG, "partition NULL!\r\n");
+        goto OTA_ERROR;
+    }
+    memcpy(&partition, partition_ptr, sizeof(esp_partition_t));
+    end_time = esp_timer_get_time();
+    ESP_LOGI(TAG, "esp_partition_find_first time %lld us", (end_time-start_time));
+
+    while (1)
+    {
+        switch(ota_task_state)
+        {
+            case 0: // Prepare the OTA partition once the "start ota" command is received
+                // We do not prepare the partition at init because it takes about 5 seconds, this mean 
+                // that the robot would take 5 seconds to turn on that is way too much!
+                // By setting a larger supervision timeout (8 seconds) it can be done here without
+                // losing connection.
+                if(start_ota)
+                {
+                    // Gives time to the gatt request to terminate before start preparing the partition otherwise a BLE error is returned to the connected device.
+                    vTaskDelay(500/portTICK_PERIOD_MS); 
+                    start_time = esp_timer_get_time();
+                    if (esp_ota_begin(&partition, OTA_SIZE_UNKNOWN, &out_handle) != ESP_OK) { // This function takes 4-5 seconds because it erase all the partition.
+                        ESP_LOGE(TAG, "esp_ota_begin failed!\r\n");
+                        goto OTA_ERROR;
+                    }
+                    end_time = esp_timer_get_time();
+                    ESP_LOGI(TAG, "esp_ota_begin time %lld us", (end_time-start_time));
+                    ESP_LOGI(TAG, "wait for data from ringbuf!");
+                    recv_len = 0;
+                    ota_task_state = 1;
+                }
+                vTaskDelay(100/portTICK_PERIOD_MS);
+                break;
+
+            case 1: // deal with all receive packet
+                //data = (uint8_t *)xRingbufferReceive(s_ringbuf, &item_size, (TickType_t)portMAX_DELAY);
+
+                data = (uint8_t *)xRingbufferReceive(s_ringbuf, &item_size, pdMS_TO_TICKS(50));
+
+                if(data != NULL) 
+                {
+                    xSemaphoreTake(notify_sem, portMAX_DELAY);
+
+                    ESP_LOGI(TAG, "recv: %u, recv_total:%"PRIu32"\n", item_size, recv_len + item_size);
+
+                    if (item_size != 0) {
+                        if (esp_ota_write(out_handle, (const void *)data, item_size) != ESP_OK) {
+                            ESP_LOGE(TAG, "esp_ota_write failed!\r\n");
+                            esp_ota_abort(out_handle);
+                            start_ota = false;
+                            ota_task_state = 0;
+                        }
+
+                        recv_len += item_size;
+                        vRingbufferReturnItem(s_ringbuf, (void *)data);
+
+                        if (recv_len >= ota_total_len) {
+                            xSemaphoreGive(notify_sem);
+
+                            if (esp_ota_end(out_handle) != ESP_OK) {
+                                ESP_LOGE(TAG, "esp_ota_end failed!\r\n");
+                                esp_ota_abort(out_handle);
+                                start_ota = false;
+                                ota_task_state = 0;
+                            }
+
+                            if (esp_ota_set_boot_partition(&partition) != ESP_OK) {
+                                ESP_LOGE(TAG, "esp_ota_set_boot_partition failed!\r\n");
+                                start_ota = false;
+                                esp_ota_abort(out_handle);
+                                ota_task_state = 0;
+                            }
+
+                            vSemaphoreDelete(notify_sem);
+                            esp_restart();
+                        }
+                    }
+                    xSemaphoreGive(notify_sem);
+                }
+
+                if(!start_ota) // Device disconnected
+                {
+                    esp_ota_abort(out_handle);
+                    start_ota = false;
+                    ota_task_state = 0;
+                    break;
+                }       
+                break;
+        }
+
+    }
+
+OTA_ERROR:
+    ESP_LOGE(TAG, "OTA failed");
+    vTaskDelete(NULL);
+}
+
 void ble_notify_python_end(uint8_t value)
 {
     int rc = 0;
@@ -967,4 +1559,5 @@ void ble_spp_init(void)
     nimble_port_freertos_init(ble_spp_server_host_task);
 
     xTaskCreate(&bt_rx_tx_task, "bt_rx_tx_task", 4096, NULL, 5, NULL);
+    xTaskCreate(&ota_task, "ota_task", OTA_TASK_SIZE, NULL, 5, NULL);
 }

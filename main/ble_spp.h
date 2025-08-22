@@ -90,6 +90,13 @@
 #define PYTHON_IND_LOAD_RES 0x01
 #define PYTHON_IND_END_RES 0x02
 
+// OTA definitions
+#define OTA_RINGBUF_SIZE                    8192
+#define OTA_TASK_SIZE                       8192
+#define BUF_LENGTH                          4098
+#define OTA_IDX_NB                          4
+#define CMD_ACK_LENGTH                      20
+
 void ble_spp_init(void);
 void ble_notify_python_end(uint8_t value);
 
