@@ -77,6 +77,7 @@
 #include "../main/common.h"
 #include "../main/accelerometer.h"
 #include "../main/ble_spp.h"
+#include "../main/utility.h"
 
 #if MICROPY_BLUETOOTH_NIMBLE
 #include "extmod/modbluetooth.h"
@@ -360,12 +361,13 @@ soft_reset:
                 if (nlr_push(&nlr) == 0) {
                     run_micropython_script(ram_script);
                     nlr_pop();
-                    ble_notify_python_end(0);
+                    ble_indicate_python_exec(PYTHON_EXEC_OK);
                 } else {
                     // Exception raised (es. KeyboardInterrupt)
                     mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
-                    ble_notify_python_end(1);
-                }                
+                    ble_indicate_python_exec(PYTHON_EXEC_ERROR);
+                }
+                turnOffAllSensors();             
                 mp_component_state = -1; // Execute the script only once
                 break;
             default:
@@ -485,7 +487,7 @@ void mp_exec_script_from_ram(char* script)
     }
     else
     {
-        ble_notify_python_end(2);
+        ble_indicate_python_exec(PYTHON_EXEC_ALREADY_RUNNING);
     }
 }
 

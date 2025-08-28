@@ -56,11 +56,15 @@ static const char *TAG = "THYMIO_BLUETOOTH";
 #define MAX_BT_RX_BUFF (CMD_WRITE_MOST_ACTUATORS_LEN)
 #define MAX_BT_TX_BUFF (STREAM_NOTIFY_MOST_SENSORS_LEN)
 
-#define MP_SCRIPT_LOAD_OK 0
-#define MP_SCRIPT_LOAD_CRC_ERR 1
-#define MP_SCRIPT_LOAD_NOT_COMPLETE 2
-#define MP_SCRIPT_LOAD_WRONG_SEQ 3
-#define MP_SCRIPT_LOAD_TOO_BIG 4
+#define FILE_LOAD_OK 0
+#define FILE_LOAD_CRC_ERR 1
+#define FILE_LOAD_NOT_COMPLETE 2
+#define FILE_LOAD_WRONG_SEQ 3
+#define FILE_LOAD_TOO_BIG 4
+
+#define AUDIO_PLAY_UNDEF 0
+#define AUDIO_PLAY_LOADED 1
+#define AUDIO_PLAY_RECORDED 2
 
 uint8_t bt_rx_data[MAX_BT_RX_BUFF]; // Received commands from the device (e.g. from phone)
 uint8_t bt_rx_data_temp[MAX_BT_RX_BUFF]; // Double buffer for parsing the data while receiving new data without corruption
@@ -76,18 +80,39 @@ static uint8_t own_addr_type;
 static bool is_connect = false;
 uint16_t connection_handle;
 static uint16_t ble_sensors_stream_val_handle;
+
+// Python variables
 static uint16_t ble_python_val_handle;
 char mp_script[MAX_MP_SCRIPT_LEN];
 uint16_t mp_script_tot_len = 0;
 uint16_t mp_script_curr_len = 0;
 bool mp_receiving_script = false;
-bool mp_script_indicate = false;
-uint8_t mp_script_load_res = MP_SCRIPT_LOAD_OK;
 uint32_t mp_script_crc = 0;
 uint16_t mp_script_seq_id = 0;
 uint16_t mp_script_seq_id_prev = 0;
 uint16_t mp_script_timeout = 0;
 bool mp_script_ready = false;
+
+// Audio variables
+static uint16_t ble_audio_val_handle;
+uint8_t *audio_data = NULL;
+char audio_name[21]; // Max is 20 bytes + null terminator
+uint32_t audio_tot_len = 0;
+uint32_t audio_curr_len = 0;
+bool receiving_audio = false;
+uint32_t audio_crc = 0;
+uint16_t audio_seq_id = 0;
+uint16_t audio_seq_id_prev = 0;
+uint16_t audio_timeout = 0;
+bool audio_ready = false;
+uint8_t audio_play_type = AUDIO_PLAY_UNDEF;
+uint32_t sampleRate = 0;
+uint16_t numChannels = 0;
+uint16_t bitsPerChannel = 0;
+uint16_t mp3Ver = 0;
+uint32_t id3Size = 0;
+bool audio_playing = false;
+bool audio_recording = false;
 
 // OTA variables
 static bool counter = false;
@@ -280,7 +305,7 @@ ble_spp_server_gap_event(struct ble_gap_event *event, void *arg)
 	        is_connect=true;
 	        connection_handle = event->connect.conn_handle;
 
-            // Define the connection parameters
+            // Define the connection parameters to avoid disconnection when calling "esp_ota_begin".
             struct ble_gap_upd_params params = {
                 .itvl_min = 10,         // Minimum connection interval: 10 * 1.25ms = 12.5ms
                 .itvl_max = 40,         // Maximum connection interval: 40 * 1.25ms = 50ms
@@ -422,6 +447,25 @@ void ble_spp_server_host_task(void *param)
     nimble_port_freertos_deinit();
 }
 
+bool is_wav(const uint8_t *bytes) {
+    return (bytes[0] == 'R' && bytes[1] == 'I' &&
+            bytes[2] == 'F' && bytes[3] == 'F' &&
+            bytes[8] == 'W' && bytes[9] == 'A' &&
+            bytes[10] == 'V' && bytes[11] == 'E');
+}
+
+bool is_mp3(const uint8_t *bytes) {
+    // Check optional ID3 tag
+    if (bytes[0] == 'I' && bytes[1] == 'D' && bytes[2] == '3')
+        return true;
+
+    // Check frame header
+    if (bytes[0] == 0xFF && (bytes[1] & 0xE0) == 0xE0)
+        return true;
+
+    return false;
+}
+
 /* Callback function for custom service */
 static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
 {
@@ -463,8 +507,7 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                     if(mp_script_seq_id != (mp_script_seq_id_prev+1))
                     {
                         mp_receiving_script = false;
-                        mp_script_load_res = MP_SCRIPT_LOAD_WRONG_SEQ;
-                        mp_script_indicate = true;
+                        ble_indicate_python_load(FILE_LOAD_WRONG_SEQ);
                         break;      
                     }
                     mp_script_seq_id_prev++;
@@ -482,14 +525,12 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                         //ESP_LOGI(TAG, "be) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
                         if(calculated_crc == mp_script_crc)
                         {
-                            mp_script_load_res = MP_SCRIPT_LOAD_OK;
-                            mp_script_indicate = true; 
+                            ble_indicate_python_load(FILE_LOAD_OK);
                             mp_script_ready = true;
                         }
                         else
                         {
-                            mp_script_load_res = MP_SCRIPT_LOAD_CRC_ERR;
-                            mp_script_indicate = true; 
+                            ble_indicate_python_load(FILE_LOAD_CRC_ERR);
                         }
                     }             
                 }
@@ -501,18 +542,15 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                         mp_script_tot_len = (ctxt->om->om_data[1] << 8) | ctxt->om->om_data[2];
                         mp_script_crc = (ctxt->om->om_data[3] << 24) | (ctxt->om->om_data[4] << 16) | (ctxt->om->om_data[5] << 8) | ctxt->om->om_data[6];
                         mp_script_seq_id = (ctxt->om->om_data[7] << 8) | ctxt->om->om_data[8];
-                        mp_script_load_res = MP_SCRIPT_LOAD_OK;
                         ESP_LOGI(TAG,"tot len=%d, crc=%x, seq=%d", mp_script_tot_len, mp_script_crc, mp_script_seq_id);
                         mp_script_seq_id_prev = 0;
                         if(mp_script_tot_len > MAX_MP_SCRIPT_LEN)
                         {
-                            mp_script_load_res = MP_SCRIPT_LOAD_TOO_BIG;
-                            mp_script_indicate = true;
+                            ble_indicate_python_load(FILE_LOAD_TOO_BIG);
                         }
                         else if(mp_script_seq_id != 0)
                         {
-                            mp_script_load_res = MP_SCRIPT_LOAD_WRONG_SEQ;
-                            mp_script_indicate = true;
+                            ble_indicate_python_load(FILE_LOAD_WRONG_SEQ);
                         }
                         else
                         {
@@ -534,14 +572,12 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                                 //ESP_LOGI(TAG, "be) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
                                 if(calculated_crc == mp_script_crc)
                                 {
-                                    mp_script_load_res = MP_SCRIPT_LOAD_OK;
-                                    mp_script_indicate = true; 
+                                    ble_indicate_python_load(FILE_LOAD_OK);
                                     mp_script_ready = true;
                                 }
                                 else
                                 {
-                                    mp_script_load_res = MP_SCRIPT_LOAD_CRC_ERR;
-                                    mp_script_indicate = true; 
+                                    ble_indicate_python_load(FILE_LOAD_CRC_ERR);
                                 }
                             }
                         }
@@ -551,6 +587,10 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                         if(mp_script_ready)
                         {
                             mp_exec_script_from_ram(mp_script);
+                        }
+                        else
+                        {
+                            ble_indicate_python_exec(PYTHON_EXEC_NOT_FOUND);
                         }
 
                     } else if(ctxt->om->om_data[0] == PYTHON_WRITE_STOP)
@@ -598,6 +638,251 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
 
             default:
                 //MODLOG_DFLT(INFO, "\nDefault Callback");
+                break;
+        }
+    }
+    if (ble_uuid_cmp(uuid, BLE_UUID16_DECLARE(BLE_SVC_AUDIO_CHR_UUID16)) == 0) {
+        switch (ctxt->op) {
+            case BLE_GATT_ACCESS_OP_WRITE_CHR:
+                //MODLOG_DFLT(INFO, "Data received in write event,conn_handle = %x,attr_handle = %x", conn_handle, attr_handle);
+                ESP_LOGI(TAG, "AUDIO buf len = %d (%d) [%d]s", ctxt->om->om_len, ctxt->om->om_pkthdr_len, OS_MBUF_PKTLEN(ctxt->om));
+                //ESP_LOG_BUFFER_HEX(TAG, ctxt->om->om_data, ctxt->om->om_len);
+                ble_hs_mbuf_to_flat(ctxt->om, rx_buff_temp, 500, NULL);
+                //ESP_LOG_BUFFER_HEX(TAG, rx_buff_temp, OS_MBUF_PKTLEN(ctxt->om));
+
+                if(receiving_audio)
+                {
+                    audio_timeout = 0; // Reset timeout
+                    audio_seq_id = (ctxt->om->om_data[0] << 8) | ctxt->om->om_data[1];
+                    ESP_LOGI(TAG, "seq id = %d, curr len = %d (tot=%d)", audio_seq_id, audio_curr_len, audio_tot_len);
+                    if(audio_seq_id != (audio_seq_id_prev+1))
+                    {
+                        receiving_audio = false;
+                        ble_indicate_audio_load(FILE_LOAD_WRONG_SEQ);
+                        break;      
+                    }
+                    audio_seq_id_prev++;
+                    // copy remaining chunk of data
+                    os_mbuf_copydata(ctxt->om, 2, OS_MBUF_PKTLEN(ctxt->om) - 2, audio_data + audio_curr_len);
+                    audio_curr_len += OS_MBUF_PKTLEN(ctxt->om) - 2; // Each packet contains also a sequence id (2 bytes)
+                    if(audio_curr_len == audio_tot_len)
+                    {
+                        receiving_audio = false;                        
+                        // Check the integrity of the data once all the script is received.
+                        calculated_crc = esp_rom_crc32_be(initial_crc, (uint8_t*)audio_data, audio_tot_len);
+                        calculated_crc = ~calculated_crc; // The final CRC value needs to be bitwise NOT-ed to get the standard CRC32 result.
+                        ESP_LOGI(TAG, "calc crc=%x", calculated_crc);
+                        //ESP_LOGI(TAG, "le) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_le(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_le(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_le(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_le(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
+                        //ESP_LOGI(TAG, "be) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
+                        if(calculated_crc == audio_crc)
+                        {
+                            ble_indicate_audio_load(FILE_LOAD_OK);
+                            audio_ready = true;
+                            audio_play_type = AUDIO_PLAY_LOADED;
+                        }
+                        else
+                        {
+                            ble_indicate_audio_load(FILE_LOAD_CRC_ERR);
+                        }
+                    }             
+                }
+                else
+                {
+                    if(ctxt->om->om_data[0] == AUDIO_WRITE_LOAD)
+                    {
+                        audio_timeout = 0; // Reset timeout
+                        audio_tot_len = (ctxt->om->om_data[1] << 24) | (ctxt->om->om_data[2] << 16) | (ctxt->om->om_data[3] << 8) | ctxt->om->om_data[4];
+                        audio_crc = (ctxt->om->om_data[5] << 24) | (ctxt->om->om_data[6] << 16) | (ctxt->om->om_data[7] << 8) | ctxt->om->om_data[8];
+                        audio_seq_id = (ctxt->om->om_data[9] << 8) | ctxt->om->om_data[10];
+                        ESP_LOGI(TAG,"tot len=%d, crc=%x, seq=%d", audio_tot_len, audio_crc, audio_seq_id);
+                        audio_seq_id_prev = 0;
+                        if(audio_tot_len > MAX_RECORD_SIZE)
+                        {
+                            ble_indicate_audio_load(FILE_LOAD_TOO_BIG);
+                        }
+                        else if(audio_seq_id != 0)
+                        {
+                            ble_indicate_audio_load(FILE_LOAD_WRONG_SEQ);
+                        }
+                        else
+                        {
+                            audio_ready = false;
+                            //memset(mp_script, 0x0, MAX_MP_SCRIPT_LEN);  // Reset buffer
+                            audio_data = Codec_GetRecordPtr();
+                            audio_curr_len = 0;
+                            receiving_audio = true;
+                            // copy first chunk of data
+                            os_mbuf_copydata(ctxt->om, 11, OS_MBUF_PKTLEN(ctxt->om) - 11, audio_data + audio_curr_len);
+                            audio_curr_len += OS_MBUF_PKTLEN(ctxt->om) - 11; // Firt packet contains also command id (1); audio len (4), crc (4), sequence id (2) = 31 bytes                        
+                            if(audio_curr_len == audio_tot_len) // All the audio data received in the first packet (small audio)
+                            {
+                                receiving_audio = false;                        
+                                // Check the integrity of the data once all the script is received.
+                                calculated_crc = esp_rom_crc32_be(initial_crc, (uint8_t*)audio_data, audio_tot_len);
+                                calculated_crc = ~calculated_crc; // The final CRC value needs to be bitwise NOT-ed to get the standard CRC32 result.
+                                ESP_LOGI(TAG, "calc crc=%x", calculated_crc);
+                                //ESP_LOGI(TAG, "le) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_le(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_le(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_le(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_le(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
+                                //ESP_LOGI(TAG, "be) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
+                                if(calculated_crc == audio_crc)
+                                {
+                                    ble_indicate_audio_load(FILE_LOAD_OK);
+                                    audio_ready = true;
+                                    audio_play_type = AUDIO_PLAY_LOADED;
+                                }
+                                else
+                                {
+                                    ble_indicate_audio_load(FILE_LOAD_CRC_ERR);
+                                }
+                            }
+                        }
+
+                    } 
+                    else if(ctxt->om->om_data[0] == AUDIO_WRITE_EXEC)
+                    {
+                        if(OS_MBUF_PKTLEN(ctxt->om) == AUDIO_WRITE_EXEC_LEN)
+                        {
+                            if(audio_playing || audio_recording)
+                            {
+                                ESP_LOGI(TAG, "Already playing or recording");
+                                ble_indicate_audio_exec(AUDIO_EXEC_ERROR);
+                                break;
+                            }
+                            memset(audio_name, 0x0, 21);
+                            strncpy((char*)audio_name, (char*)&(ctxt->om->om_data[1]), 20);
+                            if(strlen(audio_name) == 0) // Play from RAM
+                            {
+                                if(audio_ready)
+                                {
+                                    if(audio_play_type == AUDIO_PLAY_LOADED)
+                                    {
+                                        if(is_wav(audio_data)) // Wav audio
+                                        {
+                                            numChannels = audio_data[22]+(audio_data[23]<<8);
+                                            sampleRate = audio_data[24]+(audio_data[25]<<8)+(audio_data[26]<<16)+(audio_data[27]<<24);        
+                                            bitsPerChannel = audio_data[34]+(audio_data[35]<<8);
+                                            ESP_LOGI(TAG, "wav ch=%d, rate=%d, bits=%d\n", numChannels, sampleRate, bitsPerChannel);
+                                            if((numChannels==1) && (sampleRate==12000) && (bitsPerChannel==16)) {
+                                                ESP_LOGI(TAG, "Playing wav file from RAM");
+                                                if(Codec_PlayWAVFile(audio_data, audio_tot_len) != ESP_OK)
+                                                {
+                                                    ESP_LOGI(TAG, "Play error");
+                                                    ble_indicate_audio_exec(AUDIO_EXEC_ERROR);
+                                                }
+                                                else
+                                                {
+                                                    audio_playing = true;
+                                                }                                                
+                                            }
+                                            else
+                                            {
+                                                ESP_LOGI(TAG, "Format not supported");
+                                                ble_indicate_audio_exec(AUDIO_EXEC_NOT_SUPPORTED);
+                                            }
+                                        }
+                                        else if(is_mp3(audio_data))// mp3 audio
+                                        {
+                                            if(audio_data[0] == 0x49) { // ID3 header detected
+                                                id3Size = audio_data[9] + (audio_data[8]<<7) + (audio_data[7]<<14) + (audio_data[6]<<21);
+                                                mp3Ver = (audio_data[11+id3Size]&0x18)>>3;
+                                                numChannels = (audio_data[13+id3Size]&0xC0)>>6;
+                                                sampleRate = (audio_data[12+id3Size]&0x0C)>>2;            
+                                            } else if(audio_data[0] == 0xFF) { // Mp3 header (no ID3 included)
+                                                mp3Ver = (audio_data[1]&0x18)>>3;
+                                                numChannels = (audio_data[3]&0xC0)>>6;
+                                                sampleRate = (audio_data[2]&0x0C)>>2;
+                                            } else {
+                                                ESP_LOGI(TAG, "Format not supported");
+                                                ble_indicate_audio_exec(AUDIO_EXEC_NOT_SUPPORTED);
+                                            }
+                                            ESP_LOGI(TAG, "mp3 ver=%d, rate=%d, ch=%d\n", mp3Ver, sampleRate, numChannels);
+                                            if((mp3Ver==0) && (numChannels==3) && (sampleRate==1)) {
+                                                ESP_LOGI(TAG, "Playing mp3 file from RAM");
+                                                if(Codec_PlayMP3File(audio_data, audio_tot_len) != ESP_OK) {
+                                                    ESP_LOGI(TAG, "Play error");
+                                                    ble_indicate_audio_exec(AUDIO_EXEC_ERROR);              
+                                                }
+                                                else
+                                                {
+                                                    audio_playing = true;
+                                                }
+                                            } else {
+                                                ESP_LOGI(TAG, "Format not supported");
+                                                ble_indicate_audio_exec(AUDIO_EXEC_NOT_SUPPORTED);            
+                                            }
+                                        }
+                                        else // audio not supported
+                                        {
+                                            ESP_LOGI(TAG, "Audio not supported");
+                                            ble_indicate_audio_exec(AUDIO_EXEC_NOT_SUPPORTED);
+                                        }
+                                    }
+                                    else if(audio_play_type == AUDIO_PLAY_RECORDED)
+                                    {
+                                        ESP_LOGI(TAG, "Playing recorded audio from RAM");
+                                        if(Codec_PlayRecorded() != ESP_OK) {
+                                            ESP_LOGI(TAG, "Play error");
+                                            ble_indicate_audio_exec(AUDIO_EXEC_ERROR); 
+                                        }
+                                        else
+                                        {
+                                            audio_playing = true;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    ESP_LOGI(TAG, "Audio not available in RAM");
+                                    ble_indicate_audio_exec(AUDIO_EXEC_NOT_FOUND);
+                                }
+
+                            }
+                            else // Play from internal storage
+                            {
+
+                            }
+                        }
+
+                    } 
+                    else if(ctxt->om->om_data[0] == AUDIO_WRITE_STOP)
+                    {
+                        Codec_Stop();
+                        ble_indicate_audio_exec(AUDIO_EXEC_OK);
+                        audio_playing = false;
+                    }
+                    else if(ctxt->om->om_data[0] == AUDIO_WRITE_SAVE)
+                    {
+                        
+                    }
+                    else if(ctxt->om->om_data[0] == AUDIO_WRITE_REC)
+                    {
+                        uint8_t duration = ctxt->om->om_data[1];
+                        if(audio_playing || audio_recording)
+                        {
+                            ESP_LOGI(TAG, "Already playing or recording");
+                            ble_indicate_audio_rec(AUDIO_REC_ERROR);
+                            break;
+                        }
+                        if(duration > 10)
+                        {
+                            ble_indicate_audio_rec(AUDIO_REC_TOO_LONG);
+                        }
+                        else
+                        {
+                            audio_ready = false;
+                            audio_play_type = AUDIO_PLAY_RECORDED;                            
+                            Codec_RecordWAVFile(duration);
+                            audio_recording = true;                            
+                        }
+                    }
+                    break;
+                }
+
+            case BLE_GATT_ACCESS_OP_READ_CHR:
+                //MODLOG_DFLT(INFO, "Callback for read");
+                break;
+
+            default:
+                MODLOG_DFLT(INFO, "\nDefault Callback");
                 break;
         }
     }    
@@ -897,10 +1182,16 @@ static const struct ble_gatt_svc_def new_ble_svc_gatt_defs[] = {
                 .val_handle = &ble_sensors_stream_val_handle,
                 .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY,
             }, {
-                /* python characteristic (from Thymio to device) */
+                /* python characteristic */
                 .uuid = BLE_UUID16_DECLARE(BLE_SVC_PYTHON_CHR_UUID16),
                 .access_cb = ble_svc_gatt_handler,
                 .val_handle = &ble_python_val_handle,
+                .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_INDICATE,
+            }, {
+                /* audio characteristic */
+                .uuid = BLE_UUID16_DECLARE(BLE_SVC_AUDIO_CHR_UUID16),
+                .access_cb = ble_svc_gatt_handler,
+                .val_handle = &ble_audio_val_handle,
                 .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_INDICATE,
             }, {
                 0, /* No more characteristics */
@@ -1274,24 +1565,6 @@ static void bt_rx_tx_task(void *pvParameters)
                 ESP_LOGI(TAG,"Error in sending others sensors notif");
             }            
         }
-
-        if(mp_script_indicate)
-        {
-            mp_script_indicate = false;
-            bt_tx_data[0] = PYTHON_IND_LOAD_RES;
-            bt_tx_data[1] = mp_script_load_res;
-            struct os_mbuf *txom;
-            txom = ble_hs_mbuf_from_flat(bt_tx_data, 2);
-            rc = ble_gattc_indicate_custom(connection_handle, ble_python_val_handle, txom);
-            if( rc == 0)
-            {
-                ESP_LOGI(TAG,"Indication sent successfully");
-            }
-            else 
-            {
-                ESP_LOGI(TAG,"Error in sending indication");
-            }
-        }
      
         if(mp_receiving_script)
         {
@@ -1300,8 +1573,37 @@ static void bt_rx_tx_task(void *pvParameters)
             {
                 mp_script_timeout = 0;
                 mp_receiving_script = false;
-                mp_script_load_res = MP_SCRIPT_LOAD_NOT_COMPLETE;
-                mp_script_indicate = true;
+                ble_indicate_python_load(FILE_LOAD_NOT_COMPLETE);
+            }
+        }
+
+        if(receiving_audio)
+        {
+            audio_timeout++;
+            if(audio_timeout == 1500) // 50 hz * 30 seconds = 1500
+            {
+                audio_timeout = 0;
+                receiving_audio = false;
+                ble_indicate_audio_load(FILE_LOAD_NOT_COMPLETE);
+            }
+        } 
+        
+        if(audio_playing)
+        {
+            if(Codec_IsSoundFinished())
+            {
+                audio_playing = false;
+                ble_indicate_audio_exec(AUDIO_EXEC_OK);
+            }
+        }
+
+        if(audio_recording)
+        {
+            if(Codec_IsRecordFinished())
+            {
+                audio_recording = false;
+                audio_ready = true;
+                ble_indicate_audio_rec(AUDIO_REC_OK);
             }
         }
 
@@ -1379,7 +1681,7 @@ void ota_task(void *arg)
             partition.subtype = ESP_PARTITION_SUBTYPE_APP_OTA_0;
         }
     }
-    printf("next partition subtype = %d\n", partition.subtype);
+    //printf("next partition subtype = %d\n", partition.subtype);
     partition.type = ESP_PARTITION_TYPE_APP;
     end_time = esp_timer_get_time();
     ESP_LOGI(TAG, "esp_ota_get_next_update_partition time %lld us", (end_time-start_time));    
@@ -1485,21 +1787,89 @@ OTA_ERROR:
     vTaskDelete(NULL);
 }
 
-void ble_notify_python_end(uint8_t value)
+void ble_indicate_python_exec(uint8_t value)
 {
     int rc = 0;
     struct os_mbuf *txom;
-    uint8_t temp[2] = {PYTHON_IND_END_RES, value};
+    uint8_t temp[2] = {AUDIO_IND_EXEC_RES, value};
     txom = ble_hs_mbuf_from_flat(temp, sizeof(temp));
     rc = ble_gattc_indicate_custom(connection_handle, ble_python_val_handle, txom);
     if( rc == 0)
     {
-        ESP_LOGI(TAG,"Indication sent successfully");
+        ESP_LOGI(TAG,"PY exec indication sent successfully");
     }
     else 
     {
-        ESP_LOGI(TAG,"Error in sending indication");
+        ESP_LOGI(TAG,"PY exec rrror in sending indication");
     }
+}
+
+void ble_indicate_python_load(uint8_t value)
+{
+    int rc = 0;
+    struct os_mbuf *txom;
+    uint8_t temp[2] = {PYTHON_IND_LOAD_RES, value};
+    txom = ble_hs_mbuf_from_flat(temp, sizeof(temp));
+    rc = ble_gattc_indicate_custom(connection_handle, ble_python_val_handle, txom);
+    if( rc == 0)
+    {
+        ESP_LOGI(TAG,"PY load indication sent successfully");
+    }
+    else 
+    {
+        ESP_LOGI(TAG,"PY load error in sending indication");
+    }
+}
+
+void ble_indicate_audio_exec(uint8_t value)
+{
+    int rc = 0;
+    struct os_mbuf *txom;
+    uint8_t temp[2] = {AUDIO_IND_EXEC_RES, value};
+    txom = ble_hs_mbuf_from_flat(temp, sizeof(temp));
+    rc = ble_gattc_indicate_custom(connection_handle, ble_audio_val_handle, txom);
+    if( rc == 0)
+    {
+        ESP_LOGI(TAG,"Audio exec indication sent successfully");
+    }
+    else 
+    {
+        ESP_LOGI(TAG,"Audio exec error in sending indication");
+    }
+}
+
+void ble_indicate_audio_load(uint8_t value)
+{
+    int rc = 0;
+    struct os_mbuf *txom;
+    uint8_t temp[2] = {AUDIO_IND_LOAD_RES, value};
+    txom = ble_hs_mbuf_from_flat(temp, sizeof(temp));
+    rc = ble_gattc_indicate_custom(connection_handle, ble_audio_val_handle, txom);
+    if( rc == 0)
+    {
+        ESP_LOGI(TAG,"Audio load indication sent successfully");
+    }
+    else 
+    {
+        ESP_LOGI(TAG,"Audio load error in sending indication");
+    }    
+}
+
+void ble_indicate_audio_rec(uint8_t value)
+{
+    int rc = 0;
+    struct os_mbuf *txom;
+    uint8_t temp[2] = {AUDIO_IND_REC_RES, value};
+    txom = ble_hs_mbuf_from_flat(temp, sizeof(temp));
+    rc = ble_gattc_indicate_custom(connection_handle, ble_audio_val_handle, txom);
+    if( rc == 0)
+    {
+        ESP_LOGI(TAG,"Audio rec indication sent successfully");
+    }
+    else 
+    {
+        ESP_LOGI(TAG,"Audio rec error in sending indication");
+    }   
 }
 
 void ble_spp_init(void)

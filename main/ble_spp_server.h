@@ -26,6 +26,8 @@ extern "C" {
 /* 16 Bit SPP Service python scripts Characteristic UUID */
 #define BLE_SVC_PYTHON_CHR_UUID16                           0xABF3
 
+/* 16 Bit SPP Service audio Characteristic UUID */
+#define BLE_SVC_AUDIO_CHR_UUID16                           0xABF4
 
 #define BLE_OTA_SERVICE_UUID                0x8018
 #define RECV_FW_UUID                        0x8020

@@ -83,8 +83,6 @@
 
 // #define BUF_SIZE (SAVE_FILE_RATE * 1) /* 2 second buffer */
 
-#define MAX_RECORD_SIZE 240000 // 12 KHz sampling rate * 2 bytes per sample * 10 seconds
-
 #define STATE_RUNNING 0
 #define STATE_PAUSED 1
 #define STATE_ALMOST_STOPPED 2

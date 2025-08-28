@@ -88,7 +88,12 @@
 #define PYTHON_WRITE_STOP 0x03
 #define PYTHON_WRITE_SAVE 0x04
 #define PYTHON_IND_LOAD_RES 0x01
-#define PYTHON_IND_END_RES 0x02
+#define PYTHON_IND_EXEC_RES 0x02
+
+#define PYTHON_EXEC_OK 0
+#define PYTHON_EXEC_ERROR 1
+#define PYTHON_EXEC_ALREADY_RUNNING 2
+#define PYTHON_EXEC_NOT_FOUND 3
 
 // OTA definitions
 #define OTA_RINGBUF_SIZE                    8192
@@ -97,7 +102,32 @@
 #define OTA_IDX_NB                          4
 #define CMD_ACK_LENGTH                      20
 
+// Audio characteristic
+#define AUDIO_WRITE_LOAD 0x01
+#define AUDIO_WRITE_EXEC 0x02
+#define AUDIO_WRITE_STOP 0x03
+#define AUDIO_WRITE_SAVE 0x04
+#define AUDIO_WRITE_REC 0x05
+#define AUDIO_IND_LOAD_RES 0x01
+#define AUDIO_IND_EXEC_RES 0x02
+#define AUDIO_IND_REC_RES 0x03
+#define AUDIO_READ_DOWNLOAD 0x01
+#define AUDIO_WRITE_EXEC_LEN 21 // ID + audio name
+
+#define AUDIO_EXEC_OK 0
+#define AUDIO_EXEC_ERROR 1
+#define AUDIO_EXEC_NOT_FOUND 2
+#define AUDIO_EXEC_NOT_SUPPORTED 3
+
+#define AUDIO_REC_OK 0
+#define AUDIO_REC_ERROR 1
+#define AUDIO_REC_TOO_LONG 2
+
 void ble_spp_init(void);
-void ble_notify_python_end(uint8_t value);
+void ble_indicate_python_load(uint8_t value);
+void ble_indicate_python_exec(uint8_t value);
+void ble_indicate_audio_load(uint8_t value);
+void ble_indicate_audio_exec(uint8_t value);
+void ble_indicate_audio_rec(uint8_t value);
 
 #endif // BLE_SPP_H_
