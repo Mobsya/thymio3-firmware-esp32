@@ -247,9 +247,10 @@ static void ble_spp_server_advertise(void)
     fields.name_is_complete = 1;
 
     fields.uuids16 = (ble_uuid16_t[]) {
-        BLE_UUID16_INIT(BLE_SVC_THYMIO_UUID16)
+        BLE_UUID16_INIT(BLE_SVC_THYMIO_UUID16),
+        BLE_UUID16_INIT(BLE_OTA_SERVICE_UUID)        
     };
-    fields.num_uuids16 = 1;
+    fields.num_uuids16 = 2;
     fields.uuids16_is_complete = 1;
 
     rc = ble_gap_adv_set_fields(&fields);
