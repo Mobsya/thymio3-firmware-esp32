@@ -33,6 +33,7 @@
 
 #include "file_server.h"
 #include "http_app.h"
+#include "stm32_spi.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -95,6 +96,10 @@ static esp_err_t delete_post_handler(httpd_req_t* req);
 
 static esp_err_t general_post_handler(httpd_req_t* req);
 
+static esp_err_t sensors_get_handler(httpd_req_t *req);
+
+static esp_err_t sensors_page_handler(httpd_req_t *req);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -137,58 +142,106 @@ esp_err_t FileServer_Start(const char* basePath)
   strlcpy(server_data->base_path, basePath,
           sizeof(server_data->base_path));
 
-//  httpd_handle_t server = NULL;
-//  httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-//
-//  // Use the URI wildcard matching function in order to
-//  // allow the same handler to respond to multiple different
-//  // target URIs which match the wildcard scheme
-//  config.uri_match_fn = httpd_uri_match_wildcard;
-//
-//  ESP_LOGI(Tag, "Starting HTTP Server");
-//
-//  if (httpd_start(&server, &config) != ESP_OK)
-//  {
-//    ESP_LOGE(Tag, "Failed to start file server!");
-//    return ESP_FAIL;
-//  }
-//
-//  // URI handler for getting uploaded files
-//  httpd_uri_t file_download =
-//  {
-//    .uri       = "/*",  // Match all URIs of type /path/to/file
-//    .method    = HTTP_GET,
-//    .handler   = download_get_handler,
-//    .user_ctx  = server_data    // Pass server data as context
-//  };
-//
-//  httpd_register_uri_handler(server, &file_download);
-//
-//  // URI handler for uploading files to server
-//  httpd_uri_t file_upload =
-//  {
-//    .uri       = "/upload/*",   // Match all URIs of type /upload/path/to/file
-//    .method    = HTTP_POST,
-//    .handler   = upload_post_handler,
-//    .user_ctx  = server_data    // Pass server data as context
-//  };
-//
-//  httpd_register_uri_handler(server, &file_upload);
-//
-//  // URI handler for deleting files from server
-//  httpd_uri_t file_delete =
-//  {
-//    .uri       = "/delete/*",   // Match all URIs of type /delete/path/to/file
-//    .method    = HTTP_POST,
-//    .handler   = delete_post_handler,
-//    .user_ctx  = server_data    // Pass server data as context
-//  };
-//
-//  httpd_register_uri_handler(server, &file_delete);
+  httpd_handle_t server = NULL;
+  httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+
+  // Use the URI wildcard matching function in order to
+  // allow the same handler to respond to multiple different
+  // target URIs which match the wildcard scheme
+  config.uri_match_fn = httpd_uri_match_wildcard;
+
+  ESP_LOGI(Tag, "Starting HTTP Server");
+
+  if (httpd_start(&server, &config) != ESP_OK)
+  {
+    ESP_LOGE(Tag, "Failed to start file server!");
+    return ESP_FAIL;
+  }
+
+  // JSON endpoint
+  httpd_uri_t sensor_uri = {
+    .uri = "/sensors/get_prox",
+    .method = HTTP_GET,
+    .handler = sensors_get_handler,
+    .user_ctx = server_data
+  };
+  httpd_register_uri_handler(server, &sensor_uri);
+
+  // HTML page to visualize sensors
+  httpd_uri_t sensor_page_uri = {
+    .uri = "/sensors/prox",
+    .method = HTTP_GET,
+    .handler = sensors_page_handler,
+    .user_ctx = server_data
+  };
+  httpd_register_uri_handler(server, &sensor_page_uri);
+
+  // URI handler for getting uploaded files
+  httpd_uri_t file_download =
+  {
+    .uri       = "/*",  // Match all URIs of type /path/to/file
+    .method    = HTTP_GET,
+    .handler   = download_get_handler,
+    .user_ctx  = server_data    // Pass server data as context
+  };
+
+  httpd_register_uri_handler(server, &file_download);
+
+  // URI handler for uploading files to server
+  httpd_uri_t file_upload =
+  {
+    .uri       = "/upload/*",   // Match all URIs of type /upload/path/to/file
+    .method    = HTTP_POST,
+    .handler   = upload_post_handler,
+    .user_ctx  = server_data    // Pass server data as context
+  };
+
+  httpd_register_uri_handler(server, &file_upload);
+
+  // URI handler for deleting files from server
+  httpd_uri_t file_delete =
+  {
+    .uri       = "/delete/*",   // Match all URIs of type /delete/path/to/file
+    .method    = HTTP_POST,
+    .handler   = delete_post_handler,
+    .user_ctx  = server_data    // Pass server data as context
+  };
+
+  httpd_register_uri_handler(server, &file_delete);
 
   http_app_set_handler_hook(HTTP_GET, &download_get_handler);
   http_app_set_handler_hook(HTTP_POST, &general_post_handler);
 
+  return ESP_OK;
+}
+
+// HTTP handler for serving sensor JSON
+static esp_err_t sensors_get_handler(httpd_req_t *req) {
+  char resp[256];
+  static int16_t prox[7];
+  GetProximityValues(prox);
+
+  int len = snprintf(resp, sizeof(resp), "{\"proximity\": [%d,%d,%d,%d,%d,%d,%d]}", prox[0], prox[1], prox[2], prox[3], prox[4], prox[5], prox[6]);
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_send(req, resp, len);
+  return ESP_OK;
+}
+
+
+// HTTP handler for /sensors page with JS polling /sensors endpoint
+static esp_err_t sensors_page_handler(httpd_req_t *req) {
+  const char* resp =
+  "<html><head><title>ESP32 Sensors</title></head><body>"
+  "<h1>Proximity Sensor</h1>"
+  "<div id='pr'>---</div>"
+  "<script>"
+  "function update(){fetch('/sensors/get_prox').then(r=>r.json()).then(j=>{document.getElementById('pr').innerText=j.proximity;});}"
+  "setInterval(update,200);update();"
+  "</script>"
+  "</body></html>";
+
+  httpd_resp_set_type(req, "text/html");
+  httpd_resp_send(req, resp, strlen(resp));
   return ESP_OK;
 }
 

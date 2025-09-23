@@ -6,7 +6,7 @@ just open the thymio.html with Chrome
 
 If a local web server is needed:
 1) go to this directory and run a local http server: python3 -m http.server 8000
-2) open link in chrome: http://localhost:8000/thymio.html
+2) open link in chrome: http://localhost:8000/thymio_prox.html
 
 Bluefy:
 1) install bluefly from the appstore

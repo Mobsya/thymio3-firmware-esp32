@@ -59,11 +59,12 @@
 #include "esp_vfs.h"
 #include "esp_vfs_fat.h"
 #include "esp_system.h"
-
+#include "nvs_flash.h"
 #include "vfs_fat_internal.h"
 #include "diskio_impl.h"
 #include "ble_spp.h"
 //#include "ble_python_handler.h"
+#include "wifi_handler.h"
 
 #include "py/runtime.h"
 
@@ -364,7 +365,6 @@ int app_main(void)
   //Codec_PlayOnboardSound(TONE_TYPE_MAGIC);
 
   // TODO Move to Behavior when entering into settings
-  //ESP_ERROR_CHECK(FileServer_Start("/spiffs"));
 
   //Codec_SetVolume(80);
   //Codec_PlayMP3File(2);
@@ -400,9 +400,14 @@ int app_main(void)
 
   Leds_Start();
 
+  init_micropython();
+  //nvs_flash_init();  // NVS (needed for BLE and WiFi) is initialized in micropython 
+ 
   ble_spp_init();
 
-  init_micropython();
+  wifi_init();
+
+  ESP_ERROR_CHECK(FileServer_Start("/spiffs")); // Must be called after WiFi initialization
 
   /*
   vTaskDelay(2000/portTICK_PERIOD_MS);

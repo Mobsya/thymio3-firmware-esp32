@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thymio-III BLE Audio Uploader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: "Inter", sans-serif;
+            background-color: #f0f4f8;
+            color: #334155;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 1rem; /* rounded corners */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+        h1 {
+            color: #1e293b;
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            border: none;
+            margin: 0.5rem;
+        }
+        .primary-button {
+            background-color: #4f46e5;
+            color: #ffffff;
+        }
+        .primary-button:hover {
+            background-color: #4338ca;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .secondary-button {
+            background-color: #6b7280;
+            color: #ffffff;
+        }
+        .secondary-button:hover {
+            background-color: #4b5563;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .file-label {
+            display: inline-block;
+            background-color: #22c55e;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            margin: 0.5rem;
+        }
+        .file-label:hover {
+            background-color: #16a34a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        #file-name {
+            margin-top: 1rem;
+            font-style: italic;
+            color: #475569;
+        }
+        #notifications {
+            margin-top: 2rem;
+            background-color: #e0f2fe;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: left;
+            min-height: 100px;
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #90cdf4;
+        }
+        .notification-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #bfdbfe;
+            font-size: 0.9rem;
+            color: #1e3a8a;
+        }
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+        .notification-success {
+            color: #065f46; /* green-700 */
+        }
+        .notification-error {
+            color: #b91c1c; /* red-700 */
+        }
+        .notification-info {
+            color: #1e40af; /* blue-700 */
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+        .connected {
+            background-color: #d1fae5; /* green-100 */
+            color: #065f46; /* green-700 */
+        }
+        .disconnected {
+            background-color: #fee2e2; /* red-100 */
+            color: #991b1b; /* red-700 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Thymio-III Audio Control</h1>
+        <div id="connection-status" class="status-badge disconnected">Disconnected</div>
+
+        <div class="flex flex-wrap justify-center my-4">
+            <button id="connect-button" class="button primary-button">Connect to Robot</button>
+            <button id="disconnect-button" class="button secondary-button" disabled>Disconnect</button>
+        </div>
+
+        <div class="my-6">
+            <input type="file" id="audio-file-input" accept="audio/wav,audio/mp3">
+            <label for="audio-file-input" class="file-label">Select Audio File</label>
+            <p id="file-name">No file selected</p>
+        </div>
+
+        <div class="flex flex-wrap justify-center my-4">
+            <button id="upload-button" class="button primary-button" disabled>Upload Audio</button>
+            <button id="play-button" class="button primary-button" disabled>Play Audio</button>
+            <button id="stop-button" class="button secondary-button" disabled>Stop Playback</button>
+            <button id="record-button" class="button primary-button" disabled>Record Audio (5s)</button>
+        </div>
+
+        <h2 class="text-xl font-semibold mt-8 mb-4 text-gray-700">Notifications</h2>
+        <div id="notifications">
+            <p class="text-gray-500">Awaiting actions...</p>
+        </div>
+    </div>
+
+    <script>
+        // BLE Service and Characteristic UUIDs (from ble_spp.c)
+        const THYMIO_SERVICE_UUID = '0000abf0-0000-1000-8000-00805f9b34fb'; // BLE_SVC_THYMIO_UUID16 (example, adjust if different)
+        const AUDIO_CHARACTERISTIC_UUID = '0000abf4-0000-1000-8000-00805f9b34fb'; // BLE_SVC_AUDIO_CHR_UUID16 (example, adjust if different)
+
+        // Commands for Audio Characteristic (from ble_spp.c)
+        const AUDIO_WRITE_LOAD = 0x01;
+        const AUDIO_WRITE_EXEC = 0x02;
+        const AUDIO_WRITE_STOP = 0x03;
+        const AUDIO_WRITE_REC = 0x05;
+
+        // Indications for Audio Characteristic (from ble_spp.c)
+        const AUDIO_IND_LOAD_RES = 0x01;
+        const AUDIO_IND_EXEC_RES = 0x02;
+        const AUDIO_IND_REC_RES = 0x03;
+
+        // File Load/Exec/Record Results (from ble_spp.c)
+        const FILE_LOAD_OK = 0;
+        const FILE_LOAD_CRC_ERR = 1;
+        const FILE_LOAD_NOT_COMPLETE = 2;
+        const FILE_LOAD_WRONG_SEQ = 3;
+        const FILE_LOAD_TOO_BIG = 4;
+
+        const AUDIO_EXEC_OK = 0;
+        const AUDIO_EXEC_ERROR = 1;
+        const AUDIO_EXEC_NOT_FOUND = 2;
+        const AUDIO_EXEC_NOT_SUPPORTED = 3;
+
+        const AUDIO_REC_OK = 0;
+        const AUDIO_REC_ERROR = 1;
+        const AUDIO_REC_TOO_LONG = 2;
+
+
+        let device;
+        let audioCharacteristic;
+        let selectedFile = null;
+        let fileData = null;
+        const CHUNK_SIZE = 500; // Max ATT_MTU for NimBLE is usually around 512, reserving some bytes for headers.
+                                // The c code seems to use 500 byte buffers for RX, plus header. Let's use 500.
+
+        const connectButton = document.getElementById('connect-button');
+        const disconnectButton = document.getElementById('disconnect-button');
+        const audioFileInput = document.getElementById('audio-file-input');
+        const fileNameSpan = document.getElementById('file-name');
+        const uploadButton = document.getElementById('upload-button');
+        const playButton = document.getElementById('play-button');
+        const stopButton = document.getElementById('stop-button');
+        const recordButton = document.getElementById('record-button');
+        const notificationsDiv = document.getElementById('notifications');
+        const connectionStatus = document.getElementById('connection-status');
+
+        function calculateCrc32(buf, crc = 4294967295) {
+            for (let i = 0; i < buf.length; i++) {
+                crc ^= buf[i] << 24;
+                for (let j = 0; j < 8; j++) {
+                if ((crc & 2147483648) === 0) {
+                    crc <<= 1;
+                } else {
+                    crc = crc << 1 ^ 79764919;
+                }
+                }
+            }
+            return crc & 4294967295;
+        }
+
+        function logNotification(message, type = 'info') {
+            const p = document.createElement('p');
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            p.classList.add('notification-item');
+            if (type === 'success') {
+                p.classList.add('notification-success');
+            } else if (type === 'error') {
+                p.classList.add('notification-error');
+            } else {
+                p.classList.add('notification-info');
+            }
+            if (notificationsDiv.firstChild) {
+                notificationsDiv.insertBefore(p, notificationsDiv.firstChild);
+            } else {
+                notificationsDiv.appendChild(p);
+            }
+            // Keep the notification list from getting too long
+            while (notificationsDiv.children.length > 10) {
+                notificationsDiv.lastChild.remove();
+            }
+        }
+
+        function updateConnectionStatus(isConnected) {
+            if (isConnected) {
+                connectionStatus.textContent = 'Connected';
+                connectionStatus.classList.remove('disconnected');
+                connectionStatus.classList.add('connected');
+                connectButton.disabled = true;
+                disconnectButton.disabled = false;
+                audioFileInput.disabled = false;
+                uploadButton.disabled = !selectedFile;
+                playButton.disabled = false; // Assuming any loaded audio can be played
+                stopButton.disabled = false;
+                recordButton.disabled = false;
+            } else {
+                connectionStatus.textContent = 'Disconnected';
+                connectionStatus.classList.remove('connected');
+                connectionStatus.classList.add('disconnected');
+                connectButton.disabled = false;
+                disconnectButton.disabled = true;
+                audioFileInput.disabled = true;
+                uploadButton.disabled = true;
+                playButton.disabled = true;
+                stopButton.disabled = true;
+                recordButton.disabled = true;
+            }
+        }
+
+        async function connect() {
+            try {
+                logNotification('Scanning for Thymio-III robot...');
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: [THYMIO_SERVICE_UUID] }],
+                    optionalServices: [THYMIO_SERVICE_UUID] // Specify optional services for full access
+                });
+
+                logNotification(`Connecting to ${device.name || 'Unknown Device'}...`);
+                device.addEventListener('gattserverdisconnected', onDisconnected);
+                const server = await device.gatt.connect();
+
+                logNotification('Getting Thymio-III service...');
+                const service = await server.getPrimaryService(THYMIO_SERVICE_UUID);
+
+                logNotification('Getting Audio Characteristic...');
+                audioCharacteristic = await service.getCharacteristic(AUDIO_CHARACTERISTIC_UUID);
+                audioCharacteristic.addEventListener('characteristicvaluechanged', handleAudioIndications);
+                await audioCharacteristic.startNotifications();
+                logNotification('Connected to Thymio-III robot!', 'success');
+                updateConnectionStatus(true);
+
+            } catch (error) {
+                logNotification(`Connection error: ${error}`, 'error');
+                updateConnectionStatus(false);
+            }
+        }
+
+        function onDisconnected() {
+            logNotification('Disconnected from Thymio-III robot.', 'info');
+            updateConnectionStatus(false);
+        }
+
+        async function disconnect() {
+            if (device && device.gatt.connected) {
+                logNotification('Disconnecting from robot...');
+                await device.gatt.disconnect();
+            }
+        }
+
+        audioFileInput.addEventListener('change', (event) => {
+            selectedFile = event.target.files[0];
+            if (selectedFile) {
+                fileNameSpan.textContent = `Selected: ${selectedFile.name}`;
+                uploadButton.disabled = !device || !device.gatt.connected;
+                logNotification(`File selected: ${selectedFile.name}`, 'info');
+            } else {
+                fileNameSpan.textContent = 'No file selected';
+                uploadButton.disabled = true;
+            }
+        });
+
+        async function uploadAudio() {
+            if (!selectedFile || !audioCharacteristic) {
+                logNotification('No audio file selected or not connected.', 'error');
+                return;
+            }
+
+            logNotification(`Reading file: ${selectedFile.name}...`, 'info');
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                fileData = new Uint8Array(e.target.result);
+                const totalLength = fileData.length;
+                const crc = calculateCrc32(fileData);
+                logNotification(`File read. Size: ${totalLength} bytes, CRC: 0x${crc.toString(16)}`, 'info');
+
+                // Send initial load command
+                const initialCommand = new Uint8Array(11);
+                initialCommand[0] = AUDIO_WRITE_LOAD;
+                initialCommand[1] = (totalLength >> 24) & 0xFF;
+                initialCommand[2] = (totalLength >> 16) & 0xFF;
+                initialCommand[3] = (totalLength >> 8) & 0xFF;
+                initialCommand[4] = totalLength & 0xFF;
+                initialCommand[5] = (crc >> 24) & 0xFF;
+                initialCommand[6] = (crc >> 16) & 0xFF;
+                initialCommand[7] = (crc >> 8) & 0xFF;
+                initialCommand[8] = crc & 0xFF;
+                initialCommand[9] = 0; // Sequence ID starts at 0 for the first chunk
+                initialCommand[10] = 0; // Sequence ID starts at 0 for the first chunk
+
+                // Append the first chunk of data
+                const firstChunkData = fileData.slice(0, CHUNK_SIZE - (initialCommand.length - 1)); // -1 because 0x01 is the first byte
+                const firstPacket = new Uint8Array(initialCommand.length + firstChunkData.length);
+                firstPacket.set(initialCommand);
+                firstPacket.set(firstChunkData, initialCommand.length);
+
+                logNotification('Sending initial audio load command and first chunk...', 'info');
+                await audioCharacteristic.writeValueWithResponse(firstPacket);
+
+                let currentOffset = firstChunkData.length;
+                let sequenceId = 1; // Start from 1 for subsequent chunks
+
+                // Send remaining chunks
+                while (currentOffset < totalLength) {
+                    const chunk = fileData.slice(currentOffset, currentOffset + CHUNK_SIZE - 2); // 2 bytes for sequence ID
+                    const packet = new Uint8Array(2 + chunk.length);
+                    packet[0] = (sequenceId >> 8) & 0xFF;
+                    packet[1] = sequenceId & 0xFF;
+                    packet.set(chunk, 2);
+
+                    logNotification(`Sending audio chunk ${sequenceId} (${chunk.length} bytes)...`, 'info');
+                    await audioCharacteristic.writeValueWithResponse(packet);
+
+                    currentOffset += chunk.length;
+                    sequenceId++;
+                }
+                logNotification('All audio chunks sent. Awaiting robot confirmation...', 'info');
+            };
+            reader.readAsArrayBuffer(selectedFile);
+        }
+
+        async function playAudio() {
+            if (!audioCharacteristic) {
+                logNotification('Not connected to robot.', 'error');
+                return;
+            }
+            // Send play command (AUDIO_WRITE_EXEC) with an empty name to play from RAM
+            const playCommand = new Uint8Array([AUDIO_WRITE_EXEC, ...new Array(20).fill(0)]); // 1 byte command + 20 bytes for name
+            logNotification('Sending play audio command...', 'info');
+            await audioCharacteristic.writeValueWithResponse(playCommand);
+        }
+
+        async function stopAudio() {
+            if (!audioCharacteristic) {
+                logNotification('Not connected to robot.', 'error');
+                return;
+            }
+            const stopCommand = new Uint8Array([AUDIO_WRITE_STOP]);
+            logNotification('Sending stop audio command...', 'info');
+            await audioCharacteristic.writeValueWithResponse(stopCommand);
+        }
+
+        async function recordAudio() {
+            if (!audioCharacteristic) {
+                logNotification('Not connected to robot.', 'error');
+                return;
+            }
+            const duration = 5; // Record for 5 seconds
+            const recordCommand = new Uint8Array([AUDIO_WRITE_REC, duration]);
+            logNotification(`Sending record audio command for ${duration} seconds...`, 'info');
+            await audioCharacteristic.writeValueWithResponse(recordCommand);
+        }
+
+
+        function handleAudioIndications(event) {
+            const value = event.target.value;
+            const command = value.getUint8(0);
+            const result = value.getUint8(1);
+
+            switch (command) {
+                case AUDIO_IND_LOAD_RES:
+                    switch (result) {
+                        case FILE_LOAD_OK:
+                            logNotification('Audio file load completed successfully!', 'success');
+                            break;
+                        case FILE_LOAD_CRC_ERR:
+                            logNotification('Audio file load failed: CRC error.', 'error');
+                            break;
+                        case FILE_LOAD_NOT_COMPLETE:
+                            logNotification('Audio file load failed: Not all data received.', 'error');
+                            break;
+                        case FILE_LOAD_WRONG_SEQ:
+                            logNotification('Audio file load failed: Wrong sequence ID.', 'error');
+                            break;
+                        case FILE_LOAD_TOO_BIG:
+                            logNotification('Audio file load failed: File too big.', 'error');
+                            break;
+                        default:
+                            logNotification(`Audio load indication: Unknown result ${result}.`, 'info');
+                            break;
+                    }
+                    break;
+                case AUDIO_IND_EXEC_RES:
+                    switch (result) {
+                        case AUDIO_EXEC_OK:
+                            logNotification('Audio playback completed/stopped successfully!', 'success');
+                            break;
+                        case AUDIO_EXEC_ERROR:
+                            logNotification('Audio playback failed: General error.', 'error');
+                            break;
+                        case AUDIO_EXEC_NOT_FOUND:
+                            logNotification('Audio playback failed: Audio not found in RAM.', 'error');
+                            break;
+                        case AUDIO_EXEC_NOT_SUPPORTED:
+                            logNotification('Audio playback failed: Format not supported.', 'error');
+                            break;
+                        default:
+                            logNotification(`Audio exec indication: Unknown result ${result}.`, 'info');
+                            break;
+                    }
+                    break;
+                case AUDIO_IND_REC_RES:
+                    switch (result) {
+                        case AUDIO_REC_OK:
+                            logNotification('Audio recording completed successfully!', 'success');
+                            break;
+                        case AUDIO_REC_ERROR:
+                            logNotification('Audio recording failed: General error.', 'error');
+                            break;
+                        case AUDIO_REC_TOO_LONG:
+                            logNotification('Audio recording failed: Duration too long.', 'error');
+                            break;
+                        default:
+                            logNotification(`Audio record indication: Unknown result ${result}.`, 'info');
+                            break;
+                    }
+                    break;
+                default:
+                    logNotification(`Received unknown indication: Command 0x${command.toString(16)}, Result 0x${result.toString(16)}.`, 'info');
+                    break;
+            }
+        }
+
+
+        // Event Listeners
+        connectButton.addEventListener('click', connect);
+        disconnectButton.addEventListener('click', disconnect);
+        uploadButton.addEventListener('click', uploadAudio);
+        playButton.addEventListener('click', playAudio);
+        stopButton.addEventListener('click', stopAudio);
+        recordButton.addEventListener('click', recordAudio);
+
+        // Initial state
+        updateConnectionStatus(false);
+    </script>
+</body>
+</html>
