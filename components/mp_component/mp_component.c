@@ -31,6 +31,8 @@
 #include <stdarg.h>
 
 #include "mp_component.h"
+#include "py/objstr.h"
+#include "py/stream.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -100,6 +102,8 @@ uint8_t scriptPresent[7] = {0};
 static uint8_t main_counter = 0;
 uint8_t* buttonState;
 char* ram_script;
+uint8_t ram_script_id;
+char ram_script_name[20];
 
 const int EVT_EXEC_MODE = BIT0;
 
@@ -370,6 +374,36 @@ soft_reset:
                 turnOffAllSensors();             
                 mp_component_state = -1; // Execute the script only once
                 break;
+            case 9: // save script                
+                memset(ram_script_name, 0, sizeof(ram_script_name));
+                if(ram_script_id == 0)
+                {
+                    snprintf(ram_script_name, sizeof(ram_script_name), "main.py");
+                }
+                else
+                {
+                    snprintf(ram_script_name, sizeof(ram_script_name), "main%d.py", ram_script_id);
+                }
+                const char* data = ram_script;
+                size_t len = strlen(data);
+                nlr_buf_t nlr;
+                if (nlr_push(&nlr) == 0) {
+                    mp_obj_t file_obj = mp_builtin_open(2, (mp_obj_t[]){
+                        mp_obj_new_str(ram_script_name, strlen(ram_script_name)),
+                        mp_obj_new_str("w", 1)
+                    }, NULL);
+
+                    const mp_stream_p_t *stream_p = mp_get_stream_raise(file_obj, MP_STREAM_OP_WRITE);
+                    int err;
+                    stream_p->write(file_obj, data, len, &err);
+                    mp_stream_close(file_obj);
+                    nlr_pop();
+                    ble_indicate_python_save(PYTHON_SAVE_OK);
+                } else {
+                    mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
+                    ble_indicate_python_save(PYTHON_SAVE_ERROR);
+                }
+                break;
             default:
                 break; 
         }
@@ -494,6 +528,15 @@ void mp_exec_script_from_ram(char* script)
 void mp_stop_script(void)
 {
     mp_sched_keyboard_interrupt();
+}
+
+void mp_save_script(char* script, uint8_t id)
+{
+    ram_script = script;
+    ram_script_id = id;
+    mp_component_state = 9;
+    xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE); // Tell the main micropython loop to execute REPL or a user script.
+
 }
 
 MP_REGISTER_ROOT_POINTER(mp_obj_t native_code_pointers);

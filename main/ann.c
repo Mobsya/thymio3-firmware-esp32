@@ -39,7 +39,7 @@
 
 #define LEARNING_STEP 2
 #define HALF_LEARNING_STEP 1
-#define COLLISION_SENSOR_VALUE 4000 // threshold for collision
+#define COLLISION_SENSOR_VALUE 3300 // threshold for collision
 
 //-----------------------------------------------------------------------------
 // Types Definitions

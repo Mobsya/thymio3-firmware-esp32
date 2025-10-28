@@ -72,6 +72,13 @@ esp_err_t Codec_PlayMP3File(uint8_t* mp3, uint32_t num_bytes);
 //! \return    Error code
 extern esp_err_t Codec_PlayWAVFile(uint8_t* wav, uint32_t num_bytes);
 
+//! \brief     Play a TONE from RAM memory
+//! \pre       First initialize the codec
+//! \param     freq - up to 3 KHz
+//! \param     duration_ms - duration in ms, 0 for infinite
+//! \return    Error code
+extern esp_err_t Codec_PlayTone(float freq, uint32_t duration_ms);
+
 //! \brief     Get the played time [s/10] of a MP3 file  (from the SPI file system)
 //! \pre       First initialize the codec
 //! \param     None
@@ -150,5 +157,6 @@ esp_err_t  Codec_Resume(void);
 //! \return    None
 void  Codec_ClearEvents(void);
 
+//void playMarioTheme(void);
 
 #endif // CODEC_H_

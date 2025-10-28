@@ -131,6 +131,30 @@
             background-color: #fee2e2; /* red-100 */
             color: #991b1b; /* red-700 */
         }
+        .control-section {
+            border: 1px solid #cbd5e1;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin-top: 1.5rem;
+            text-align: left;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .input-group label {
+            width: 100px;
+            font-weight: 500;
+            color: #475569;
+        }
+        .input-group input {
+            flex-grow: 1;
+            padding: 0.5rem;
+            border: 1px solid #94a3b8;
+            border-radius: 0.375rem;
+            margin-left: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -143,19 +167,39 @@
             <button id="disconnect-button" class="button secondary-button" disabled>Disconnect</button>
         </div>
 
-        <div class="my-6">
-            <input type="file" id="audio-file-input" accept="audio/wav,audio/mp3">
-            <label for="audio-file-input" class="file-label">Select Audio File</label>
-            <p id="file-name">No file selected</p>
+        <div class="control-section">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">Audio File Upload & Playback</h2>
+            <div class="my-6 text-center">
+                <input type="file" id="audio-file-input" accept="audio/wav,audio/mp3">
+                <label for="audio-file-input" class="file-label">Select Audio File</label>
+                <p id="file-name">No file selected</p>
+            </div>
+
+            <div class="flex flex-wrap justify-center my-4">
+                <button id="upload-button" class="button primary-button" disabled>Upload Audio</button>
+                <button id="play-button" class="button primary-button" disabled>Play Audio</button>
+                <button id="stop-button" class="button secondary-button" disabled>Stop Playback</button>
+                <button id="record-button" class="button primary-button" disabled>Record Audio (5s)</button>
+            </div>
         </div>
 
-        <div class="flex flex-wrap justify-center my-4">
-            <button id="upload-button" class="button primary-button" disabled>Upload Audio</button>
-            <button id="play-button" class="button primary-button" disabled>Play Audio</button>
-            <button id="stop-button" class="button secondary-button" disabled>Stop Playback</button>
-            <button id="record-button" class="button primary-button" disabled>Record Audio (5s)</button>
-        </div>
+        <div class="control-section">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">Tone Generator</h2>
 
+            <div class="input-group">
+                <label for="tone-frequency">Frequency (Hz)</label>
+                <input type="number" id="tone-frequency" value="440" min="20" max="3000" placeholder="e.g., 440">
+            </div>
+
+            <div class="input-group">
+                <label for="tone-duration">Duration (tenths of seconds)</label>
+                <input type="number" id="tone-duration" value="10" min="1" max="60000" placeholder="e.g., 10">
+            </div>
+
+            <div class="flex justify-center my-4">
+                <button id="play-tone-button" class="button primary-button" disabled>Play Tone</button>
+            </div>
+        </div>
         <h2 class="text-xl font-semibold mt-8 mb-4 text-gray-700">Notifications</h2>
         <div id="notifications">
             <p class="text-gray-500">Awaiting actions...</p>
@@ -172,6 +216,7 @@
         const AUDIO_WRITE_EXEC = 0x02;
         const AUDIO_WRITE_STOP = 0x03;
         const AUDIO_WRITE_REC = 0x05;
+        const AUDIO_WRITE_TONE = 0x06; // ADDED: New command for tone generation
 
         // Indications for Audio Characteristic (from ble_spp.c)
         const AUDIO_IND_LOAD_RES = 0x01;
@@ -212,6 +257,12 @@
         const recordButton = document.getElementById('record-button');
         const notificationsDiv = document.getElementById('notifications');
         const connectionStatus = document.getElementById('connection-status');
+
+        // NEW TONE ELEMENTS
+        const toneFrequencyInput = document.getElementById('tone-frequency');
+        const toneDurationInput = document.getElementById('tone-duration');
+        const playToneButton = document.getElementById('play-tone-button');
+
 
         function calculateCrc32(buf, crc = 4294967295) {
             for (let i = 0; i < buf.length; i++) {
@@ -261,6 +312,7 @@
                 playButton.disabled = false; // Assuming any loaded audio can be played
                 stopButton.disabled = false;
                 recordButton.disabled = false;
+                playToneButton.disabled = false; // NEW
             } else {
                 connectionStatus.textContent = 'Disconnected';
                 connectionStatus.classList.remove('connected');
@@ -272,6 +324,7 @@
                 playButton.disabled = true;
                 stopButton.disabled = true;
                 recordButton.disabled = true;
+                playToneButton.disabled = true; // NEW
             }
         }
 
@@ -352,8 +405,8 @@
                 initialCommand[6] = (crc >> 16) & 0xFF;
                 initialCommand[7] = (crc >> 8) & 0xFF;
                 initialCommand[8] = crc & 0xFF;
-                initialCommand[9] = 0; // Sequence ID starts at 0 for the first chunk
-                initialCommand[10] = 0; // Sequence ID starts at 0 for the first chunk
+                initialCommand[9] = 0; // Sequence ID starts at 0 for the first chunk (MSB)
+                initialCommand[10] = 0; // Sequence ID starts at 0 for the first chunk (LSB)
 
                 // Append the first chunk of data
                 const firstChunkData = fileData.slice(0, CHUNK_SIZE - (initialCommand.length - 1)); // -1 because 0x01 is the first byte
@@ -393,7 +446,7 @@
             }
             // Send play command (AUDIO_WRITE_EXEC) with an empty name to play from RAM
             const playCommand = new Uint8Array([AUDIO_WRITE_EXEC, ...new Array(20).fill(0)]); // 1 byte command + 20 bytes for name
-            logNotification('Sending play audio command...', 'info');
+            logNotification('Sending play audio command (from RAM)...', 'info');
             await audioCharacteristic.writeValueWithResponse(playCommand);
         }
 
@@ -417,6 +470,34 @@
             logNotification(`Sending record audio command for ${duration} seconds...`, 'info');
             await audioCharacteristic.writeValueWithResponse(recordCommand);
         }
+
+        // NEW TONE FUNCTION
+        async function playTone() {
+            if (!audioCharacteristic) {
+                logNotification('Not connected to robot.', 'error');
+                return;
+            }
+
+            const frequency = parseInt(toneFrequencyInput.value);
+            const duration = parseInt(toneDurationInput.value);
+
+            if (isNaN(frequency) || isNaN(duration) || frequency < 20 || frequency > 3000 || duration < 1 || duration > 60000) {
+                logNotification('Invalid frequency (20-3000 Hz) or duration (1-60000 ms).', 'error');
+                return;
+            }
+
+            // Command format: [AUDIO_WRITE_TONE, Freq_MSB, Freq_LSB, Dur_MSB, Dur_LSB] (5 bytes total)
+            const toneCommand = new Uint8Array(5);
+            toneCommand[0] = AUDIO_WRITE_TONE;
+            toneCommand[1] = (frequency >> 8) & 0xFF;
+            toneCommand[2] = frequency & 0xFF;
+            toneCommand[3] = ((duration) >> 8) & 0xFF;
+            toneCommand[4] = (duration) & 0xFF;
+
+            logNotification(`Sending play tone command: ${frequency} Hz for ${duration/10} s...`, 'info');
+            await audioCharacteristic.writeValueWithResponse(toneCommand);
+        }
+        // END NEW TONE FUNCTION
 
 
         function handleAudioIndications(event) {
@@ -450,10 +531,11 @@
                 case AUDIO_IND_EXEC_RES:
                     switch (result) {
                         case AUDIO_EXEC_OK:
-                            logNotification('Audio playback completed/stopped successfully!', 'success');
+                            // This result often indicates execution finished for EXEC and TONE, or STOP completed.
+                            logNotification('Audio command completed successfully (Playback/Tone/Stop)!', 'success');
                             break;
                         case AUDIO_EXEC_ERROR:
-                            logNotification('Audio playback failed: General error.', 'error');
+                            logNotification('Audio command failed: General error.', 'error');
                             break;
                         case AUDIO_EXEC_NOT_FOUND:
                             logNotification('Audio playback failed: Audio not found in RAM.', 'error');
@@ -496,6 +578,7 @@
         playButton.addEventListener('click', playAudio);
         stopButton.addEventListener('click', stopAudio);
         recordButton.addEventListener('click', recordAudio);
+        playToneButton.addEventListener('click', playTone); // NEW TONE EVENT LISTENER
 
         // Initial state
         updateConnectionStatus(false);

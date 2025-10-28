@@ -1,10 +1,11 @@
 
-#define MAX_MP_SCRIPT_LEN 2048
+#define MAX_MP_SCRIPT_LEN 51200
 
 void init_micropython(void);
 void exec_script(uint8_t id);
 void mp_exec_script_from_ram(char *script);
 void mp_stop_script(void);
+void mp_save_script(char* script, uint8_t id);
 
 // Check if the script mainID.py is present. ID is from 1 to 7.
 uint8_t script_is_present(uint8_t id);

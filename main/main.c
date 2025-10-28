@@ -65,7 +65,6 @@
 #include "ble_spp.h"
 //#include "ble_python_handler.h"
 #include "wifi_handler.h"
-
 #include "py/runtime.h"
 
 //-----------------------------------------------------------------------------
@@ -262,7 +261,15 @@ void stats2(void*z)
 	}
 }
 
-	
+void stats3(void*z)
+{
+	while (1)
+	{	
+		heap_caps_print_heap_info(MALLOC_CAP_8BIT);
+		printMemInfo();
+		vTaskDelay(500 / portTICK_PERIOD_MS);
+	}
+}
 
 FRESULT scan_files (
     char* path        /* Start node to be scanned (also used as work area) */
@@ -319,9 +326,9 @@ int app_main(void)
 // Initialization
 //*****************************************************************************
 
-	esp_log_level_set("*", ESP_LOG_NONE);
+	//esp_log_level_set("*", ESP_LOG_NONE);
 	//esp_log_level_set("*", ESP_LOG_ERROR);
-	//esp_log_level_set("*", ESP_LOG_INFO);
+	esp_log_level_set("*", ESP_LOG_INFO);
 	//esp_log_level_set("*", ESP_LOG_DEBUG);
 	//esp_log_level_set("*", ESP_LOG_VERBOSE);
 
@@ -408,6 +415,30 @@ int app_main(void)
   wifi_init();
 
   ESP_ERROR_CHECK(FileServer_Start("/spiffs")); // Must be called after WiFi initialization
+
+  /*
+  Codec_PlayTone(440.0, 2000);
+  vTaskDelay(3000 / portTICK_PERIOD_MS);
+  Codec_PlayTone(660.0, 3000);
+  vTaskDelay(4000 / portTICK_PERIOD_MS);
+  Codec_PlayTone(880.0f, 0);
+  vTaskDelay(5000 / portTICK_PERIOD_MS);
+  Codec_Stop();
+  Codec_PlayTone(1600.0, 3000);		// Test after play infinite tone
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  Codec_PlayTone(3200.0, 3000);		// Test when playing another tone, should not start
+  vTaskDelay(1000 / portTICK_PERIOD_MS);  
+  Codec_Stop();
+  Codec_PlayTone(3200.0, 3000);		// Test when stopping previous tone
+  vTaskDelay(4000 / portTICK_PERIOD_MS);    
+  Codec_PlayTone(6000.0, 3000);		// Test when stopping previous tone
+  vTaskDelay(4000 / portTICK_PERIOD_MS); 
+  Codec_PlayTone(7000.0, 3000);		// Test when stopping previous tone
+  vTaskDelay(4000 / portTICK_PERIOD_MS); 
+  */
+
+// ⏹️ Ferma tono infinito
+//tone_generator_stop(tone_gen);
 
   /*
   vTaskDelay(2000/portTICK_PERIOD_MS);
@@ -556,6 +587,7 @@ int app_main(void)
 
   //xTaskCreatePinnedToCore(stats, "stats", 4096, NULL, 0, NULL, 0);
   //xTaskCreatePinnedToCore(stats2, "stats2", 4096, NULL, 0, NULL, 0);
+  //xTaskCreatePinnedToCore(stats3, "stats3", 4096, NULL, 0, NULL, 0);
 
   //listDir();
 

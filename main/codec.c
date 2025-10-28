@@ -78,6 +78,12 @@
 #define WAV_PLAYER_CHANNEL 1 //!< Mono = 1
 #define WAV_PLAYER_BITS 16
 
+#define TONE_PLAYER_RATE 12000
+#define TONE_PLAYER_CHANNEL 1 //!< Mono = 1
+#define TONE_PLAYER_BITS 16
+#define TONE_FRAME_SAMPLES 1024
+#define TONE_AMPLITUDE 20000
+
 #define DEFAULT_AUDIO_TASK_STACK (4 * 1024)
 #define DEFAULT_AUDIO_TASK_PRIO (5)
 
@@ -94,24 +100,6 @@
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
-
-typedef enum
-{
-  PLAYER_EVENT_NONE = 0,
-  PLAYER_EVENT_PLAY,
-  PLAYER_EVENT_STOP,
-  PLAYER_EVENT_PAUSE,
-  PLAYER_EVENT_RESUME,
-} T_PlayerEvent;
-
-typedef enum
-{
-  RECORDER_EVENT_NONE = 0,
-  RECORDER_EVENT_RECORD,
-  RECORDER_EVENT_STOP,
-  RECORDER_EVENT_PAUSE,
-  RECORDER_EVENT_RESUME,
-} T_RecorderEvent;
 
 typedef struct AudioMp3Player *T_Mp3PlayerHandle;
 typedef struct AudioMp3Player
@@ -150,6 +138,28 @@ typedef struct AudioWavPlayer
   bool Played;
 } T_WavPlayer;
 
+typedef struct {
+    int16_t *buffer;
+    float freq;
+    float phase;
+    uint32_t duration_ms;
+    uint64_t samples_played;
+} tone_t;
+
+int16_t tone_buffer[TONE_FRAME_SAMPLES] = {0};
+typedef struct AudioTonePlayer *T_TonePlayerHandle;
+typedef struct AudioTonePlayer
+{
+  audio_pipeline_handle_t Pipeline;
+  audio_element_handle_t ToneGenerator;
+  audio_element_handle_t I2SStream;
+  audio_event_iface_handle_t Evt;
+  bool Run;      // Indicates if the pipeline event handling task is running
+  uint8_t state; // Running (playing), paused
+  bool Played;
+  tone_t *tone;
+} T_TonePlayer;
+
 typedef struct AudioRecorder *T_RecorderHandle;
 typedef struct AudioRecorder
 {
@@ -183,6 +193,7 @@ static T_Mp3PlayerHandle Mp3Player = NULL;
 static T_RecorderHandle Recorder = NULL;
 static T_OnboardPlayerHandle OnboardPlayer = NULL;
 static T_WavPlayerHandle WavPlayer = NULL;
+static T_TonePlayerHandle TonePlayer = NULL;
 
 // static int16_t buffer[4 * BUF_SIZE];
 
@@ -228,6 +239,12 @@ static T_OnboardPlayerHandle InitOnboardPlayer(void);
 //! \return    None
 static T_WavPlayerHandle InitWavPlayer(void);
 
+//! \brief     Initialize the TONE player
+//! \pre       First initialize the codec
+//! \param     None
+//! \return    None
+static T_TonePlayerHandle InitTonePlayer(void);
+
 //! \brief     Initialize the WAV recorder
 //! \pre       First initialize the codec
 //! \param     None
@@ -264,6 +281,12 @@ static void RunWavPlayerTask(void *arg);
 //! \return    None
 static void RunMp3PlayerTask(void *arg);
 
+//! \brief     Run the tone player task
+//! \pre       First initialize the codec
+//! \param     arg - Task parameter
+//! \return    None
+static void RunTonePlayerTask(void *arg);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -294,8 +317,12 @@ void Codec_Init(void)
   OnboardPlayer = InitOnboardPlayer();
   ESP_LOGE(Tag, "INIT WAV PLAYER");
   WavPlayer = InitWavPlayer();
+  ESP_LOGE(Tag, "INIT TONE PLAYER");
+  TonePlayer = InitTonePlayer();  
   ESP_LOGE(Tag, "INIT RECORDER");
   Recorder = InitRecorder();
+
+  
 }
 
 //_____________________________________________________________________________
@@ -399,63 +426,12 @@ uint32_t Codec_CreateWAVFile(int16_t *buffer, int16_t freq_Hz, uint16_t msec)
   return (num_samples*2+44);
 }
 
-/*
-void Codec_CreateWAVFile(int16_t index, int16_t freq_Hz)
-{
-  //float t;
-  float amplitude = 2000;
-  //float freq_Hz = 440;  //440;523.25;
-  float phase = 0;
-  char* fileName;
-
-  float freq_radians_per_sample = ((freq_Hz * 2 * M_PI) / SAVE_FILE_RATE);
-
-  // Fill buffer with a sine wave
-  for (uint16_t i = 0u; i < BUF_SIZE; i++)
-  {
-    phase += freq_radians_per_sample;
-    buffer[i] = (int16_t)(amplitude * sin(phase));
-  }
-
-  phase = 0;
-  freq_radians_per_sample = ((554.37 * 2 * M_PI) / SAVE_FILE_RATE);
-
-  for (uint16_t i = BUF_SIZE; i < 2 * BUF_SIZE; i++)
-  {
-    phase += freq_radians_per_sample;
-    buffer[i] = (int16_t)(amplitude * sin(phase));
-  }
-
-  phase = 0;
-  freq_radians_per_sample = ((659.25 * 2 * M_PI) / SAVE_FILE_RATE);
-
-  for (uint16_t i = 2 * BUF_SIZE; i < 3 * BUF_SIZE; i++)
-  {
-    phase += freq_radians_per_sample;
-    buffer[i] = (int16_t)(amplitude * sin(phase));
-  }
-
-  phase = 0;
-  freq_radians_per_sample = ((880.00 * 2 * M_PI) / SAVE_FILE_RATE);
-
-  for (uint16_t i = 3 * BUF_SIZE; i < 4 * BUF_SIZE; i++)
-  {
-    phase += freq_radians_per_sample;
-    buffer[i] = (int16_t)(amplitude * sin(phase));
-  }
-
-  FileSystem_SelectFile(&fileName, index, E_Extension_WAV);
-
-  FileSystem_WriteWAVFile(fileName, 4 * BUF_SIZE, buffer, SAVE_FILE_RATE, WAV_PLAYER_CHANNEL);
-}
-*/
-
 esp_err_t Codec_PlayOnboardSound(tone_type_t index)
 {
   esp_err_t err = 0;
   // return; // Used for debugging in order to not use the player.
 
-  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED))
+  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED) || (TonePlayer->state != STATE_STOPPED))
   { // Finish previous play/recording before starting another one.
     return ESP_FAIL;
   }
@@ -491,7 +467,7 @@ esp_err_t Codec_PlayMP3File(uint8_t *mp3, uint32_t num_bytes)
 
   //printf("OnboardPlayer state = %d, WavPlayer state = %d, Mp3Player state = %d, Recorder state = %d\n", OnboardPlayer->state, WavPlayer->state, Mp3Player->state, Recorder->state);
 
-  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED))
+  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED) || (TonePlayer->state != STATE_STOPPED))
   { // Finish previous play/recording before starting another one.
     return ESP_FAIL;
   }
@@ -528,7 +504,7 @@ esp_err_t Codec_PlayWAVFile(uint8_t *wav, uint32_t num_bytes)
 {
   esp_err_t err = 0;
   // return; // Used for debugging
-  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED))
+  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED) || (TonePlayer->state != STATE_STOPPED))
   { // Finish previous play/recording before starting another one.
     return ESP_FAIL;
   }
@@ -563,7 +539,7 @@ esp_err_t Codec_PlayRecorded(void)
 {
   esp_err_t err = 0;
   // return; // Used for debugging
-  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED))
+  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED) || (TonePlayer->state != STATE_STOPPED))
   { // Finish previous play/recording before starting another one.
     return ESP_FAIL;
   }
@@ -585,6 +561,54 @@ esp_err_t Codec_PlayRecorded(void)
     WavPlayer->Run = true;
     xTaskCreatePinnedToCore(RunWavPlayerTask, "wav_player", DEFAULT_AUDIO_TASK_STACK, WavPlayer, DEFAULT_AUDIO_TASK_PRIO, NULL, 0);
     err = audio_pipeline_run(WavPlayer->Pipeline);
+    if (err != ESP_OK)
+    {
+      return err;
+    }
+  }
+
+  return ESP_OK;
+}
+
+//_____________________________________________________________________________
+
+esp_err_t Codec_PlayTone(float freq, uint32_t duration_ms)
+{
+  esp_err_t err = 0;
+  // return; // Used for debugging
+  //if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED) || (TonePlayer->state != STATE_STOPPED))
+  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED))
+  { // If tone player is running, allow to change frequency and duration on the fly
+    return ESP_FAIL;
+  }
+
+  if(freq > 3000.0f) {
+    freq = 3000.0f; // Limit to 3 KHz
+  }
+
+  TonePlayer->tone->freq = freq;
+  TonePlayer->tone->duration_ms = duration_ms;
+  TonePlayer->tone->samples_played = 0;
+  TonePlayer->tone->phase = 0;
+  ESP_LOGI(Tag, "Tone start %.1f Hz, %ums", freq, duration_ms);
+
+  if(TonePlayer->state == STATE_RUNNING)
+  {
+    return err; // Tone already playing, change only the frequency and duration
+  }
+  else if (TonePlayer->Run)
+  {
+    err = audio_pipeline_resume(TonePlayer->Pipeline);
+    if (err != ESP_OK)
+    {
+      return err;
+    }
+  }
+  else
+  { // The first time, start the pipeline events handling task and run the pipeline (start elements tasks)
+    TonePlayer->Run = true;
+    xTaskCreatePinnedToCore(RunTonePlayerTask, "tone_player", DEFAULT_AUDIO_TASK_STACK, TonePlayer, DEFAULT_AUDIO_TASK_PRIO, NULL, 0);
+    err = audio_pipeline_run(TonePlayer->Pipeline);
     if (err != ESP_OK)
     {
       return err;
@@ -648,7 +672,7 @@ int Codec_GetWAVPlayedTime(void)
 
 void Codec_RecordWAVFile(uint16_t duration_s)
 {
-  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED))
+  if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED) || (TonePlayer->state != STATE_STOPPED))
   { // Finish previous play/recording before starting another one.
     return;
   }
@@ -696,11 +720,12 @@ extern bool Codec_IsSoundFinished(void)
   //}
   //else
   //{
-    if (OnboardPlayer->Played || WavPlayer->Played || Mp3Player->Played) // Only one played at a time can run, so it is possible to test all in the same function
+    if (OnboardPlayer->Played || WavPlayer->Played || Mp3Player->Played || TonePlayer->Played) // Only one played at a time can run, so it is possible to test all in the same function
     {
       OnboardPlayer->Played = false;
       WavPlayer->Played = false;
       Mp3Player->Played = false;
+      TonePlayer->Played = false;
       return true;
     }
     else
@@ -881,6 +906,143 @@ static T_WavPlayerHandle InitWavPlayer(void)
   ap->Played = false;
   return ap;
 _wav_init_failed:
+  return NULL;
+}
+
+static int tone_process(audio_element_handle_t self, char *in_buffer, int in_len)
+{
+    //ESP_LOGI(Tag, "tone_process called");
+    int rsize = 0;
+
+    /* keep element alive even when idle */
+//    if (TonePlayer->state != STATE_RUNNING) {
+//    //    vTaskDelay(pdMS_TO_TICKS(10));
+//        return AEL_IO_OK;
+//    }
+
+    float phase_inc = 2 * M_PI * TonePlayer->tone->freq / TONE_PLAYER_RATE;
+    for (int i = 0; i < TONE_FRAME_SAMPLES; i++) {
+        float s = sin(TonePlayer->tone->phase);
+        int16_t val = (int16_t)(TONE_AMPLITUDE * s);
+        //ESP_LOGI(Tag, "i=%d, phase=%f, sin=%f, val=%d", i, t->phase, s, val);
+        TonePlayer->tone->buffer[i] = val;
+        //TonePlayer->tone->buffer[i] = (val&0xFF);
+        //TonePlayer->tone->buffer[i+1] = (val>>8);
+        TonePlayer->tone->phase += phase_inc;
+        if (TonePlayer->tone->phase >= 2 * M_PI)
+        { 
+          TonePlayer->tone->phase -= 2 * M_PI;
+        }
+    }
+
+    int bytes_to_play = 0;
+    uint64_t tot_samples = 0;
+    if (TonePlayer->tone->duration_ms > 0) { // 0 means play forever
+      tot_samples = (uint64_t)12* TonePlayer->tone->duration_ms; // (uint64_t)TONE_PLAYER_RATE * TonePlayer->tone->duration_ms / 1000;
+      uint64_t remaining_samples = tot_samples - TonePlayer->tone->samples_played;
+      if(remaining_samples < TONE_FRAME_SAMPLES) 
+      {
+          bytes_to_play = remaining_samples * sizeof(int16_t);
+      }
+      else 
+      {
+          bytes_to_play = TONE_FRAME_SAMPLES * sizeof(int16_t);
+      }
+    } else {
+      bytes_to_play = TONE_FRAME_SAMPLES * sizeof(int16_t);
+    }
+    rsize = audio_element_output(self, (char *)TonePlayer->tone->buffer, bytes_to_play);
+
+    //ESP_LOGI(Tag, "tone_process output %d bytes", bytes);
+    //ESP_LOG_BUFFER_HEX(Tag, t->buffer, bytes);
+
+    TonePlayer->tone->samples_played += (bytes_to_play / sizeof(int16_t));
+    if(TonePlayer->tone->duration_ms > 0) { // 0 means play forever
+      if(TonePlayer->tone->samples_played == tot_samples)
+      {
+        ESP_LOGI(Tag, "Tone finished %.1f Hz", TonePlayer->tone->freq);
+        return AEL_IO_DONE;
+      }
+    }
+    return rsize;
+}
+
+static esp_err_t tone_open(audio_element_handle_t self)
+{
+    ESP_LOGI(Tag, "tone_open called");
+    TonePlayer->tone->phase = 0;
+    TonePlayer->tone->samples_played = 0;
+    return ESP_OK;
+}
+
+
+static esp_err_t tone_close(audio_element_handle_t self)
+{
+    ESP_LOGI(Tag, "tone_close called");
+    return ESP_OK;
+}
+
+static T_TonePlayerHandle InitTonePlayer(void)
+{
+  T_TonePlayerHandle ap = calloc(1, sizeof(T_TonePlayer));
+  AUDIO_MEM_CHECK(Tag, ap, NULL);
+
+  ESP_LOGI(Tag, "[1.0] Create audio pipeline for tone playback");
+  audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
+  ap->Pipeline = audio_pipeline_init(&pipeline_cfg);
+  AUDIO_MEM_CHECK(Tag, ap->Pipeline, goto _tone_init_failed);
+
+  ESP_LOGI(Tag, "[1.1] Create TONE generator audio element");
+  audio_element_cfg_t cfg = DEFAULT_AUDIO_ELEMENT_CONFIG();
+  cfg.open = tone_open;
+  cfg.process = tone_process;
+  cfg.close = tone_close;
+  cfg.task_stack = 4096;
+  cfg.task_prio  = 5;
+  cfg.out_rb_size = 4 * 1024;
+  cfg.multi_out_rb_num = 1;
+  cfg.read = NULL;
+  cfg.write = NULL;
+  cfg.tag = "tone";
+  ap->ToneGenerator = audio_element_init(&cfg);
+  AUDIO_MEM_CHECK(Tag, ap->ToneGenerator, goto _tone_init_failed);
+
+  ap->tone = calloc(1, sizeof(tone_t));
+  if(!ap->tone) {
+      ESP_LOGE(Tag, "tone_t calloc failed");
+      goto _tone_init_failed;
+  }
+  ap->tone->buffer = tone_buffer;
+
+  ESP_LOGI(Tag, "[1.2] Create I2S stream to write audio data to codec chip");
+  i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
+  i2s_cfg.type = AUDIO_STREAM_WRITER;
+  i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT;
+  i2s_cfg.i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S; // I2S_COMM_FORMAT_STAND_MSB; //I2S_COMM_FORMAT_STAND_I2S
+  i2s_cfg.i2s_config.sample_rate = TONE_PLAYER_RATE;
+  ap->I2SStream = i2s_stream_init(&i2s_cfg);
+  AUDIO_MEM_CHECK(Tag, ap->I2SStream, goto _tone_init_failed);
+
+  ESP_LOGI(Tag, "[2.0] Register all elements to audio pipeline");
+
+  audio_pipeline_register(ap->Pipeline, ap->ToneGenerator, "tone_gen");
+  audio_pipeline_register(ap->Pipeline, ap->I2SStream, "i2s_writer");
+
+  ESP_LOGI(Tag, "[2.1] Link it together [RAM]-->tone_generator-->i2s_stream-->[codec_chip]");
+  audio_pipeline_link(ap->Pipeline, (const char *[]){"tone_gen", "i2s_writer"}, 2);
+
+  ESP_LOGI(Tag, "[3.0] Setup event listener");
+  audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
+  ap->Evt = audio_event_iface_init(&evt_cfg);
+
+  ESP_LOGI(Tag, "[3.1] Listening event from all elements of pipeline");
+  audio_pipeline_set_listener(ap->Pipeline, ap->Evt);
+
+  ap->Run = false;
+  ap->state = STATE_STOPPED;
+  ap->Played = false;
+  return ap;
+_tone_init_failed:
   return NULL;
 }
 
@@ -1360,6 +1522,58 @@ static void RunRecordTask(void *arg)
   vTaskDelete(NULL);
 }
 
+static void RunTonePlayerTask(void *arg)
+{
+  audio_event_iface_msg_t msg;
+  esp_err_t ret;
+
+  while (TonePlayer->Run)
+  {
+    ret = audio_event_iface_listen(TonePlayer->Evt, &msg, portMAX_DELAY);
+    if (ret != ESP_OK)
+    {
+      ESP_LOGI(Tag, "TonePlayerTask: event interface error : %d\n", ret);
+      continue;
+    }
+
+    if ((msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT) && (msg.source == (void *)TonePlayer->ToneGenerator) && (msg.cmd == AEL_MSG_CMD_REPORT_STATUS) && ((int)msg.data == AEL_STATUS_STATE_RUNNING))
+    {
+      ESP_LOGI(Tag, "tone running\n");
+      TonePlayer->state = STATE_RUNNING;
+      TonePlayer->Played = false;
+      continue;
+    }
+
+    // Stop when the last pipeline element (I2SStream in this case) receives finished event
+    if ((msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT) && (msg.source == (void *)TonePlayer->I2SStream) && (msg.cmd == AEL_MSG_CMD_REPORT_STATUS) && (((int)msg.data == AEL_STATUS_STATE_FINISHED) || ((int)msg.data == AEL_STATUS_ERROR_OPEN)))
+    {
+      ESP_LOGE(Tag, "Stop pipeline from TonePlayerTask");
+      audio_pipeline_stop(TonePlayer->Pipeline);
+      audio_pipeline_wait_for_stop(TonePlayer->Pipeline);
+      audio_pipeline_reset_ringbuffer(TonePlayer->Pipeline);
+      TonePlayer->state = STATE_STOPPED;
+      TonePlayer->Played = true;
+    }
+
+    if ((msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT) && (msg.source == (void *)TonePlayer->I2SStream) && (msg.cmd == AEL_MSG_CMD_REPORT_STATUS) && ((int)msg.data == AEL_STATUS_STATE_STOPPED))
+    {
+      TonePlayer->state = STATE_STOPPED;
+      ESP_LOGI(Tag, "Pipeline stopped from TonePlayerTask\n");
+    }
+
+    if ((msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT) && (msg.source == (void *)TonePlayer->I2SStream) && (msg.cmd == AEL_MSG_CMD_REPORT_STATUS) && ((int)msg.data == AEL_STATUS_STATE_PAUSED))
+    {
+      // Some events can be queued thus check that the current state is actually running before going to pause
+      // For example: 1) user "pause" just before play ending 2) event "play end" => state stopped 3) event "paused" => state paused => not valid!
+      if (TonePlayer->state == STATE_RUNNING)
+      {
+        TonePlayer->state = STATE_PAUSED;
+        ESP_LOGI(Tag, "Tone paused\n");
+      }
+    }
+  }
+}
+
 //_____________________________________________________________________________
 
 esp_err_t Codec_Stop(void)
@@ -1391,6 +1605,15 @@ esp_err_t Codec_Stop(void)
     audio_event_iface_discard(Mp3Player->Evt);
     Mp3Player->state = STATE_STOPPED;
   }
+
+  if (TonePlayer->state != STATE_STOPPED)
+  {
+    audio_pipeline_stop(TonePlayer->Pipeline);
+    audio_pipeline_wait_for_stop(TonePlayer->Pipeline);
+    audio_pipeline_reset_ringbuffer(TonePlayer->Pipeline);
+    audio_event_iface_discard(TonePlayer->Evt);
+    TonePlayer->state = STATE_STOPPED;
+  }  
 
   return ESP_OK;
 }
@@ -1436,6 +1659,10 @@ esp_err_t Codec_Pause(void)
     }
     audio_pipeline_pause(Mp3Player->Pipeline);
   }
+  else if (TonePlayer->state == STATE_RUNNING)
+  {
+    audio_pipeline_pause(TonePlayer->Pipeline);
+  }  
   else if (Recorder->state == STATE_RUNNING)
   {
     audio_pipeline_pause(Recorder->Pipeline);
@@ -1461,6 +1688,10 @@ esp_err_t Codec_Resume(void)
   {
     audio_pipeline_resume(Mp3Player->Pipeline);
   }
+  else if (TonePlayer->state == STATE_PAUSED)
+  {
+    audio_pipeline_resume(TonePlayer->Pipeline);
+  }  
   else if (Recorder->state == STATE_PAUSED)
   {
     audio_pipeline_resume(Recorder->Pipeline);
@@ -1479,4 +1710,64 @@ void  Codec_ClearEvents(void) {
   WavPlayer->Played = false;
   Mp3Player->Played = false;  
   Recorder->Recorded = false;
+  TonePlayer->Played = false;  
 }
+
+/*
+void playMarioTheme(void) 
+{
+  int i = 0;
+  // Define musical notes in Hz (Standard pitch notation)
+  const int C4 = 262; const int D4 = 294; const int E4 = 330; const int F4 = 349; 
+  const int G4 = 392; const int A4 = 440; const int B4 = 494;
+  const int C5 = 523; const int D5 = 587; const int E5 = 659; const int F5 = 698; const int G5 = 784;
+  const int A5 = 880; const int C6 = 1047;
+    
+  // Tempo and duration constants in Milliseconds (ms)
+  const int QUARTER = 200;
+  const int EIGHTH = QUARTER / 2;     // 100 ms
+  const int SIXTEENTH = QUARTER / 4;  // 50 ms
+  const int DOT_EIGHTH = EIGHTH + SIXTEENTH; // 150 ms
+
+  // Notes of the first phrase: E5, E5, E5, C5, E5, G5, G4
+  struct Notes {
+    int freq;
+    int dur;
+  };  
+  // This sequence is designed to last approximately 10 seconds at the defined tempo.
+  const struct Notes marioTheme[] = {
+    // Phrase 1: The Opening Riff (Original part)
+    { E5, EIGHTH }, { 0, SIXTEENTH }, { E5, EIGHTH }, { 0, SIXTEENTH }, { E5, EIGHTH }, { 0, SIXTEENTH }, { C5, EIGHTH }, 
+    { E5, DOT_EIGHTH }, { G5, QUARTER }, { 0, QUARTER }, { G4, QUARTER }, { 0, QUARTER }, 
+    
+    // Phrase 2: Continuation
+    { C5, QUARTER }, { 0, QUARTER }, { G4, QUARTER }, { 0, QUARTER }, { E4, QUARTER }, { 0, QUARTER }, { A4, DOT_EIGHTH }, 
+    { B4, EIGHTH }, { A4, QUARTER }, { G4, EIGHTH }, { E5, EIGHTH }, { G5, EIGHTH }, { A5, EIGHTH }, { F5, EIGHTH }, { G5, EIGHTH },
+    
+    // Phrase 3: The Ascending Run
+    { E5, SIXTEENTH }, { C5, SIXTEENTH }, { A4, SIXTEENTH }, { G4, SIXTEENTH }, // Quick run up/down
+    { E5, EIGHTH }, { 0, SIXTEENTH }, { F5, EIGHTH }, { 0, SIXTEENTH }, { G5, EIGHTH }, { 0, SIXTEENTH }, { C6, QUARTER },
+    
+    // Phrase 4: The Final High Note (to extend duration)
+    { G5, QUARTER }, { 0, QUARTER }, { E5, QUARTER }, { 0, QUARTER },
+    { E5, EIGHTH }, { D5, EIGHTH }, { C5, QUARTER }, { 0, QUARTER }, // Ending cadence
+    
+    // Added rests/padding to ensure near 10 seconds
+    { 0, QUARTER }, { 0, QUARTER }, { 0, QUARTER }, { 0, QUARTER } 
+  };  
+
+  int numNotes = sizeof(marioTheme) / sizeof(marioTheme[0]);
+
+  for(i=0; i< numNotes; i++) {
+      
+      //Codec_PlayTone(marioTheme[i].freq, marioTheme[i].dur);
+      //while(!Codec_IsSoundFinished()) {
+      //    vTaskDelay(1 / portTICK_PERIOD_MS);
+      //}
+      
+     Codec_PlayTone(marioTheme[i].freq, 0);
+     vTaskDelay(marioTheme[i].dur / portTICK_PERIOD_MS);
+
+  }
+}
+*/

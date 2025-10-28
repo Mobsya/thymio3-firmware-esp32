@@ -83,7 +83,7 @@ static uint16_t ble_sensors_stream_val_handle;
 
 // Python variables
 static uint16_t ble_python_val_handle;
-char mp_script[MAX_MP_SCRIPT_LEN];
+EXT_RAM_ATTR char mp_script[MAX_MP_SCRIPT_LEN] = {0};
 uint16_t mp_script_tot_len = 0;
 uint16_t mp_script_curr_len = 0;
 bool mp_receiving_script = false;
@@ -597,6 +597,16 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                     } else if(ctxt->om->om_data[0] == PYTHON_WRITE_STOP)
                     {
                         mp_stop_script();
+                    } else if(ctxt->om->om_data[0] == PYTHON_WRITE_SAVE)
+                    {
+                        if(mp_script_ready)
+                        {
+                            mp_save_script(mp_script, ctxt->om->om_data[1]);
+                        }
+                        else
+                        {
+                            ble_indicate_python_save(PYTHON_SAVE_NOT_FOUND);
+                        }
                     }
                     break;
                 }
@@ -874,9 +884,24 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                             Codec_RecordWAVFile(duration);
                             audio_recording = true;                            
                         }
-                    }
-                    break;
+                    } 
+                    else if(ctxt->om->om_data[0] == AUDIO_WRITE_TONE)
+                    {
+                        uint16_t freq = (ctxt->om->om_data[1] << 8) | ctxt->om->om_data[2];
+                        uint32_t duration = (ctxt->om->om_data[3] << 8) | ctxt->om->om_data[4];
+                        duration = duration*100; // Convert to ms
+                        ESP_LOGI(TAG, "Play tone freq=%d, dur=%d\n", freq, duration);
+                        if(Codec_PlayTone(freq, duration) != ESP_OK) {
+                            ESP_LOGI(TAG, "Play tone error");
+                            ble_indicate_audio_exec(AUDIO_EXEC_ERROR);          
+                        }
+                        else
+                        {
+                            audio_playing = true;
+                        }   
+                    }   
                 }
+                break;
 
             case BLE_GATT_ACCESS_OP_READ_CHR:
                 //MODLOG_DFLT(INFO, "Callback for read");
@@ -1792,7 +1817,7 @@ void ble_indicate_python_exec(uint8_t value)
 {
     int rc = 0;
     struct os_mbuf *txom;
-    uint8_t temp[2] = {AUDIO_IND_EXEC_RES, value};
+    uint8_t temp[2] = {PYTHON_IND_EXEC_RES, value};
     txom = ble_hs_mbuf_from_flat(temp, sizeof(temp));
     rc = ble_gattc_indicate_custom(connection_handle, ble_python_val_handle, txom);
     if( rc == 0)
@@ -1801,7 +1826,7 @@ void ble_indicate_python_exec(uint8_t value)
     }
     else 
     {
-        ESP_LOGI(TAG,"PY exec rrror in sending indication");
+        ESP_LOGI(TAG,"PY exec error in sending indication");
     }
 }
 
@@ -1819,6 +1844,23 @@ void ble_indicate_python_load(uint8_t value)
     else 
     {
         ESP_LOGI(TAG,"PY load error in sending indication");
+    }
+}
+
+void ble_indicate_python_save(uint8_t value)
+{
+    int rc = 0;
+    struct os_mbuf *txom;
+    uint8_t temp[2] = {PYTHON_IND_SAVE_RES, value};
+    txom = ble_hs_mbuf_from_flat(temp, sizeof(temp));
+    rc = ble_gattc_indicate_custom(connection_handle, ble_python_val_handle, txom);
+    if( rc == 0)
+    {
+        ESP_LOGI(TAG,"PY save indication sent successfully");
+    }
+    else 
+    {
+        ESP_LOGI(TAG,"PY save error in sending indication");
     }
 }
 
