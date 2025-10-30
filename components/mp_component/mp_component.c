@@ -33,6 +33,8 @@
 #include "mp_component.h"
 #include "py/objstr.h"
 #include "py/stream.h"
+#include "py/runtime.h"
+#include "py/builtin.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -96,14 +98,29 @@
 #define MP_TASK_STACK_LIMIT_MARGIN (1024)
 #endif
 
+#define JSON_BUFFER_SIZE 10240  // Considering 100 bytes per file for their description (name, size) we can list about 100 files.
+
 static int8_t mp_component_state = -1;
 static EventGroupHandle_t mp_component_event_group;
 uint8_t scriptPresent[7] = {0};
 static uint8_t main_counter = 0;
 uint8_t* buttonState;
-char* ram_script;
+char* ram_file_data;
 uint8_t ram_script_id;
-char ram_script_name[20];
+char ram_file_name[30];
+size_t ram_file_len;
+nlr_buf_t nlr;
+static char *json_buf = NULL;
+char json_mem_info[256] = {0};
+uint16_t json_mem_info_len = 0;
+int32_t flash_free_bytes = -1;
+int32_t ram_free_bytes = -1;
+/*
+bool file_loaded = false;
+char *read_file_data = NULL;
+char read_file_name[30];
+size_t *read_file_len = NULL;
+*/
 
 const int EVT_EXEC_MODE = BIT0;
 
@@ -363,7 +380,7 @@ soft_reset:
             case 8: //script from RAM
                 // Exception handled by Micropython by using NLR method
                 if (nlr_push(&nlr) == 0) {
-                    run_micropython_script(ram_script);
+                    run_micropython_script(ram_file_data);
                     nlr_pop();
                     ble_indicate_python_exec(PYTHON_EXEC_OK);
                 } else {
@@ -375,27 +392,25 @@ soft_reset:
                 mp_component_state = -1; // Execute the script only once
                 break;
             case 9: // save script                
-                memset(ram_script_name, 0, sizeof(ram_script_name));
+                memset(ram_file_name, 0, sizeof(ram_file_name));
                 if(ram_script_id == 0)
                 {
-                    snprintf(ram_script_name, sizeof(ram_script_name), "main.py");
+                    snprintf(ram_file_name, sizeof(ram_file_name), "main.py");
                 }
                 else
                 {
-                    snprintf(ram_script_name, sizeof(ram_script_name), "main%d.py", ram_script_id);
+                    snprintf(ram_file_name, sizeof(ram_file_name), "main%d.py", ram_script_id);
                 }
-                const char* data = ram_script;
-                size_t len = strlen(data);
-                nlr_buf_t nlr;
+                const char* data = ram_file_data;            
                 if (nlr_push(&nlr) == 0) {
                     mp_obj_t file_obj = mp_builtin_open(2, (mp_obj_t[]){
-                        mp_obj_new_str(ram_script_name, strlen(ram_script_name)),
-                        mp_obj_new_str("w", 1)
-                    }, NULL);
+                        mp_obj_new_str(ram_file_name, strlen(ram_file_name)),
+                        mp_obj_new_str("wb", 2)
+                    }, (mp_map_t *)&mp_const_empty_map);
 
                     const mp_stream_p_t *stream_p = mp_get_stream_raise(file_obj, MP_STREAM_OP_WRITE);
                     int err;
-                    stream_p->write(file_obj, data, len, &err);
+                    stream_p->write(file_obj, data, ram_file_len, &err);
                     mp_stream_close(file_obj);
                     nlr_pop();
                     ble_indicate_python_save(PYTHON_SAVE_OK);
@@ -403,7 +418,261 @@ soft_reset:
                     mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
                     ble_indicate_python_save(PYTHON_SAVE_ERROR);
                 }
+                mp_component_state = -1; // Execute the command only once
                 break;
+            case 10: // save file
+                if (nlr_push(&nlr) == 0) {
+                    // Check if there is enough space in the filesystem
+                    mp_obj_t os_module = mp_import_name(MP_QSTR_os, mp_const_none, MP_OBJ_NEW_SMALL_INT(0));
+                    mp_obj_t statvfs_fn = mp_load_attr(os_module, MP_QSTR_statvfs);
+                    mp_obj_t res = mp_call_function_1(statvfs_fn, mp_obj_new_str("/", 1));
+                    mp_obj_t *items;
+                    mp_obj_get_array_fixed_n(res, 10, &items);
+                    uint32_t block_size = mp_obj_get_int(items[0]);
+                    uint32_t free_blocks = mp_obj_get_int(items[3]);
+                    size_t free_bytes = block_size * free_blocks;
+                    ESP_LOGI("mp_component", "Filesystem free space: %d bytes", free_bytes);
+                    if(free_bytes < ram_file_len) {
+                        ble_indicate_fs(FS_IND_SAVE_RES, FS_SAVE_NO_SPACE);
+                        nlr_pop();
+                    } 
+                    else
+                    {
+                        mp_obj_t file_obj = mp_builtin_open(2, (mp_obj_t[]){
+                            mp_obj_new_str(ram_file_name, strlen(ram_file_name)),
+                            mp_obj_new_str("wb", 2)
+                        }, (mp_map_t *)&mp_const_empty_map);
+
+                        const mp_stream_p_t *stream_p = mp_get_stream_raise(file_obj, MP_STREAM_OP_WRITE);
+                        int err;
+                        mp_uint_t written = stream_p->write(file_obj, ram_file_data, ram_file_len, &err);
+                        if (written < ram_file_len) {
+                            ble_indicate_fs(FS_IND_SAVE_RES, FS_SAVE_NO_SPACE);
+                            return;
+                        }         
+                        else if (err != 0) {
+                            ble_indicate_fs(FS_IND_SAVE_RES, FS_SAVE_ERROR);
+                            return;                            
+                        }
+                        else
+                        {
+                            ble_indicate_fs(FS_IND_SAVE_RES, FS_SAVE_OK);
+                        }
+                        mp_stream_close(file_obj);
+                        nlr_pop();
+                    }
+                } else {
+                    mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
+                    ble_indicate_fs(FS_IND_SAVE_RES, FS_SAVE_ERROR);
+                }
+                mp_component_state = -1; // Execute the command only once
+                break;
+            case 11: // delete file
+                if (nlr_push(&nlr) == 0) {
+                    // Import os module
+                    mp_obj_t os_module = mp_import_name(MP_QSTR_os, mp_const_none, MP_OBJ_NEW_SMALL_INT(0));
+
+                    // Get listdir('/')
+                    mp_obj_t listdir_fn = mp_load_attr(os_module, MP_QSTR_listdir);
+                    mp_obj_t files_obj = mp_call_function_1(listdir_fn, mp_obj_new_str("/", 1));
+
+                    // Iterate through returned list
+                    size_t len;
+                    mp_obj_t *items;
+                    mp_obj_get_array(files_obj, &len, &items);
+
+                    bool found = false;
+                    for (size_t i = 0; i < len; i++) {
+                        const char *fname = mp_obj_str_get_str(items[i]);
+                        if (strcmp(fname, ram_file_name) == 0) {
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found) {
+                        // Call os.remove("/filename")
+                        char full_path[64];
+                        snprintf(full_path, sizeof(full_path), "/%s", ram_file_name);
+                        mp_obj_t remove_fn = mp_load_attr(os_module, MP_QSTR_remove);
+                        mp_call_function_1(remove_fn, mp_obj_new_str(full_path, strlen(full_path)));
+
+                        ble_indicate_fs(FS_IND_DELETE_RES, FS_DELETE_OK);
+                    } else {
+                        ble_indicate_fs(FS_IND_DELETE_RES, FS_DELETE_NOT_FOUND);
+                    }
+
+                    nlr_pop();
+                } else {
+                    // Print Python exception (if any) and indicate error
+                    mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
+                    ble_indicate_fs(FS_IND_DELETE_RES, FS_DELETE_ERROR);
+                }
+                mp_component_state = -1; // Execute the command only once
+                break;
+            case 12: // list files
+                json_buf = calloc(JSON_BUFFER_SIZE, sizeof(char));
+                if(json_buf == NULL) {
+                    ESP_LOGE("mp_component", "Failed to allocate memory for JSON buffer");
+                    ble_indicate_fs_list_err();
+                    mp_component_state = -1; // Execute the command only once                    
+                    break;
+                }
+                if (nlr_push(&nlr) == 0) {
+                    // Import os
+                    mp_obj_t os_module = mp_import_name(MP_QSTR_os, mp_const_none, MP_OBJ_NEW_SMALL_INT(0));
+
+                    // Get os.listdir("/")
+                    mp_obj_t listdir_fn = mp_load_attr(os_module, MP_QSTR_listdir);
+                    mp_obj_t files_obj = mp_call_function_1(listdir_fn, mp_obj_new_str("/", 1));
+
+                    // Start JSON array
+                    strcat(json_buf, "[");
+
+                    size_t len;
+                    mp_obj_t *items;
+                    mp_obj_get_array(files_obj, &len, &items);
+
+                    // Get os.stat for file sizes
+                    mp_obj_t stat_fn = mp_load_attr(os_module, MP_QSTR_stat);
+
+                    for (size_t i = 0; i < len; i++) {
+                        const char *fname = mp_obj_str_get_str(items[i]);
+
+                        // Build full path "/filename"
+                        char full_path[64];
+                        snprintf(full_path, sizeof(full_path), "/%s", fname);
+
+                        // Get file info using os.stat(full_path)
+                        mp_obj_t stat_res = mp_call_function_1(stat_fn, mp_obj_new_str(full_path, strlen(full_path)));
+
+                        // os.stat() returns a tuple, where element [6] = file size
+                        mp_obj_t *stat_items;
+                        mp_obj_get_array_fixed_n(stat_res, 10, &stat_items);
+                        mp_int_t fsize = mp_obj_get_int(stat_items[6]);
+
+                        // Append entry to JSON buffer
+                        char entry[256];
+                        snprintf(entry, sizeof(entry), "{\"name\":\"%s\",\"size\":%ld}", fname, (long)fsize);
+                        strcat(json_buf, entry);
+
+                        if (i < len - 1) strcat(json_buf, ",");
+                    }
+
+                    strcat(json_buf, "]");
+                    nlr_pop();
+                } else { // Exception raised
+                    mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
+                    ble_indicate_fs_list_err();
+                    free(json_buf);
+                    mp_component_state = -1; // Execute the command only once
+                    break;
+                }
+                ESP_LOG_BUFFER_CHAR("mp_component", json_buf, strlen(json_buf));
+                ble_indicate_fs_list((uint8_t *)json_buf, strlen(json_buf));     
+                mp_component_state = -1; // Execute the command only once
+                break;
+            case 13: // mem info
+                memset(json_mem_info, 0, sizeof(json_mem_info));
+
+                if (nlr_push(&nlr) == 0) {
+                    // --- Flash free space ---
+                    mp_obj_t os_module = mp_import_name(MP_QSTR_os, mp_const_none, MP_OBJ_NEW_SMALL_INT(0));
+                    mp_obj_t statvfs_fn = mp_load_attr(os_module, MP_QSTR_statvfs);
+                    mp_obj_t res = mp_call_function_1(statvfs_fn, mp_obj_new_str("/", 1));
+                    mp_obj_t *items;
+                    mp_obj_get_array_fixed_n(res, 10, &items);
+                    uint32_t block_size = mp_obj_get_int(items[0]);
+                    uint32_t free_blocks = mp_obj_get_int(items[3]);
+                    flash_free_bytes = block_size * free_blocks;
+
+                    // --- RAM free space (esp-idf C side) ---
+                    //ram_free_bytes = esp_get_free_heap_size();
+
+                    // --- RAM free space (MicroPython heap) ---
+                    mp_obj_t gc_module = mp_import_name(MP_QSTR_gc, mp_const_none, MP_OBJ_NEW_SMALL_INT(0));
+                    mp_obj_t mem_free_fn = mp_load_attr(gc_module, MP_QSTR_mem_free);
+                    mp_obj_t free_res = mp_call_function_0(mem_free_fn);
+                    ram_free_bytes = mp_obj_get_int(free_res);
+
+                    nlr_pop();
+                } else {
+                    mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
+                }                
+
+                // --- Always return JSON, even if failed ---
+                snprintf(&json_mem_info[3], sizeof(json_mem_info)-3,
+                        "{\"flash_bytes_free\": %d, \"ram_bytes_free\": %d}",
+                        flash_free_bytes, ram_free_bytes);
+
+                json_mem_info_len = strlen(&json_mem_info[3]);                        
+                json_mem_info[0] = 0x02;
+                json_mem_info[1] = (json_mem_info_len >> 8) & 0xFF;  // length high byte
+                json_mem_info[2] = json_mem_info_len & 0xFF;         // length low byte
+                json_mem_info_len += 3;
+
+                ble_indicate_dev_info_mem((uint8_t *)json_mem_info, json_mem_info_len);
+                ESP_LOG_BUFFER_CHAR("mp_component", &json_mem_info[3], json_mem_info_len-3);
+                mp_component_state = -1; // Execute the command only once
+                break;
+            /*
+            case 14: // read file
+                uint8_t *buffer = NULL;
+                *read_file_len = 0;
+
+                if (nlr_push(&nlr) == 0) {
+                    // Open file for reading
+                    mp_obj_t file_obj = mp_builtin_open(2, (mp_obj_t[]){
+                        mp_obj_new_str(read_file_name, strlen(read_file_name)),
+                        mp_obj_new_str("rb", 2)
+                    }, (mp_map_t *)&mp_const_empty_map);
+
+                    const mp_stream_p_t *stream_p = mp_get_stream_raise(file_obj, MP_STREAM_OP_READ);
+                    int err;
+                    mp_uint_t bytes_read;
+
+                    // Seek to end to get file length
+                    mp_obj_t seek_meth = mp_load_attr(file_obj, MP_QSTR_seek);
+                    mp_call_function_2(seek_meth, mp_obj_new_int(0), mp_obj_new_int(2)); // SEEK_END
+                    mp_obj_t tell_meth = mp_load_attr(file_obj, MP_QSTR_tell);
+                    mp_obj_t file_len_obj = mp_call_function_0(tell_meth);
+                    size_t file_len = mp_obj_get_int(file_len_obj);
+                    *read_file_len = file_len;
+
+                    // Rewind
+                    mp_call_function_2(seek_meth, mp_obj_new_int(0), mp_obj_new_int(0)); // SEEK_SET
+
+                    // Allocate buffer
+                    buffer = malloc(file_len);
+                    if (!buffer) {
+                        ESP_LOGI("mp_component", "Out of memory allocating %d bytes", file_len);
+                        mp_stream_close(file_obj);
+                        nlr_pop();
+                        return NULL;
+                    }
+
+                    // Read the file
+                    bytes_read = stream_p->read(file_obj, buffer, file_len, &err);
+                    if (err != 0 || bytes_read != file_len) {
+                        ESP_LOGI("mp_component", "Read error or incomplete read");
+                        free(buffer);
+                        buffer = NULL;
+                        *read_file_len = 0;
+                    }
+
+                    mp_stream_close(file_obj);
+                    nlr_pop();
+
+                } else {
+                    mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
+                    ESP_LOGI("mp_component", "Exception while reading file");
+                    buffer = NULL;
+                    *read_file_len = 0;
+                }
+
+                return buffer;                
+                break;
+            */
             default:
                 break; 
         }
@@ -515,7 +784,7 @@ void mp_exec_script_from_ram(char* script)
 {
     if(mp_component_state == -1) // Run only one script at a time
     {
-        ram_script = script;
+        ram_file_data = script;
         mp_component_state = 8;
         xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE); // Tell the main micropython loop to execute REPL or a user script.
     }
@@ -530,11 +799,69 @@ void mp_stop_script(void)
     mp_sched_keyboard_interrupt();
 }
 
-void mp_save_script(char* script, uint8_t id)
+void mp_save_script(char* script, uint8_t id, uint16_t script_len)
 {
-    ram_script = script;
+    ram_file_data = script;
+    ram_file_len = script_len;
     ram_script_id = id;
     mp_component_state = 9;
+    xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE); // Tell the main micropython loop to execute REPL or a user script.
+
+}
+
+void mp_save_file(uint8_t* data, char* filename, uint32_t data_len)
+{
+    ram_file_data = (char*)data;
+    ram_file_len = data_len;
+    memset(ram_file_name, 0, sizeof(ram_file_name));
+    snprintf(ram_file_name, sizeof(ram_file_name), "%s", filename);
+    mp_component_state = 10;
+    xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE); // Tell the main micropython loop to execute REPL or a user script.
+}
+
+void mp_delete_file(char* filename)
+{
+    memset(ram_file_name, 0, sizeof(ram_file_name));
+    snprintf(ram_file_name, sizeof(ram_file_name), "%s", filename);
+    mp_component_state = 11;
+    xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE); // Tell the main micropython loop to execute REPL or a user script.
+}
+
+void mp_list_files(void)
+{
+    mp_component_state = 12;
+    xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE); // Tell the main micropython loop to execute REPL or a user script.
+}
+
+void mp_list_files_free_buffer(void)
+{
+    if(json_buf != NULL) {
+        free(json_buf);
+        json_buf = NULL;
+    }
+}
+
+/*
+void mp_read_file(char* filename, uint8_t* file_data, size_t* file_len)
+{
+    file_loaded = false;
+    memset(read_file_name, 0, sizeof(read_file_name));
+    snprintf(read_file_name, sizeof(read_file_name), "%s", filename);
+    read_file_data = (char*)file_data;
+    read_file_len = file_len;
+    mp_component_state = 14;
+    xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE); // Tell the main micropython loop to execute REPL or a user script.
+}
+
+bool mp_file_is_loaded(void)
+{
+    return file_loaded;
+}
+*/
+
+void mp_mem_info(void)
+{
+    mp_component_state = 13;
     xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE); // Tell the main micropython loop to execute REPL or a user script.
 
 }

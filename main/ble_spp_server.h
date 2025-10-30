@@ -29,6 +29,12 @@ extern "C" {
 /* 16 Bit SPP Service audio Characteristic UUID */
 #define BLE_SVC_AUDIO_CHR_UUID16                           0xABF4
 
+/* 16 Bit SPP Service device info Characteristic UUID */
+#define BLE_SVC_DEVICE_INFO_CHR_UUID16                      0xABF5
+
+/* 16 Bit SPP Service file system Characteristic UUID */
+#define BLE_SVC_FILE_SYSTEM_CHR_UUID16                      0xABF6
+
 #define BLE_OTA_SERVICE_UUID                0x8018
 #define RECV_FW_UUID                        0x8020
 #define OTA_BAR_UUID                        0x8021

@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 BLE File System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; }
+        .card { background-color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); padding: 24px; }
+        .btn { padding: 10px 15px; border-radius: 8px; font-weight: 600; transition: background-color 0.2s, transform 0.1s; }
+        .btn:hover:not(:disabled) { transform: translateY(-1px); }
+        .btn-primary { background-color: #3b82f6; color: white; border: none; }
+        .btn-primary:hover:not(:disabled) { background-color: #2563eb; }
+        .btn-danger { background-color: #ef4444; color: white; border: none; }
+        .btn-danger:hover:not(:disabled) { background-color: #dc2626; }
+        .btn-secondary { background-color: #6b7280; color: white; border: none; }
+        .btn-secondary:hover:not(:disabled) { background-color: #4b5563; }
+        /* NUOVO: Stile per il pulsante Lista File */
+        .btn-success { background-color: #10b981; color: white; border: none; }
+        .btn-success:hover:not(:disabled) { background-color: #059669; }
+        .btn:disabled { background-color: #d1d5db; color: #9ca3af; cursor: not-allowed; }
+        textarea { resize: none; }
+        input[type="text"] { border: 1px solid #d1d5db; border-radius: 6px; }
+        hr { margin: 20px 0; border: none; border-top: 1px solid #e5e7eb; }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Gestore File BLE per ESP32</h1>
+        
+        <div class="card mb-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">1. Stato Connessione</h2>
+            <p id="status" class="text-gray-600 mb-4 font-medium">Stato: Disconnesso</p>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <button id="connectButton" class="btn btn-primary w-full sm:w-1/2" onclick="connectAndSetup()">
+                    Connetti al Robot
+                </button>
+                <button id="disconnectButton" class="btn btn-secondary w-full sm:w-1/2" onclick="disconnectDevice()" disabled>
+                    Disconnetti
+                </button>
+            </div>
+        </div>
+
+        <div class="card" id="fileControls">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">2. Operazioni File System (0xABF6)</h2>
+
+            <div class="border p-4 rounded-lg mb-6 bg-blue-50">
+                <h3 class="font-bold text-lg mb-3 text-blue-800">Caricamento Dati (Upload)</h3>
+                <input type="file" id="fileToUpload" class="block w-full text-sm text-gray-900 bg-white border border-gray-300 rounded-lg cursor-pointer focus:outline-none p-2 mb-4">
+                <button onclick="startUploadChunks()" id="uploadChunksButton" class="btn btn-primary w-full" disabled>
+                    Upload Dati (Chunk 0x01)
+                </button>
+            </div>
+
+            <div class="border p-4 rounded-lg mb-6 bg-green-50">
+                <h3 class="font-bold text-lg mb-3 text-green-800">Salvataggio Finale (Save)</h3>
+                <input type="text" id="filenameInput" maxlength="30" placeholder="Nome File sul Robot (max 30 caratteri)" class="p-2 w-full mb-4 text-sm">
+                <button onclick="saveFile()" id="saveFileButton" class="btn btn-secondary w-full" disabled>
+                    Salva File (Comando 0x02)
+                </button>
+            </div>
+
+            <hr>
+
+            <div class="border p-4 rounded-lg mb-6 bg-purple-50">
+                <h3 class="font-bold text-lg mb-3 text-purple-800">Lista File</h3>
+                <button onclick="listFiles()" id="listFilesButton" class="btn btn-success w-full mb-4" disabled>
+                    Richiedi Lista File (Comando 0x04)
+                </button>
+                <p class="font-medium text-sm text-gray-700 mb-2">File sul Robot:</p>
+                <ul id="fileList" class="text-sm list-disc list-inside bg-white p-3 rounded-lg border border-purple-200">
+                    <li>Nessun file caricato.</li>
+                </ul>
+            </div>
+            
+            <hr>
+
+            <div class="border p-4 rounded-lg bg-red-50">
+                <h3 class="font-bold text-lg mb-3 text-red-800">Eliminazione File</h3>
+                <input type="text" id="fileToDeleteInput" maxlength="30" placeholder="Nome File da Eliminare (max 30 caratteri)" class="p-2 w-full mb-4 text-sm">
+                <button onclick="deleteFile()" id="deleteButton" class="btn btn-danger w-full" disabled>
+                    Elimina File (Comando 0x03)
+                </button>
+            </div>
+            
+        </div>
+        
+        <div class="card mt-6">
+            <h2 class="text-xl font-semibold mb-3 text-gray-700">Log delle Operazioni</h2>
+            <textarea id="logArea" readonly class="w-full text-xs p-3 text-gray-700 bg-gray-100 rounded-lg border-gray-300"></textarea>
+        </div>
+    </div>
+
+    <script>
+        // UUIDs e Comandi ricavati da ble_spp_server.h e ble_spp.h
+        const SERVICE_UUID = 0xabf0; // BLE_SVC_THYMIO_UUID16
+        const FS_CHR_UUID = 0xabf6;  // BLE_SVC_FILE_SYSTEM_CHR_UUID16
+        
+        const CMD_LOAD_CHUNK = 0x01;  // FS_WRITE_LOAD
+        const CMD_SAVE_FILE = 0x02;   // FS_WRITE_SAVE
+        const CMD_DELETE_FILE = 0x03; // FS_WRITE_DELETE
+        const CMD_LIST_FILES = 0x04;  // FS_WRITE_LIST
+        const CMD_LIST_FILES_ERR = 0x05; // FS_LIST_ERROR_INDICATION
+
+        // Dimensioni Header
+        const HEADER_SIZE_FIRST = 11;     // ID(1) + ScriptLen(4) + CRC(4) + SeqID(2)
+        const HEADER_SIZE_SUBSEQUENT = 2; // SeqID(2)
+
+        const MAX_FILENAME_LENGTH = 30;
+        const MAX_BLE_CHUNK_SIZE = 500; // Dimensione massima del pacchetto BLE (MTU)
+
+        // Stato BLE
+        let gattServer = null;
+        let device = null;
+        let fileSystemCharacteristic = null;
+        let uploadedFileBuffer = null; // Buffer per i dati del file caricato in memoria
+
+        // NUOVO: Stato per ricezione lista file
+        let isListingFiles = false;
+        let fileListBuffer = new Uint8Array(0);
+
+        // Elementi UI
+        const statusElement = document.getElementById('status');
+        const logArea = document.getElementById('logArea');
+        const connectBtn = document.getElementById('connectButton');
+        const disconnectBtn = document.getElementById('disconnectButton');
+        const uploadChunksBtn = document.getElementById('uploadChunksButton');
+        const saveFileBtn = document.getElementById('saveFileButton');
+        const fileToUploadInput = document.getElementById('fileToUpload');
+        const filenameInput = document.getElementById('filenameInput');
+        const fileToDeleteInput = document.getElementById('fileToDeleteInput');
+        const deleteBtn = document.getElementById('deleteButton');
+        const listFilesBtn = document.getElementById('listFilesButton'); // NUOVO
+        const fileListElement = document.getElementById('fileList');     // NUOVO
+        
+        // --- UTILS UI ---
+        function log(message) {
+            logArea.value += `[${new Date().toLocaleTimeString()}] ${message}\n`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function updateStatus(message) {
+            statusElement.textContent = `Stato: ${message}`;
+        }
+        
+        function setControlsState(connected) {
+            connectBtn.disabled = connected;
+            disconnectBtn.disabled = !connected;
+            // Upload button enabled if connected AND file selected
+            uploadChunksBtn.disabled = !connected || fileToUploadInput.files.length === 0;
+            // Save button enabled if connected AND upload was completed (buffer is not null) AND filename set
+            saveFileBtn.disabled = !connected || uploadedFileBuffer === null || filenameInput.value.trim().length === 0;
+            deleteBtn.disabled = !connected;
+            listFilesBtn.disabled = !connected; // NUOVO
+        }
+        
+        // Listener per abilitare/disabilitare il pulsante SAVE
+        filenameInput.addEventListener('input', () => {
+            setControlsState(gattServer && gattServer.connected);
+        });
+        fileToUploadInput.addEventListener('change', () => {
+            // Pre-compila il nome file e carica il buffer in memoria per il salvataggio
+            const file = fileToUploadInput.files[0];
+            if (file) {
+                let name = file.name;
+                if (name.length > MAX_FILENAME_LENGTH) {
+                    name = name.substring(0, MAX_FILENAME_LENGTH);
+                    log(`Avviso: Nome file troncato a ${MAX_FILENAME_LENGTH} caratteri.`);
+                }
+                filenameInput.value = name;
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    uploadedFileBuffer = event.target.result;
+                    log(`File "${file.name}" pronto in memoria. Dimensione: ${file.size} bytes. (CRC-32 da calcolare)`);
+                    setControlsState(gattServer && gattServer.connected);
+                };
+                reader.readAsArrayBuffer(file);
+
+            } else {
+                uploadedFileBuffer = null;
+                setControlsState(gattServer && gattServer.connected);
+            }
+        });
+
+
+        // --- CONNESSIONE ---
+        async function connectAndSetup() {
+            try {
+                updateStatus('Tentativo di connessione...');
+                log('Richiesta dispositivi BLE...');
+                
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: [SERVICE_UUID] }],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                log(`Trovato dispositivo: ${device.name}`);
+                device.addEventListener('gattserverdisconnected', onDisconnected);
+                
+                gattServer = await device.gatt.connect();
+                log('Connesso al GATT Server.');
+                
+                const service = await gattServer.getPrimaryService(SERVICE_UUID);
+                log(`Trovato Service UUID: ${SERVICE_UUID.toString(16).toUpperCase()}`);
+                
+                fileSystemCharacteristic = await service.getCharacteristic(FS_CHR_UUID);
+                log(`Trovata Characteristic File System UUID: ${FS_CHR_UUID.toString(16).toUpperCase()}`);
+                
+                // NUOVO: Abilita le notifiche/indicazioni sulla caratteristica per ricevere risposte (es. lista file)
+                await fileSystemCharacteristic.startNotifications();
+                fileSystemCharacteristic.addEventListener('characteristicvaluechanged', handleCharacteristicValueChanged);
+                log('Notifiche sulla caratteristica File System abilitate.');
+
+                updateStatus('Connesso!');
+                setControlsState(true);
+
+            } catch (error) {
+                log(`ERRORE DI CONNESSIONE: ${error}`);
+                updateStatus('Connessione Fallita');
+                setControlsState(false);
+            }
+        }
+
+        function disconnectDevice() {
+            if (gattServer && gattServer.connected) {
+                log(`Disconnessione forzata da ${device.name}...`);
+                gattServer.disconnect();
+            } else {
+                log('Non è presente alcuna connessione attiva.');
+            }
+        }
+
+        function onDisconnected(event) {
+            const disconnectedDevice = event.target;
+            log(`Dispositivo "${disconnectedDevice.name}" disconnesso!`);
+            updateStatus('Disconnesso');
+            setControlsState(false);
+            gattServer = null;
+            device = null;
+            fileSystemCharacteristic = null;
+            isListingFiles = false; // NUOVO
+            fileListBuffer = new Uint8Array(0); // NUOVO
+        }
+        
+        // --- Constants (Ensure these match your robot's command definitions) ---
+        // The initial command byte is always 1 byte long.
+        const CMD_BYTE_LEN = 1; 
+        // First Packet Header Length (ID (1) + total_size (2) + CRC32 (4) + seq_id (2)) = 9 bytes
+        // NOTE: The C code puts ID at offset 0, size at 1, CRC at 3, seq_id at 7.
+        // The total length of this custom header before the payload starts is 9 bytes.
+        const FIRST_PACKET_HEADER_LEN = 9; 
+        // Subsequent Packet Header Length (seq_id (2)) = 2 bytes
+        const SUBSEQUENT_PACKET_HEADER_LEN = 2;
+
+        // --- Global State Variables (Assuming they are defined elsewhere) ---
+        // let fileListBuffer = new Uint8Array(0);
+        // let isListingFiles = false;
+        // let totalExpectedLength = 0;
+        let currentSequenceId = 0; // The sequence ID we expect next (starts at 0)
+        let expectedCRC = 0;
+        // let fileListElement = document.getElementById('file-list'); // Example
+
+        // --- Utility Functions (Assuming these are available) ---
+        // function log(message) { console.log(message); }
+        // function showCrcError() { log('CRC mismatch error'); /* Add UI logic */ }
+
+        // --- Updated Function to Handle Chunked Data ---
+
+        /**
+         * Handles the characteristic value change event, processing chunked BLE data
+         * from the robot's file listing service.
+         * @param {Event} event - The characteristic value change event.
+         */
+        function handleCharacteristicValueChanged(event) {
+            const value = event.target.value;
+            const data = new Uint8Array(value.buffer);
+            
+            // Log the raw notification length
+            log(`Notifica ricevuta (lunghezza totale: ${data.length} byte).`); 
+
+            // Early exit if not expecting file list data
+            if (!isListingFiles || data.length === 0) {
+                log('Ignorando notifica non attesa o vuota.');
+                return;
+            }
+
+            // Check for the error command (assuming it's a single byte response like CMD_LIST_FILES_ERR)
+            // The error handling below assumes CMD_LIST_FILES_ERR is *not* chunked.
+            // If the error uses a different structure, this logic needs adjustment.
+            if (data[0] === CMD_LIST_FILES_ERR) {
+                log('Ricevuta indicazione di errore nella lista file dal robot.');
+                isListingFiles = false;
+                fileListElement.innerHTML = '<li>ERRORE: Il robot ha segnalato un problema durante la lista file.</li>';
+                fileListBuffer = new Uint8Array(0); // Reset buffer
+                return;
+            }
+
+
+            // Check if it's a file list packet (must start with CMD_LIST_FILES 0x04)
+            if (data[0] === CMD_LIST_FILES) {
+                // This is the FIRST packet (Sequence ID 0)
+
+                // 1. Validate total length
+                if (data.length < FIRST_PACKET_HEADER_LEN) {
+                    log('ERRORE: Primo pacchetto lista file troppo corto.');
+                    return; 
+                }
+
+                // 2. Extract Total Length (2 bytes, little-endian assumed for size/len from C code)
+                // DataView is safer for multi-byte values
+                const dv = new DataView(data.buffer);
+                // Size is at offset 1, 2 bytes (uint16_t), likely little-endian due to ESP32
+                totalExpectedLength = dv.getUint16(1, true); 
+                log(`Inizio ricezione: Lunghezza dati attesa: ${totalExpectedLength} byte.`);
+
+                // 3. Extract CRC32 (4 bytes, little-endian)
+                // CRC32 is at offset 3
+                expectedCRC = dv.getUint32(3, true); 
+                log(`CRC32 atteso: 0x${expectedCRC.toString(16)}`);
+
+                // 4. Extract Sequence ID (2 bytes)
+                // Sequence ID is at offset 7
+                const seqId = dv.getUint16(7, true); 
+                
+                // Sanity check: This MUST be the first packet
+                if (seqId !== 0 || currentSequenceId !== 0) {
+                    log(`AVVISO: Ricevuto pacchetto ID ${seqId} quando mi aspettavo ID 0 o 0. Riavvio la sequenza.`);
+                    // Reset state if we get a new 'start' command unexpectedly
+                    fileListBuffer = new Uint8Array(0);
+                    currentSequenceId = 0;
+                }
+
+                currentSequenceId = 1; // Expect the next packet to be ID 1
+
+                // 5. Extract Payload (data after the 9-byte header)
+                const payload = data.slice(FIRST_PACKET_HEADER_LEN);
+                
+                log(`Ricevuto primo pacchetto lista file (ID 0), payload dimensione: ${payload.byteLength} byte.`);
+                
+                // 6. Concatena il nuovo chunk al buffer totale
+                fileListBuffer = payload; 
+
+                // If the entire file list fits in the first packet (and only one is sent)
+                if (fileListBuffer.byteLength === totalExpectedLength) {
+                    processCompleteFileList(totalExpectedLength, expectedCRC);
+                }
+
+            } 
+            else {
+                // This is a SUBSEQUENT packet (Sequence ID > 0)
+                
+                // 1. Validate total length
+                if (data.length < SUBSEQUENT_PACKET_HEADER_LEN) {
+                    log('ERRORE: Pacchetto lista file successivo troppo corto.');
+                    return;
+                }
+
+                // 2. Extract Sequence ID (2 bytes)
+                const dv = new DataView(data.buffer);
+                const seqId = dv.getUint16(0, true); // Sequence ID is at offset 0, 2 bytes
+
+                // Sanity check: Check sequence ID match
+                if (seqId !== currentSequenceId) {
+                    log(`ERRORE: Disallineamento sequenza. Ricevuto ID ${seqId}, atteso ID ${currentSequenceId}.`);
+                    // Stop processing to avoid data corruption.
+                    // A more robust implementation might request a retransmission.
+                    isListingFiles = false;
+                    fileListBuffer = new Uint8Array(0);
+                    fileListElement.innerHTML = '<li>ERRORE: Errore di sequenza nella ricezione dati.</li>';
+                    return;
+                }
+
+                // 3. Extract Payload (data after the 2-byte header)
+                const payload = data.slice(SUBSEQUENT_PACKET_HEADER_LEN);
+                
+                log(`Ricevuto pacchetto lista file (ID ${seqId}), payload dimensione: ${payload.byteLength} byte.`);
+
+                // 4. Concatena il nuovo chunk al buffer totale
+                const tempBuffer = new Uint8Array(fileListBuffer.length + payload.length);
+                tempBuffer.set(fileListBuffer, 0);
+                tempBuffer.set(payload, fileListBuffer.length);
+                fileListBuffer = tempBuffer;
+                
+                currentSequenceId++; // Prepare for the next packet
+
+                // 5. Check for completion
+                if (fileListBuffer.byteLength >= totalExpectedLength) {
+                    // Note: Use >= for safety, though it should ideally be ==
+                    processCompleteFileList(totalExpectedLength, expectedCRC);
+                }
+
+                // The ESP32 code doesn't send a zero-length packet to signal the end, 
+                // it simply stops when `remaining_len` is 0, so we check total length.
+            }
+        }
+
+        // --- Helper function for processing the final buffer ---
+
+        /**
+         * Processes the final, complete buffer containing the file list JSON.
+         * @param {number} expectedLength - The total expected length of the file list data.
+         * @param {number} expectedCrc - The CRC32 checksum provided in the first packet.
+         */
+        function processCompleteFileList(expectedLength, expectedCrc) {
+            log('Fine ricezione lista file of size ' + fileListBuffer.byteLength + ' byte (expectedLength = ' + expectedLength + ').');
+            isListingFiles = false;
+            
+            // Final check on length
+            if (fileListBuffer.byteLength !== expectedLength) {
+                log(`ERRORE: Lunghezza finale (${fileListBuffer.byteLength}) non corrisponde all'attesa (${expectedLength}).`);
+                fileListElement.innerHTML = '<li>ERRORE: Dati incompleti o corrotti.</li>';
+                fileListBuffer = new Uint8Array(0);
+                currentSequenceId = 0;
+                totalExpectedLength = 0;
+                expectedCRC = 0;
+                return;
+            }
+            
+            // ⚠️ CRITICAL: Implement CRC32 Check
+            // You MUST implement a JavaScript equivalent of esp_rom_crc32_be (or similar 
+            // CRC32 calculation) and check:
+            // const actualCRC = calculateCrc32(fileListBuffer); 
+            // if (actualCRC !== expectedCrc) {
+            //     log(`ERRORE: CRC32 non corrisponde. Calcolato: 0x${actualCRC.toString(16)}, Atteso: 0x${expectedCrc.toString(16)}`);
+            //     showCrcError(); // Show a specific CRC error message
+            //     fileListBuffer = new Uint8Array(0);
+            //     currentSequenceId = 0;
+            //     totalExpectedLength = 0;
+            //     expectedCRC = 0;
+            //     return;
+            // }
+            
+            try {
+                // Decodifica l'intero buffer come stringa UTF-8 (si suppone sia un JSON)
+                // Ensure to slice to the exact expected length if the last packet was over-sized,
+                // though the C code aims for exact length.
+                const jsonString = new TextDecoder().decode(fileListBuffer.slice(0, expectedLength));
+                log(`Stringa JSON completa ricevuta: ${jsonString.length} caratteri.`);
+
+                // Pulisce e popola la lista
+                fileListElement.innerHTML = '';
+                if (jsonString.trim().length === 0) {
+                    fileListElement.innerHTML = '<li>Nessun file presente.</li>';
+                } else {
+                    // Tenta il parsing JSON. Ci si aspetta un array di oggetti file.
+                    /** @type {FileInfo[]} */
+                    const files = JSON.parse(jsonString); 
+                    
+                    if (Array.isArray(files) && files.length > 0) {
+                        files.forEach(file => {
+                            const li = document.createElement('li');
+                            // Assumendo che ogni oggetto abbia 'name' e 'size'
+                            li.textContent = `${file.name} (${file.size} bytes)`; 
+                            fileListElement.appendChild(li);
+                        });
+                        log(`Lista file aggiornata (${files.length} file).`);
+                    } else {
+                        fileListElement.innerHTML = '<li>Nessun file presente o formato JSON vuoto/non valido.</li>';
+                    }
+                }
+
+            } catch (e) {
+                log(`ERRORE durante il parsing JSON della lista file: ${e}`);
+                fileListElement.innerHTML = '<li>ERRORE nel formato di risposta del robot.</li>';
+            }
+
+            // Reset all state for the next file list request
+            fileListBuffer = new Uint8Array(0); 
+            currentSequenceId = 0;
+            totalExpectedLength = 0;
+            expectedCRC = 0;
+        }
+
+        // --- CRC-32 IMPLEMENTATION (Standard IEEE 802.3) ---
+        let crc32Table = null;
+
+        function makeCRCTable() {
+            let c;
+            const crcTable = [];
+            for (let n = 0; n < 256; n++) {
+                c = n;
+                for (let k = 0; k < 8; k++) {
+                    c = ((c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1));
+                }
+                crcTable[n] = c;
+            }
+            return crcTable;
+        }
+
+        function crc32(buffer, crc = 4294967295) {
+            const buf = new Uint8Array(buffer);
+            for (let i = 0; i < buf.length; i++) {
+                crc ^= buf[i] << 24;
+                for (let j = 0; j < 8; j++) {
+                if ((crc & 2147483648) === 0) {
+                    crc <<= 1;
+                } else {
+                    crc = crc << 1 ^ 79764919;
+                }
+                }
+            }
+            return crc & 4294967295;
+        }
+
+        // --- PACKET BUILDERS ---
+
+        /**
+         * Creates the first packet with the full header.
+         * Structure: [ID(1)] [ScriptLen(4)] [CRC(4)] [SeqID(2)] [Data(N)]
+         */
+        function createHeaderPacket(fullBuffer, chunkData, crc, seqId) {
+            const packet = new ArrayBuffer(HEADER_SIZE_FIRST + chunkData.byteLength);
+            const view = new DataView(packet);
+            const dataArray = new Uint8Array(chunkData);
+            
+            // ID (1 byte)
+            view.setUint8(0, CMD_LOAD_CHUNK); 
+
+            // Script Len (4 bytes, Little-Endian)
+            view.setUint32(1, fullBuffer.byteLength, false); 
+
+            // CRC (4 bytes, Little-Endian)
+            view.setUint32(5, crc, false); 
+
+            // Seq ID (2 bytes, Little-Endian)
+            view.setUint16(9, seqId, false); 
+
+            // Data (N bytes)
+            new Uint8Array(packet).set(dataArray, HEADER_SIZE_FIRST);
+
+            return packet;
+        }
+
+        /**
+         * Creates a subsequent packet with only SeqID.
+         * Structure: [SeqID(2)] [Data(N)]
+         */
+        function createChunkPacket(chunkData, seqId) {
+            const packet = new ArrayBuffer(HEADER_SIZE_SUBSEQUENT + chunkData.byteLength);
+            const view = new DataView(packet);
+            const dataArray = new Uint8Array(chunkData);
+            
+            // Seq ID (2 bytes, Little-Endian)
+            view.setUint16(0, seqId, false); 
+
+            // Data (N bytes)
+            new Uint8Array(packet).set(dataArray, HEADER_SIZE_SUBSEQUENT);
+
+            return packet;
+        }
+
+
+        // --- UPLOAD CHUNKS (0x01) ---
+        async function startUploadChunks() {
+            if (!gattServer || !gattServer.connected || uploadedFileBuffer === null) {
+                log('ERRORE: Connessione non attiva o nessun file caricato in memoria.');
+                return;
+            }
+            
+            const totalBytes = uploadedFileBuffer.byteLength;
+            const fileCrc = crc32(uploadedFileBuffer);
+            log(`CRC-32 del file calcolato: 0x${fileCrc.toString(16).toUpperCase()}`);
+
+            let offset = 0;
+            let seqId = 0;
+            
+            try {
+                log(`Inizio upload del file (Dimensione: ${totalBytes} bytes).`);
+                
+                uploadChunksBtn.disabled = true;
+                saveFileBtn.disabled = true;
+
+                while (offset < totalBytes) {
+                    let packet;
+                    let payloadSize;
+                    
+                    if (seqId === 0) {
+                        // --- Primo Pacchetto (Header + Dati) ---
+                        const maxDataSize = MAX_BLE_CHUNK_SIZE - HEADER_SIZE_FIRST;
+                        const end = Math.min(offset + maxDataSize, totalBytes);
+                        const chunkData = uploadedFileBuffer.slice(offset, end);
+                        
+                        packet = createHeaderPacket(uploadedFileBuffer, chunkData, fileCrc, seqId);
+                        payloadSize = chunkData.byteLength;
+                        
+                        log(`Invio Header/Chunk 0: Len=${totalBytes}, CRC=0x${fileCrc.toString(16).toUpperCase()}, Dati=${payloadSize} bytes.`);
+
+                    } else {
+                        // --- Pacchetti Successivi (SeqID + Dati) ---
+                        const maxDataSize = MAX_BLE_CHUNK_SIZE - HEADER_SIZE_SUBSEQUENT;
+                        const end = Math.min(offset + maxDataSize, totalBytes);
+                        const chunkData = uploadedFileBuffer.slice(offset, end);
+
+                        packet = createChunkPacket(chunkData, seqId);
+                        payloadSize = chunkData.byteLength;
+                        
+                        log(`Invio Chunk ${seqId}: Dati=${payloadSize} bytes.`);
+                    }
+
+                    // Scrivi il pacchetto sul robot
+                    await fileSystemCharacteristic.writeValueWithResponse(new Uint8Array(packet));
+
+                    offset += payloadSize;
+                    seqId++;
+                    updateStatus(`Upload: ${offset}/${totalBytes} bytes (${(offset/totalBytes * 100).toFixed(1)}%)`);
+                    
+                    await new Promise(r => setTimeout(r, 5)); // Breve pausa tra i pacchetti
+                }
+                
+                log('Caricamento dati completato. Ora puoi usare il pulsante "Salva File".');
+                setControlsState(true); 
+                updateStatus('Connesso! Upload completato.');
+                
+            } catch (error) {
+                log(`ERRORE DURANTE L'UPLOAD: ${error}`);
+                setControlsState(true);
+            }
+        }
+
+        // --- SALVATAGGIO FILE (0x02) ---
+        async function saveFile() {
+            const filename = filenameInput.value.trim();
+            const MAX_PAYLOAD_SIZE = 30; // 30 bytes per il nome file (incluso il terminatore nullo)
+            const MAX_CHARS = MAX_PAYLOAD_SIZE - 1; // 29 caratteri
+
+            if (!gattServer || !gattServer.connected) {
+                log('ERRORE: Connessione non attiva.');
+                return;
+            }
+            if (uploadedFileBuffer === null) {
+                log('ERRORE: Nessun file è stato caricato in memoria (devi prima eseguire l\'upload dei chunks).');
+                return;
+            }
+            // NOTA: Usiamo MAX_CHARS (29) per il controllo, poiché il 30° byte deve essere \0.
+            if (filename.length === 0 || filename.length > MAX_CHARS) {
+                log(`ERRORE: Il nome del file deve essere tra 1 e ${MAX_CHARS} caratteri.`);
+                return;
+            }
+
+            try {
+                const filenameBytes = new TextEncoder().encode(filename);
+                // Il pacchetto finale sarà di 31 byte: 1 byte (Comando) + 30 byte (Payload fisso)
+                const packet = new Uint8Array(1 + MAX_PAYLOAD_SIZE);
+                
+                // 1. Inserisci l'ID del comando (0x02)
+                packet[0] = CMD_SAVE_FILE; 
+
+                // 2. Inserisci il nome del file (a partire dall'indice 1)
+                // La stringa è garantita essere < 30 byte dalla validazione sopra.
+                packet.set(filenameBytes, 1); 
+
+                // 3. Aggiungi il terminatore nullo immediatamente dopo la stringa
+                // Tutte le posizioni successive al terminatore (fino all'indice 30) rimangono a 0 (padding),
+                // grazie all'inizializzazione di Uint8Array.
+                packet[1 + filenameBytes.byteLength] = 0x00; 
+
+                log(`Invio comando di Salvataggio (0x02) per il file: "${filename}".`);
+                log(`Pacchetto di ${packet.byteLength} byte (Nome file a 30 byte, incluso \\0 e padding).`);
+                
+                await fileSystemCharacteristic.writeValueWithResponse(packet);
+                log(`OPERAZIONE COMPLETATA: File "${filename}" salvato con successo sul robot.`);
+                
+            } catch (error) {
+                log(`ERRORE DURANTE IL SALVATAGGIO: ${error}`);
+            }
+        }
+
+        // --- ELIMINAZIONE FILE (0x03) ---
+        async function deleteFile() {
+            const filename = fileToDeleteInput.value.trim();
+            const MAX_PAYLOAD_SIZE = 30; // 30 bytes per il nome file (incluso il terminatore nullo)
+            const MAX_CHARS = MAX_PAYLOAD_SIZE - 1; // 29 caratteri
+
+            if (!gattServer || !gattServer.connected) {
+                log('ERRORE: Connessione non attiva.');
+                return;
+            }
+            if (filename.length === 0 || filename.length > MAX_CHARS) {
+                log(`ERRORE: Il nome del file deve essere tra 1 e ${MAX_CHARS} caratteri.`);
+                return;
+            }
+
+            try {
+                const filenameBytes = new TextEncoder().encode(filename);
+                // Il pacchetto finale sarà di 31 byte: 1 byte (Comando) + 30 byte (Payload fisso)
+                const packet = new Uint8Array(1 + MAX_PAYLOAD_SIZE);
+                
+                // 1. Inserisci l'ID del comando (0x03)
+                packet[0] = CMD_DELETE_FILE; 
+
+                // 2. Inserisci il nome del file (a partire dall'indice 1)
+                packet.set(filenameBytes, 1); 
+
+                // 3. Aggiungi il terminatore nullo immediatamente dopo la stringa
+                packet[1 + filenameBytes.byteLength] = 0x00;
+
+                log(`Invio comando di Eliminazione (0x03) per il file: "${filename}".`);
+                log(`Pacchetto di ${packet.byteLength} byte (Nome file a 30 byte, incluso \\0 e padding).`);
+                
+                await fileSystemCharacteristic.writeValueWithResponse(packet);
+                log(`OPERAZIONE COMPLETATA: Comando di eliminazione per "${filename}" inviato.`);
+            } catch (error) {
+                log(`ERRORE DURANTE L'ELIMINAZIONE: ${error}`);
+            }
+        }
+        
+        // --- NUOVO: LISTA FILE (0x04) ---
+        async function listFiles() {
+            if (!gattServer || !gattServer.connected) {
+                log('ERRORE: Connessione non attiva.');
+                return;
+            }
+
+            // Pacchetto è solo il comando (1 byte)
+            const packet = new Uint8Array([CMD_LIST_FILES]); 
+
+            // Reset stato di ricezione
+            isListingFiles = true; 
+            fileListBuffer = new Uint8Array(0);
+            fileListElement.innerHTML = '<li>Richiesta inviata... in attesa di indicazione...</li>';
+            
+            try {
+                log('Invio comando di Richiesta Lista File (0x04).');
+                
+                // Invia la richiesta al robot
+                await fileSystemCharacteristic.writeValueWithResponse(packet);
+                
+            } catch (error) {
+                log(`ERRORE DURANTE LA RICHIESTA LISTA FILE: ${error}`);
+                isListingFiles = false;
+                fileListElement.innerHTML = '<li>ERRORE durante l\'invio della richiesta.</li>';
+            }
+        }
+
+        // Inizializza lo stato dei pulsanti all'avvio
+        document.addEventListener('DOMContentLoaded', () => setControlsState(false));
+
+    </script>
+</body>
+</html>

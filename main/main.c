@@ -326,9 +326,9 @@ int app_main(void)
 // Initialization
 //*****************************************************************************
 
-	//esp_log_level_set("*", ESP_LOG_NONE);
+	esp_log_level_set("*", ESP_LOG_NONE);
 	//esp_log_level_set("*", ESP_LOG_ERROR);
-	esp_log_level_set("*", ESP_LOG_INFO);
+	//esp_log_level_set("*", ESP_LOG_INFO);
 	//esp_log_level_set("*", ESP_LOG_DEBUG);
 	//esp_log_level_set("*", ESP_LOG_VERBOSE);
 

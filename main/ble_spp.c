@@ -56,15 +56,23 @@ static const char *TAG = "THYMIO_BLUETOOTH";
 #define MAX_BT_RX_BUFF (CMD_WRITE_MOST_ACTUATORS_LEN)
 #define MAX_BT_TX_BUFF (STREAM_NOTIFY_MOST_SENSORS_LEN)
 
+// Python characteristic definitions
 #define FILE_LOAD_OK 0
 #define FILE_LOAD_CRC_ERR 1
 #define FILE_LOAD_NOT_COMPLETE 2
 #define FILE_LOAD_WRONG_SEQ 3
 #define FILE_LOAD_TOO_BIG 4
 
+// Audio characteristic definitions
 #define AUDIO_PLAY_UNDEF 0
 #define AUDIO_PLAY_LOADED 1
 #define AUDIO_PLAY_RECORDED 2
+
+// File system characteristic definitions
+#define FILENAME_MAX_LEN 30
+#define FS_LIST_MAX_TOTAL_CHUNK_SIZE 500 // Maximum total size of each BLE indication chunk (including header)
+#define FS_LIST_FIRST_PACKET_HEADER_LEN 9 //First Packet Header: ID(1) + size(2) + CRC32(4) + seq_id(2) = 9 bytes
+#define FS_LIST_SUBSEQUENT_PACKET_HEADER_LEN 2 // Subsequent Packet Header: seq_id(2) = 2 bytes
 
 uint8_t bt_rx_data[MAX_BT_RX_BUFF]; // Received commands from the device (e.g. from phone)
 uint8_t bt_rx_data_temp[MAX_BT_RX_BUFF]; // Double buffer for parsing the data while receiving new data without corruption
@@ -138,6 +146,22 @@ esp_ble_ota_notification_check_t ota_notification = {
 static RingbufHandle_t s_ringbuf = NULL;
 SemaphoreHandle_t notify_sem;
 static esp_ota_handle_t out_handle;
+
+// File system variables
+static uint16_t ble_fs_val_handle;
+static uint8_t *fs_data = NULL;
+char fs_filename[FILENAME_MAX_LEN] = {0};
+static uint32_t fs_tot_len = 0;
+static uint32_t fs_curr_len = 0;
+static bool fs_receiving_file = false;
+static uint32_t fs_crc = 0;
+static uint16_t fs_seq_id = 0;
+static uint16_t fs_seq_id_prev = 0;
+static uint16_t fs_timeout = 0;
+static bool fs_file_ready = false;
+
+// Device info variables
+static uint16_t ble_dev_info_val_handle;
 
 // Initial CRC value
 // Note: ESP32's ROM functions for CRC require some bitwise manipulation to match standard CRC32 implementations.
@@ -601,7 +625,7 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                     {
                         if(mp_script_ready)
                         {
-                            mp_save_script(mp_script, ctxt->om->om_data[1]);
+                            mp_save_script(mp_script, ctxt->om->om_data[1], mp_script_tot_len);
                         }
                         else
                         {
@@ -724,7 +748,7 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                             receiving_audio = true;
                             // copy first chunk of data
                             os_mbuf_copydata(ctxt->om, 11, OS_MBUF_PKTLEN(ctxt->om) - 11, audio_data + audio_curr_len);
-                            audio_curr_len += OS_MBUF_PKTLEN(ctxt->om) - 11; // Firt packet contains also command id (1); audio len (4), crc (4), sequence id (2) = 31 bytes                        
+                            audio_curr_len += OS_MBUF_PKTLEN(ctxt->om) - 11; // Firt packet contains also command id (1); audio len (4), crc (4), sequence id (2) = 11 bytes
                             if(audio_curr_len == audio_tot_len) // All the audio data received in the first packet (small audio)
                             {
                                 receiving_audio = false;                        
@@ -901,6 +925,184 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                         }   
                     }   
                 }
+                break;
+
+            case BLE_GATT_ACCESS_OP_READ_CHR:
+                //MODLOG_DFLT(INFO, "Callback for read");
+                break;
+
+            default:
+                MODLOG_DFLT(INFO, "\nDefault Callback");
+                break;
+        }
+    }
+    if (ble_uuid_cmp(uuid, BLE_UUID16_DECLARE(BLE_SVC_FILE_SYSTEM_CHR_UUID16)) == 0) {
+        switch (ctxt->op) {
+            case BLE_GATT_ACCESS_OP_WRITE_CHR:
+                //MODLOG_DFLT(INFO, "Data received in write event,conn_handle = %x,attr_handle = %x", conn_handle, attr_handle);
+                ESP_LOGI(TAG, "FS buf len = %d (%d) [%d]", ctxt->om->om_len, ctxt->om->om_pkthdr_len, OS_MBUF_PKTLEN(ctxt->om));
+                ESP_LOG_BUFFER_HEX(TAG, ctxt->om->om_data, ctxt->om->om_len);
+                ble_hs_mbuf_to_flat(ctxt->om, rx_buff_temp, 500, NULL);
+                ESP_LOG_BUFFER_HEX(TAG, rx_buff_temp, OS_MBUF_PKTLEN(ctxt->om));
+
+                if(fs_receiving_file)
+                {
+                    fs_timeout = 0; // Reset timeout
+                    fs_seq_id = (ctxt->om->om_data[0] << 8) | ctxt->om->om_data[1];
+                    ESP_LOGI(TAG, "seq id = %d, curr len = %d (tot=%d)", fs_seq_id, fs_curr_len, fs_tot_len);
+                    if(fs_seq_id != (fs_seq_id_prev+1))
+                    {
+                        fs_receiving_file = false;
+                        ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_WRONG_SEQ);
+                        free(fs_data);
+                        fs_data = NULL;
+                        break;      
+                    }
+                    fs_seq_id_prev++;
+                    // copy remaining chunk of data
+                    os_mbuf_copydata(ctxt->om, 2, OS_MBUF_PKTLEN(ctxt->om) - 2, fs_data + fs_curr_len);
+                    fs_curr_len += OS_MBUF_PKTLEN(ctxt->om) - 2; // Each packet contains also a sequence id (2 bytes)
+                    if(fs_curr_len == fs_tot_len)
+                    {
+                        fs_receiving_file = false;                        
+                        // Check the integrity of the data once all the script is received.
+                        calculated_crc = esp_rom_crc32_be(initial_crc, (uint8_t*)fs_data, fs_tot_len);
+                        calculated_crc = ~calculated_crc; // The final CRC value needs to be bitwise NOT-ed to get the standard CRC32 result.
+                        ESP_LOGI(TAG, "calc crc=%x", calculated_crc);
+                        //ESP_LOGI(TAG, "le) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_le(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_le(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_le(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_le(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
+                        //ESP_LOGI(TAG, "be) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
+                        if(calculated_crc == fs_crc)
+                        {
+                            ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_OK);
+                            fs_file_ready = true;
+                            // Do not free fs_data here as it could be used later for saving
+                        }
+                        else
+                        {
+                            ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_CRC_ERR);
+                            free(fs_data);
+                            fs_data = NULL;
+                        }
+                    }             
+                }
+                else
+                {
+                    if(ctxt->om->om_data[0] == FS_WRITE_LOAD)
+                    {
+                        fs_timeout = 0; // Reset timeout
+                        fs_tot_len = (ctxt->om->om_data[1] << 24) | (ctxt->om->om_data[2] << 16) | (ctxt->om->om_data[3] << 8) | ctxt->om->om_data[4];
+                        fs_crc = (ctxt->om->om_data[5] << 24) | (ctxt->om->om_data[6] << 16) | (ctxt->om->om_data[7] << 8) | ctxt->om->om_data[8];
+                        fs_seq_id = (ctxt->om->om_data[9] << 8) | ctxt->om->om_data[10];
+                        ESP_LOGI(TAG,"FS tot len=%d, crc=%x, seq=%d", fs_tot_len, fs_crc, fs_seq_id);
+                        fs_seq_id_prev = 0;
+                        if(fs_data != NULL) // Free any previous allocated buffer
+                        {
+                            free(fs_data);
+                            fs_data = NULL;
+                        }
+                        fs_data = malloc(fs_tot_len);
+                        if(fs_data == NULL)
+                        {
+                            ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_TOO_BIG);
+                        }
+                        else if(fs_seq_id != 0)
+                        {
+                            ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_WRONG_SEQ);
+                            free(fs_data);
+                            fs_data = NULL;
+                        }
+                        else
+                        {
+                            fs_file_ready = false;
+                            fs_curr_len = 0;
+                            fs_receiving_file = true;
+                            // copy first chunk of data
+                            os_mbuf_copydata(ctxt->om, 11, OS_MBUF_PKTLEN(ctxt->om) - 11, fs_data + fs_curr_len);
+                            fs_curr_len += OS_MBUF_PKTLEN(ctxt->om) - 11; // Firt packet contains also command id (1); file len (4), crc (4), sequence id (2) = 11 bytes                        
+                            if(fs_curr_len == fs_tot_len) // All the file data received in the first packet (small file)
+                            {
+                                fs_receiving_file = false;                        
+                                // Check the integrity of the data once all the script is received.
+                                calculated_crc = esp_rom_crc32_be(initial_crc, (uint8_t*)fs_data, fs_tot_len);
+                                calculated_crc = ~calculated_crc; // The final CRC value needs to be bitwise NOT-ed to get the standard CRC32 result.
+                                ESP_LOGI(TAG, "calc crc=%x", calculated_crc);
+                                //ESP_LOGI(TAG, "le) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_le(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_le(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_le(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_le(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
+                                //ESP_LOGI(TAG, "be) crc1=%x, crc2=%x, crc3=%x, crc4=%x",  esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(~initial_crc, (uint8_t*)mp_script, mp_script_tot_len), ~esp_rom_crc32_be(initial_crc, (uint8_t*)mp_script, mp_script_tot_len));
+                                if(calculated_crc == fs_crc)
+                                {
+                                    ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_OK);
+                                    fs_file_ready = true;
+                                    // Do not free fs_data here as it could be used later for saving
+                                }
+                                else
+                                {
+                                    ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_CRC_ERR);
+                                    free(fs_data);
+                                    fs_data = NULL;
+                                }
+                            }
+                        }
+                    } 
+                    else if(ctxt->om->om_data[0] == FS_WRITE_SAVE)
+                    {
+                        memset(fs_filename, 0, FILENAME_MAX_LEN);
+                        strncpy(fs_filename, (const char*)&ctxt->om->om_data[1], FILENAME_MAX_LEN);
+                        fs_filename[FILENAME_MAX_LEN-1] = '\0';
+                        ESP_LOGI(TAG, "FS save filename: %s", fs_filename);
+                        if(fs_file_ready)
+                        {
+                            mp_save_file(fs_data, fs_filename, fs_tot_len);
+                        }
+                        else
+                        {
+                            ble_indicate_fs(FS_IND_SAVE_RES, FS_SAVE_NOT_FOUND);
+                        }
+                    }
+                    else if(ctxt->om->om_data[0] == FS_WRITE_DELETE)
+                    {
+                        memset(fs_filename, 0, FILENAME_MAX_LEN);
+                        strncpy(fs_filename, (const char*)&ctxt->om->om_data[1], FILENAME_MAX_LEN);
+                        fs_filename[FILENAME_MAX_LEN-1] = '\0';
+                        ESP_LOGI(TAG, "FS delete filename: %s", fs_filename);
+                        mp_delete_file(fs_filename);
+                    }         
+                    else if(ctxt->om->om_data[0] == FS_WRITE_LIST)
+                    {
+                        mp_list_files();
+                    }   
+                    else if(ctxt->om->om_data[0] == FS_WRITE_ERASE_ALL)
+                    {
+                        
+                    }                                                  
+                    break;
+                }
+
+            case BLE_GATT_ACCESS_OP_READ_CHR:
+                //MODLOG_DFLT(INFO, "Callback for read");
+                break;
+
+            default:
+                MODLOG_DFLT(INFO, "\nDefault Callback");
+                break;
+        }
+    }    
+    if (ble_uuid_cmp(uuid, BLE_UUID16_DECLARE(BLE_SVC_DEVICE_INFO_CHR_UUID16)) == 0) {
+        switch (ctxt->op) {
+            case BLE_GATT_ACCESS_OP_WRITE_CHR:
+                //MODLOG_DFLT(INFO, "Data received in write event,conn_handle = %x,attr_handle = %x", conn_handle, attr_handle);
+                ESP_LOGI(TAG, "FS buf len = %d (%d) [%d]", ctxt->om->om_len, ctxt->om->om_pkthdr_len, OS_MBUF_PKTLEN(ctxt->om));
+                ESP_LOG_BUFFER_HEX(TAG, ctxt->om->om_data, ctxt->om->om_len);
+                ble_hs_mbuf_to_flat(ctxt->om, rx_buff_temp, 500, NULL);
+                ESP_LOG_BUFFER_HEX(TAG, rx_buff_temp, OS_MBUF_PKTLEN(ctxt->om));
+
+                if(ctxt->om->om_data[0] == DEV_INFO_WRITE_FIRMWARE)
+                {
+
+                } 
+                else if(ctxt->om->om_data[0] == DEV_INFO_WRITE_MEMORY)
+                {
+                    mp_mem_info();
+                }                                              
                 break;
 
             case BLE_GATT_ACCESS_OP_READ_CHR:
@@ -1219,6 +1421,18 @@ static const struct ble_gatt_svc_def new_ble_svc_gatt_defs[] = {
                 .access_cb = ble_svc_gatt_handler,
                 .val_handle = &ble_audio_val_handle,
                 .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_INDICATE,
+            }, {
+                /* file system characteristic */
+                .uuid = BLE_UUID16_DECLARE(BLE_SVC_FILE_SYSTEM_CHR_UUID16),
+                .access_cb = ble_svc_gatt_handler,
+                .val_handle = &ble_fs_val_handle,
+                .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_INDICATE,
+            }, {
+                /* device info characteristic */
+                .uuid = BLE_UUID16_DECLARE(BLE_SVC_DEVICE_INFO_CHR_UUID16),
+                .access_cb = ble_svc_gatt_handler,
+                .val_handle = &ble_dev_info_val_handle,
+                .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_INDICATE,
             }, {
                 0, /* No more characteristics */
             }
@@ -1633,6 +1847,17 @@ static void bt_rx_tx_task(void *pvParameters)
             }
         }
 
+        if(fs_receiving_file)
+        {
+            fs_timeout++;
+            if(fs_timeout == 1500) // 50 hz * 30 seconds = 1500
+            {
+                fs_timeout = 0;
+                fs_receiving_file = false;
+                ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_NOT_COMPLETE);
+            }
+        }
+
         vTaskDelay(20/portTICK_PERIOD_MS); // 50 hz update
     }
     vTaskDelete(NULL);
@@ -1913,6 +2138,197 @@ void ble_indicate_audio_rec(uint8_t value)
     {
         ESP_LOGI(TAG,"Audio rec error in sending indication");
     }   
+}
+
+void ble_indicate_fs(uint8_t type, uint8_t value)
+{
+    int rc = 0;
+    struct os_mbuf *txom;
+    uint8_t temp[2] = {type, value};
+    txom = ble_hs_mbuf_from_flat(temp, sizeof(temp));
+    rc = ble_gattc_indicate_custom(connection_handle, ble_fs_val_handle, txom);
+    if( rc == 0)
+    {
+        ESP_LOGI(TAG,"PY fs indication sent successfully (%d,%d)", type, value);
+    }
+    else 
+    {
+        ESP_LOGI(TAG,"PY fs error in sending indication (%d,%d)", type, value);
+    }
+}
+
+void ble_indicate_fs_list_err(void)
+{
+    int rc = 0;
+    struct os_mbuf *txom;
+    uint8_t temp[1] = {FS_IND_LIST_RES};
+    txom = ble_hs_mbuf_from_flat(temp, sizeof(temp));
+    rc = ble_gattc_indicate_custom(connection_handle, ble_fs_val_handle, txom);
+    if( rc == 0)
+    {
+        ESP_LOGI(TAG,"FS list error indication sent successfully");
+    }
+    else 
+    {
+        ESP_LOGI(TAG,"FS list error in sending indication");
+    }
+}
+
+void ble_indicate_fs_list(uint8_t *data, uint16_t len)
+{
+    int rc = 0;
+    uint16_t bytes_sent = 0;
+    uint16_t seq_id = 0;
+    uint8_t *current_data_ptr = data;
+    uint16_t remaining_len = len;
+    uint8_t *ind_buf_data = NULL;
+
+    // Check the integrity of the data once all the script is received.
+    calculated_crc = esp_rom_crc32_be(initial_crc, (uint8_t*)data, len);
+    calculated_crc = ~calculated_crc; // The final CRC value needs to be bitwise NOT-ed to get the standard CRC32 result.
+    ESP_LOGI(TAG, "fs list calc crc=%x", calculated_crc);
+
+    // --- Maximum Data Payload Calculation ---
+    // Max Payload for First Packet: 500 - 11 = 489 bytes
+    const uint16_t MAX_PAYLOAD_FIRST = FS_LIST_MAX_TOTAL_CHUNK_SIZE - FS_LIST_FIRST_PACKET_HEADER_LEN;
+    // Max Payload for Subsequent Packets: 500 - 2 = 498 bytes
+    const uint16_t MAX_PAYLOAD_SUBSEQUENT = FS_LIST_MAX_TOTAL_CHUNK_SIZE - FS_LIST_SUBSEQUENT_PACKET_HEADER_LEN;
+
+    while (remaining_len > 0)
+    {
+        uint16_t chunk_payload_len;
+        struct os_mbuf *txom;
+
+        if (seq_id == 0)
+        {
+            // --- First Packet (seq_id = 0) ---
+
+            // Determine the payload length for this chunk
+            chunk_payload_len = (remaining_len > MAX_PAYLOAD_FIRST) ? MAX_PAYLOAD_FIRST : remaining_len;
+
+            uint16_t total_chunk_len = FS_LIST_FIRST_PACKET_HEADER_LEN + chunk_payload_len;
+            ind_buf_data = malloc(total_chunk_len); // ind_buf_data alloc #1
+            if(!ind_buf_data)
+            {
+                ESP_LOGE(TAG, "Failed to allocate memory for first chunk data buffer");
+                ble_indicate_fs_list_err(); // Tell the client there was an error, this is ok here since the transfering of the json is not started yet (no confusion between FS_IND_LIST_RES and sequence id)
+                mp_list_files_free_buffer();
+                return;
+            }
+            ESP_LOGI(TAG, "Preparing first chunk: Total Chunk Len %d, Payload Len %d", total_chunk_len, chunk_payload_len);
+            // Allocate mbuf for the first chunk: header (11) + data (up to 489)
+            txom = ble_hs_mbuf_from_flat(ind_buf_data, total_chunk_len);
+            if (!txom)
+            {
+                ESP_LOGE(TAG, "Failed to allocate mbuf for first chunk");
+                ble_indicate_fs_list_err(); // Tell the client there was an error, this is ok here since the transfering of the json is not started yet (no confusion between FS_IND_LIST_RES and sequence id)
+                mp_list_files_free_buffer();
+                free(ind_buf_data); // free ind_buf_data alloc #1
+                ind_buf_data = NULL;
+                return;
+            }
+
+            // 1. ID = 0x04 (1 byte) -> Offset 0
+            uint8_t id = 0x04;
+            os_mbuf_copyinto(txom, 0, &id, 1);
+
+            // 2. size (2 bytes) - Total length of the original data (len) -> Offset 1
+            os_mbuf_copyinto(txom, 1, &len, 2);
+
+            // 3. CRC32 (4 bytes) -> Offset 2
+            os_mbuf_copyinto(txom, 3, &calculated_crc, 4);
+
+            // 4. seq id (2 bytes) - must be 0 for the first packet -> Offset 7
+            os_mbuf_copyinto(txom, 7, &seq_id, 2);
+
+            // 5. Data payload -> Offset 9 (header_len)
+            os_mbuf_copyinto(txom, FS_LIST_FIRST_PACKET_HEADER_LEN, current_data_ptr, chunk_payload_len);
+        }
+        else
+        {
+            // --- Subsequent Packets (seq_id > 0) ---
+
+            // Determine the payload length for this chunk
+            chunk_payload_len = (remaining_len > MAX_PAYLOAD_SUBSEQUENT) ? MAX_PAYLOAD_SUBSEQUENT : remaining_len;
+
+            uint16_t total_chunk_len = FS_LIST_SUBSEQUENT_PACKET_HEADER_LEN + chunk_payload_len;
+            ind_buf_data = malloc(total_chunk_len); // ind_buf_data alloc #2
+            if(!ind_buf_data)
+            {
+                ESP_LOGE(TAG, "Failed to allocate memory for chunk %d", seq_id);
+                //ble_indicate_fs_list_err(); // Do not indicate error to the client here, it could be confused with sequence ids. The client will notice the missing packets by itself with a timeout.
+                mp_list_files_free_buffer();
+                return;
+            }            
+            ESP_LOGI(TAG, "Preparing chunk %d: Total Chunk Len %d, Payload Len %d", seq_id, total_chunk_len, chunk_payload_len);
+            // Allocate mbuf for the subsequent chunk: header (2) + data (up to 498)
+            txom = ble_hs_mbuf_from_flat(ind_buf_data, total_chunk_len);
+            if (!txom)
+            {
+                ESP_LOGE(TAG, "Failed to allocate mbuf for chunk %d", seq_id);
+                //ble_indicate_fs_list_err(); // Do not indicate error to the client here, it could be confused with sequence ids. The client will notice the missing packets by itself with a timeout.
+                mp_list_files_free_buffer();
+                free(ind_buf_data); // free ind_buf_data alloc #2
+                ind_buf_data = NULL;
+                return;
+            }
+
+            // 1. seq id (2 bytes) - incremented by one -> Offset 0
+            os_mbuf_copyinto(txom, 0, &seq_id, 2);
+
+            // 2. Data payload -> Offset 2 (header_len)
+            os_mbuf_copyinto(txom, FS_LIST_SUBSEQUENT_PACKET_HEADER_LEN, current_data_ptr, chunk_payload_len);
+        }
+
+        // Send the indication. NimBLE takes ownership of txom on success (rc == 0).
+        rc = ble_gattc_indicate_custom(connection_handle, ble_fs_val_handle, txom);
+        
+        free(ind_buf_data); // free ind_buf_data alloc #1 or alloc #2
+        ind_buf_data = NULL;
+
+        if (rc == 0)
+        {
+            ESP_LOGI(TAG, "FS list indication sent successfully: Seq ID %d, Total Len %d, Payload %d",
+                     seq_id, os_mbuf_len(txom), chunk_payload_len);
+
+            // Update state for the next chunk
+            current_data_ptr += chunk_payload_len;
+            remaining_len -= chunk_payload_len;
+            bytes_sent += chunk_payload_len;
+            seq_id++; // Increment sequence ID for the next packet
+        }
+        else
+        {
+            ESP_LOGE(TAG, "FS list error in sending indication: Seq ID %d, rc=%d. Freeing mbuf.", seq_id, rc);
+            // Must free the mbuf chain manually on failure, as NimBLE did not take ownership.
+            os_mbuf_free_chain(txom);
+            //ble_indicate_fs_list_err();   // Do not indicate error to the client here, it could be confused with sequence ids. The client will notice the missing packets by itself with a timeout.
+            mp_list_files_free_buffer();
+            return; // Stop sending on first failure
+        }
+    }
+
+    if (rc == 0)
+    {
+        ESP_LOGI(TAG, "FS list indication fully sent: %d total data bytes in %d packets", len, seq_id);
+    }
+    mp_list_files_free_buffer();
+}
+
+void ble_indicate_dev_info_mem(uint8_t *data, uint16_t len)
+{
+    int rc = 0;
+    struct os_mbuf *txom;
+    txom = ble_hs_mbuf_from_flat(data, len);
+    rc = ble_gattc_indicate_custom(connection_handle, ble_dev_info_val_handle, txom);
+    if( rc == 0)
+    {
+        ESP_LOGI(TAG,"Device info memory indication sent successfully");
+    }
+    else 
+    {
+        ESP_LOGI(TAG,"Device info memory error in sending indication");
+    }
 }
 
 void ble_spp_init(void)

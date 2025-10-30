@@ -129,6 +129,43 @@
 #define AUDIO_REC_ERROR 1
 #define AUDIO_REC_TOO_LONG 2
 
+// Device info characteristic
+#define DEV_INFO_WRITE_FIRMWARE 0x01
+#define DEV_INFO_WRITE_MEMORY 0x02
+#define DEV_INFO_IND_FIRMWARE_RES 0x01
+#define DEV_INFO_IND_MEMORY_RES 0x02
+
+// File system characteristic
+#define FS_WRITE_LOAD 0x01
+#define FS_WRITE_SAVE 0x02
+#define FS_WRITE_DELETE 0x03
+#define FS_WRITE_LIST 0x04
+#define FS_WRITE_ERASE_ALL 0x05
+#define FS_IND_LOAD_RES 0x01
+#define FS_IND_SAVE_RES 0x02
+#define FS_IND_DELETE_RES 0x03
+#define FS_IND_LIST_RES 0x04
+#define FS_IND_LIST_ERROR 0x05
+#define FS_IND_ERASE_ALL_RES 0x06
+
+#define FS_LOAD_OK 0
+#define FS_LOAD_CRC_ERR 1
+#define FS_LOAD_NOT_COMPLETE 2
+#define FS_LOAD_WRONG_SEQ 3
+#define FS_LOAD_TOO_BIG 4
+
+#define FS_SAVE_OK 0
+#define FS_SAVE_NOT_FOUND 1
+#define FS_SAVE_NO_SPACE 2
+#define FS_SAVE_ERROR 3
+
+#define FS_DELETE_OK 0
+#define FS_DELETE_NOT_FOUND 1
+#define FS_DELETE_ERROR 2
+
+#define FS_ERASE_ALL_OK 0
+#define FS_ERASE_ALL_ERROR 1
+
 void ble_spp_init(void);
 void ble_indicate_python_load(uint8_t value);
 void ble_indicate_python_exec(uint8_t value);
@@ -136,5 +173,9 @@ void ble_indicate_python_save(uint8_t value);
 void ble_indicate_audio_load(uint8_t value);
 void ble_indicate_audio_exec(uint8_t value);
 void ble_indicate_audio_rec(uint8_t value);
+void ble_indicate_fs(uint8_t type, uint8_t value);
+void ble_indicate_fs_list(uint8_t *data, uint16_t len);
+void ble_indicate_fs_list_err(void);
+void ble_indicate_dev_info_mem(uint8_t *data, uint16_t len);
 
 #endif // BLE_SPP_H_
