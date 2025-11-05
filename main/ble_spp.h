@@ -141,12 +141,17 @@
 #define FS_WRITE_DELETE 0x03
 #define FS_WRITE_LIST 0x04
 #define FS_WRITE_ERASE_ALL 0x05
+#define FS_WRITE_DOWNLOAD 0x06
+#define FS_WRITE_DOWNLOAD_ACK 0x07
+#define FS_WRITE_MEM_FREE 0x08
 #define FS_IND_LOAD_RES 0x01
 #define FS_IND_SAVE_RES 0x02
 #define FS_IND_DELETE_RES 0x03
 #define FS_IND_LIST_RES 0x04
 #define FS_IND_LIST_ERROR 0x05
 #define FS_IND_ERASE_ALL_RES 0x06
+#define FS_IND_DOWNLOAD_DATA 0x07
+#define FS_IND_DOWNLOAD_RES 0x08
 
 #define FS_LOAD_OK 0
 #define FS_LOAD_CRC_ERR 1
@@ -166,6 +171,9 @@
 #define FS_ERASE_ALL_OK 0
 #define FS_ERASE_ALL_ERROR 1
 
+#define FS_DOWNLOAD_NOT_FOUND 1
+#define FS_DOWNLOAD_ERROR 2
+
 void ble_spp_init(void);
 void ble_indicate_python_load(uint8_t value);
 void ble_indicate_python_exec(uint8_t value);
@@ -176,6 +184,7 @@ void ble_indicate_audio_rec(uint8_t value);
 void ble_indicate_fs(uint8_t type, uint8_t value);
 void ble_indicate_fs_list(uint8_t *data, uint16_t len);
 void ble_indicate_fs_list_err(void);
-void ble_indicate_dev_info_mem(uint8_t *data, uint16_t len);
+void ble_indicate_download(uint8_t *data, uint32_t len);
+void ble_indicate_dev_info(uint8_t *data, uint16_t len);
 
 #endif // BLE_SPP_H_

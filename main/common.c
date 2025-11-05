@@ -308,3 +308,8 @@ void Common_SetGroundThr(int16_t* values)
   groundThr[0] = values[0] + GROUND_EDGE_OFFSET;
   groundThr[1] = values[1] + GROUND_EDGE_OFFSET;
 }
+
+uint16_t Common_GetFirmwareVersion(void)
+{
+  return (uint16_t)(FIRMWARE_VERSION_MAJOR * 100 + FIRMWARE_VERSION_MINOR);
+}

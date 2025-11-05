@@ -21,6 +21,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/ringbuf.h"
 #include "freertos/semphr.h"
+#include "freertos/event_groups.h"
 #include "esp_timer.h"
 /* BLE */
 #include "esp_nimble_hci.h"
@@ -70,9 +71,10 @@ static const char *TAG = "THYMIO_BLUETOOTH";
 
 // File system characteristic definitions
 #define FILENAME_MAX_LEN 30
-#define FS_LIST_MAX_TOTAL_CHUNK_SIZE 500 // Maximum total size of each BLE indication chunk (including header)
+#define FS_MAX_TOTAL_CHUNK_SIZE 500 // Maximum total size of each BLE indication chunk (including header)
 #define FS_LIST_FIRST_PACKET_HEADER_LEN 9 //First Packet Header: ID(1) + size(2) + CRC32(4) + seq_id(2) = 9 bytes
-#define FS_LIST_SUBSEQUENT_PACKET_HEADER_LEN 2 // Subsequent Packet Header: seq_id(2) = 2 bytes
+#define FS_SUBSEQUENT_PACKET_HEADER_LEN 2 // Subsequent Packet Header: seq_id(2) = 2 bytes
+#define FS_DOWNLOAD_FIRST_PACKET_HEADER_LEN 11 //First Packet Header: ID(1) + size(4) + CRC32(4) + seq_id(2) = 9 bytes
 
 uint8_t bt_rx_data[MAX_BT_RX_BUFF]; // Received commands from the device (e.g. from phone)
 uint8_t bt_rx_data_temp[MAX_BT_RX_BUFF]; // Double buffer for parsing the data while receiving new data without corruption
@@ -82,6 +84,9 @@ uint8_t bt_cmd_len = 0;
 bool bt_most_sensors_stream_en = false;
 bool bt_others_sensors_stream_en = false;
 static uint8_t rx_buff_temp[500];
+#define INDICATION_ACK_BIT (1 << 0)
+#define INDICATION_ERR_BIT (1 << 1)
+static EventGroupHandle_t ind_ack_event_group = NULL;
 
 static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg);
 static uint8_t own_addr_type;
@@ -365,6 +370,7 @@ ble_spp_server_gap_event(struct ble_gap_event *event, void *arg)
         {
             start_ota = false;
         }
+        xEventGroupSetBits(ind_ack_event_group, INDICATION_ERR_BIT);
         return 0;
 
     case BLE_GAP_EVENT_CONN_UPDATE:
@@ -420,6 +426,30 @@ ble_spp_server_gap_event(struct ble_gap_event *event, void *arg)
                     event->mtu.conn_handle,
                     event->mtu.channel_id,
                     event->mtu.value);
+        return 0;
+
+    case BLE_GAP_EVENT_NOTIFY_TX:
+        MODLOG_DFLT(INFO, "notify tx event; conn_handle=%d attr_handle=%d status=%d "
+                    "ind=%d\n",
+                    event->notify_tx.conn_handle,
+                    event->notify_tx.attr_handle,
+                    event->notify_tx.status,
+                    event->notify_tx.indication);
+        /*
+        if(event->notify_tx.indication)
+        {
+            xEventGroupSetBits(ind_ack_event_group, INDICATION_ACK_BIT);
+        }
+        
+        if(event->notify_tx.status == 0)
+        {
+            xEventGroupSetBits(ind_ack_event_group, INDICATION_ACK_BIT);
+        }
+        else
+        {
+            xEventGroupSetBits(ind_ack_event_group, INDICATION_ERR_BIT);
+        }
+        */
         return 0;
 
     default:
@@ -1048,7 +1078,7 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                         memset(fs_filename, 0, FILENAME_MAX_LEN);
                         strncpy(fs_filename, (const char*)&ctxt->om->om_data[1], FILENAME_MAX_LEN);
                         fs_filename[FILENAME_MAX_LEN-1] = '\0';
-                        ESP_LOGI(TAG, "FS save filename: %s", fs_filename);
+                        ESP_LOGI(TAG, "FS save filename: %s and size %d", fs_filename, fs_tot_len);
                         if(fs_file_ready)
                         {
                             mp_save_file(fs_data, fs_filename, fs_tot_len);
@@ -1073,7 +1103,29 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                     else if(ctxt->om->om_data[0] == FS_WRITE_ERASE_ALL)
                     {
                         
-                    }                                                  
+                    }
+                    else if(ctxt->om->om_data[0] == FS_WRITE_DOWNLOAD)
+                    {
+                        memset(fs_filename, 0, FILENAME_MAX_LEN);
+                        strncpy(fs_filename, (const char*)&ctxt->om->om_data[1], FILENAME_MAX_LEN);
+                        fs_filename[FILENAME_MAX_LEN-1] = '\0';
+                        ESP_LOGI(TAG, "FS donwload filename: %s", fs_filename);
+                        mp_read_file(fs_filename);                     
+                    }   
+                    else if(ctxt->om->om_data[0] == FS_WRITE_DOWNLOAD_ACK)
+                    {
+                        xEventGroupSetBits(ind_ack_event_group, INDICATION_ACK_BIT);
+                    }   
+                    else if(ctxt->om->om_data[0] == FS_WRITE_MEM_FREE)
+                    {
+                        if(fs_data != NULL) // Free any previous allocated buffer
+                        {
+                            free(fs_data);
+                            fs_data = NULL;
+                        }
+                        mp_list_files_free_buffer();
+                        mp_read_file_free_buffer();
+                    }                    
                     break;
                 }
 
@@ -1097,7 +1149,7 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
 
                 if(ctxt->om->om_data[0] == DEV_INFO_WRITE_FIRMWARE)
                 {
-
+                    mp_firmware_info();
                 } 
                 else if(ctxt->om->om_data[0] == DEV_INFO_WRITE_MEMORY)
                 {
@@ -2149,11 +2201,11 @@ void ble_indicate_fs(uint8_t type, uint8_t value)
     rc = ble_gattc_indicate_custom(connection_handle, ble_fs_val_handle, txom);
     if( rc == 0)
     {
-        ESP_LOGI(TAG,"PY fs indication sent successfully (%d,%d)", type, value);
+        ESP_LOGI(TAG,"FS indication sent successfully (%d,%d)", type, value);
     }
     else 
     {
-        ESP_LOGI(TAG,"PY fs error in sending indication (%d,%d)", type, value);
+        ESP_LOGI(TAG,"FS error in sending indication (%d,%d)", type, value);
     }
 }
 
@@ -2189,10 +2241,10 @@ void ble_indicate_fs_list(uint8_t *data, uint16_t len)
     ESP_LOGI(TAG, "fs list calc crc=%x", calculated_crc);
 
     // --- Maximum Data Payload Calculation ---
-    // Max Payload for First Packet: 500 - 11 = 489 bytes
-    const uint16_t MAX_PAYLOAD_FIRST = FS_LIST_MAX_TOTAL_CHUNK_SIZE - FS_LIST_FIRST_PACKET_HEADER_LEN;
+    // Max Payload for First Packet: 500 - 9 = 491 bytes
+    const uint16_t MAX_PAYLOAD_FIRST = FS_MAX_TOTAL_CHUNK_SIZE - FS_LIST_FIRST_PACKET_HEADER_LEN;
     // Max Payload for Subsequent Packets: 500 - 2 = 498 bytes
-    const uint16_t MAX_PAYLOAD_SUBSEQUENT = FS_LIST_MAX_TOTAL_CHUNK_SIZE - FS_LIST_SUBSEQUENT_PACKET_HEADER_LEN;
+    const uint16_t MAX_PAYLOAD_SUBSEQUENT = FS_MAX_TOTAL_CHUNK_SIZE - FS_SUBSEQUENT_PACKET_HEADER_LEN;
 
     while (remaining_len > 0)
     {
@@ -2229,13 +2281,13 @@ void ble_indicate_fs_list(uint8_t *data, uint16_t len)
             }
 
             // 1. ID = 0x04 (1 byte) -> Offset 0
-            uint8_t id = 0x04;
+            uint8_t id = FS_IND_LIST_RES;
             os_mbuf_copyinto(txom, 0, &id, 1);
 
             // 2. size (2 bytes) - Total length of the original data (len) -> Offset 1
             os_mbuf_copyinto(txom, 1, &len, 2);
 
-            // 3. CRC32 (4 bytes) -> Offset 2
+            // 3. CRC32 (4 bytes) -> Offset 3
             os_mbuf_copyinto(txom, 3, &calculated_crc, 4);
 
             // 4. seq id (2 bytes) - must be 0 for the first packet -> Offset 7
@@ -2251,7 +2303,7 @@ void ble_indicate_fs_list(uint8_t *data, uint16_t len)
             // Determine the payload length for this chunk
             chunk_payload_len = (remaining_len > MAX_PAYLOAD_SUBSEQUENT) ? MAX_PAYLOAD_SUBSEQUENT : remaining_len;
 
-            uint16_t total_chunk_len = FS_LIST_SUBSEQUENT_PACKET_HEADER_LEN + chunk_payload_len;
+            uint16_t total_chunk_len = FS_SUBSEQUENT_PACKET_HEADER_LEN + chunk_payload_len;
             ind_buf_data = malloc(total_chunk_len); // ind_buf_data alloc #2
             if(!ind_buf_data)
             {
@@ -2277,7 +2329,7 @@ void ble_indicate_fs_list(uint8_t *data, uint16_t len)
             os_mbuf_copyinto(txom, 0, &seq_id, 2);
 
             // 2. Data payload -> Offset 2 (header_len)
-            os_mbuf_copyinto(txom, FS_LIST_SUBSEQUENT_PACKET_HEADER_LEN, current_data_ptr, chunk_payload_len);
+            os_mbuf_copyinto(txom, FS_SUBSEQUENT_PACKET_HEADER_LEN, current_data_ptr, chunk_payload_len);
         }
 
         // Send the indication. NimBLE takes ownership of txom on success (rc == 0).
@@ -2315,7 +2367,7 @@ void ble_indicate_fs_list(uint8_t *data, uint16_t len)
     mp_list_files_free_buffer();
 }
 
-void ble_indicate_dev_info_mem(uint8_t *data, uint16_t len)
+void ble_indicate_dev_info(uint8_t *data, uint16_t len)
 {
     int rc = 0;
     struct os_mbuf *txom;
@@ -2323,12 +2375,171 @@ void ble_indicate_dev_info_mem(uint8_t *data, uint16_t len)
     rc = ble_gattc_indicate_custom(connection_handle, ble_dev_info_val_handle, txom);
     if( rc == 0)
     {
-        ESP_LOGI(TAG,"Device info memory indication sent successfully");
+        ESP_LOGI(TAG,"Device info indication sent successfully");
     }
     else 
     {
-        ESP_LOGI(TAG,"Device info memory error in sending indication");
+        ESP_LOGI(TAG,"Device info error in sending indication");
     }
+}
+
+void ble_indicate_download(uint8_t *data, uint32_t len)
+{
+    int rc = 0;
+    uint16_t bytes_sent = 0;
+    uint16_t seq_id = 0;
+    uint8_t *current_data_ptr = data;
+    uint32_t remaining_len = len;
+    uint8_t *ind_buf_data = NULL;
+    EventBits_t bits = 0;
+    uint8_t send_trials = 0;
+    // Check the integrity of the data once all the script is received.
+    calculated_crc = esp_rom_crc32_be(initial_crc, (uint8_t*)data, len);
+    calculated_crc = ~calculated_crc; // The final CRC value needs to be bitwise NOT-ed to get the standard CRC32 result.
+    ESP_LOGI(TAG, "fs download calc crc=%x", calculated_crc);
+
+    // --- Maximum Data Payload Calculation ---
+    // Max Payload for First Packet: 500 - 11 = 489 bytes
+    const uint16_t MAX_PAYLOAD_FIRST = FS_MAX_TOTAL_CHUNK_SIZE - FS_DOWNLOAD_FIRST_PACKET_HEADER_LEN;
+    // Max Payload for Subsequent Packets: 500 - 2 = 498 bytes
+    const uint16_t MAX_PAYLOAD_SUBSEQUENT = FS_MAX_TOTAL_CHUNK_SIZE - FS_SUBSEQUENT_PACKET_HEADER_LEN;
+
+    while (remaining_len > 0)
+    {
+        uint16_t chunk_payload_len;
+        struct os_mbuf *txom;
+
+        if (seq_id == 0)
+        {
+            // --- First Packet (seq_id = 0) ---
+
+            // Determine the payload length for this chunk
+            chunk_payload_len = (remaining_len > MAX_PAYLOAD_FIRST) ? MAX_PAYLOAD_FIRST : remaining_len;
+
+            uint16_t total_chunk_len = FS_DOWNLOAD_FIRST_PACKET_HEADER_LEN + chunk_payload_len;
+            ind_buf_data = malloc(total_chunk_len); // ind_buf_data alloc #1
+            if(!ind_buf_data)
+            {
+                ESP_LOGE(TAG, "Failed to allocate memory for first chunk data buffer");
+                ble_indicate_fs(FS_IND_DOWNLOAD_RES, FS_DOWNLOAD_ERROR); // Tell the client there was an error, this is ok here since the transfering of the file is not started yet (no confusion between FS_IND_DOWNLOAD_RES and sequence id)
+                mp_read_file_free_buffer();
+                return;
+            }
+            ESP_LOGI(TAG, "Preparing first chunk: Total Chunk Len %d, Payload Len %d", total_chunk_len, chunk_payload_len);
+            // Allocate mbuf for the first chunk: header (11) + data (up to 489)
+            txom = ble_hs_mbuf_from_flat(ind_buf_data, total_chunk_len);
+            if (!txom)
+            {
+                ESP_LOGE(TAG, "Failed to allocate mbuf for first chunk");
+                ble_indicate_fs(FS_IND_DOWNLOAD_RES, FS_DOWNLOAD_ERROR);  // Tell the client there was an error, this is ok here since the transfering of the file is not started yet (no confusion between FS_IND_DOWNLOAD_RES and sequence id)
+                mp_read_file_free_buffer();
+                free(ind_buf_data); // free ind_buf_data alloc #1
+                ind_buf_data = NULL;
+                return;
+            }
+
+            // 1. ID (1 byte) -> Offset 0
+            uint8_t id = FS_IND_DOWNLOAD_DATA;
+            os_mbuf_copyinto(txom, 0, &id, 1);
+
+            // 2. size (4 bytes) - Total length of the data (len) -> Offset 1
+            os_mbuf_copyinto(txom, 1, &len, 4);
+
+            // 3. CRC32 (4 bytes) -> Offset 5
+            os_mbuf_copyinto(txom, 5, &calculated_crc, 4);
+
+            // 4. seq id (2 bytes) - must be 0 for the first packet -> Offset 9
+            os_mbuf_copyinto(txom, 9, &seq_id, 2);
+
+            // 5. Data payload -> Offset 11 (header_len)
+            os_mbuf_copyinto(txom, FS_DOWNLOAD_FIRST_PACKET_HEADER_LEN, current_data_ptr, chunk_payload_len);
+        }
+        else
+        {
+            // --- Subsequent Packets (seq_id > 0) ---
+
+            // Determine the payload length for this chunk
+            chunk_payload_len = (remaining_len > MAX_PAYLOAD_SUBSEQUENT) ? MAX_PAYLOAD_SUBSEQUENT : remaining_len;
+
+            uint16_t total_chunk_len = FS_SUBSEQUENT_PACKET_HEADER_LEN + chunk_payload_len;
+            ind_buf_data = malloc(total_chunk_len); // ind_buf_data alloc #2
+            if(!ind_buf_data)
+            {
+                ESP_LOGE(TAG, "Failed to allocate memory for chunk %d", seq_id);
+                //ble_indicate_fs_list_err(); // Do not indicate error to the client here, it could be confused with sequence ids. The client will notice the missing packets by itself with a timeout.
+                mp_read_file_free_buffer();
+                return;
+            }            
+            ESP_LOGI(TAG, "Preparing chunk %d: Total Chunk Len %d, Payload Len %d", seq_id, total_chunk_len, chunk_payload_len);
+            // Allocate mbuf for the subsequent chunk: header (2) + data (up to 498)
+            txom = ble_hs_mbuf_from_flat(ind_buf_data, total_chunk_len);
+            if (!txom)
+            {
+                ESP_LOGE(TAG, "Failed to allocate mbuf for chunk %d", seq_id);
+                //ble_indicate_fs_list_err(); // Do not indicate error to the client here, it could be confused with sequence ids. The client will notice the missing packets by itself with a timeout.
+                mp_read_file_free_buffer();
+                free(ind_buf_data); // free ind_buf_data alloc #2
+                ind_buf_data = NULL;
+                return;
+            }
+
+            // 1. seq id (2 bytes) - incremented by one -> Offset 0
+            os_mbuf_copyinto(txom, 0, &seq_id, 2);
+
+            // 2. Data payload -> Offset 2 (header_len)
+            os_mbuf_copyinto(txom, FS_SUBSEQUENT_PACKET_HEADER_LEN, current_data_ptr, chunk_payload_len);
+        }
+
+        xEventGroupClearBits(ind_ack_event_group, INDICATION_ACK_BIT|INDICATION_ERR_BIT);
+        // Send the indication. NimBLE takes ownership of txom on success (rc == 0).
+        rc = ble_gattc_indicate_custom(connection_handle, ble_fs_val_handle, txom);
+        bits = xEventGroupWaitBits(ind_ack_event_group, INDICATION_ACK_BIT|INDICATION_ERR_BIT, pdTRUE, pdFALSE, pdMS_TO_TICKS(5000)); // Wait for the indication ack or timeout after 5 seconds   
+        free(ind_buf_data); // free ind_buf_data alloc #1 or alloc #2
+        ind_buf_data = NULL;
+
+        if (bits & INDICATION_ERR_BIT) 
+        {
+            vTaskDelay(1000/portTICK_PERIOD_MS); // Small delay to avoid busy loop
+            /*
+            send_trials++;
+            if(send_trials >= 3)
+            {
+                rc = -1; // Force error after 3 trials
+            }
+            else
+            {
+                continue; // Retry sending the same packet
+            }
+            */
+        }
+        if (rc == 0)
+        {
+            ESP_LOGI(TAG, "FS download indication sent successfully: Seq ID %d, Total Len %d, Payload %d",
+                     seq_id, os_mbuf_len(txom), chunk_payload_len);
+
+            // Update state for the next chunk
+            current_data_ptr += chunk_payload_len;
+            remaining_len -= chunk_payload_len;
+            bytes_sent += chunk_payload_len;
+            seq_id++; // Increment sequence ID for the next packet
+            send_trials = 0; // Reset send trials for the next packet
+        }
+        else
+        {
+            ESP_LOGE(TAG, "FS download error in sending indication: Seq ID %d, rc=%d. Freeing mbuf.", seq_id, rc);
+            // Must free the mbuf chain manually on failure, as NimBLE did not take ownership.
+            os_mbuf_free_chain(txom);
+            //ble_indicate_fs_list_err();   // Do not indicate error to the client here, it could be confused with sequence ids. The client will notice the missing packets by itself with a timeout.
+            mp_read_file_free_buffer();
+            return; // Stop sending on first failure
+        }
+    }
+
+    if (rc == 0)
+    {
+        ESP_LOGI(TAG, "FS download indication fully sent: %d total data bytes in %d packets", len, seq_id);
+    }
+    mp_read_file_free_buffer();
 }
 
 void ble_spp_init(void)
@@ -2336,6 +2547,8 @@ void ble_spp_init(void)
     int rc;
     char ble_name[32];
     uint8_t mac_addr[6] = {0};
+
+    ind_ack_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_nimble_hci_and_controller_init());
 

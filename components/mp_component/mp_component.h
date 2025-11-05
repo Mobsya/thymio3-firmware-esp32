@@ -10,7 +10,10 @@ void mp_save_file(uint8_t* data, char* filename, uint32_t data_len);
 void mp_delete_file(char* filename);
 void mp_list_files(void);
 void mp_list_files_free_buffer(void);
+void mp_read_file(char* filename);
+void mp_read_file_free_buffer(void);
 void mp_mem_info(void);
+void mp_firmware_info(void);
 
 // Check if the script mainID.py is present. ID is from 1 to 7.
 uint8_t script_is_present(uint8_t id);

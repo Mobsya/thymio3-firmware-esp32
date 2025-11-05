@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>BLE Memory Monitor (Write/Indication)</title>
+    <title>BLE Memory and Firmware Monitor (Write/Indication)</title>
     <style>
         body { font-family: sans-serif; text-align: center; margin-top: 50px; }
         #output { 
@@ -33,22 +33,38 @@
         #readMemoryButton {
             background-color: #28a745;
         }
+        #readFirmwareButton {
+            background-color: #ffc107; /* New color for firmware button */
+        }
         .error { color: red; }
         .success { color: green; }
+        .info-section { 
+            margin-top: 20px; 
+            padding-top: 10px; 
+            border-top: 1px dashed #ddd; 
+        }
     </style>
 </head>
 <body>
 
-    <h1>BLE Device Memory Information</h1>
+    <h1>BLE Device Info & Monitor</h1>
 
     <button id="connectButton">Connect to BLE Device</button>
     <button id="readMemoryButton" disabled>Request Memory Info</button>
+    <button id="readFirmwareButton" disabled>Request Firmware Info</button>
 
     <p id="status">Ready. Click "Connect to BLE Device" to begin.</p>
 
     <div id="output">
+        <h3>Memory Information</h3>
         <strong>Free RAM (ram_bytes_free):</strong> <span id="freeRam">N/A</span><br>
         <strong>Free Storage (flash_bytes_free):</strong> <span id="freeFlash">N/A</span>
+        
+        <div class="info-section">
+            <h3>Firmware Information</h3>
+            <strong>ESP32 Version (esp32_ver):</strong> <span id="esp32Ver">N/A</span><br>
+            <strong>STM32 Version (stm32_ver):</strong> <span id="stm32Ver">N/A</span>
+        </div>
     </div>
 
     <script>
@@ -56,18 +72,25 @@
         const THYMIO_SERVICE_UUID = '0000abf0-0000-1000-8000-00805f9b34fb';
         const DEVICE_INFO_CHARACTERISTIC_UUID = '0000abf5-0000-1000-8000-00805f9b34fb';
         
-        // Command and Response IDs derived from ble_spp.h
-        const DEV_INFO_WRITE_MEMORY = 0x02; // Command to write
+        // Command and Response IDs derived from ble_spp.h and C code (case 13 and 15)
+        const DEV_INFO_WRITE_MEMORY = 0x02; // Command to write (case 13)
         const DEV_INFO_IND_MEMORY_RES = 0x02; // Expected response ID
+        
+        // New Firmware IDs (based on case 15 and instruction)
+        const DEV_INFO_WRITE_FIRMWARE = 0x01; // Command to write (case 15)
+        const DEV_INFO_IND_FIRMWARE_RES = 0x01; // Expected response ID
 
         let bleDevice = null;
         let deviceInfoCharacteristic = null;
 
         const connectButton = document.getElementById('connectButton');
         const readMemoryButton = document.getElementById('readMemoryButton');
+        const readFirmwareButton = document.getElementById('readFirmwareButton');
         const statusDiv = document.getElementById('status');
         const freeRamSpan = document.getElementById('freeRam');
         const freeFlashSpan = document.getElementById('freeFlash');
+        const esp32VerSpan = document.getElementById('esp32Ver');
+        const stm32VerSpan = document.getElementById('stm32Ver');
 
         /**
          * Converts bytes to a human-readable format.
@@ -86,58 +109,74 @@
             bleDevice = null;
             deviceInfoCharacteristic = null;
             readMemoryButton.disabled = true;
+            readFirmwareButton.disabled = true;
             connectButton.disabled = false;
         }
         
         /**
-         * Handler for indication/notification events on the characteristic.
-         * Processes the received data which includes a 3-byte header and JSON.
-         * @param {Event} event 
+         * Parses the JSON payload from the indication and updates the display.
+         * @param {DataView} dataView 
+         * @param {ArrayBuffer} buffer 
+         * @returns {number} The ID of the parsed response.
          */
-        function handleMemoryIndication(event) {
-            const value = event.target.value;
-            const buffer = value.buffer;
-            
-            // Header is 3 bytes: ID (1 byte) + Size (2 bytes LE)
+        function processIndication(dataView, buffer) {
             const HEADER_SIZE = 3; 
             
             if (buffer.byteLength < HEADER_SIZE) {
-                statusDiv.textContent = `Indication error: Data too short (${buffer.byteLength} bytes).`;
-                statusDiv.className = 'error';
-                return;
+                throw new Error(`Data too short (${buffer.byteLength} bytes).`);
             }
 
-            try {
-                const dataView = new DataView(buffer);
+            const id = dataView.getUint8(0);
+            const jsonLength = dataView.getUint16(1, true); // Little Endian 'true'
+            const jsonPayloadBuffer = buffer.slice(HEADER_SIZE);
+            const decoder = new TextDecoder('utf-8');
+            const jsonString = decoder.decode(jsonPayloadBuffer).trim();
 
-                // 1. Check the 1-byte response ID (at offset 0)
-                const id = dataView.getUint8(0);
-                if (id !== DEV_INFO_IND_MEMORY_RES) {
-                    statusDiv.textContent = `Indication error: Unexpected response ID 0x${id.toString(16)}.`;
-                    statusDiv.className = 'error';
-                    return;
-                }
-                
-                // 2. Read the 2-byte size (at offset 1, Little Endian 'true')
-                const jsonLength = dataView.getUint16(1, true); 
+            const info = JSON.parse(jsonString);
 
-                // 3. Slice the ArrayBuffer to get only the JSON payload (starts at offset 3)
-                const jsonPayloadBuffer = buffer.slice(HEADER_SIZE);
-
-                // 4. Decode the payload and parse JSON
-                const decoder = new TextDecoder('utf-8');
-                const jsonString = decoder.decode(jsonPayloadBuffer).trim();
-
-                const memoryInfo = JSON.parse(jsonString);
-
-                // 5. Update the display
-                const freeRam = memoryInfo.ram_bytes_free;
-                const freeFlash = memoryInfo.flash_bytes_free;
+            if (id === DEV_INFO_IND_MEMORY_RES) {
+                // Handle Memory Info
+                const freeRam = info.ram_bytes_free;
+                const freeFlash = info.flash_bytes_free;
 
                 freeRamSpan.textContent = `${freeRam} Bytes (${formatBytes(freeRam)})`;
                 freeFlashSpan.textContent = `${freeFlash} Bytes (${formatBytes(freeFlash)})`;
+                return id;
+            } else if (id === DEV_INFO_IND_FIRMWARE_RES) {
+                // Handle Firmware Info
+                esp32VerSpan.textContent = info.esp32_ver;
+                stm32VerSpan.textContent = info.stm32_ver;
+                return id;
+            } else {
+                throw new Error(`Unexpected response ID 0x${id.toString(16)}.`);
+            }
+        }
 
-                statusDiv.textContent = 'Memory information updated via BLE indication.';
+
+        /**
+         * Handler for indication/notification events on the characteristic.
+         * @param {Event} event 
+         */
+        function handleDeviceInfoIndication(event) {
+            const value = event.target.value;
+            const buffer = value.buffer;
+            
+            message = 'received indication. Processing...';
+            statusDiv.textContent = message;
+            statusDiv.className = '';
+
+            try {
+                const dataView = new DataView(buffer);
+                const id = processIndication(dataView, buffer);
+                
+                let message = '';
+                if (id === DEV_INFO_IND_MEMORY_RES) {
+                    message = 'Memory information updated via BLE indication.';
+                } else if (id === DEV_INFO_IND_FIRMWARE_RES) {
+                    message = 'Firmware information updated via BLE indication.';
+                }
+
+                statusDiv.textContent = message;
                 statusDiv.className = 'success';
 
             } catch (error) {
@@ -170,12 +209,13 @@
                 deviceInfoCharacteristic = await service.getCharacteristic(DEVICE_INFO_CHARACTERISTIC_UUID);
                 
                 // 4. Set up Indication/Notification Listener
-                deviceInfoCharacteristic.addEventListener('characteristicvaluechanged', handleMemoryIndication);
+                deviceInfoCharacteristic.addEventListener('characteristicvaluechanged', handleDeviceInfoIndication);
                 await deviceInfoCharacteristic.startNotifications();
 
-                statusDiv.textContent = `Connected to ${bleDevice.name}. Notifications enabled. Click 'Request Memory Info' to send the command.`;
+                statusDiv.textContent = `Connected to ${bleDevice.name}. Notifications enabled. Click a 'Request' button to send a command.`;
                 statusDiv.className = 'success';
                 readMemoryButton.disabled = false;
+                readFirmwareButton.disabled = false;
 
                 // Handle disconnection
                 bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
@@ -188,42 +228,54 @@
                 bleDevice = null;
                 deviceInfoCharacteristic = null;
                 readMemoryButton.disabled = true;
+                readFirmwareButton.disabled = true;
             }
         }
 
         async function readMemoryInfo() {
+            return writeCommand(DEV_INFO_WRITE_MEMORY, 'memory');
+        }
+
+        async function readFirmwareInfo() {
+            return writeCommand(DEV_INFO_WRITE_FIRMWARE, 'firmware');
+        }
+
+        async function writeCommand(commandByte, infoType) {
             if (!deviceInfoCharacteristic) {
                 statusDiv.textContent = 'Error: Not connected to the characteristic.';
                 statusDiv.className = 'error';
                 return;
             }
 
-            try {
-                statusDiv.textContent = 'Writing command to request memory information...';
-                statusDiv.className = '';
-                readMemoryButton.disabled = true;
+            const button = infoType === 'memory' ? readMemoryButton : readFirmwareButton;
 
-                // The command is a single byte with value 0x02 (DEV_INFO_WRITE_MEMORY)
-                const writeValue = new Uint8Array([DEV_INFO_WRITE_MEMORY]);
+            try {
+                statusDiv.textContent = `Writing command to request ${infoType} information...`;
+                statusDiv.className = '';
+                button.disabled = true;
+
+                // The command is a single byte
+                const writeValue = new Uint8Array([commandByte]);
                 
                 // 1. Write the value
-                await deviceInfoCharacteristic.writeValue(writeValue);
+                await deviceInfoCharacteristic.writeValueWithResponse(writeValue);
 
-                statusDiv.textContent = 'Command sent. Waiting for indication...';
+                statusDiv.textContent = `Command sent. Waiting for ${infoType} indication (ID 0x${commandByte.toString(16)})...`;
                 
             } catch (error) {
-                statusDiv.textContent = `Write command error: ${error.message}.`;
+                statusDiv.textContent = `Write command error for ${infoType}: ${error.message}.`;
                 statusDiv.className = 'error';
                 console.error("BLE Write Error:", error);
             } finally {
-                // Re-enable the button to allow retries, even if the indication is still pending
-                readMemoryButton.disabled = false;
+                // Re-enable the button to allow retries
+                button.disabled = false;
             }
         }
 
         // Event Listeners
         connectButton.addEventListener('click', connectDevice);
         readMemoryButton.addEventListener('click', readMemoryInfo);
+        readFirmwareButton.addEventListener('click', readFirmwareInfo); // New listener
 
     </script>
 

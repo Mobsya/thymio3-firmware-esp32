@@ -25,6 +25,9 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
+#define FIRMWARE_VERSION_MAJOR 1
+#define FIRMWARE_VERSION_MINOR 0
+
 #define MIN_LIMIT_SPEED        -600
 #define MAX_LIMIT_SPEED         600
 
@@ -111,5 +114,11 @@ extern uint8_t Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8
 //! \param     values - new calibrated values
 //! \return    None
 extern void Common_SetGroundThr(int16_t* values);
+
+//! \brief     Get the firmware version
+//! \pre       None
+//! \param     None
+//! \return    Firmware version (major*100 + minor)
+uint16_t Common_GetFirmwareVersion(void);
 
 #endif // COMMON_H_

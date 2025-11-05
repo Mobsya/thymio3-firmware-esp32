@@ -1526,6 +1526,14 @@ CONFIG_DEFAULT_AP_BEACON_INTERVAL=100
 # end of Wifi Manager Configuration
 
 #
+# OTA Manager
+#
+CONFIG_OTA_WITHOUT_SECURITY=y
+# CONFIG_OTA_WITH_PROTOCOMM is not set
+# CONFIG_PRE_ENC_OTA is not set
+# end of OTA Manager
+
+#
 # Pre Encrypted OTA Configuration
 #
 CONFIG_PRE_ENCRYPTED_OTA_USE_RSA=y
@@ -1541,14 +1549,6 @@ CONFIG_CU_DIAGNOSTICS_COLOR_ALWAYS=y
 # CONFIG_CU_GCC_LTO_ENABLE is not set
 # CONFIG_CU_GCC_STRING_1BYTE_ALIGN is not set
 # end of CMake Utilities
-
-#
-# OTA Manager
-#
-CONFIG_OTA_WITHOUT_SECURITY=y
-# CONFIG_OTA_WITH_PROTOCOMM is not set
-# CONFIG_PRE_ENC_OTA is not set
-# end of OTA Manager
 # end of Component config
 
 #
