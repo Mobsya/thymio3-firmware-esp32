@@ -34,6 +34,7 @@
 #include "gyroscope.h"
 #include "i2c.h"
 #include "settings.h"
+#include "groove.h"
 
 #include "es8374.h"
 #include "pins_def.h"
@@ -172,7 +173,7 @@ static void RunSensorsTask(void* arg)
     Gyroscope_ReadAngularVelocity();
     Gyroscope_ReadAngle();
     ColorSensor_ReadColor();
-
+    //groove_write_dummy();
     SET_EVENT(EVENT_SENSORS);
 
     xSemaphoreGive(I2CMutex);

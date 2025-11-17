@@ -31,10 +31,21 @@
 #include <stdarg.h>
 
 #include "mp_component.h"
-#include "py/objstr.h"
-#include "py/stream.h"
+#include "py/obj.h"
 #include "py/runtime.h"
+#include "py/stream.h"
+#include "py/objstr.h"
 #include "py/builtin.h"
+#include "py/stackctrl.h"
+#include "py/nlr.h"
+#include "py/compile.h"
+#include "py/persistentcode.h"
+#include "py/repl.h"
+#include "py/gc.h"
+#include "py/mphal.h"
+#include "extmod/misc.h"
+#include "py/mpstate.h"
+#include "py/qstr.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -57,15 +68,6 @@
 #include "esp32s3/spiram.h"
 #endif
 
-#include "py/stackctrl.h"
-#include "py/nlr.h"
-#include "py/compile.h"
-#include "py/runtime.h"
-#include "py/persistentcode.h"
-#include "py/repl.h"
-#include "py/gc.h"
-#include "py/mphal.h"
-#include "py/builtin.h"
 #include "shared/readline/readline.h"
 #include "shared/runtime/pyexec.h"
 #include "uart.h"
@@ -168,6 +170,63 @@ void mp_exec_script_task(void *pvParameter) {
     vTaskDelete(NULL);
 }
 
+/**
+ * @brief The 'write' function for our MicroPython dupterm stream.
+ *
+ * This is called by MP's print().
+ */
+static mp_uint_t ble_stream_write(mp_obj_t self_in, const void *buf, mp_uint_t size, int *errcode) {
+    
+    // Call the public BLE service function
+    size_t bytes_written = ble_spp_stdout_write(buf, size);
+
+    if (bytes_written < size) {
+        // We dropped some data (buffer was full)
+        // We don't signal an error, just report what we did
+    }
+
+    return bytes_written;
+}
+
+STATIC mp_uint_t ble_stream_read(mp_obj_t self_in, void *buf, mp_uint_t size, int *errcode) {
+    *errcode = MP_EAGAIN;
+    return 0;
+}
+
+STATIC mp_uint_t mp_stream_ioctl_dummy(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
+    // Set the error code to indicate that the operation is not supported
+    *errcode = MP_EINVAL; // Invalid argument/operation not supported
+    return 0;
+}
+
+STATIC const mp_stream_p_t ble_stream_p = {
+    .read = ble_stream_read,
+    .write = ble_stream_write,
+    .is_text = true,
+    .ioctl = mp_stream_ioctl_dummy, // Try adding this if it's missing
+};
+
+MP_DEFINE_CONST_OBJ_TYPE(
+    mp_type_ble_stdout_stream,
+    MP_QSTR_BLE_Stream,
+    MP_TYPE_FLAG_NONE,
+    protocol, &ble_stream_p
+);
+
+static const mp_obj_base_t mp_stdout_ble_stream_obj = {
+    .type = &mp_type_ble_stdout_stream
+};
+
+/*
+STATIC const mp_obj_type_t mp_ble_stream_type = {
+    { &mp_type_type },
+    .name = MP_QSTR_ble_stream,
+    .protocol = &ble_stream_p,
+};
+
+STATIC mp_ble_stream_obj_t ble_stream_obj = { { &mp_ble_stream_type } };
+*/
+
 void mp_task(void *pvParameter) {
     nlr_buf_t nlr;
     volatile uint32_t sp = (uint32_t)get_sp();
@@ -246,6 +305,24 @@ soft_reset:
     #if MICROPY_PY_MACHINE_I2S
     machine_i2s_init0();
     #endif
+
+    //mp_os_dupterm(MP_OBJ_FROM_PTR(&mp_stdout_ble_stream_obj), 0);
+    //mp_uos_dupterm(MP_OBJ_FROM_PTR(&mp_stdout_ble_stream_obj), 0);
+    //mp_stream_dupterm(MP_OBJ_FROM_PTR(&mp_stdout_ble_stream_obj), 0);
+    //MP_STATE_VM(dupterm_objs[1]) = MP_OBJ_FROM_PTR(&mp_stdout_ble_stream_obj);
+
+    if (nlr_push(&nlr) == 0) {
+        // Load the uos module and get the 'dupterm' function object
+        mp_obj_t uos_module = mp_import_name(MP_QSTR_uos, mp_const_none, MP_OBJ_NEW_SMALL_INT(0));
+        mp_obj_t dupterm_func = mp_load_attr(uos_module, MP_QSTR_dupterm);
+
+        // Call uos.dupterm(stream_object)
+        mp_call_function_1(dupterm_func, MP_OBJ_FROM_PTR(&mp_stdout_ble_stream_obj));  
+        nlr_pop();
+    } else {
+        // Exception raised (es. KeyboardInterrupt)
+        mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
+    }
 
     // run boot-up scripts
     pyexec_frozen_module("_boot.py", false);
@@ -928,6 +1005,5 @@ void mp_firmware_info(void)
     mp_component_state = 15;
     xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE);
 }
-
 
 MP_REGISTER_ROOT_POINTER(mp_obj_t native_code_pointers);

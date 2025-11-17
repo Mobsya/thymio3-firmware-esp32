@@ -61,7 +61,7 @@ uint16_t ZeroGyroNumSamples[3] = {0, 0, 0};
 int16_t ZeroGyro[3] = {0, 0, 0};
 
 int32_t Mul = 0;
-int32_t Div = 0;
+int32_t Div = 1;
 int32_t Offset = 0;
 
 bool calibrationInProgress = false;

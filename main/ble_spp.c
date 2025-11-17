@@ -76,6 +76,15 @@ static const char *TAG = "THYMIO_BLUETOOTH";
 #define FS_SUBSEQUENT_PACKET_HEADER_LEN 2 // Subsequent Packet Header: seq_id(2) = 2 bytes
 #define FS_DOWNLOAD_FIRST_PACKET_HEADER_LEN 11 //First Packet Header: ID(1) + size(4) + CRC32(4) + seq_id(2) = 9 bytes
 
+// Micropython stdout definitions
+#define STDOUT_RINGBUF_SIZE 2048
+#define STDOUT_MAX_CHUNK_SIZE 240
+#define STDOUT_ACCUM_BUF_SIZE 512 // Define a size for the temporary/accumulation buffer. This should be larger than the 100-byte threshold.
+// Define the send conditions: stdout buffer sent when either it is filled with at least 100 bytes or no more data arrived within 1 second
+#define STDOUT_SEND_THRESHOLD_BYTES 100
+#define STDOUT_SEND_TIMEOUT_MS 1000
+
+
 uint8_t bt_rx_data[MAX_BT_RX_BUFF]; // Received commands from the device (e.g. from phone)
 uint8_t bt_rx_data_temp[MAX_BT_RX_BUFF]; // Double buffer for parsing the data while receiving new data without corruption
 uint8_t bt_tx_data[MAX_BT_TX_BUFF]; // Data sent to the device (e.g. to phone)
@@ -167,6 +176,10 @@ static bool fs_file_ready = false;
 
 // Device info variables
 static uint16_t ble_dev_info_val_handle;
+
+// Micropython stdout variables
+static RingbufHandle_t s_stdout_ringbuf = NULL;
+static uint16_t ble_python_stdout_val_handle;
 
 // Initial CRC value
 // Note: ESP32's ROM functions for CRC require some bitwise manipulation to match standard CRC32 implementations.
@@ -370,6 +383,7 @@ ble_spp_server_gap_event(struct ble_gap_event *event, void *arg)
         {
             start_ota = false;
         }
+        is_connect = false;
         xEventGroupSetBits(ind_ack_event_group, INDICATION_ERR_BIT);
         return 0;
 
@@ -1123,6 +1137,7 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                             free(fs_data);
                             fs_data = NULL;
                         }
+                        fs_file_ready = false;
                         mp_list_files_free_buffer();
                         mp_read_file_free_buffer();
                     }                    
@@ -1485,6 +1500,12 @@ static const struct ble_gatt_svc_def new_ble_svc_gatt_defs[] = {
                 .access_cb = ble_svc_gatt_handler,
                 .val_handle = &ble_dev_info_val_handle,
                 .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_INDICATE,
+            }, {
+                /* python stdout characteristic */
+                .uuid = BLE_UUID16_DECLARE(BLE_SVC_PYTHON_STDOUT_CHR_UUID16),
+                .access_cb = ble_svc_gatt_handler,
+                .val_handle = &ble_python_stdout_val_handle,
+                .flags = BLE_GATT_CHR_F_INDICATE,
             }, {
                 0, /* No more characteristics */
             }
@@ -2392,7 +2413,7 @@ void ble_indicate_download(uint8_t *data, uint32_t len)
     uint32_t remaining_len = len;
     uint8_t *ind_buf_data = NULL;
     EventBits_t bits = 0;
-    uint8_t send_trials = 0;
+    //uint8_t send_trials = 0;
     // Check the integrity of the data once all the script is received.
     calculated_crc = esp_rom_crc32_be(initial_crc, (uint8_t*)data, len);
     calculated_crc = ~calculated_crc; // The final CRC value needs to be bitwise NOT-ed to get the standard CRC32 result.
@@ -2522,7 +2543,7 @@ void ble_indicate_download(uint8_t *data, uint32_t len)
             remaining_len -= chunk_payload_len;
             bytes_sent += chunk_payload_len;
             seq_id++; // Increment sequence ID for the next packet
-            send_trials = 0; // Reset send trials for the next packet
+            //send_trials = 0; // Reset send trials for the next packet
         }
         else
         {
@@ -2540,6 +2561,209 @@ void ble_indicate_download(uint8_t *data, uint32_t len)
         ESP_LOGI(TAG, "FS download indication fully sent: %d total data bytes in %d packets", len, seq_id);
     }
     mp_read_file_free_buffer();
+}
+
+
+/**
+ * @brief Fragments and sends a data buffer over BLE indication.
+ *
+ * @param data Pointer to the data to send.
+ * @param len Length of the data to send.
+ * @param tx_buf A temporary buffer used for holding fragments. Must be at least STDOUT_MAX_CHUNK_SIZE bytes.
+ */
+static void send_ble_data_fragmented(uint8_t *data, size_t len, uint8_t *tx_buf)
+{
+    if (!is_connect || len == 0) {
+        return;
+    }
+
+    size_t remaining = len;
+    size_t offset = 0;
+
+    while (remaining > 0 && is_connect) {
+        size_t chunk_size = (remaining > STDOUT_MAX_CHUNK_SIZE) ? STDOUT_MAX_CHUNK_SIZE : remaining;
+
+        // Copy the chunk into our tx_buf (fragment buffer)
+        memcpy(tx_buf, data + offset, chunk_size);
+        
+        struct os_mbuf *txom = ble_hs_mbuf_from_flat(tx_buf, chunk_size);
+        if (!txom) {
+            ESP_LOGE(TAG, "Failed to create mbuf for stdout");
+            break; // Stop trying to send this item
+        }
+
+        // Send as indication
+        int rc = ble_gattc_indicate_custom(connection_handle, ble_python_stdout_val_handle, txom);
+        
+        if (rc == 0) {
+            // Success, NimBLE takes ownership of txom
+            ESP_LOGD(TAG, "Sent %d bytes of stdout", chunk_size);
+        } else {
+            // Failure, we must free txom
+            os_mbuf_free_chain(txom);
+            ESP_LOGE(TAG, "Error sending stdout indication: %d", rc);
+            // If we're disconnected, is_connect will be false and we'll break
+            // Otherwise, we'll just drop this packet
+            break; 
+        }
+
+        remaining -= chunk_size;
+        offset += chunk_size;
+        
+        // Small delay to avoid flooding.
+        vTaskDelay(5 / portTICK_PERIOD_MS);
+    }
+    ESP_LOGI(TAG, "Sent total %d bytes of stdout", len);
+}
+
+/**
+ * @brief FreeRTOS task to empty the stdout ring buffer and send over BLE.
+ *
+ * This task waits for data to appear in s_stdout_ringbuf, retrieves it, and sends it as a BLE notification.
+ */
+
+static void ble_stdout_task(void *pvParameters) 
+{
+    uint8_t *data = NULL;
+    size_t item_size = 0;
+    
+    // This buffer is for accumulating data from the ring buffer. 
+    // From various test it was noticed that often many small size indications are sent to the PC.
+    // Since there is a limited number of buffer in the low level pool, then some data are often lost.
+    // To avoid data loss, a temporary buffer is used: send indication only when either the buffer is filled 
+    // with at least 100 bytes or no new data are received within 1 second.
+    // Data flow: Python output => ringbuffer => temporary buffer => BLE
+    uint8_t *accum_buf = malloc(STDOUT_ACCUM_BUF_SIZE);
+    if (!accum_buf) {
+        ESP_LOGE(TAG, "Failed to alloc stdout accum_buf!");
+        vTaskDelete(NULL);
+        return;
+    }
+
+    // This buffer is for holding fragments during BLE sending
+    uint8_t *fragment_buf = malloc(STDOUT_MAX_CHUNK_SIZE);
+    if (!fragment_buf) {
+        ESP_LOGE(TAG, "Failed to alloc stdout fragment_buf!");
+        free(accum_buf);
+        vTaskDelete(NULL);
+        return;
+    }
+
+    size_t accum_len = 0;
+
+    while(1) {
+        
+        // If we are not connected, flush the buffer and wait
+        if (!is_connect) {
+            accum_len = 0; // Flush buffer
+            vTaskDelay(500 / portTICK_PERIOD_MS);
+            continue;
+        }
+
+        // Wait for data to arrive in the ring buffer
+        data = (uint8_t *)xRingbufferReceive(s_stdout_ringbuf, &item_size, pdMS_TO_TICKS(STDOUT_SEND_TIMEOUT_MS));
+
+        bool send_now = false;
+
+        if (data != NULL) {
+            // We got new data.
+
+            // Check if this item *by itself* is too big for the buffer
+            if (item_size > STDOUT_ACCUM_BUF_SIZE) {
+                ESP_LOGW(TAG, "Single stdout item (%d) > accum_buf (%d). Sending previous and this one.", item_size, STDOUT_ACCUM_BUF_SIZE);
+                // Send what we have *now*
+                send_ble_data_fragmented(accum_buf, accum_len, fragment_buf);
+                // Send the new, large item directly
+                send_ble_data_fragmented(data, item_size, fragment_buf);
+                // Reset buffer
+                accum_len = 0;
+                vRingbufferReturnItem(s_stdout_ringbuf, (void *)data);
+                continue; // Skip to next loop iteration
+            }
+
+            // Check if adding this item will *overflow* the buffer
+            if (accum_len + item_size > STDOUT_ACCUM_BUF_SIZE) {
+                // Buffer will overflow. Send what we have *first*.
+                send_now = true;
+            } else {
+                // It fits. Add it to the buffer.
+                memcpy(accum_buf + accum_len, data, item_size);
+                accum_len += item_size;
+                vRingbufferReturnItem(s_stdout_ringbuf, (void *)data);
+                data = NULL; // Mark as processed
+            }
+
+        } else {
+            // data is NULL. This means our 1-second timer has expired.
+            if (accum_len > 0) {
+                send_now = true;
+            }
+        }
+
+        // Check send conditions
+        if (!send_now && accum_len >= STDOUT_SEND_THRESHOLD_BYTES) {
+            // We hit the 100-byte threshold
+            send_now = true;
+        }
+        
+        // Send if required
+        if (send_now && is_connect) {
+            send_ble_data_fragmented(accum_buf, accum_len, fragment_buf);
+            accum_len = 0; // Reset buffer
+        }
+
+        // Handle the item that caused the overflow (if any)
+        if (data != NULL) {
+            // data still holds the item that didn't fit.
+            // Start the new buffer with it.
+            memcpy(accum_buf, data, item_size);
+            accum_len = item_size;
+            vRingbufferReturnItem(s_stdout_ringbuf, (void *)data);
+        }
+    }
+    
+    // Should never be reached
+    free(accum_buf);
+    free(fragment_buf);
+    vTaskDelete(NULL);
+}
+
+/**
+ * @brief Initializes the BLE stdout service.
+ * * This creates the ring buffer and spawns the task that
+ * sends data from the buffer over BLE.
+ */
+void ble_spp_stdout_init(void)
+{
+    // Create the ring buffer for stdout
+    s_stdout_ringbuf = xRingbufferCreate(STDOUT_RINGBUF_SIZE, RINGBUF_TYPE_NOSPLIT);
+    if (s_stdout_ringbuf == NULL) {
+        ESP_LOGE(TAG, "Failed to create stdout ring buffer!");
+        return; // Or assert
+    }
+
+    // Spawn the task that sends stdout over BLE
+    xTaskCreate(&ble_stdout_task, "ble_stdout_task", 4096, NULL, 5, NULL);
+    
+    ESP_LOGI(TAG, "BLE Stdout Service Initialized");
+}
+
+size_t ble_spp_stdout_write(const void *data, size_t size)
+{
+    if (s_stdout_ringbuf == NULL) {
+        return 0; // Service not initialized
+    }
+    ESP_LOGI(TAG, "DUP TERM WRITE");
+    ESP_LOG_BUFFER_CHAR(TAG, data, size);
+    // Non-blocking (or small timeout) write to the ring buffer
+    BaseType_t rc = xRingbufferSend(s_stdout_ringbuf, data, size, pdMS_TO_TICKS(10));
+    
+    if (rc != pdTRUE) {
+        // Buffer was full, we dropped the data
+        return 0; 
+    }
+    
+    return size; // Success
 }
 
 void ble_spp_init(void)
@@ -2580,6 +2804,7 @@ void ble_spp_init(void)
 */
 
     rc = gatt_svr_init();
+    ESP_LOGI("BLE_SPP", "Init failed with return code: %d", rc);
     assert(rc == 0);
 
     /* Set the default device name. */
@@ -2602,4 +2827,6 @@ void ble_spp_init(void)
 
     xTaskCreate(&bt_rx_tx_task, "bt_rx_tx_task", 4096, NULL, 5, NULL);
     xTaskCreate(&ota_task, "ota_task", OTA_TASK_SIZE, NULL, 5, NULL);
+
+    ble_spp_stdout_init();
 }

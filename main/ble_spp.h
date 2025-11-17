@@ -187,4 +187,15 @@ void ble_indicate_fs_list_err(void);
 void ble_indicate_download(uint8_t *data, uint32_t len);
 void ble_indicate_dev_info(uint8_t *data, uint16_t len);
 
+/**
+ * @brief Writes data to the BLE stdout buffer.
+ * * This function is thread-safe and non-blocking (within a timeout).
+ * It is intended to be called by any component that wants to print to the BLE stdout characteristic.
+ *
+ * @param data Pointer to the data to write.
+ * @param size Number of bytes to write.
+ * @return Number of bytes successfully written to the buffer.
+ */
+size_t ble_spp_stdout_write(const void *data, size_t size);
+
 #endif // BLE_SPP_H_

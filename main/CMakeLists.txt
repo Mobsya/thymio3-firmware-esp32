@@ -49,6 +49,8 @@ set(COMPONENT_SRCS
     friendly.h
     gpio.c
     gpio.h
+    groove.c
+    groove.h
     gyroscope.c
     gyroscope.h
     i2c.c
