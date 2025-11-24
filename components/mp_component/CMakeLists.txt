@@ -110,6 +110,7 @@ set(MICROPY_SOURCE_PORT
     ${MICROPY_DIR}/ports/esp32/thymio_leds_buttons.c
     ${MICROPY_DIR}/ports/esp32/thymio_led_receiver.c
     ${MICROPY_DIR}/ports/esp32/thymio_led_mic.c
+    ${MICROPY_DIR}/ports/esp32/thymio_i2c.c
     ${MICROPY_DIR}/ports/esp32/modthymio.c
 )
 

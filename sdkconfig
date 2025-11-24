@@ -1537,18 +1537,18 @@ CONFIG_CU_DIAGNOSTICS_COLOR_ALWAYS=y
 # end of CMake Utilities
 
 #
-# Pre Encrypted OTA Configuration
-#
-CONFIG_PRE_ENCRYPTED_OTA_USE_RSA=y
-# end of Pre Encrypted OTA Configuration
-
-#
 # OTA Manager
 #
 CONFIG_OTA_WITHOUT_SECURITY=y
 # CONFIG_OTA_WITH_PROTOCOMM is not set
 # CONFIG_PRE_ENC_OTA is not set
 # end of OTA Manager
+
+#
+# Pre Encrypted OTA Configuration
+#
+CONFIG_PRE_ENCRYPTED_OTA_USE_RSA=y
+# end of Pre Encrypted OTA Configuration
 # end of Component config
 
 #

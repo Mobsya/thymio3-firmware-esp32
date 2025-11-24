@@ -101,6 +101,11 @@ extern T_I2CBus I2C_GetBusStatus(void);
 //! \return    None
 extern void I2C_UpdateBusStatus(T_I2CBus status);
 
+extern void I2C_WriteAndRead(uint8_t slaveAddress, uint8_t* txData, uint16_t txSize, uint8_t* rxData, uint16_t rxSize);
+extern void I2C_Write(uint8_t slaveAddress, uint8_t* data, uint16_t size);
+extern void I2C_Read(uint8_t slaveAddress, uint8_t* data, uint16_t size);
+
+
 extern void I2C_DeleteDriver(void);
 
 #endif // I2C_H_

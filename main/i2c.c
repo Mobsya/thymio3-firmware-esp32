@@ -174,6 +174,72 @@ void I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t registerAddress, uint8_t*
 
 //_____________________________________________________________________________
 
+void I2C_WriteAndRead(uint8_t slaveAddress, uint8_t* txData, uint16_t txSize, uint8_t* rxData, uint16_t rxSize)
+{
+  i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+
+  ESP_ERROR_CHECK(i2c_master_start(cmd));
+  ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (slaveAddress << 1u) | I2C_MASTER_WRITE, ACK_CHECK_ENABLE));
+  ESP_ERROR_CHECK(i2c_master_write(cmd, txData, txSize, ACK_CHECK_ENABLE));
+  //ESP_ERROR_CHECK(i2c_master_stop(cmd));
+
+  //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0u));
+  i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
+
+  i2c_cmd_link_delete(cmd);
+
+  cmd = i2c_cmd_link_create();
+
+  ESP_ERROR_CHECK(i2c_master_start(cmd));
+  ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (slaveAddress << 1u) | I2C_MASTER_READ, ACK_CHECK_ENABLE));
+  ESP_ERROR_CHECK(i2c_master_read(cmd, &rxData[0u], rxSize, I2C_MASTER_LAST_NACK));
+  ESP_ERROR_CHECK(i2c_master_stop(cmd));
+
+  //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0u));
+  i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
+
+  i2c_cmd_link_delete(cmd);
+}
+
+//_____________________________________________________________________________
+
+void I2C_Write(uint8_t slaveAddress, uint8_t* data, uint16_t size)
+{
+  i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+
+  ESP_ERROR_CHECK(i2c_master_start(cmd));
+  ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (slaveAddress << 1u) | I2C_MASTER_WRITE, ACK_CHECK_ENABLE));
+  ESP_ERROR_CHECK(i2c_master_write(cmd, data, size, ACK_CHECK_ENABLE));
+  ESP_ERROR_CHECK(i2c_master_stop(cmd));
+
+  //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0));
+  i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
+
+  // FIXME Only for debug
+  //ESP_LOGI(Tag, "reg = %d, data = %d", registerAddress, *data);
+
+  i2c_cmd_link_delete(cmd);
+}
+
+//_____________________________________________________________________________
+
+void I2C_Read(uint8_t slaveAddress, uint8_t* data, uint16_t size)
+{
+  i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+
+  ESP_ERROR_CHECK(i2c_master_start(cmd));
+  ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (slaveAddress << 1u) | I2C_MASTER_READ, ACK_CHECK_ENABLE));
+  ESP_ERROR_CHECK(i2c_master_read(cmd, &data[0u], size, I2C_MASTER_LAST_NACK));
+  ESP_ERROR_CHECK(i2c_master_stop(cmd));
+
+  //ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_NUM_0, cmd, 0u));
+  i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_PERIOD_MS);
+
+  i2c_cmd_link_delete(cmd);
+}
+
+//_____________________________________________________________________________
+
 T_I2CBus I2C_GetBusStatus(void)
 {
   return BusIsAvailable;
