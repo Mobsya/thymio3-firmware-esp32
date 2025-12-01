@@ -984,16 +984,16 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
         switch (ctxt->op) {
             case BLE_GATT_ACCESS_OP_WRITE_CHR:
                 //MODLOG_DFLT(INFO, "Data received in write event,conn_handle = %x,attr_handle = %x", conn_handle, attr_handle);
-                ESP_LOGI(TAG, "FS buf len = %d (%d) [%d]", ctxt->om->om_len, ctxt->om->om_pkthdr_len, OS_MBUF_PKTLEN(ctxt->om));
-                ESP_LOG_BUFFER_HEX(TAG, ctxt->om->om_data, ctxt->om->om_len);
+                //ESP_LOGI(TAG, "FS buf len = %d (%d) [%d]", ctxt->om->om_len, ctxt->om->om_pkthdr_len, OS_MBUF_PKTLEN(ctxt->om));
+                //ESP_LOG_BUFFER_HEX(TAG, ctxt->om->om_data, ctxt->om->om_len);
                 ble_hs_mbuf_to_flat(ctxt->om, rx_buff_temp, 500, NULL);
-                ESP_LOG_BUFFER_HEX(TAG, rx_buff_temp, OS_MBUF_PKTLEN(ctxt->om));
+                //ESP_LOG_BUFFER_HEX(TAG, rx_buff_temp, OS_MBUF_PKTLEN(ctxt->om));
 
                 if(fs_receiving_file)
                 {
                     fs_timeout = 0; // Reset timeout
                     fs_seq_id = (ctxt->om->om_data[0] << 8) | ctxt->om->om_data[1];
-                    ESP_LOGI(TAG, "seq id = %d, curr len = %d (tot=%d)", fs_seq_id, fs_curr_len, fs_tot_len);
+                    //ESP_LOGI(TAG, "seq id = %d, curr len = %d (tot=%d)", fs_seq_id, fs_curr_len, fs_tot_len);
                     if(fs_seq_id != (fs_seq_id_prev+1))
                     {
                         fs_receiving_file = false;
@@ -2535,8 +2535,8 @@ void ble_indicate_download(uint8_t *data, uint32_t len)
         }
         if (rc == 0)
         {
-            ESP_LOGI(TAG, "FS download indication sent successfully: Seq ID %d, Total Len %d, Payload %d",
-                     seq_id, os_mbuf_len(txom), chunk_payload_len);
+            //ESP_LOGI(TAG, "FS download indication sent successfully: Seq ID %d, Total Len %d, Payload %d",
+            //         seq_id, os_mbuf_len(txom), chunk_payload_len);
 
             // Update state for the next chunk
             current_data_ptr += chunk_payload_len;

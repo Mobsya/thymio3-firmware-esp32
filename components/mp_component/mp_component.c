@@ -452,6 +452,7 @@ soft_reset:
                 mp_component_state = -1; // Execute the script only once
                 break;
             case 8: //script from RAM
+                mp_component_state = -1; // Execute the script only once
                 // Exception handled by Micropython by using NLR method
                 if (nlr_push(&nlr) == 0) {
                     run_micropython_script(ram_file_data);
@@ -462,10 +463,10 @@ soft_reset:
                     mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
                     ble_indicate_python_exec(PYTHON_EXEC_ERROR);
                 }
-                turnOffAllSensors();             
-                mp_component_state = -1; // Execute the script only once
+                turnOffAllSensors();                
                 break;
-            case 9: // save script                
+            case 9: // save script   
+                mp_component_state = -1; // Execute the command only once             
                 memset(file_name, 0, sizeof(file_name));
                 if(ram_script_id == 0)
                 {
@@ -492,9 +493,9 @@ soft_reset:
                     mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
                     ble_indicate_python_save(PYTHON_SAVE_ERROR);
                 }
-                mp_component_state = -1; // Execute the command only once
                 break;
             case 10: // save file
+                mp_component_state = -1; // Execute the command only once            
                 if (nlr_push(&nlr) == 0) {
                     // Check if there is enough space in the filesystem
                     mp_obj_t os_module = mp_import_name(MP_QSTR_os, mp_const_none, MP_OBJ_NEW_SMALL_INT(0));
@@ -540,9 +541,9 @@ soft_reset:
                     mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
                     ble_indicate_fs(FS_IND_SAVE_RES, FS_SAVE_ERROR);
                 }
-                mp_component_state = -1; // Execute the command only once
                 break;
             case 11: // delete file
+                mp_component_state = -1; // Execute the command only once
                 if (nlr_push(&nlr) == 0) {
                     // Import os module
                     mp_obj_t os_module = mp_import_name(MP_QSTR_os, mp_const_none, MP_OBJ_NEW_SMALL_INT(0));
@@ -583,14 +584,13 @@ soft_reset:
                     mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
                     ble_indicate_fs(FS_IND_DELETE_RES, FS_DELETE_ERROR);
                 }
-                mp_component_state = -1; // Execute the command only once
                 break;
             case 12: // list files
+                mp_component_state = -1; // Execute the command only once
                 json_buf = calloc(JSON_BUFFER_SIZE, sizeof(char));
                 if(json_buf == NULL) {
                     ESP_LOGE("mp_component", "Failed to allocate memory for JSON buffer");
-                    ble_indicate_fs_list_err();
-                    mp_component_state = -1; // Execute the command only once                    
+                    ble_indicate_fs_list_err();               
                     break;
                 }
                 if (nlr_push(&nlr) == 0) {
@@ -640,14 +640,13 @@ soft_reset:
                     mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
                     ble_indicate_fs_list_err();
                     free(json_buf);
-                    mp_component_state = -1; // Execute the command only once
                     break;
                 }
                 ESP_LOG_BUFFER_CHAR("mp_component", json_buf, strlen(json_buf));
-                ble_indicate_fs_list((uint8_t *)json_buf, strlen(json_buf));     
-                mp_component_state = -1; // Execute the command only once
+                ble_indicate_fs_list((uint8_t *)json_buf, strlen(json_buf));
                 break;
             case 13: // mem info
+                mp_component_state = -1;
                 memset(json_mem_info, 0, sizeof(json_mem_info));
 
                 if (nlr_push(&nlr) == 0) {
@@ -692,9 +691,9 @@ soft_reset:
 
                 ble_indicate_dev_info((uint8_t *)json_mem_info, json_mem_info_len);
                 ESP_LOG_BUFFER_CHAR("mp_component", &json_mem_info[3], json_mem_info_len-3);
-                mp_component_state = -1; // Execute the command only once
                 break;
             case 14: // read file
+                mp_component_state = -1;
                 read_file_len = 0;
                 read_file_data = NULL;
 
@@ -748,8 +747,7 @@ soft_reset:
                         if (!read_file_data) {
                             ESP_LOGI("mp_component", "Out of memory allocating %d bytes", file_len);
                             mp_stream_close(file_obj);
-                            ble_indicate_fs(FS_IND_DOWNLOAD_RES, FS_DOWNLOAD_ERROR);
-                            mp_component_state = -1; // Execute the command only once                             
+                            ble_indicate_fs(FS_IND_DOWNLOAD_RES, FS_DOWNLOAD_ERROR);                        
                             nlr_pop();                      
                             break;                            
                         }
@@ -762,8 +760,7 @@ soft_reset:
                             free(read_file_data);
                             read_file_data = NULL;
                             read_file_len = 0;
-                            ble_indicate_fs(FS_IND_DOWNLOAD_RES, FS_DOWNLOAD_ERROR);
-                            mp_component_state = -1; // Execute the command only once                         
+                            ble_indicate_fs(FS_IND_DOWNLOAD_RES, FS_DOWNLOAD_ERROR);                        
                             nlr_pop();
                             break;
                         }
@@ -786,13 +783,12 @@ soft_reset:
                     }
                     read_file_len = 0;
                     ble_indicate_fs(FS_IND_DOWNLOAD_RES, FS_DOWNLOAD_ERROR);
-                    mp_component_state = -1; // Execute the command only once
                     break;
                 }
-                ble_indicate_download((uint8_t *)read_file_data, read_file_len);
-                mp_component_state = -1; // Execute the command only once       
+                ble_indicate_download((uint8_t *)read_file_data, read_file_len);    
                 break;
             case 15: // firmware info
+                mp_component_state = -1;
                 memset(json_mem_info, 0, sizeof(json_mem_info));           
 
                 snprintf(&json_mem_info[3], sizeof(json_mem_info)-3,
@@ -807,7 +803,6 @@ soft_reset:
 
                 ble_indicate_dev_info((uint8_t *)json_mem_info, json_mem_info_len);
                 ESP_LOG_BUFFER_CHAR("mp_component", &json_mem_info[3], json_mem_info_len-3);
-                mp_component_state = -1; // Execute the command only once
                 break;                
             default:
                 break; 

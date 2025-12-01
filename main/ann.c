@@ -88,6 +88,8 @@ float motor_scale  = 30;
 int16_t motor_left_target = 0;
 int16_t motor_right_target = 0;
 
+uint16_t learning_times = 0;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -153,6 +155,7 @@ void ANN_Start(void)
   Leds_SetBodyBrightness(MAX_BRIGHTNESS, white_level, white_level);
   motor_right_target = 0;
   motor_left_target = 0;
+  learning_times = 0;
 
   // Reset all weights except bias
   i = 0;
@@ -180,9 +183,13 @@ void ANN_Stop(void)
 
 void ANN_Run(void)
 {
-
+  uint8_t brightness = Common_GetBodyColorPulse();
   GetProximityValues(prox_horizontal);
   prox();
+
+  if(state == 0) {
+    Leds_SetBodyBrightness(brightness, brightness, brightness);
+  }
 
   period++;
   if(period == 5) // 100 ms => based on behaviors task running frequency of 50 hz
@@ -222,7 +229,7 @@ void ANN_Run(void)
         {
           white_level += 1;
           white_timer = 0;
-          Leds_SetBodyBrightness(MAX_BRIGHTNESS, white_level, white_level);
+          //Leds_SetBodyBrightness(MAX_BRIGHTNESS, white_level, white_level);       
         }
       }
     }
@@ -239,6 +246,11 @@ void ANN_Run(void)
       Codec_Stop();
       Codec_PlayOnboardSound(TONE_TYPE_BEEP);
 
+      if(learning_times < 16) {
+        learning_times += 1;
+      }
+      Leds_SetLegoProgress(learning_times);
+      
       // Learning: reinforce away from obstacle
       i = 0;
       for(i=0; i<=6; i++)
@@ -304,9 +316,12 @@ void ANN_Run(void)
             w_right[i] += 1;
         }
       }
-
+      if(learning_times > 0) {
+        learning_times -= 1;
+      }
       // Display level of wheights
       Leds_SetCircleBrightness(abs(w_right[2])+abs(w_left[2]), abs(w_right[3])+abs(w_right[4]), abs(w_left[3])+abs(w_left[4]), abs(w_right[5])+abs(w_left[5]), 0, abs(w_right[6])+abs(w_left[6]), abs(w_left[0])+abs(w_left[1]), abs(w_right[0])+abs(w_right[1]));
+      Leds_SetLegoProgress(learning_times);
     }    
   }
 
@@ -316,7 +331,7 @@ void ANN_Run(void)
   {
    	// on passe en mode learning
 		state = 0;
-    Leds_SetBodyBrightness(0, 0, 0);
+    //Leds_SetBodyBrightness(0, 0, 0);
   }
 
   if (btn_status[E_Button_Left] && btn_status[E_Button_Right]) // Left + right => white

@@ -1526,17 +1526,6 @@ CONFIG_DEFAULT_AP_BEACON_INTERVAL=100
 # end of Wifi Manager Configuration
 
 #
-# CMake Utilities
-#
-# CONFIG_CU_RELINKER_ENABLE is not set
-# CONFIG_CU_DIAGNOSTICS_COLOR_NEVER is not set
-CONFIG_CU_DIAGNOSTICS_COLOR_ALWAYS=y
-# CONFIG_CU_DIAGNOSTICS_COLOR_AUTO is not set
-# CONFIG_CU_GCC_LTO_ENABLE is not set
-# CONFIG_CU_GCC_STRING_1BYTE_ALIGN is not set
-# end of CMake Utilities
-
-#
 # OTA Manager
 #
 CONFIG_OTA_WITHOUT_SECURITY=y
@@ -1549,6 +1538,17 @@ CONFIG_OTA_WITHOUT_SECURITY=y
 #
 CONFIG_PRE_ENCRYPTED_OTA_USE_RSA=y
 # end of Pre Encrypted OTA Configuration
+
+#
+# CMake Utilities
+#
+# CONFIG_CU_RELINKER_ENABLE is not set
+# CONFIG_CU_DIAGNOSTICS_COLOR_NEVER is not set
+CONFIG_CU_DIAGNOSTICS_COLOR_ALWAYS=y
+# CONFIG_CU_DIAGNOSTICS_COLOR_AUTO is not set
+# CONFIG_CU_GCC_LTO_ENABLE is not set
+# CONFIG_CU_GCC_STRING_1BYTE_ALIGN is not set
+# end of CMake Utilities
 # end of Component config
 
 #
