@@ -239,6 +239,8 @@ static void ExitPythonItem(T_Python_item item);
 
 static void RunLegoLedAnimation(void);
 
+static void SetColorSensorLed(void);
+
 //! \brief     Interrupt called at the end of a movement
 //! \pre       First initialize the mode
 //! \param     arg - Not used
@@ -467,6 +469,11 @@ static void RunBehaviors(void)
   {
     RunLegoLedAnimation();
   }  
+
+  if (ENABLED(B_LEDS_RGB))
+  {
+    SetColorSensorLed();
+  }    
 
   if (ENABLED(B_PYTHON))
   {
@@ -2502,6 +2509,53 @@ static void RunLegoLedAnimation(void)
 */
     Leds_SetLegoFrontBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
     Leds_SetLegoBackBrightness(l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]);
+  }
+}
+
+//_____________________________________________________________________________
+
+static void SetColorSensorLed(void)
+{
+  static T_Color color = E_Color_Unknown;
+  if(color != ColorSensor_GetColor())
+  {
+    color = ColorSensor_GetColor();
+    switch(color)
+    {
+      case E_Color_Red:
+        Leds_SetColorSensorBrightness(MAX_BRIGHTNESS, 0, 0);
+        break;
+
+      case E_Color_Green:
+        Leds_SetColorSensorBrightness(0, MAX_BRIGHTNESS, 0);
+        break;
+
+      case E_Color_Cyan:
+        Leds_SetColorSensorBrightness(0, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;
+
+      case E_Color_Blue:
+        Leds_SetColorSensorBrightness(0, 0, MAX_BRIGHTNESS);
+        break;
+
+      case E_Color_Yellow:
+        Leds_SetColorSensorBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0);
+        break;
+
+      case E_Color_Purple:
+        Leds_SetColorSensorBrightness(MAX_BRIGHTNESS, 0, MAX_BRIGHTNESS);
+        break;
+
+      case E_Color_White:
+        Leds_SetColorSensorBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS);
+        break;
+
+      case E_Color_Black:
+      case E_Color_Unknown:
+      default:
+        Leds_SetColorSensorBrightness(0, 0, 0);
+        break;
+    }
   }
 }
 

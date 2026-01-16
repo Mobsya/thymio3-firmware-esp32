@@ -97,6 +97,8 @@ set(COMPONENT_SRCS
     stm32_spi.h
     tcp_server.c
     tcp_server.h
+    tcs3701.c
+    tcs3701.h
     test.c
     test.h
     thymio-buffer.c

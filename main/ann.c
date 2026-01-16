@@ -56,7 +56,8 @@
 static const char* Tag = "ANN";
 
 // state machine
-uint8_t state = 0;	// 0: ANN forward, 1: back, 2: learning, 3: end 4: freeze
+uint8_t state = 0;	// 0: ANN forward, 1: back, 2: learning, 3: end 4: freeze, 5: pause
+uint8_t prev_state = 0;
 uint16_t timer = 0; // for behaviors timing (goes back)
 uint16_t forget_timer = 0; // used to have a foretting timing
 uint16_t white_timer = 0; // used to have a variation of color from red to white
@@ -90,6 +91,8 @@ int16_t motor_right_target = 0;
 
 uint16_t learning_times = 0;
 
+uint8_t btn_left_right_released = 1;
+
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
@@ -108,7 +111,7 @@ void prox(void)
   {
     // check if collision
     i = 0;
-    while(i < 7)
+    while(i < 5) // front proximity sensors
     {
       if(prox_horizontal[i] > COLLISION_SENSOR_VALUE)
       {
@@ -136,6 +139,35 @@ void prox(void)
       }
       i += 1;
     }
+    i = 5;
+    while(i < 7) // back proximity sensors
+    {
+      if(prox_horizontal[i] > COLLISION_SENSOR_VALUE)
+      {
+        // on est dans un cas de collision
+        Codec_Stop();
+        Codec_PlayOnboardSound(TONE_TYPE_NOTIFY);
+
+        state = 1;
+        timer = 0;
+        motor_left_target = 200;
+        motor_right_target= 200;
+        Common_SetTargetSpeed(motor_left_target, motor_right_target);
+        Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0, 0); // Red
+        white_level = 0; // Reset white
+
+        // Store collision data
+        j = 0;
+        for(j=0; j<=6; j++)
+        {
+          if(prox_horizontal[j] > COLLISION_SENSOR_VALUE)
+          { 
+            collision[j] = 1;
+          }
+        }
+      }
+      i += 1;
+    }    
   }
 }
 
@@ -149,6 +181,7 @@ void ANN_Init(void)
 void ANN_Start(void)
 {
   state = 0;
+  prev_state = 0;
   timer = 0;
   forget_timer = 0;
   white_level = MAX_BRIGHTNESS;
@@ -156,6 +189,7 @@ void ANN_Start(void)
   motor_right_target = 0;
   motor_left_target = 0;
   learning_times = 0;
+  btn_left_right_released = 1;
 
   // Reset all weights except bias
   i = 0;
@@ -223,7 +257,7 @@ void ANN_Run(void)
       Common_SetTargetSpeed(motor_left_target, motor_right_target);
 
       // Gradually increase green for yellow if no collision
-      if(state !=4)
+      if((state !=4) && (state != 5))
       {
         if((white_level < MAX_BRIGHTNESS) && (white_timer > 1000))
         {
@@ -257,19 +291,29 @@ void ANN_Run(void)
       {
         if(collision[i] == 1)
         {
-          if(i <= 2)
+          if(i <= 1)
           {
             w_left[i] += LEARNING_STEP;
             w_right[i] += -HALF_LEARNING_STEP;
           }
-          else if(i >= 4)
+          else if((i >= 3) && (i <= 4))
           {
             w_right[i] += LEARNING_STEP;
             w_left[i] += -HALF_LEARNING_STEP;
           }
-          else
+          else if(i == 2)
           {
             w_left[i] += -HALF_LEARNING_STEP;
+            w_right[i] += -HALF_LEARNING_STEP;
+          }
+          else if(i == 5)
+          {
+            w_left[i] += -HALF_LEARNING_STEP;
+            w_right[i] += LEARNING_STEP;
+          }
+          else if(i == 6)
+          {
+            w_left[i] += LEARNING_STEP;
             w_right[i] += -HALF_LEARNING_STEP;
           }
         }
@@ -293,7 +337,7 @@ void ANN_Run(void)
     }
 
     // Forgetting mechanism every 16s
-    if((forget_timer >= 16000) && (state != 4))
+    if((forget_timer >= 16000) && (state != 4) && (state != 5))
     {
       forget_timer = 0;
       i = 0;
@@ -322,23 +366,67 @@ void ANN_Run(void)
       // Display level of wheights
       Leds_SetCircleBrightness(abs(w_right[2])+abs(w_left[2]), abs(w_right[3])+abs(w_right[4]), abs(w_left[3])+abs(w_left[4]), abs(w_right[5])+abs(w_left[5]), 0, abs(w_right[6])+abs(w_left[6]), abs(w_left[0])+abs(w_left[1]), abs(w_right[0])+abs(w_right[1]));
       Leds_SetLegoProgress(learning_times);
-    }    
+    }   
+    
+    if(state == 5)
+    {
+      forget_timer = 0;
+      motor_left_target = 0;
+      motor_right_target = 0;
+      Common_SetTargetSpeed(motor_left_target, motor_right_target);      
+    }
   }
 
 
   btn_status = Buttons_GetStatus();
-  if (btn_status[E_Button_Backward] && btn_status[E_Button_Forward]) // Forward + backward => black
+  if (btn_status[E_Button_Backward]) // pause
   {
-   	// on passe en mode learning
-		state = 0;
-    //Leds_SetBodyBrightness(0, 0, 0);
+   	// on passe en mode pause
+		if(state != 5)
+    {
+      prev_state = state;
+      state = 5;
+    }
   }
 
-  if (btn_status[E_Button_Left] && btn_status[E_Button_Right]) // Left + right => white
+  if (btn_status[E_Button_Forward]) // resume
+  {
+   	// on passe en mode learning
+   	if(state == 5) // is paused
+    {
+      if(prev_state == 4) // was running
+      {
+        state = 4; // back to running
+        Leds_SetBodyBrightness(MAX_BRIGHTNESS/2, MAX_BRIGHTNESS/2, 0);
+      }
+      else
+      {
+        state = 0; // back to learning
+        Leds_SetBodyBrightness(0, 0, 0);
+      }
+      prev_state = state;
+    }
+  }  
+
+  if((btn_status[E_Button_Left] || btn_status[E_Button_Right]) && (btn_left_right_released==1)) // running or learning
   {
     // on passe en mode freeze
- 		state = 4;
-    Leds_SetBodyBrightness(MAX_BRIGHTNESS/2, MAX_BRIGHTNESS/2, 0);
+  	if(prev_state == 4)
+    {
+  			state = 0;
+  			Leds_SetBodyBrightness(0, 0, 0);
+    }
+    else
+    {
+  			state = 4;
+  			Leds_SetBodyBrightness(MAX_BRIGHTNESS/2, MAX_BRIGHTNESS/2, 0);
+    }
+  	prev_state = state;
+  	btn_left_right_released = 0;
+  }
+  else if((btn_status[E_Button_Left]==0) && (btn_status[E_Button_Right]==0))
+  {
+  	btn_left_right_released = 1;
   }
 
 }

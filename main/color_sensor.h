@@ -22,7 +22,6 @@
 //-----------------------------------------------------------------------------
 
 #include "error.h"
-#include "bh1745nuc.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -37,6 +36,7 @@ typedef enum
   E_Color_Red,
   E_Color_Yellow,
   E_Color_Green,
+  E_Color_Cyan,
   E_Color_Blue,
   E_Color_Purple,
   E_Color_White,
@@ -50,6 +50,15 @@ typedef struct
   int16_t Saturation;
   int16_t Value;
 } T_HSV;
+
+typedef struct
+{
+  int16_t Red;
+  int16_t Green;
+  int16_t Blue;
+  int16_t Clear;
+} T_RawColor;  //!< RGBC raw color
+
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------

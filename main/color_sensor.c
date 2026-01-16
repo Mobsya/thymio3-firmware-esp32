@@ -29,14 +29,18 @@
 #include "codec.h"
 #include "leds.h"
 #include "settings.h"
+#include "tcs3701.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
 #define MAX_HSV_COLOR          255
-
 #define MIN_WHITE_BLACK_GAP    200
+
+#define COLOR_SENSOR_NOT_AVAILABLE 0
+#define COLOR_SENSOR_BH1745NUC 1
+#define COLOR_SENSOR_TCS3701   2
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -62,6 +66,8 @@ static T_RawColor White;
 static T_RawColor Black;
 static T_RawColor Range;
 static T_RawColor MaxColor;
+
+static uint8_t colorSensorType = COLOR_SENSOR_NOT_AVAILABLE;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -116,7 +122,20 @@ static inline float fMax3(float a, float b, float c);
 
 void ColorSensor_Init(void)
 {
-  BH1745NUC_Init();
+  ColorSensor_CheckManufacturerId();
+  if(colorSensorType == COLOR_SENSOR_NOT_AVAILABLE)
+  {
+    return;
+  }
+  else if(colorSensorType == COLOR_SENSOR_TCS3701)
+  {
+    TCS3701_Init();
+  }
+  else if(colorSensorType == COLOR_SENSOR_BH1745NUC)
+  {
+    BH1745NUC_Init();
+  }
+
   Leds_SetSingleBrightness(E_Led_White_Sensor, MAX_BRIGHTNESS);
 
   White.Red   = Settings_GetWhiteRedSettings();
@@ -150,8 +169,19 @@ void ColorSensor_Init(void)
 
 void ColorSensor_ReadColor(void)
 {
-  BH1745NUC_ReadColor(&RawColor);
-
+  if(colorSensorType == COLOR_SENSOR_NOT_AVAILABLE)
+  {
+    return;
+  }
+  else if(colorSensorType == COLOR_SENSOR_TCS3701)
+  {
+    TCS3701_ReadColor(&RawColor);
+  }
+  else if(colorSensorType == COLOR_SENSOR_BH1745NUC)
+  {
+    BH1745NUC_ReadColor(&RawColor);
+  }  
+  
   vmVariables.color_raw[0] = RawColor.Red;
   vmVariables.color_raw[1] = RawColor.Green;
   vmVariables.color_raw[2] = RawColor.Blue;
@@ -396,12 +426,22 @@ T_Error ColorSensor_CheckManufacturerId(void)
 {
   T_Error err = E_Error_None;
 
-  if (BH1745NUC_CheckManufacturerId() != E_Error_None)
+  if (BH1745NUC_CheckManufacturerId() == E_Error_None)
   {
-    err = E_Error_Color_InvalidID;
+    colorSensorType = COLOR_SENSOR_BH1745NUC;
+    ESP_LOGI(Tag, "Color sensor BH1745NUC is detected");
+    return err;
+  }
+  if (TCS3701_CheckDeviceId() == E_Error_None)
+  {
+    colorSensorType = COLOR_SENSOR_TCS3701;
+    ESP_LOGI(Tag, "Color sensor TCS3701 is detected");
+    return err;
   }
 
-  ESP_LOGI(Tag, "Color sensor test is done");
+  err = E_Error_Color_InvalidID;
+  colorSensorType = COLOR_SENSOR_NOT_AVAILABLE;
+  ESP_LOGE(Tag, "No color sensor is detected");
 
   return err;
 }
@@ -451,20 +491,40 @@ static void ConvertToHSV(void)
   float cmax;
   float delta;
 
-/*
   // Check division by 0
-  if ((Range.Red == 0) || (Range.Green == 0) || (Range.Blue == 0))
+  if (((White.Red - Black.Red) == 0) || ((White.Green - Black.Green) == 0) || ((White.Blue - Black.Blue) == 0))
   {
     Hsv.Hue = -1;
     Hsv.Saturation = -1;
     Hsv.Value = -1;
     return;
   }
-*/
+
   // Make the RGB values between 0 and 1
-  red   /= White.Red; //16384; //Range.Red;
-  green /= White.Green; //16384; //Range.Green;
-  blue  /= White.Blue; //16384; //Range.Blue;
+  red   = (float)(RawColor.Red - Black.Red)/(float)(White.Red - Black.Red);
+  //printf("red=%f, raw=%d, calib_bk=%d, calib_w=%d\n", red, RawColor.Red, Black.Red, White.Red);
+  if(red < 0) {
+    red = 0;
+  }
+  if(red > 1) {
+    red = 1;
+  }
+  green = (float)(RawColor.Green - Black.Green)/(float)(White.Green - Black.Green);
+  //printf("green=%f raw=%d, calib_bk=%d, calib_w=%d\n", green, RawColor.Green, Black.Green, White.Green);
+  if(green < 0) {
+    green = 0;
+  }
+  if(green > 1) {
+    green = 1;
+  }
+  blue  = (float)(RawColor.Blue - Black.Blue)/(float)(White.Blue - Black.Blue);
+  //printf("blue=%f raw=%d, calib_bk=%d, calib_w=%d\n", blue, RawColor.Blue, Black.Blue, White.Blue);
+  if(blue < 0) {
+    blue = 0;
+  }
+  if(blue > 1) {
+    blue = 1;
+  }
   
   cmin = fMin3(red, green, blue);
   cmax = fMax3(red, green, blue);
@@ -500,46 +560,60 @@ static void ConvertToHSV(void)
 
 static void UpdateColor(T_HSV hsv)
 {
-  if ((hsv.Saturation < 40) && (hsv.Value > 75))
-  {
-    // White
-    Color = E_Color_White;
-  }
-  else if (hsv.Value < 40)
-  {
-    // Black
-    Color = E_Color_Unknown;
-  }
-  else if (hsv.Saturation >= 15)  // Color
-  {
-    if (((hsv.Hue >= 0) && (hsv.Hue <= 27)) || ((hsv.Hue > 344) && (hsv.Hue <= 360))) // red [344..27]
+  if (hsv.Saturation < 20)
+  { 
+    if(hsv.Value > 65)
     {
-      Color = E_Color_Red;
+      // White
+      Color = E_Color_White;
     }
-    else if (hsv.Hue <= 93) // yellow ]27..93]
+    else if(hsv.Value < 30)
     {
-      Color = E_Color_Yellow;
-    }
-    else if (hsv.Hue <= 175) // green ]93..175]
-    {
-      Color = E_Color_Green;
-    }
-    else if (hsv.Hue <= 268) // blue ]175..268]
-    {
-      Color = E_Color_Blue;
-    }
-    else if (hsv.Hue <= 344) // purple ]268..344]
-    {
-      Color = E_Color_Purple;
+      // Black
+      Color = E_Color_Unknown;
     }
     else
     {
       Color = E_Color_Unknown;
     }
-  }
-  else
+  }  
+  else // Color
   {
-    Color = E_Color_Unknown;
+    if(hsv.Value > 20)
+    {
+      if (((hsv.Hue >= 0) && (hsv.Hue <= 20)) || ((hsv.Hue > 350) && (hsv.Hue <= 360))) // red [350..20], delta=30
+      {
+        Color = E_Color_Red;
+      }
+      else if (hsv.Hue <= 57) // yellow ]20..57], delta=37
+      {
+        Color = E_Color_Yellow;
+      }
+      else if (hsv.Hue <= 120) // green ]57..120], delta=63
+      {
+        Color = E_Color_Green;
+      }
+      else if (hsv.Hue <= 200) // cyan ]120..200], delta=80
+      {
+        Color = E_Color_Cyan;
+      }
+      else if (hsv.Hue <= 268) // blue ]200..268], delta=68
+      {
+        Color = E_Color_Blue;
+      }
+      else if (hsv.Hue <= 350) // purple ]268..350], delta=82
+      {
+        Color = E_Color_Purple;
+      }
+      else
+      {
+        Color = E_Color_Unknown;
+      }
+    }
+    else
+    {
+      Color = E_Color_Unknown;
+    }
   }
 }
 
