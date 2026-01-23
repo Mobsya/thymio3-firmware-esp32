@@ -84,6 +84,7 @@
 #include "../main/accelerometer.h"
 #include "../main/ble_spp.h"
 #include "../main/utility.h"
+#include "../main/codec.h"
 
 #if MICROPY_BLUETOOTH_NIMBLE
 #include "extmod/modbluetooth.h"
@@ -91,7 +92,7 @@
 
 // MicroPython runs as a task under FreeRTOS
 #define MP_TASK_PRIORITY        (ESP_TASK_PRIO_MIN + 1)
-#define MP_TASK_STACK_SIZE      (16 * 1024)
+#define MP_TASK_STACK_SIZE      (20 * 1024)
 
 // Set the margin for detecting stack overflow, depending on the CPU architecture.
 #if CONFIG_IDF_TARGET_ESP32C3
@@ -111,7 +112,6 @@ char* ram_file_data;
 uint8_t ram_script_id;
 char file_name[30];
 size_t ram_file_len;
-nlr_buf_t nlr;
 static char *json_buf = NULL;
 char json_mem_info[256] = {0};
 uint16_t json_mem_info_len = 0;
@@ -142,7 +142,7 @@ void run_micropython_script(char* script_content) {
     mp_parse_tree_t parse_tree = mp_parse(lex, MP_PARSE_FILE_INPUT);
 
     // Esecuzione del codice
-    qstr source_name = qstr_from_str("prova");
+    qstr source_name = qstr_from_str("mp_script");
     mp_obj_t script_result = mp_compile(&parse_tree, source_name, false);
     mp_call_function_0(script_result);
 
@@ -154,20 +154,6 @@ void run_micropython_script(char* script_content) {
 int vprintf_null(const char *format, va_list ap) {
     // do nothing: this is used as a log target during raw repl mode
     return 0;
-}
-
-void mp_exec_script_task(void *pvParameter) {
-    char* script_data = (char*) pvParameter;
-    nlr_buf_t nlr;
-    if (nlr_push(&nlr) == 0) {
-        run_micropython_script(script_data);
-        nlr_pop();
-    } else {
-        // Un'eccezione è stata sollevata (es. KeyboardInterrupt)
-        printf("Script interrotto.\n");
-        mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
-    }
-    vTaskDelete(NULL);
 }
 
 /**
@@ -452,7 +438,6 @@ soft_reset:
                 mp_component_state = -1; // Execute the script only once
                 break;
             case 8: //script from RAM
-                mp_component_state = -1; // Execute the script only once
                 // Exception handled by Micropython by using NLR method
                 if (nlr_push(&nlr) == 0) {
                     run_micropython_script(ram_file_data);
@@ -463,7 +448,9 @@ soft_reset:
                     mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
                     ble_indicate_python_exec(PYTHON_EXEC_ERROR);
                 }
-                turnOffAllSensors();                
+                mp_component_state = -1; // Execute the script only once
+                turnOffAllSensors();
+                Codec_Stop();           
                 break;
             case 9: // save script   
                 mp_component_state = -1; // Execute the command only once             

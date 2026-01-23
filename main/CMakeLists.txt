@@ -73,8 +73,8 @@ set(COMPONENT_SRCS
     natives.c
     obedient.c
     obedient.h
-    painter.c
-    painter.h
+    #painter.c
+    #painter.h
     power.c
     power.h
     python_handler.c
@@ -95,8 +95,8 @@ set(COMPONENT_SRCS
     spi.h
     stm32_spi.c
     stm32_spi.h
-    tcp_server.c
-    tcp_server.h
+    #tcp_server.c
+    #tcp_server.h
     tcs3701.c
     tcs3701.h
     test.c

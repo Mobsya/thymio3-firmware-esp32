@@ -307,7 +307,7 @@ void Behavior_Start(void)
   xTaskCreatePinnedToCore(
     RunBehaviorTask,  // Function to implement the task
     "behavior",       // Name of the task
-    4096,             // Stack size in words
+    2560,             // Stack size in words
     NULL,             // Task input parameter
     6,                // Priority of the task
     &BehaviorTask,    // Task handle

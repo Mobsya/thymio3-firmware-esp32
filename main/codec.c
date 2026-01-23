@@ -760,6 +760,7 @@ static T_Mp3PlayerHandle InitMp3Player(void)
   i2s_cfg.i2s_config.sample_rate = MP3_PLAYER_RATE;
   // i2s_cfg.task_core = 1;
   // i2s_cfg.i2s_config.fixed_mclk = 4096000;
+  //i2s_cfg.stack_in_ext = true;
   ap->I2SStream = i2s_stream_init(&i2s_cfg);
   AUDIO_MEM_CHECK(Tag, ap->I2SStream, goto _mp3_init_failed);
 
@@ -823,6 +824,7 @@ static T_OnboardPlayerHandle InitOnboardPlayer(void)
   i2s_cfg.i2s_config.sample_rate = MP3_PLAYER_RATE;
   // i2s_cfg.task_core = 1;
   // i2s_cfg.i2s_config.fixed_mclk = 4096000;
+  //i2s_cfg.stack_in_ext = true;
   ap->I2SStream = i2s_stream_init(&i2s_cfg);
   AUDIO_MEM_CHECK(Tag, ap->I2SStream, goto _onboard_init_failed);
 
@@ -874,6 +876,7 @@ static T_WavPlayerHandle InitWavPlayer(void)
   i2s_cfg.i2s_config.sample_rate = WAV_PLAYER_RATE;
   // i2s_cfg.task_core = 1;
   //  i2s_cfg.i2s_config.fixed_mclk = 4096000;
+  //i2s_cfg.stack_in_ext = true;
   ap->I2SStream = i2s_stream_init(&i2s_cfg);
   AUDIO_MEM_CHECK(Tag, ap->I2SStream, goto _wav_init_failed);
 
@@ -1004,6 +1007,7 @@ static T_TonePlayerHandle InitTonePlayer(void)
   cfg.read = NULL;
   cfg.write = NULL;
   cfg.tag = "tone";
+  //cfg.stack_in_ext = true;
   ap->ToneGenerator = audio_element_init(&cfg);
   AUDIO_MEM_CHECK(Tag, ap->ToneGenerator, goto _tone_init_failed);
 
@@ -1020,6 +1024,7 @@ static T_TonePlayerHandle InitTonePlayer(void)
   i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT;
   i2s_cfg.i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S; // I2S_COMM_FORMAT_STAND_MSB; //I2S_COMM_FORMAT_STAND_I2S
   i2s_cfg.i2s_config.sample_rate = TONE_PLAYER_RATE;
+  //i2s_cfg.stack_in_ext = true;
   ap->I2SStream = i2s_stream_init(&i2s_cfg);
   AUDIO_MEM_CHECK(Tag, ap->I2SStream, goto _tone_init_failed);
 
@@ -1066,6 +1071,7 @@ static T_RecorderHandle InitRecorder(void)
   // i2s_cfg.i2s_config.fixed_mclk = 4096000;
   // i2s_cfg.out_rb_size = 100*1024;
   // i2s_cfg.task_core = 1;
+  //i2s_cfg.stack_in_ext = true;
   ap->I2SStream = i2s_stream_init(&i2s_cfg);
   i2s_stream_set_clk(ap->I2SStream, RECORD_RATE, RECORD_BITS, RECORD_CHANNEL);
 

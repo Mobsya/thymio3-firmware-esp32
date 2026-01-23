@@ -121,7 +121,7 @@ void Sensors_Start(void)
   xTaskCreatePinnedToCore(
 	RunButtonsTask,  // Function to implement the task
     "buttons",       // Name of the task
-    2048,            // Stack size in words
+    1024,            // Stack size in words
     NULL,            // Task input parameter
     6,               // Priority of the task
     &ButtonsTask,    // Task handle

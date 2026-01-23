@@ -85,14 +85,14 @@ static const char *TAG = "THYMIO_BLUETOOTH";
 #define STDOUT_SEND_TIMEOUT_MS 1000
 
 
-uint8_t bt_rx_data[MAX_BT_RX_BUFF]; // Received commands from the device (e.g. from phone)
-uint8_t bt_rx_data_temp[MAX_BT_RX_BUFF]; // Double buffer for parsing the data while receiving new data without corruption
-uint8_t bt_tx_data[MAX_BT_TX_BUFF]; // Data sent to the device (e.g. to phone)
+EXT_RAM_ATTR uint8_t bt_rx_data[MAX_BT_RX_BUFF]; // Received commands from the device (e.g. from phone)
+EXT_RAM_ATTR uint8_t bt_rx_data_temp[MAX_BT_RX_BUFF]; // Double buffer for parsing the data while receiving new data without corruption
+EXT_RAM_ATTR uint8_t bt_tx_data[MAX_BT_TX_BUFF]; // Data sent to the device (e.g. to phone)
 bool bt_cmd_received = false;
 uint8_t bt_cmd_len = 0;
 bool bt_most_sensors_stream_en = false;
 bool bt_others_sensors_stream_en = false;
-static uint8_t rx_buff_temp[500];
+EXT_RAM_ATTR static uint8_t rx_buff_temp[500];
 #define INDICATION_ACK_BIT (1 << 0)
 #define INDICATION_ERR_BIT (1 << 1)
 static EventGroupHandle_t ind_ack_event_group = NULL;
@@ -2611,7 +2611,7 @@ static void send_ble_data_fragmented(uint8_t *data, size_t len, uint8_t *tx_buf)
         offset += chunk_size;
         
         // Small delay to avoid flooding.
-        vTaskDelay(5 / portTICK_PERIOD_MS);
+        vTaskDelay(20 / portTICK_PERIOD_MS); // This is especially needed for cases including large and often prints
     }
     ESP_LOGI(TAG, "Sent total %d bytes of stdout", len);
 }
@@ -2650,6 +2650,7 @@ static void ble_stdout_task(void *pvParameters)
     }
 
     size_t accum_len = 0;
+    bool send_now = false;
 
     while(1) {
         
@@ -2663,7 +2664,7 @@ static void ble_stdout_task(void *pvParameters)
         // Wait for data to arrive in the ring buffer
         data = (uint8_t *)xRingbufferReceive(s_stdout_ringbuf, &item_size, pdMS_TO_TICKS(STDOUT_SEND_TIMEOUT_MS));
 
-        bool send_now = false;
+        send_now = false;
 
         if (data != NULL) {
             // We got new data.
@@ -2695,7 +2696,7 @@ static void ble_stdout_task(void *pvParameters)
 
         } else {
             // data is NULL. This means our 1-second timer has expired.
-            if (accum_len > 0) {
+            if (accum_len > 0) { // Send the accumulated data if any
                 send_now = true;
             }
         }
@@ -2712,7 +2713,7 @@ static void ble_stdout_task(void *pvParameters)
             accum_len = 0; // Reset buffer
         }
 
-        // Handle the item that caused the overflow (if any)
+        // Handle the item that caused the overflow (the one that doesn't fit within the accumulation buffer) if any
         if (data != NULL) {
             // data still holds the item that didn't fit.
             // Start the new buffer with it.
@@ -2720,6 +2721,8 @@ static void ble_stdout_task(void *pvParameters)
             accum_len = item_size;
             vRingbufferReturnItem(s_stdout_ringbuf, (void *)data);
         }
+
+        vTaskDelay(10 / portTICK_PERIOD_MS); // This is needed for yielding to other tasks (including WDT) for cases with heavy prints (fast loops what print continuously)
     }
     
     // Should never be reached
@@ -2743,7 +2746,7 @@ void ble_spp_stdout_init(void)
     }
 
     // Spawn the task that sends stdout over BLE
-    xTaskCreate(&ble_stdout_task, "ble_stdout_task", 4096, NULL, 5, NULL);
+    xTaskCreate(&ble_stdout_task, "ble_stdout_task", 5120, NULL, 1, NULL); // Give low priority to BLE stdout task to avoid interference with other tasks
     
     ESP_LOGI(TAG, "BLE Stdout Service Initialized");
 }
@@ -2753,9 +2756,9 @@ size_t ble_spp_stdout_write(const void *data, size_t size)
     if (s_stdout_ringbuf == NULL) {
         return 0; // Service not initialized
     }
-    ESP_LOGI(TAG, "DUP TERM WRITE");
-    ESP_LOG_BUFFER_CHAR(TAG, data, size);
-    // Non-blocking (or small timeout) write to the ring buffer
+    //ESP_LOGI(TAG, "DUP TERM WRITE");
+    //ESP_LOG_BUFFER_CHAR(TAG, data, size);
+    // Non-blocking (small timeout) write to the ring buffer
     BaseType_t rc = xRingbufferSend(s_stdout_ringbuf, data, size, pdMS_TO_TICKS(10));
     
     if (rc != pdTRUE) {
@@ -2825,7 +2828,7 @@ void ble_spp_init(void)
 
     nimble_port_freertos_init(ble_spp_server_host_task);
 
-    xTaskCreate(&bt_rx_tx_task, "bt_rx_tx_task", 4096, NULL, 5, NULL);
+    xTaskCreate(&bt_rx_tx_task, "bt_rx_tx_task", 3072, NULL, 5, NULL);
     xTaskCreate(&ota_task, "ota_task", OTA_TASK_SIZE, NULL, 5, NULL);
 
     ble_spp_stdout_init();

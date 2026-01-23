@@ -97,7 +97,7 @@ static const char* Tag = "main";
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-uint8_t temp_buff[24576]={0};
+//uint8_t temp_buff[24576]={0};
 int64_t time_start, time_end;
 bool printStats = false;
 
@@ -360,7 +360,7 @@ int app_main(void)
   //Mode_InitVM();
 
   //WIFI_Init();
-	TCPServer_Init();
+	//TCPServer_Init();
   AsebaESP32_Init();
 
   AngleController_Init();
@@ -390,7 +390,7 @@ int app_main(void)
   //esp_log_level_set("sequence", ESP_LOG_INFO);
   //esp_log_level_set("mode", ESP_LOG_INFO);
 
-  ESP_LOGI(Tag, "OTA");
+  //ESP_LOGI(Tag, "OTA");
 
   //BLE_Start();
   //WIFI_Start();
@@ -412,9 +412,9 @@ int app_main(void)
  
   ble_spp_init();
 
-  wifi_init();
+  //wifi_init();
 
-  ESP_ERROR_CHECK(FileServer_Start("/spiffs")); // Must be called after WiFi initialization
+  //ESP_ERROR_CHECK(FileServer_Start("/spiffs")); // Must be called after WiFi initialization
 
   /*
   Codec_PlayTone(440.0, 2000);

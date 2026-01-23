@@ -560,14 +560,14 @@ static void ConvertToHSV(void)
 
 static void UpdateColor(T_HSV hsv)
 {
-  if (hsv.Saturation < 20)
+  if (hsv.Saturation < 12)
   { 
     if(hsv.Value > 65)
     {
       // White
       Color = E_Color_White;
     }
-    else if(hsv.Value < 30)
+    else if(hsv.Value < 50)
     {
       // Black
       Color = E_Color_Unknown;

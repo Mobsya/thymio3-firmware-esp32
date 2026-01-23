@@ -23,8 +23,9 @@
 #include "aseba/common/types.h"
 #include <string.h>
 #include <assert.h>
+#include "esp_attr.h"
 
-static unsigned char buffer[ASEBA_MAX_INNER_PACKET_SIZE];
+EXT_RAM_ATTR static unsigned char buffer[ASEBA_MAX_INNER_PACKET_SIZE];
 static unsigned buffer_pos;
 
 static void buffer_add(const uint8_t* data, const uint16_t len)

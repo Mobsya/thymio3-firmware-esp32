@@ -28,6 +28,7 @@
 //#include <error/error.h>
 
 #include "esp_log.h"
+#include "esp_attr.h"
 
 #include "thymio-buffer.h"
 #include "aseba/vm/natives.h"
@@ -63,9 +64,9 @@
 
 unsigned int events_flags = 0;
 
-static uint16_t vmBytecode[VM_BYTECODE_SIZE];
+EXT_RAM_ATTR static uint16_t vmBytecode[VM_BYTECODE_SIZE];
 
-static int16_t vmStack[VM_STACK_SIZE];
+EXT_RAM_ATTR static int16_t vmStack[VM_STACK_SIZE];
 
 AsebaVMState vmState =
 {
@@ -106,7 +107,7 @@ void AsebaESP32_Start(void)
   xTaskCreatePinnedToCore(
     RunAsebaTask,  // Function to implement the task
     "aseba",       // Name of the task
-    4096,          // Stack size in words
+    512,          // Stack size in words // was 4096 but reduced to save stack space
     NULL,          // Task input parameter
     1,             // Priority of the task
     NULL,          // Task handle
@@ -424,12 +425,12 @@ const AsebaLocalEventDescription* AsebaGetLocalEventsDescriptions(AsebaVMState* 
 }
 
 /* buffer for usb uart */
-static __attribute((far)) unsigned char sendQueue[SEND_QUEUE_SIZE];
-static __attribute((far)) unsigned char recvQueue[RECV_QUEUE_SIZE];
+EXT_RAM_ATTR static unsigned char sendQueue[SEND_QUEUE_SIZE];
+EXT_RAM_ATTR static unsigned char recvQueue[RECV_QUEUE_SIZE];
 
-struct __attribute((far)) _vmVariables vmVariables;
-static __attribute((far)) uint16_t vmBytecode[VM_BYTECODE_SIZE];
-static __attribute((far)) int16_t vmStack[VM_STACK_SIZE];
+EXT_RAM_ATTR struct _vmVariables vmVariables;
+EXT_RAM_ATTR static uint16_t vmBytecode[VM_BYTECODE_SIZE];
+EXT_RAM_ATTR static int16_t vmStack[VM_STACK_SIZE];
 
 /* Callback */
 void AsebaIdle(void)

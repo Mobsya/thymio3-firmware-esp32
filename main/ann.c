@@ -37,8 +37,8 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define LEARNING_STEP 2
-#define HALF_LEARNING_STEP 1
+#define LEARNING_STEP 3
+#define HALF_LEARNING_STEP 1.5
 #define COLLISION_SENSOR_VALUE 3300 // threshold for collision
 
 //-----------------------------------------------------------------------------
@@ -76,7 +76,7 @@ uint8_t collision[7] = {0};
 // White color tracker
 uint8_t white_level = 0;
 
-int16_t prox_horizontal[7];
+int16_t prox_horizontal[7] = {0, 0, 0, 0, 0, 0, 0};
 int16_t prox_ground_delta[2];
 
 uint8_t period = 0;
@@ -104,7 +104,6 @@ uint8_t btn_left_right_released = 1;
 //-----------------------------------------------------------------------------
 // Functions Implementation
 //-----------------------------------------------------------------------------
-
 void prox(void)
 {
   if(state == 0)
@@ -133,43 +132,58 @@ void prox(void)
         {
           if(prox_horizontal[j] > COLLISION_SENSOR_VALUE)
           { 
-            collision[j] = 1;
+            if(j==2)
+            {
+              if(prox_horizontal[1] > prox_horizontal[3])
+              {
+                collision[j] = 1;
+              }
+              else
+              {
+                collision[j] = 2;
+              }
+            }
+            else
+            {
+              collision[j] = 1;
+            }
           }
         }
       }
       i += 1;
     }
-    i = 5;
-    while(i < 7) // back proximity sensors
-    {
-      if(prox_horizontal[i] > COLLISION_SENSOR_VALUE)
-      {
-        // on est dans un cas de collision
-        Codec_Stop();
-        Codec_PlayOnboardSound(TONE_TYPE_NOTIFY);
+    // i = 5;
+    // while(i < 7) // back proximity sensors
+    // {
+    //   if(prox_horizontal[i] > COLLISION_SENSOR_VALUE)
+    //   {
+    //     // on est dans un cas de collision
+    //     Codec_Stop();
+    //     Codec_PlayOnboardSound(TONE_TYPE_NOTIFY);
 
-        state = 1;
-        timer = 0;
-        motor_left_target = 200;
-        motor_right_target= 200;
-        Common_SetTargetSpeed(motor_left_target, motor_right_target);
-        Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0, 0); // Red
-        white_level = 0; // Reset white
+    //     state = 1;
+    //     timer = 0;
+    //     motor_left_target = 200;
+    //     motor_right_target= 200;
+    //     Common_SetTargetSpeed(motor_left_target, motor_right_target);
+    //     Leds_SetBodyBrightness(MAX_BRIGHTNESS, 0, 0); // Red
+    //     white_level = 0; // Reset white
 
-        // Store collision data
-        j = 0;
-        for(j=0; j<=6; j++)
-        {
-          if(prox_horizontal[j] > COLLISION_SENSOR_VALUE)
-          { 
-            collision[j] = 1;
-          }
-        }
-      }
-      i += 1;
-    }    
+    //     // Store collision data
+    //     j = 0;
+    //     for(j=0; j<=6; j++)
+    //     {
+    //       if(prox_horizontal[j] > COLLISION_SENSOR_VALUE)
+    //       { 
+    //         collision[j] = 1;
+    //       }
+    //     }
+    //   }
+    //   i += 1;
+    // }       
   }
 }
+
 
 void ANN_Init(void)
 {
@@ -289,33 +303,43 @@ void ANN_Run(void)
       i = 0;
       for(i=0; i<=6; i++)
       {
-        if(collision[i] == 1)
+        if(collision[i] >= 1)
         {
-          if(i <= 1)
+          if(i <= 1) // Left + front-left senors
+          {
+            w_left[i] += LEARNING_STEP;
+            w_right[i] += -LEARNING_STEP; //-HALF_LEARNING_STEP;
+          }
+          else if((i >= 3) && (i <= 4)) // Right + front-right sensors
+          {
+            w_right[i] += LEARNING_STEP;
+            w_left[i] += -LEARNING_STEP; //-HALF_LEARNING_STEP;
+          }
+          else if(i == 2) // Front sensor
+          {
+            if(collision[i] == 1) // stronger on left side, prefer to turn right
+            {
+              w_left[i] += 0; //-HALF_LEARNING_STEP + 1;
+              w_right[i] += -HALF_LEARNING_STEP;
+            }
+            else
+            {
+              w_left[i] += -HALF_LEARNING_STEP;
+              w_right[i] += 0; //-HALF_LEARNING_STEP + 1;
+            }
+          }
+          /*
+          else if(i == 5) // Back-right sensor
+          {
+            w_left[i] += -HALF_LEARNING_STEP;
+            w_right[i] += LEARNING_STEP;
+          }
+          else if(i == 6) // Back-left sensor
           {
             w_left[i] += LEARNING_STEP;
             w_right[i] += -HALF_LEARNING_STEP;
           }
-          else if((i >= 3) && (i <= 4))
-          {
-            w_right[i] += LEARNING_STEP;
-            w_left[i] += -HALF_LEARNING_STEP;
-          }
-          else if(i == 2)
-          {
-            w_left[i] += -HALF_LEARNING_STEP;
-            w_right[i] += -HALF_LEARNING_STEP;
-          }
-          else if(i == 5)
-          {
-            w_left[i] += -HALF_LEARNING_STEP;
-            w_right[i] += LEARNING_STEP;
-          }
-          else if(i == 6)
-          {
-            w_left[i] += LEARNING_STEP;
-            w_right[i] += -HALF_LEARNING_STEP;
-          }
+          */
         }
       }
       //erase collision
