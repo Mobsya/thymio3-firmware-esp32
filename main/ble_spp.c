@@ -675,6 +675,9 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                         {
                             ble_indicate_python_save(PYTHON_SAVE_NOT_FOUND);
                         }
+                    } else if(ctxt->om->om_data[0] == PYTHON_WRITE_RESET)
+                    {
+                        mp_reset();
                     }
                     break;
                 }

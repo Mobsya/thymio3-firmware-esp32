@@ -119,7 +119,7 @@ int32_t flash_free_bytes = -1;
 int32_t ram_free_bytes = -1;
 char *read_file_data = NULL;
 size_t read_file_len = 0;
-
+uint8_t mp_need_reset = 0;
 
 const int EVT_EXEC_MODE = BIT0;
 
@@ -310,77 +310,82 @@ soft_reset:
         mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
     }
 
-    // run boot-up scripts
-    pyexec_frozen_module("_boot.py", false);
-    pyexec_file_if_exists("boot.py");
-    if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
-        if(mp_import_stat("main.py") == MP_IMPORT_STAT_FILE) { // If main.py is present then show the user a LEDs "KITT effect".
-            Leds_SetBodyBrightness(0,0,0);
-            Behavior_Enable(B_LEDS_LEGO_KITT);
-            main_counter = 0;
-            Accelerometer_ClearTapStatus();  // Clear any tap made before if any
-            while(1) {
-                if(main_counter >= 30) { // If the user do not press the center button within 3 seconds, then start the main.py 
-                    Behavior_Disable(B_LEDS_LEGO_KITT);
-                    Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-                    Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);         
-                    int ret = pyexec_file_if_exists("main.py");
-                    if (ret & PYEXEC_FORCED_EXIT) {
-                        goto soft_reset_exit;
+    if(mp_need_reset == 0) // Skip the boot scripts if we are here after a reset request
+    {
+        // run boot-up scripts
+        pyexec_frozen_module("_boot.py", false);
+        pyexec_file_if_exists("boot.py");
+        if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
+            if(mp_import_stat("main.py") == MP_IMPORT_STAT_FILE) { // If main.py is present then show the user a LEDs "KITT effect".
+                Leds_SetBodyBrightness(0,0,0);
+                Behavior_Enable(B_LEDS_LEGO_KITT);
+                main_counter = 0;
+                Accelerometer_ClearTapStatus();  // Clear any tap made before if any
+                while(1) {
+                    if(main_counter >= 30) { // If the user do not press the center button within 3 seconds, then start the main.py 
+                        Behavior_Disable(B_LEDS_LEGO_KITT);
+                        Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+                        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);         
+                        int ret = pyexec_file_if_exists("main.py");
+                        if (ret & PYEXEC_FORCED_EXIT) {
+                            goto soft_reset_exit;
+                        }
                     }
+                    if (Accelerometer_IsTapDetected()) { // If the user make a tap then avoid starting the main.py script and enable the behaviors menu
+                        Behavior_Disable(B_LEDS_LEGO_KITT);
+                        Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+                        Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+                        exit_micropython_mode();    // Enable the behaviors menu
+                        break;                    
+                    }
+                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                    main_counter++;
                 }
-                if (Accelerometer_IsTapDetected()) { // If the user make a tap then avoid starting the main.py script and enable the behaviors menu
-                    Behavior_Disable(B_LEDS_LEGO_KITT);
-                    Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-                    Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-                    exit_micropython_mode();    // Enable the behaviors menu
-                    break;                    
-                }
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-                main_counter++;
+            } else { // If main.py not present then enable the behaviors menu
+                Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+                Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+                exit_micropython_mode();    // Enable the behaviors menu
             }
-        } else { // If main.py not present then enable the behaviors menu
-            Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-            Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
-            exit_micropython_mode();    // Enable the behaviors menu
         }
+        // Check presence of mainID.py scripts
+        if(mp_import_stat("main1.py") != MP_IMPORT_STAT_FILE) {
+            scriptPresent[0] = 0;
+        } else {
+            scriptPresent[0] = 1;
+        }
+        if(mp_import_stat("main2.py") != MP_IMPORT_STAT_FILE) {
+            scriptPresent[1] = 0;
+        } else {
+            scriptPresent[1] = 1;
+        }    
+        if(mp_import_stat("main3.py") != MP_IMPORT_STAT_FILE) {
+            scriptPresent[2] = 0;
+        } else {
+            scriptPresent[2] = 1;
+        }    
+        if(mp_import_stat("main4.py") != MP_IMPORT_STAT_FILE) {
+            scriptPresent[3] = 0;
+        } else {
+            scriptPresent[3] = 1;
+        }
+        if(mp_import_stat("main5.py") != MP_IMPORT_STAT_FILE) {
+            scriptPresent[4] = 0;
+        } else {
+            scriptPresent[4] = 1;
+        }    
+        if(mp_import_stat("main6.py") != MP_IMPORT_STAT_FILE) {
+            scriptPresent[5] = 0;
+        } else {
+            scriptPresent[5] = 1;
+        }    
+        if(mp_import_stat("main7.py") != MP_IMPORT_STAT_FILE) {
+            scriptPresent[6] = 0;
+        } else {
+            scriptPresent[6] = 1;
+        }    
     }
-    // Check presence of mainID.py scripts
-    if(mp_import_stat("main1.py") != MP_IMPORT_STAT_FILE) {
-        scriptPresent[0] = 0;
-    } else {
-        scriptPresent[0] = 1;
-    }
-    if(mp_import_stat("main2.py") != MP_IMPORT_STAT_FILE) {
-        scriptPresent[1] = 0;
-    } else {
-        scriptPresent[1] = 1;
-    }    
-    if(mp_import_stat("main3.py") != MP_IMPORT_STAT_FILE) {
-        scriptPresent[2] = 0;
-    } else {
-        scriptPresent[2] = 1;
-    }    
-    if(mp_import_stat("main4.py") != MP_IMPORT_STAT_FILE) {
-        scriptPresent[3] = 0;
-    } else {
-        scriptPresent[3] = 1;
-    }
-    if(mp_import_stat("main5.py") != MP_IMPORT_STAT_FILE) {
-        scriptPresent[4] = 0;
-    } else {
-        scriptPresent[4] = 1;
-    }    
-    if(mp_import_stat("main6.py") != MP_IMPORT_STAT_FILE) {
-        scriptPresent[5] = 0;
-    } else {
-        scriptPresent[5] = 1;
-    }    
-    if(mp_import_stat("main7.py") != MP_IMPORT_STAT_FILE) {
-        scriptPresent[6] = 0;
-    } else {
-        scriptPresent[6] = 1;
-    }    
+
+    mp_need_reset = 0;
 
     for (;;) {
 
@@ -412,30 +417,37 @@ soft_reset:
             case 1: // main1.py           
                 pyexec_file("main1.py");
                 mp_component_state = -1; // Execute the script only once
+                goto soft_reset_exit;             
                 break;
             case 2: // main2.py
                 pyexec_file("main2.py");
                 mp_component_state = -1; // Execute the script only once
+                goto soft_reset_exit;
                 break;
             case 3: //main3.py
                 pyexec_file("main3.py");
                 mp_component_state = -1; // Execute the script only once
+                goto soft_reset_exit;
                 break;
             case 4: //main4.py
                 pyexec_file("main4.py");
                 mp_component_state = -1; // Execute the script only once
+                goto soft_reset_exit;
                 break;
             case 5: //main5.py
                 pyexec_file("main5.py");
                 mp_component_state = -1; // Execute the script only once
+                goto soft_reset_exit;
                 break;
             case 6: //main6.py
                 pyexec_file("main6.py");
                 mp_component_state = -1; // Execute the script only once
+                goto soft_reset_exit;
                 break;
             case 7: //main7.py
                 pyexec_file("main7.py");
                 mp_component_state = -1; // Execute the script only once
+                goto soft_reset_exit;
                 break;
             case 8: //script from RAM
                 // Exception handled by Micropython by using NLR method
@@ -790,9 +802,17 @@ soft_reset:
 
                 ble_indicate_dev_info((uint8_t *)json_mem_info, json_mem_info_len);
                 ESP_LOG_BUFFER_CHAR("mp_component", &json_mem_info[3], json_mem_info_len-3);
-                break;                
+                break;   
+            case 16: // reset
+                mp_component_state = -1;
+                mp_need_reset = 1;
+                break;             
             default:
                 break; 
+        }
+
+        if(mp_need_reset) {
+            goto soft_reset_exit;          
         }
         
     }
@@ -986,6 +1006,20 @@ void mp_firmware_info(void)
 {
     mp_component_state = 15;
     xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE);
+}
+
+void mp_reset(void)
+{
+    mp_need_reset = 1;
+    if(mp_component_state == 8) // If a script is running then send a keyboard interrupt first
+    {
+        mp_sched_keyboard_interrupt();
+    }
+    else
+    {    
+        mp_component_state = 16;
+        xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE);
+    }
 }
 
 MP_REGISTER_ROOT_POINTER(mp_obj_t native_code_pointers);
