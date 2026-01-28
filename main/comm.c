@@ -34,6 +34,8 @@
 #include "uart.h"
 #include <string.h>
 #include "pins_def.h"
+#include "codec.h"
+#include "leds.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -51,6 +53,8 @@
 #define PROX_IR_DATA_POSITION                26u
 
 #define STM32_ID                          0x4321
+
+#define VBAT_LOW              3400
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -140,6 +144,7 @@ void Comm_Stop(void)
 static void RunCommTask(void* arg)
 {
   static uint8_t counter = 0;
+  static uint16_t batt_counter = 0;
   int64_t time_start, time_end;
 
   DMA_ATTR static int16_t tx[DATA_SIZE] = {0x0000};
@@ -182,12 +187,27 @@ static void RunCommTask(void* arg)
       STM32_SetGroundIRValues(rx, GROUND_IR_POSITION);
       STM32_SetProxIRData(rx, PROX_IR_DATA_POSITION);
 
-      if ((counter % 5u) == 0u)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 20 [ms])
+      counter++;
+      if (counter == 10)  // Every 100 [ms], 10 [Hz] (vTaskDelay = 10 [ms])
       {
-        Power_HandlePowerModeRequest();
+        counter = 0;
+        Power_HandlePowerModeRequest();      
       }
 
-      counter++;
+      //ESP_LOGI(Tag, "Vbat=%d mV, usb cable present=%d", STM32_GetBatteryVoltage(), STM32_IsUSBCablePresent());
+      if((STM32_GetBatteryVoltage() <= VBAT_LOW)) // && (!STM32_IsUSBCablePresent())) // Signal low battery to the user (only when not charging)
+      {
+        batt_counter++;
+        if(batt_counter == 6000) // Every 60 [s], (vTaskDelay = 10 [ms])
+        {
+          batt_counter = 0;
+          Codec_PlayOnboardSound(TONE_TYPE_BATTERIE_LOW);
+        }
+      }
+      else
+      {
+        batt_counter = 0;
+      }
 
       SET_EVENT(EVENT_STM32);
     }

@@ -478,7 +478,7 @@ static void DrawCircle(void)
         State = E_State_LedAnimation;
         DrawState = 0;
         Codec_Stop();
-        Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+        Codec_PlayOnboardSound(TONE_TYPE_DRAW_END); // Emit sound when the motion ends       
         break;
       }
     }
@@ -543,7 +543,7 @@ static void DrawRectangle(void)
           State = E_State_LedAnimation;
           DrawState = 0;
           Codec_Stop();
-          Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+          Codec_PlayOnboardSound(TONE_TYPE_DRAW_END); // Emit sound when the motion ends       
           break;
         }
         DrawState = 1;
@@ -610,7 +610,7 @@ static void DrawDiamond(void)
           State = E_State_LedAnimation;
           DrawState = 0;
           Codec_Stop();
-          Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+          Codec_PlayOnboardSound(TONE_TYPE_DRAW_END); // Emit sound when the motion ends       
           break;
         }
         DrawState = 1;
@@ -684,7 +684,7 @@ static void DrawTrapezoid(void)
           State = E_State_LedAnimation;
           DrawState = 0;
           Codec_Stop();
-          Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+          Codec_PlayOnboardSound(TONE_TYPE_DRAW_END); // Emit sound when the motion ends       
           break;
         }
         DrawState = 1;
@@ -745,7 +745,7 @@ static void DrawStar5(void)
           State = E_State_LedAnimation;
           DrawState = E_DrawStarState_Init;
           Codec_Stop();
-          Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+          Codec_PlayOnboardSound(TONE_TYPE_DRAW_END); // Emit sound when the motion ends       
           break;
         }
         DrawState = E_DrawStarState_DrawFw;
@@ -819,7 +819,7 @@ static void DrawParallelogram(void)
           State = E_State_LedAnimation;
           DrawState = 0;
           Codec_Stop();
-          Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+          Codec_PlayOnboardSound(TONE_TYPE_DRAW_END); // Emit sound when the motion ends       
           break;
         }
         DrawState = 1;
@@ -880,7 +880,7 @@ static void DrawStar7(void)
           State = E_State_LedAnimation;
           DrawState = E_DrawStarState_Init;
           Codec_Stop();
-          Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+          Codec_PlayOnboardSound(TONE_TYPE_DRAW_END); // Emit sound when the motion ends       
           break;
         }
         DrawState = E_DrawStarState_DrawFw;
@@ -939,7 +939,7 @@ static void Draw8shape(void)
         State = E_State_LedAnimation;
         DrawState = 0;
         Codec_Stop();
-        Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+        Codec_PlayOnboardSound(TONE_TYPE_DRAW_END); // Emit sound when the motion ends       
         break;
       }
     }
@@ -992,7 +992,7 @@ static void DrawPolygon(void)
         State = E_State_LedAnimation;
         DrawPolygonState = E_DrawPolygonState_Init;
         Codec_Stop();
-        Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+        Codec_PlayOnboardSound(TONE_TYPE_DRAW_END); // Emit sound when the motion ends       
         break;
       }
       AngleController_Start(DegreesPerStepPolygon[StepsIndex], MAX_ROTATION_SPEED2);
@@ -1015,7 +1015,7 @@ static void DrawPolygon(void)
           State = E_State_LedAnimation;
           DrawPolygonState = E_DrawPolygonState_Init;
           Codec_Stop();
-          Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends       
+          Codec_PlayOnboardSound(TONE_TYPE_DRAW_END); // Emit sound when the motion ends       
           break;
         }
         DrawPolygonState = E_DrawPolygonState_DrawFw;

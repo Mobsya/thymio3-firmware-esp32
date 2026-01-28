@@ -412,6 +412,8 @@ int app_main(void)
  
   ble_spp_init();
 
+  Codec_PlayOnboardSound(TONE_TYPE_INTRO);
+
   //wifi_init();
 
   //ESP_ERROR_CHECK(FileServer_Start("/spiffs")); // Must be called after WiFi initialization

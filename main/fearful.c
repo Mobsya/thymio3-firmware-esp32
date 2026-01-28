@@ -96,13 +96,13 @@ void Fearful_Run(void)
   {
     //ESP_LOGE(Tag, "acc = %d", acc);
     //ESP_LOGE(Tag, "FREE FALL DETECTED");
-    sound = TONE_TYPE_FALL;
+    sound = TONE_TYPE_RED_FREEFALL;
     play_state = 1;
   }
 
   if (Accelerometer_IsTapDetected())
   {
-    sound = TONE_TYPE_ALARM;
+    sound = TONE_TYPE_RED_TAP;
     play_state = 1;
   }
 
@@ -115,7 +115,7 @@ void Fearful_Run(void)
     {
       Common_SetTargetSpeed(0, 0);
       if(play_state == 0) { // If not already playing
-        sound = TONE_TYPE_ALARM;
+        sound = TONE_TYPE_RED_PRISONNIER;
         play_state = 1;
       }
     }

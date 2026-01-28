@@ -474,7 +474,7 @@ static void ProcessEraseAction(uint8_t command)
         }
         RdPos = 0u;
         UpdateLegoLeds(WrPos, RdPos);
-        Codec_PlayOnboardSound(TONE_TYPE_MAGIC);
+        Codec_PlayOnboardSound(TONE_TYPE_BLUEBOT_DELETELAST);
         eraseLastStepState = 2;
         countEraseExit = 0;
         Leds_SetFrontBrightness(0, 0, 0);
@@ -556,7 +556,7 @@ static void ProcessEraseAction(uint8_t command)
       }
       break;
     case 1: // Play a sound telling the user the sequence will be erased in a few seconds 
-      Codec_PlayOnboardSound(TONE_TYPE_ALARM);
+      Codec_PlayOnboardSound(TONE_TYPE_BLUEBOT_DELETEALL);
       eraseAllState = 2;
       ledCounter = 0;
       break;
@@ -792,7 +792,7 @@ static void HandleReplay(void)
     Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
     Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
     Codec_Stop();
-    Codec_PlayOnboardSound(TONE_TYPE_BEEP); // Emit sound when the motion ends 
+    Codec_PlayOnboardSound(TONE_TYPE_BLUEBOT_ENDPATH); // Emit sound when the motion ends 
   }
 }
 

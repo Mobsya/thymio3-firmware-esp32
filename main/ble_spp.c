@@ -366,6 +366,7 @@ ble_spp_server_gap_event(struct ble_gap_event *event, void *arg)
         }
         enter_micropython_mode();
         esp_ble_ota_fill_handle_table();
+        Codec_PlayOnboardSound(TONE_TYPE_BLUETOOTH_CONNEXION);
         return 0;
 
     case BLE_GAP_EVENT_DISCONNECT:
@@ -577,6 +578,7 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                     {
                         mp_receiving_script = false;
                         ble_indicate_python_load(FILE_LOAD_WRONG_SEQ);
+                        Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
                         break;      
                     }
                     mp_script_seq_id_prev++;
@@ -595,11 +597,13 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                         if(calculated_crc == mp_script_crc)
                         {
                             ble_indicate_python_load(FILE_LOAD_OK);
+                            Codec_PlayOnboardSound(TONE_TYPE_CODEEXECSUCESS);
                             mp_script_ready = true;
                         }
                         else
                         {
                             ble_indicate_python_load(FILE_LOAD_CRC_ERR);
+                            Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
                         }
                     }             
                 }
@@ -616,10 +620,12 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                         if(mp_script_tot_len > MAX_MP_SCRIPT_LEN)
                         {
                             ble_indicate_python_load(FILE_LOAD_TOO_BIG);
+                            Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
                         }
                         else if(mp_script_seq_id != 0)
                         {
                             ble_indicate_python_load(FILE_LOAD_WRONG_SEQ);
+                            Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
                         }
                         else
                         {
@@ -642,11 +648,13 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                                 if(calculated_crc == mp_script_crc)
                                 {
                                     ble_indicate_python_load(FILE_LOAD_OK);
+                                    Codec_PlayOnboardSound(TONE_TYPE_CODEEXECSUCESS);
                                     mp_script_ready = true;
                                 }
                                 else
                                 {
                                     ble_indicate_python_load(FILE_LOAD_CRC_ERR);
+                                    Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
                                 }
                             }
                         }
@@ -1001,6 +1009,7 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                     {
                         fs_receiving_file = false;
                         ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_WRONG_SEQ);
+                        Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
                         free(fs_data);
                         fs_data = NULL;
                         break;      
@@ -1021,12 +1030,14 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                         if(calculated_crc == fs_crc)
                         {
                             ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_OK);
+                            Codec_PlayOnboardSound(TONE_TYPE_CODEEXECSUCESS);
                             fs_file_ready = true;
                             // Do not free fs_data here as it could be used later for saving
                         }
                         else
                         {
                             ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_CRC_ERR);
+                            Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
                             free(fs_data);
                             fs_data = NULL;
                         }
@@ -1051,10 +1062,12 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                         if(fs_data == NULL)
                         {
                             ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_TOO_BIG);
+                            Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
                         }
                         else if(fs_seq_id != 0)
                         {
                             ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_WRONG_SEQ);
+                            Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
                             free(fs_data);
                             fs_data = NULL;
                         }
@@ -1078,12 +1091,14 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                                 if(calculated_crc == fs_crc)
                                 {
                                     ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_OK);
+                                    Codec_PlayOnboardSound(TONE_TYPE_CODEEXECSUCESS);
                                     fs_file_ready = true;
                                     // Do not free fs_data here as it could be used later for saving
                                 }
                                 else
                                 {
                                     ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_CRC_ERR);
+                                    Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
                                     free(fs_data);
                                     fs_data = NULL;
                                 }
@@ -1890,6 +1905,7 @@ static void bt_rx_tx_task(void *pvParameters)
                 mp_script_timeout = 0;
                 mp_receiving_script = false;
                 ble_indicate_python_load(FILE_LOAD_NOT_COMPLETE);
+                Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
             }
         }
 
@@ -1931,6 +1947,7 @@ static void bt_rx_tx_task(void *pvParameters)
                 fs_timeout = 0;
                 fs_receiving_file = false;
                 ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_NOT_COMPLETE);
+                Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
             }
         }
 
@@ -2128,6 +2145,14 @@ void ble_indicate_python_exec(uint8_t value)
     else 
     {
         ESP_LOGI(TAG,"PY exec error in sending indication");
+    }
+    if(value == PYTHON_EXEC_OK)
+    {
+        Codec_PlayOnboardSound(TONE_TYPE_CODEEXECSUCESS);
+    }
+    else
+    {
+        Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
     }
 }
 
