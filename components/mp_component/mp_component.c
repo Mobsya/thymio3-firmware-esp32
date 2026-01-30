@@ -310,10 +310,11 @@ soft_reset:
         mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
     }
 
+    pyexec_frozen_module("_boot.py", false); // This file init also the filesystem, this need to be always executed
+
     if(mp_need_reset == 0) // Skip the boot scripts if we are here after a reset request
     {
         // run boot-up scripts
-        pyexec_frozen_module("_boot.py", false);
         pyexec_file_if_exists("boot.py");
         if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
             if(mp_import_stat("main.py") == MP_IMPORT_STAT_FILE) { // If main.py is present then show the user a LEDs "KITT effect".
