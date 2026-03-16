@@ -82,7 +82,7 @@
 #define TONE_PLAYER_CHANNEL 1 //!< Mono = 1
 #define TONE_PLAYER_BITS 16
 #define TONE_FRAME_SAMPLES 1024
-#define TONE_AMPLITUDE 20000
+#define TONE_AMPLITUDE 7000
 
 #define DEFAULT_AUDIO_TASK_STACK (4 * 1024)
 #define DEFAULT_AUDIO_TASK_PRIO (5)
@@ -302,24 +302,33 @@ void Codec_Init(void)
 
   recordBuffer = (uint8_t *)malloc(MAX_RECORD_SIZE + 44); // 12 KHz sampling rate * 2 bytes per sample * 10 seconds + wav header
 
-  // ESP_LOGI(Tag, "[2] Start codec chip");
+  ESP_LOGI(Tag, "[2] Start codec chip");
   BoardHandle = audio_board_init();
 
   // es8374_read_all_Thymio();
+  if (BoardHandle->audio_hal != NULL) {
+    // SUCCESS: The board is ready to use
+    ESP_LOGI(Tag, "Audio board initialized successfully!");
+  } else {
+    // FAILURE: Something went wrong (likely out of memory)
+    ESP_LOGE(Tag, "Audio board initialization failed!");
+    // Handle the error (e.g., stop execution or retry)
+    return;
+  }
 
   audio_hal_ctrl_codec(BoardHandle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
 
   // es8374_read_all_Thymio();
 
-  ESP_LOGE(Tag, "INIT MP3 PLAYER");
+  ESP_LOGI(Tag, "INIT MP3 PLAYER");
   Mp3Player = InitMp3Player();
-  ESP_LOGE(Tag, "INIT ONBOARD PLAYER");
+  ESP_LOGI(Tag, "INIT ONBOARD PLAYER");
   OnboardPlayer = InitOnboardPlayer();
-  ESP_LOGE(Tag, "INIT WAV PLAYER");
+  ESP_LOGI(Tag, "INIT WAV PLAYER");
   WavPlayer = InitWavPlayer();
-  ESP_LOGE(Tag, "INIT TONE PLAYER");
+  ESP_LOGI(Tag, "INIT TONE PLAYER");
   TonePlayer = InitTonePlayer();  
-  ESP_LOGE(Tag, "INIT RECORDER");
+  ESP_LOGI(Tag, "INIT RECORDER");
   Recorder = InitRecorder();
 
   
@@ -429,6 +438,10 @@ uint32_t Codec_CreateWAVFile(int16_t *buffer, int16_t freq_Hz, uint16_t msec)
 esp_err_t Codec_PlayOnboardSound(tone_type_t index)
 {
   esp_err_t err = 0;
+  if ((OnboardPlayer == NULL) || (Recorder == NULL) || (Mp3Player == NULL) || (WavPlayer == NULL) || (TonePlayer == NULL))
+  {
+    return ESP_FAIL;
+  }
   // return; // Used for debugging in order to not use the player.
 
   if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED) || (TonePlayer->state != STATE_STOPPED))
@@ -464,7 +477,10 @@ esp_err_t Codec_PlayOnboardSound(tone_type_t index)
 esp_err_t Codec_PlayMP3File(uint8_t *mp3, uint32_t num_bytes)
 {
   esp_err_t err = 0;
-
+  if ((OnboardPlayer == NULL) || (Recorder == NULL) || (Mp3Player == NULL) || (WavPlayer == NULL) || (TonePlayer == NULL))
+  {
+    return ESP_FAIL;
+  }
   //printf("OnboardPlayer state = %d, WavPlayer state = %d, Mp3Player state = %d, Recorder state = %d\n", OnboardPlayer->state, WavPlayer->state, Mp3Player->state, Recorder->state);
 
   if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED) || (TonePlayer->state != STATE_STOPPED))
@@ -503,6 +519,10 @@ esp_err_t Codec_PlayMP3File(uint8_t *mp3, uint32_t num_bytes)
 esp_err_t Codec_PlayWAVFile(uint8_t *wav, uint32_t num_bytes)
 {
   esp_err_t err = 0;
+  if ((OnboardPlayer == NULL) || (Recorder == NULL) || (Mp3Player == NULL) || (WavPlayer == NULL) || (TonePlayer == NULL))
+  {
+    return ESP_FAIL;
+  }  
   // return; // Used for debugging
   if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED) || (TonePlayer->state != STATE_STOPPED))
   { // Finish previous play/recording before starting another one.
@@ -538,6 +558,10 @@ esp_err_t Codec_PlayWAVFile(uint8_t *wav, uint32_t num_bytes)
 esp_err_t Codec_PlayRecorded(void)
 {
   esp_err_t err = 0;
+  if ((OnboardPlayer == NULL) || (Recorder == NULL) || (Mp3Player == NULL) || (WavPlayer == NULL) || (TonePlayer == NULL))
+  {
+    return ESP_FAIL;
+  }  
   // return; // Used for debugging
   if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED) || (TonePlayer->state != STATE_STOPPED))
   { // Finish previous play/recording before starting another one.
@@ -575,6 +599,10 @@ esp_err_t Codec_PlayRecorded(void)
 esp_err_t Codec_PlayTone(float freq, uint32_t duration_ms)
 {
   esp_err_t err = 0;
+  if ((OnboardPlayer == NULL) || (Recorder == NULL) || (Mp3Player == NULL) || (WavPlayer == NULL) || (TonePlayer == NULL))
+  {
+    return ESP_FAIL;
+  }  
   // return; // Used for debugging
   //if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED) || (TonePlayer->state != STATE_STOPPED))
   if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED))
@@ -589,7 +617,7 @@ esp_err_t Codec_PlayTone(float freq, uint32_t duration_ms)
   TonePlayer->tone->freq = freq;
   TonePlayer->tone->duration_ms = duration_ms;
   TonePlayer->tone->samples_played = 0;
-  TonePlayer->tone->phase = 0;
+  //TonePlayer->tone->phase = 0;
   ESP_LOGI(Tag, "Tone start %.1f Hz, %ums", freq, duration_ms);
 
   if(TonePlayer->state == STATE_RUNNING)
@@ -925,12 +953,13 @@ static int tone_process(audio_element_handle_t self, char *in_buffer, int in_len
 
     float phase_inc = 2 * M_PI * TonePlayer->tone->freq / TONE_PLAYER_RATE;
     for (int i = 0; i < TONE_FRAME_SAMPLES; i++) {
-        float s = sin(TonePlayer->tone->phase);
+        //float s = sin(TonePlayer->tone->phase); // sine wave
+        //int16_t val = (int16_t)(TONE_AMPLITUDE * s);
+        //int16_t val = (sin(TonePlayer->tone->phase) > 0 ? TONE_AMPLITUDE : -TONE_AMPLITUDE); // square wave
+        float s = sin(TonePlayer->tone->phase) + (1.0/3.0)*sin(TonePlayer->tone->phase*3) + (1.0/5.0)*sin(TonePlayer->tone->phase*5); // soft square wave to avoid "ringing" effect
         int16_t val = (int16_t)(TONE_AMPLITUDE * s);
         //ESP_LOGI(Tag, "i=%d, phase=%f, sin=%f, val=%d", i, t->phase, s, val);
         TonePlayer->tone->buffer[i] = val;
-        //TonePlayer->tone->buffer[i] = (val&0xFF);
-        //TonePlayer->tone->buffer[i+1] = (val>>8);
         TonePlayer->tone->phase += phase_inc;
         if (TonePlayer->tone->phase >= 2 * M_PI)
         { 
@@ -1584,6 +1613,10 @@ static void RunTonePlayerTask(void *arg)
 
 esp_err_t Codec_Stop(void)
 {
+  if ((OnboardPlayer == NULL) || (Recorder == NULL) || (Mp3Player == NULL) || (WavPlayer == NULL) || (TonePlayer == NULL))
+  {
+    return ESP_FAIL;
+  }  
   if (WavPlayer->state != STATE_STOPPED)
   {
     audio_pipeline_stop(WavPlayer->Pipeline);
@@ -1628,6 +1661,10 @@ esp_err_t Codec_Stop(void)
 
 esp_err_t Codec_Pause(void)
 {
+  if ((OnboardPlayer == NULL) || (Recorder == NULL) || (Mp3Player == NULL) || (WavPlayer == NULL) || (TonePlayer == NULL))
+  {
+    return ESP_FAIL;
+  }  
   if (OnboardPlayer->state == STATE_RUNNING)
   {
     audio_element_info_t info;
@@ -1682,6 +1719,10 @@ esp_err_t Codec_Pause(void)
 
 esp_err_t Codec_Resume(void)
 {
+  if ((OnboardPlayer == NULL) || (Recorder == NULL) || (Mp3Player == NULL) || (WavPlayer == NULL) || (TonePlayer == NULL))
+  {
+    return ESP_FAIL;
+  }  
   if (OnboardPlayer->state == STATE_PAUSED)
   {
     audio_pipeline_resume(OnboardPlayer->Pipeline);
@@ -1712,6 +1753,10 @@ esp_err_t Codec_Resume(void)
 //_____________________________________________________________________________
 
 void  Codec_ClearEvents(void) {
+  if ((OnboardPlayer == NULL) || (Recorder == NULL) || (Mp3Player == NULL) || (WavPlayer == NULL) || (TonePlayer == NULL))
+  {
+    return;
+  }  
   OnboardPlayer->Played = false;
   WavPlayer->Played = false;
   Mp3Player->Played = false;  

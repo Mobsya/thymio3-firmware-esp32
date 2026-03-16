@@ -68,15 +68,13 @@ static bool es8374_codec_initialized_Thymio()
 
 static esp_err_t es_write_reg_Thymio(uint8_t slave_addr, uint8_t reg_add, uint8_t data)
 {
-	I2C_WriteToAddress(SLAVE_ADDRESS, reg_add, &data, sizeof(data));
-	return 0;
+	return I2C_WriteToAddress(SLAVE_ADDRESS, reg_add, &data, sizeof(data));
     //return i2c_bus_write_bytes(i2c_handle, slave_addr, &reg_add, sizeof(reg_add), &data, sizeof(data));
 }
 
 static esp_err_t es_read_reg_Thymio(uint8_t slave_addr, uint8_t reg_add, uint8_t *p_data)
 {
-	I2C_ReadFromAddress(SLAVE_ADDRESS, reg_add, p_data, 1u);
-	return 0;
+	return I2C_ReadFromAddress(SLAVE_ADDRESS, reg_add, p_data, 1u);
     //return i2c_bus_read_bytes(i2c_handle, slave_addr, &reg_add, sizeof(reg_add), p_data, 1);
 }
 
@@ -88,16 +86,15 @@ esp_err_t es8374_write_reg_Thymio(uint8_t reg_add, uint8_t data)
 int es8374_read_reg_Thymio(uint8_t reg_add, uint8_t *regv)
 {
     uint8_t regdata = 0xFF;
-    uint8_t res = 0;
+    esp_err_t res = 0;
 
-    if (es_read_reg_Thymio(ES8374_ADDR, reg_add, &regdata) == 0) {
+    res = es_read_reg_Thymio(ES8374_ADDR, reg_add, &regdata);
+    if (res == ESP_OK) {
         *regv = regdata;
-        return res;
     } else {
         LOG_8374("Read Audio Codec Register Failed!");
-        res = -1;
-        return res;
     }
+    return res;
 }
 
 void es8374_read_all_Thymio()
@@ -194,22 +191,31 @@ esp_err_t es8374_start_Thymio(es_module_t mode)
     uint8_t reg = 0;
 
     if (mode == ES_MODULE_LINE) {
-        res |= es8374_read_reg_Thymio(0x1a, &reg);       //set monomixer
+        res = es8374_read_reg_Thymio(0x1a, &reg);       //set monomixer
+        if (res != ESP_OK) goto end_es8374_start;
         reg |= 0x60;									// => select mixer output to mono output + enable mono output
         reg |= 0x20; 									// => no sense, already set in previous line
         reg &= 0xf7;									// => normal mono output level
-        res |= es8374_write_reg_Thymio( 0x1a, reg);
-        res |= es8374_read_reg_Thymio(0x1c, &reg);        // set spk mixer
+        res = es8374_write_reg_Thymio( 0x1a, reg);
+        if (res != ESP_OK) goto end_es8374_start;
+        res = es8374_read_reg_Thymio(0x1c, &reg);        // set spk mixer
+        if (res != ESP_OK) goto end_es8374_start;
         reg |= 0x40;
-        res |= es8374_write_reg_Thymio( 0x1c, reg);
-        res |= es8374_write_reg_Thymio(0x1D, 0x02);      // spk set
-        res |= es8374_write_reg_Thymio(0x1F, 0x00);      // spk set
-        res |= es8374_write_reg_Thymio(0x1E, 0xA0);      // spk on
+        res = es8374_write_reg_Thymio( 0x1c, reg);
+        if (res != ESP_OK) goto end_es8374_start;
+        res = es8374_write_reg_Thymio(0x1D, 0x02);      // spk set
+        if (res != ESP_OK) goto end_es8374_start;
+        res = es8374_write_reg_Thymio(0x1F, 0x00);      // spk set
+        if (res != ESP_OK) goto end_es8374_start;
+        res = es8374_write_reg_Thymio(0x1E, 0xA0);      // spk on
+        if (res != ESP_OK) goto end_es8374_start;
     }
     if (mode == ES_MODULE_ADC || mode == ES_MODULE_ADC_DAC || mode == ES_MODULE_LINE) {
-        res |= es8374_read_reg_Thymio(0x21, &reg);       //power up adc and input
+        res = es8374_read_reg_Thymio(0x21, &reg);       //power up adc and input
+        if (res != ESP_OK) goto end_es8374_start;
         reg &= 0x3f;									// => enable analog PGA circuits + enable analog ADC modulator
-        res |= es8374_write_reg_Thymio(0x21, reg);
+        res = es8374_write_reg_Thymio(0x21, reg);
+        if (res != ESP_OK) goto end_es8374_start;
         //printf("[es8374_start_Thymio] 0x21 = %x\n", reg);
         //res |= es8374_read_reg_Thymio(0x10, &reg);       //power up adc and input
         //reg &= 0x3f;									// => ADC SDP unmute(default)
@@ -217,27 +223,41 @@ esp_err_t es8374_start_Thymio(es_module_t mode)
     }
 
     if (mode == ES_MODULE_DAC || mode == ES_MODULE_ADC_DAC || mode == ES_MODULE_LINE) {
-        res |= es8374_read_reg_Thymio(0x1a, &reg);       //disable lout
+        res = es8374_read_reg_Thymio(0x1a, &reg);       //disable lout
+        if (res != ESP_OK) goto end_es8374_start;
         reg |= 0x08;									//=> mute mono output level
-        res |= es8374_write_reg_Thymio( 0x1a, reg);
+        res = es8374_write_reg_Thymio( 0x1a, reg);
+        if (res != ESP_OK) goto end_es8374_start;
         reg &= 0xdf;									//=> disable mono output
-        res |= es8374_write_reg_Thymio( 0x1a, reg);
-        res |= es8374_write_reg_Thymio(0x1D, 0x12);      // mute speaker => mute mixer output level + Gain setting for mixer output = -5dB/-6.5dB
-        res |= es8374_write_reg_Thymio(0x1E, 0x20);      // disable class d => + enable speaker bias + select mixer output to speaker output + spk volume = 0
-        res |= es8374_read_reg_Thymio(0x15, &reg);        //power up dac
+        res = es8374_write_reg_Thymio( 0x1a, reg);
+        if (res != ESP_OK) goto end_es8374_start;
+        res = es8374_write_reg_Thymio(0x1D, 0x12);      // mute speaker => mute mixer output level + Gain setting for mixer output = -5dB/-6.5dB
+        if (res != ESP_OK) goto end_es8374_start;
+        res = es8374_write_reg_Thymio(0x1E, 0x20);      // disable class d => + enable speaker bias + select mixer output to speaker output + spk volume = 0
+        if (res != ESP_OK) goto end_es8374_start;
+        res = es8374_read_reg_Thymio(0x15, &reg);        //power up dac
+        if (res != ESP_OK) goto end_es8374_start;
         reg &= 0xdf;									// => enable analog DAC circuits
-        res |= es8374_write_reg_Thymio(0x15, reg);
-        res |= es8374_read_reg_Thymio(0x1a, &reg);        //disable lout
+        res = es8374_write_reg_Thymio(0x15, reg);
+        if (res != ESP_OK) goto end_es8374_start;
+        res = es8374_read_reg_Thymio(0x1a, &reg);        //disable lout
+        if (res != ESP_OK) goto end_es8374_start;
         reg |= 0x20;									// enable mono output
-        res |= es8374_write_reg_Thymio( 0x1a, reg);
+        res = es8374_write_reg_Thymio( 0x1a, reg);
+        if (res != ESP_OK) goto end_es8374_start;
         reg &= 0xf7;									// => normal mono output level
-        res |= es8374_write_reg_Thymio( 0x1a, reg);
-        res |= es8374_write_reg_Thymio(0x1D, 0x02);      // mute speaker => normal mixer output level + gain -5dB/-6.5dB
-        res |= es8374_write_reg_Thymio(0x1E, 0xa0);      // disable class d => enable classD speaker output + enable speaker bias + select mixer output to speaker output + SPK volume 0dB [0xA0]
+        res = es8374_write_reg_Thymio( 0x1a, reg);
+        if (res != ESP_OK) goto end_es8374_start;
+        res = es8374_write_reg_Thymio(0x1D, 0x02);      // mute speaker => normal mixer output level + gain -5dB/-6.5dB
+        if (res != ESP_OK) goto end_es8374_start;
+        res = es8374_write_reg_Thymio(0x1E, 0xa0);      // disable class d => enable classD speaker output + enable speaker bias + select mixer output to speaker output + SPK volume 0dB [0xA0]
+        if (res != ESP_OK) goto end_es8374_start;
 
-        res |= es8374_set_voice_mute_Thymio(false);
+        res = es8374_set_voice_mute_Thymio(false);
+        if (res != ESP_OK) goto end_es8374_start;
     }
 
+end_es8374_start:
     return res;
 }
 
@@ -247,43 +267,62 @@ esp_err_t es8374_stop_Thymio(es_module_t mode)
     uint8_t reg = 0;
 
     if (mode == ES_MODULE_LINE) {
-        res |= es8374_read_reg_Thymio(0x1a, &reg);       //disable lout
+        res = es8374_read_reg_Thymio(0x1a, &reg);       //disable lout
+        if (res != ESP_OK) goto end_es8374_stop;
         reg |= 0x08;
-        res |= es8374_write_reg_Thymio( 0x1a, reg);
+        res = es8374_write_reg_Thymio( 0x1a, reg);
+        if (res != ESP_OK) goto end_es8374_stop;
         reg &= 0x9f;
-        res |= es8374_write_reg_Thymio( 0x1a, reg);
-        res |= es8374_write_reg_Thymio(0x1D, 0x12);      // mute speaker
-        res |= es8374_write_reg_Thymio(0x1E, 0x20);      // disable class d
-        res |= es8374_read_reg_Thymio(0x1c, &reg);        // disable spkmixer
+        res = es8374_write_reg_Thymio( 0x1a, reg);
+        if (res != ESP_OK) goto end_es8374_stop;
+        res = es8374_write_reg_Thymio(0x1D, 0x12);      // mute speaker
+        if (res != ESP_OK) goto end_es8374_stop;
+        res = es8374_write_reg_Thymio(0x1E, 0x20);      // disable class d
+        if (res != ESP_OK) goto end_es8374_stop;
+        res = es8374_read_reg_Thymio(0x1c, &reg);        // disable spkmixer
+        if (res != ESP_OK) goto end_es8374_stop;
         reg &= 0xbf;
-        res |= es8374_write_reg_Thymio( 0x1c, reg);
-        res |= es8374_write_reg_Thymio(0x1F, 0x00);      // spk set
+        res = es8374_write_reg_Thymio( 0x1c, reg);
+        if (res != ESP_OK) goto end_es8374_stop;
+        res = es8374_write_reg_Thymio(0x1F, 0x00);      // spk set
+        if (res != ESP_OK) goto end_es8374_stop;
     }
     if (mode == ES_MODULE_DAC || mode == ES_MODULE_ADC_DAC) {
-        res |= es8374_set_voice_mute_Thymio(true);
-
-        res |= es8374_read_reg_Thymio(0x1a, &reg);        //disable lout => mute mono output level
+        res = es8374_set_voice_mute_Thymio(true);
+        if (res != ESP_OK) goto end_es8374_stop;
+        res = es8374_read_reg_Thymio(0x1a, &reg);        //disable lout => mute mono output level
+        if (res != ESP_OK) goto end_es8374_stop;
         reg |= 0x08;
-        res |= es8374_write_reg_Thymio( 0x1a, reg);
+        res = es8374_write_reg_Thymio( 0x1a, reg);
+        if (res != ESP_OK) goto end_es8374_stop;
         reg &= 0xdf;									// => disable mono output
-        res |= es8374_write_reg_Thymio( 0x1a, reg);
-        res |= es8374_write_reg_Thymio(0x1D, 0x12);      // mute speaker => mute mixer output level + Gain setting for mixer output = -5dB/-6.5dB
-        res |= es8374_write_reg_Thymio(0x1E, 0x20);      // disable class d => + enable speaker bias + select mixer output to speaker output + spk volume = 0
-        res |= es8374_read_reg_Thymio(0x15, &reg);        //power up dac
+        res = es8374_write_reg_Thymio( 0x1a, reg);
+        if (res != ESP_OK) goto end_es8374_stop;
+        res = es8374_write_reg_Thymio(0x1D, 0x12);      // mute speaker => mute mixer output level + Gain setting for mixer output = -5dB/-6.5dB
+        if (res != ESP_OK) goto end_es8374_stop;
+        res = es8374_write_reg_Thymio(0x1E, 0x20);      // disable class d => + enable speaker bias + select mixer output to speaker output + spk volume = 0
+        if (res != ESP_OK) goto end_es8374_stop;
+        res = es8374_read_reg_Thymio(0x15, &reg);        //power up dac
+        if (res != ESP_OK) goto end_es8374_stop;
         reg |= 0x20;									// => power down analog DAC circuits
-        res |= es8374_write_reg_Thymio(0x15, reg);
+        res = es8374_write_reg_Thymio(0x15, reg);
+        if (res != ESP_OK) goto end_es8374_stop;
     }
     if (mode == ES_MODULE_ADC || mode == ES_MODULE_ADC_DAC) {
 
-        res |= es8374_read_reg_Thymio(0x10, &reg);       //power up adc and input
+        res = es8374_read_reg_Thymio(0x10, &reg);       //power up adc and input
+        if (res != ESP_OK) goto end_es8374_stop;
         reg |= 0xc0;									// => ADC SDP mute L+R
-        res |= es8374_write_reg_Thymio(0x10, reg);
-        res |= es8374_read_reg_Thymio(0x21, &reg);       //power up adc and input
+        res = es8374_write_reg_Thymio(0x10, reg);
+        if (res != ESP_OK) goto end_es8374_stop;
+        res = es8374_read_reg_Thymio(0x21, &reg);       //power up adc and input
+        if (res != ESP_OK) goto end_es8374_stop;
         reg |= 0xc0;									// => power down analog PGA circuits + power down analog ADC modulator
-        res |= es8374_write_reg_Thymio(0x21, reg);
+        res = es8374_write_reg_Thymio(0x21, reg);
+        if (res != ESP_OK) goto end_es8374_stop;
         //printf("[es8374_stop_Thymio] 0x21 = %x\n", reg);
     }
-
+end_es8374_stop:
     return res;
 }
 
@@ -643,73 +682,124 @@ static int es8374_init_reg_Thymio(audio_hal_codec_mode_t ms_mode, es_i2s_fmt_t f
     int res = 0;
     uint8_t reg;
 
-    res |= es8374_write_reg_Thymio(0x00, 0x3F); //IC Rst start
-    res |= es8374_write_reg_Thymio(0x00, 0x03); //IC Rst stop
-    res |= es8374_write_reg_Thymio(0x01, 0x7F); //IC clk on [0x7F]
+    res = es8374_write_reg_Thymio(0x00, 0x3F); //IC Rst start
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x00, 0x03); //IC Rst stop
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x01, 0x7F); //IC clk on [0x7F]
+    if (res != ESP_OK) goto end_es8374_init;
     //res |= es8374_write_reg_Thymio(0x02, 0x01); //sync mode
-    res |= es8374_read_reg_Thymio(0x0F, &reg);
+    res = es8374_read_reg_Thymio(0x0F, &reg);
+    if (res != ESP_OK) goto end_es8374_init;
     reg &= 0x7f;
     reg |=  (ms_mode << 7);
-    res |= es8374_write_reg_Thymio( 0x0f, reg); //CODEC IN I2S SLAVE MODE
+    res = es8374_write_reg_Thymio( 0x0f, reg); //CODEC IN I2S SLAVE MODE
+    if (res != ESP_OK) goto end_es8374_init;
 
-    res |= es8374_write_reg_Thymio(0x6F, 0xA0); //pll set:mode enable => not available in the datasheet
-    res |= es8374_write_reg_Thymio(0x72, 0x41); //pll set:mode set => not available in the datasheet
-    res |= es8374_write_reg_Thymio(0x09, 0x01); //pll set:reset on ,set start [0x01]
-    res |= es8374_write_reg_Thymio(0x0C, 0x22); //pll set:k
-    res |= es8374_write_reg_Thymio(0x0D, 0x2E); //pll set:k
-    res |= es8374_write_reg_Thymio(0x0E, 0xC6); //pll set:k
-    res |= es8374_write_reg_Thymio(0x0A, 0x3A); //pll set:
-    res |= es8374_write_reg_Thymio(0x0B, 0x07); //pll set:n
-    res |= es8374_write_reg_Thymio(0x09, 0x41); //pll set:reset off ,set stop
+    res = es8374_write_reg_Thymio(0x6F, 0xA0); //pll set:mode enable => not available in the datasheet
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x72, 0x41); //pll set:mode set => not available in the datasheet
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x09, 0x01); //pll set:reset on ,set start [0x01]
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x0C, 0x22); //pll set:k
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x0D, 0x2E); //pll set:k
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x0E, 0xC6); //pll set:k
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x0A, 0x3A); //pll set:
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x0B, 0x07); //pll set:n
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x09, 0x41); //pll set:reset off ,set stop
+    if (res != ESP_OK) goto end_es8374_init;
 
-    res |= es8374_i2s_config_clock_Thymio(cfg);
+    res = es8374_i2s_config_clock_Thymio(cfg);
+    if (res != ESP_OK) goto end_es8374_init;
 
-    res |= es8374_write_reg_Thymio(0x24, 0x08); //adc set => enable ADC left channel high pass filter
-    res |= es8374_write_reg_Thymio(0x36, 0x00); //dac set
-    res |= es8374_write_reg_Thymio(0x12, 0x30); //timming set
-    res |= es8374_write_reg_Thymio(0x13, 0x20); //timming set
+    res = es8374_write_reg_Thymio(0x24, 0x08); //adc set => enable ADC left channel high pass filter
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x36, 0x00); //dac set
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x12, 0x30); //timming set
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x13, 0x20); //timming set
+    if (res != ESP_OK) goto end_es8374_init;
 
-    res |= es8374_config_fmt_Thymio(ES_MODULE_ADC, fmt);
-    res |= es8374_config_fmt_Thymio(ES_MODULE_DAC, fmt);
+    res = es8374_config_fmt_Thymio(ES_MODULE_ADC, fmt);
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_config_fmt_Thymio(ES_MODULE_DAC, fmt);
+    if (res != ESP_OK) goto end_es8374_init;
 
-    res |= es8374_write_reg_Thymio(0x21, 0x50); //adc set: SEL LIN1 CH+PGAGAIN=0DB => enable analog PGA circuits + power down analog ADC modulator + MIC1P-MIC1N + 0dB gain for input diff circuits
+    res = es8374_write_reg_Thymio(0x21, 0x50); //adc set: SEL LIN1 CH+PGAGAIN=0DB => enable analog PGA circuits + power down analog ADC modulator + MIC1P-MIC1N + 0dB gain for input diff circuits
+    if (res != ESP_OK) goto end_es8374_init;
     //res |= es8374_write_reg_Thymio(0x22, 0xFF); //adc set: PGA GAIN=0DB => -3.5 dB
-    res |= es8374_write_reg_Thymio(0x21, 0x14); //adc set: SEL LIN1 CH+PGAGAIN=18DB => enable analog ADC modulator + 15dB gain for input diff circuits + mic1 selected
-    res |= es8374_write_reg_Thymio(0x22, 0x55); //pga = +15db
+    res = es8374_write_reg_Thymio(0x21, 0x14); //adc set: SEL LIN1 CH+PGAGAIN=18DB => enable analog ADC modulator + 15dB gain for input diff circuits + mic1 selected
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x22, 0x55); //pga = +15db
+    if (res != ESP_OK) goto end_es8374_init;
     //printf("[es8374_init_reg_Thymio] 0x22 = %x\n", 0x55);
-    res |= es8374_write_reg_Thymio(0x08, 10); //0x21); //set class d divider = 33, to avoid the high frequency tone on laudspeaker [0x21]
-    res |= es8374_write_reg_Thymio(0x00, 0x80); // IC START
+    res = es8374_write_reg_Thymio(0x08, 10); //0x21); //set class d divider = 33, to avoid the high frequency tone on laudspeaker [0x21]
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x00, 0x80); // IC START
+    if (res != ESP_OK) goto end_es8374_init;
 
-    res |= es8374_set_adc_dac_volume_Thymio(ES_MODULE_ADC, 0, 0);      // 0db
-    res |= es8374_set_adc_dac_volume_Thymio(ES_MODULE_DAC, 0, 0);      // 0db
+    res = es8374_set_adc_dac_volume_Thymio(ES_MODULE_ADC, 0, 0);      // 0db
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_set_adc_dac_volume_Thymio(ES_MODULE_DAC, 0, 0);      // 0db
+    if (res != ESP_OK) goto end_es8374_init;
 
-    res |= es8374_write_reg_Thymio(0x14, 0x8A); // IC START => enable mic bias + ... [0x8A]
-    res |= es8374_write_reg_Thymio(0x15, 0x40); // IC START [0x40]
-    res |= es8374_write_reg_Thymio(0x1A, 0xA0); // monoout set => select DAC to mono output  + disable mixer + enable mono output + analog input to mixer input=MIC1P
-    res |= es8374_write_reg_Thymio(0x1B, 0x19); // monoout set => +1dB/-0.5dB
-    res |= es8374_write_reg_Thymio(0x1C, 0x90); // spk set => select DAC to mixer + disable aux to mixer [0xB0?]
-    res |= es8374_write_reg_Thymio(0x1D, 0x01); // spk set => -6.5dB/-8dB
-    res |= es8374_write_reg_Thymio(0x1F, 0x00); // spk set [0x00]
-    res |= es8374_write_reg_Thymio(0x1E, 0x20); // spk on => disable class d speaker + enable speaker bias + select mixer output to speaker output + volume=0dB
-    res |= es8374_write_reg_Thymio(0x28, 0x00); // alc set => ALC target=-16.5dB + ALC hold time before gain is increased=0ms
-    res |= es8374_write_reg_Thymio(0x25, 0x00); // ADCVOLUME on
+    res = es8374_write_reg_Thymio(0x14, 0x8A); // IC START => enable mic bias + ... [0x8A]
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x15, 0x40); // IC START [0x40]
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x1A, 0xA0); // monoout set => select DAC to mono output  + disable mixer + enable mono output + analog input to mixer input=MIC1P
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x1B, 0x19); // monoout set => +1dB/-0.5dB
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x1C, 0x90); // spk set => select DAC to mixer + disable aux to mixer [0xB0?]
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x1D, 0x01); // spk set => -6.5dB/-8dB
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x1F, 0x00); // spk set [0x00]
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x1E, 0x20); // spk on => disable class d speaker + enable speaker bias + select mixer output to speaker output + volume=0dB
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x28, 0x00); // alc set => ALC target=-16.5dB + ALC hold time before gain is increased=0ms
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x25, 0x00); // ADCVOLUME on
+    if (res != ESP_OK) goto end_es8374_init;
     //printf("[es8374_init_reg_Thymio] 0x25 = %x\n", 0x00);
-    res |= es8374_write_reg_Thymio(0x38, 0x00); // DACVOLUME on
-    res |= es8374_write_reg_Thymio(0x37, 0x30); // dac set => LOUT/SPK auto mute en
-    res |= es8374_write_reg_Thymio(0x6D, 0x60); //SEL:GPIO1=DMIC CLK OUT+SEL:GPIO2=PLL CLK OUT
-    res |= es8374_write_reg_Thymio(0x71, 0x05); //for automute setting => not available in datasheet
-    res |= es8374_write_reg_Thymio(0x73, 0x70); // => not available in datasheet
+    res = es8374_write_reg_Thymio(0x38, 0x00); // DACVOLUME on
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x37, 0x30); // dac set => LOUT/SPK auto mute en
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x6D, 0x60); //SEL:GPIO1=DMIC CLK OUT+SEL:GPIO2=PLL CLK OUT
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x71, 0x05); //for automute setting => not available in datasheet
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x73, 0x70); // => not available in datasheet
+    if (res != ESP_OK) goto end_es8374_init;
 
-    res |= es8374_config_dac_output_Thymio(out_channel);  //0x3c Enable DAC and Enable Lout/Rout/1/2
-    res |= es8374_config_adc_input_Thymio(in_channel);  //0x00 LINSEL & RINSEL, LIN1/RIN1 as ADC Input; DSSEL,use one DS Reg11; DSR, LINPUT1-RINPUT1
-    res |= es8374_codec_set_voice_volume_Thymio(0);
+    res = es8374_config_dac_output_Thymio(out_channel);  //0x3c Enable DAC and Enable Lout/Rout/1/2
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_config_adc_input_Thymio(in_channel);  //0x00 LINSEL & RINSEL, LIN1/RIN1 as ADC Input; DSSEL,use one DS Reg11; DSR, LINPUT1-RINPUT1
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_codec_set_voice_volume_Thymio(0);
+    if (res != ESP_OK) goto end_es8374_init;
 
-    res |= es8374_write_reg_Thymio(0x37, 0x00); // dac set => auto mute dis
+    res = es8374_write_reg_Thymio(0x37, 0x00); // dac set => auto mute dis
+    if (res != ESP_OK) goto end_es8374_init;
 
-    res |= es8374_write_reg_Thymio(0x26, 0x5F); // 
-    res |= es8374_write_reg_Thymio(0x27, 0x08); // 
-    res |= es8374_write_reg_Thymio(0x2B, 0x20); // 
+    res = es8374_write_reg_Thymio(0x26, 0x5F); // 
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x27, 0x08); // 
+    if (res != ESP_OK) goto end_es8374_init;
+    res = es8374_write_reg_Thymio(0x2B, 0x20); // 
+    if (res != ESP_OK) goto end_es8374_init;
 
+end_es8374_init:
     return res;
 }
 
@@ -727,14 +817,25 @@ esp_err_t es8374_codec_init_Thymio(audio_hal_codec_config_t *cfg)
 
 //    i2c_init(); // ESP32 in master mode
 
-    res |= es8374_stop_Thymio(cfg->codec_mode); // codec_mode = ES_MODULE_ADC_DAC = AUDIO_HAL_CODEC_MODE_BOTH
-    res |= es8374_init_reg_Thymio(cfg->i2s_iface.mode, (BIT_LENGTH_16BITS << 4) | cfg->i2s_iface.fmt, clkdiv,
+    res = es8374_stop_Thymio(cfg->codec_mode); // codec_mode = ES_MODULE_ADC_DAC = AUDIO_HAL_CODEC_MODE_BOTH
+    if (res != ESP_OK) goto end_es8374_codec_init;
+    res = es8374_init_reg_Thymio(cfg->i2s_iface.mode, (BIT_LENGTH_16BITS << 4) | cfg->i2s_iface.fmt, clkdiv,
                            cfg->dac_output, cfg->adc_input);
-    res |= es8374_set_mic_gain_Thymio(MIC_GAIN_15DB);
-    res |= es8374_set_d2se_pga_Thymio(D2SE_PGA_GAIN_EN);
-    res |= es8374_config_fmt_Thymio(cfg->codec_mode, cfg->i2s_iface.fmt);
-    res |= es8374_codec_config_i2s_Thymio(cfg->codec_mode, &(cfg->i2s_iface));
+    if (res != ESP_OK) goto end_es8374_codec_init;
+    res = es8374_set_mic_gain_Thymio(MIC_GAIN_15DB);
+    if (res != ESP_OK) goto end_es8374_codec_init;
+    res = es8374_set_d2se_pga_Thymio(D2SE_PGA_GAIN_EN);
+    if (res != ESP_OK) goto end_es8374_codec_init;
+    res = es8374_config_fmt_Thymio(cfg->codec_mode, cfg->i2s_iface.fmt);
+    if (res != ESP_OK) goto end_es8374_codec_init;
+    res = es8374_codec_config_i2s_Thymio(cfg->codec_mode, &(cfg->i2s_iface));
+    if (res != ESP_OK) goto end_es8374_codec_init;
     codec_init_flag = 1;
+end_es8374_codec_init:
+    if(res != ESP_OK)
+    {
+        return ESP_FAIL;
+    }
     return res;
 }
 

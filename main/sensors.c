@@ -64,7 +64,7 @@ static const char* Tag = "sensors";
 static TaskHandle_t SensorsTask = NULL;
 static TaskHandle_t ButtonsTask = NULL;
 
-static bool TaskIsStarted = false;
+static bool SensorTaskIsStarted = false;
 static bool ButtonsInhibit = false;
 
 //-----------------------------------------------------------------------------
@@ -88,16 +88,18 @@ static void RunButtonsTask(void* arg);
 
 void Sensors_Init(void)
 {
-  TaskIsStarted = false;
+  SensorTaskIsStarted = false;
 
-  I2C_Init();
+  Buttons_Init();
+
+  if(I2C_Init() != ESP_OK)
+  {    
+    return;
+  }
 
   I2CMutex = xSemaphoreCreateMutex();
 
   Codec_Init();
-
-  Buttons_Init();
-
   ColorSensor_Init();
   Accelerometer_Init();
   Gyroscope_Init();
@@ -116,7 +118,7 @@ void Sensors_Start(void)
     &SensorsTask,    // Task handle
     0);              // Core where the task should run
 
-  TaskIsStarted = true;
+  SensorTaskIsStarted = true;
 
   xTaskCreatePinnedToCore(
 	RunButtonsTask,  // Function to implement the task
@@ -132,15 +134,14 @@ void Sensors_Start(void)
 
 void Sensors_Stop(void)
 {
-  if (TaskIsStarted)
+  I2C_DeleteDriver();  
+  if (SensorTaskIsStarted)
   {
     ESP_LOGW(Tag, "Sensors task is stopped");
-
-    I2C_DeleteDriver();
-    TaskIsStarted = false;
+    SensorTaskIsStarted = false;
     vTaskDelete(SensorsTask);
-    vTaskDelete(ButtonsTask);
   }
+  vTaskDelete(ButtonsTask);
 }
 
 //_____________________________________________________________________________
@@ -148,6 +149,13 @@ void Sensors_Stop(void)
 static void RunSensorsTask(void* arg)
 {
   int64_t time_start, time_end;
+
+  if(I2C_GetBusStatus() == false)
+  {
+    SensorTaskIsStarted = false;
+    vTaskDelete(NULL);
+    return;
+  }
 
   ESP_LOGI(Tag, "Start Sensors Task");
 

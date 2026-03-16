@@ -51,12 +51,12 @@
 #define B4_FREQ 493 // Si
 
 #define PLAY_TONE 0
-#define PLAY_BALAFON 1
+#define PLAY_PIANO 1
 #define PLAY_FLUTE 2
-#define PLAY_GUITARE 3
-#define PLAY_ORCHESTRE 4
-#define PLAY_PIANO 5
-#define PLAY_VIOLON 6
+#define PLAY_ORCHESTRE 3
+#define PLAY_GUITARE 4
+#define PLAY_VIOLON 5
+#define PLAY_BALAFON 6
 #define NUM_INSTRUMENTS 7
 
 //-----------------------------------------------------------------------------
@@ -124,22 +124,22 @@ void Musician_update_leds(void)
     case PLAY_TONE:
       Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
       break;
-    case PLAY_BALAFON:
+    case PLAY_PIANO:
       Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u);
       break;
     case PLAY_FLUTE:
       Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u);
       break;
-    case PLAY_GUITARE:
+    case PLAY_ORCHESTRE:
       Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u);
       break;
-    case PLAY_ORCHESTRE:
+    case PLAY_GUITARE:
       Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u);
       break;
-    case PLAY_PIANO:
+    case PLAY_VIOLON:
       Leds_SetLegoFrontBrightness(0u, 0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u);
       break;
-    case PLAY_VIOLON:
+    case PLAY_BALAFON:
       Leds_SetLegoFrontBrightness(0u, MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u);
       break;
   }
@@ -642,58 +642,58 @@ void Musician_Run(void)
             }
             break;
           case PLAY_BALAFON:
-            //Codec_Stop();
-            // if(Codec_PlayOnboardSound(TONE_TYPE_INSTRU_BALAFON_05) != ESP_OK)
-            // {
-            //   showColor = E_Color_Unknown; // Just to try play again next time
-            //   ESP_LOGE(Tag, "Error playing bafalon");
+            Codec_Stop();
+            if(Codec_PlayOnboardSound(TONE_TYPE_INSTRU_BALAFON_05) != ESP_OK)
+            {
+              showColor = E_Color_Unknown; // Just to try play again next time
+              ESP_LOGE(Tag, "Error playing bafalon");
 
-            // }
+            }
             break;
           case PLAY_FLUTE:
-            //Codec_Stop();
-            // if(Codec_PlayOnboardSound(TONE_TYPE_INSTRU_FLUTE_05) != ESP_OK)
-            // {
-            //   showColor = E_Color_Unknown; // Just to try play again next time
-            //   ESP_LOGE(Tag, "Error playing flute");
+            Codec_Stop();
+            if(Codec_PlayOnboardSound(TONE_TYPE_INSTRU_FLUTE_05) != ESP_OK)
+            {
+              showColor = E_Color_Unknown; // Just to try play again next time
+              ESP_LOGE(Tag, "Error playing flute");
 
-            // }
+            }
             break;
           case PLAY_GUITARE:
-            //Codec_Stop();
-            // if(Codec_PlayOnboardSound(TONE_TYPE_INSTRU_GUITARE_05) != ESP_OK)
-            // {
-            //   showColor = E_Color_Unknown; // Just to try play again next time
-            //   ESP_LOGE(Tag, "Error playing guitare");
+            Codec_Stop();
+            if(Codec_PlayOnboardSound(TONE_TYPE_INSTRU_GUITARE_05) != ESP_OK)
+            {
+              showColor = E_Color_Unknown; // Just to try play again next time
+              ESP_LOGE(Tag, "Error playing guitare");
 
-            // }
+            }
             break;
           case PLAY_ORCHESTRE:
-            //Codec_Stop();
-            // if(Codec_PlayOnboardSound(TONE_TYPE_INSTRU_ORCHESTRE_05) != ESP_OK)
-            // {
-            //   showColor = E_Color_Unknown; // Just to try play again next time
-            //   ESP_LOGE(Tag, "Error playing orchestre");
+            Codec_Stop();
+            if(Codec_PlayOnboardSound(TONE_TYPE_INSTRU_ORCHESTRE_05) != ESP_OK)
+            {
+              showColor = E_Color_Unknown; // Just to try play again next time
+              ESP_LOGE(Tag, "Error playing orchestre");
 
-            // }
+            }
             break;
           case PLAY_PIANO:
-            //Codec_Stop();
-            // if(Codec_PlayOnboardSound(TONE_TYPE_INSTRU_PIANO_05) != ESP_OK)
-            // {
-            //   showColor = E_Color_Unknown; // Just to try play again next time
-            //   ESP_LOGE(Tag, "Error playing piano");
+            Codec_Stop();
+            if(Codec_PlayOnboardSound(TONE_TYPE_INSTRU_PIANO_05) != ESP_OK)
+            {
+              showColor = E_Color_Unknown; // Just to try play again next time
+              ESP_LOGE(Tag, "Error playing piano");
 
-            // }
+            }
             break;
           case PLAY_VIOLON:
-            //Codec_Stop();
-            // if(Codec_PlayOnboardSound(TONE_TYPE_INSTRU_VIOLON_05) != ESP_OK)
-            // {
-            //   showColor = E_Color_Unknown; // Just to try play again next time
-            //   ESP_LOGE(Tag, "Error playing violon");
+            Codec_Stop();
+            if(Codec_PlayOnboardSound(TONE_TYPE_INSTRU_VIOLON_05) != ESP_OK)
+            {
+              showColor = E_Color_Unknown; // Just to try play again next time
+              ESP_LOGE(Tag, "Error playing violon");
 
-            // }
+            }
             break;
           default:
             current_instrument = PLAY_TONE;

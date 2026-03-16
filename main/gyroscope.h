@@ -141,4 +141,10 @@ void Gyroscope_EnableContinuousCalib(void);
 //! \return    None
 void Gyroscope_DisableContinuousCalib(void);
 
+//! \brief     Save gyro calibration offsets
+//! \pre       First initialize the gyroscope
+//! \param     None
+//! \return    None
+void Gyroscope_SaveCalibrationOffsets(void);
+
 #endif // GYROSCOPE_H_

@@ -452,7 +452,7 @@ static void ProcessEraseAction(uint8_t command)
       {
         countEraseLastStep++;
 
-        if (countEraseLastStep > 25) // After  1/2 second
+        if (countEraseLastStep > 15) // After  300 ms
         {
           eraseLastStepState = 1;
           countEraseLastStep = 0;
@@ -468,7 +468,7 @@ static void ProcessEraseAction(uint8_t command)
       break;
     case 1: // Show the user that the last step will be erase in a few seconds
       countEraseLastStep++;
-      if(countEraseLastStep > 50) { // After 1 seconds remove last step
+      if(countEraseLastStep > 25) { // After 1/2 seconds remove last step
         if(WrPos > 0) {
           WrPos--;
         }
@@ -494,7 +494,7 @@ static void ProcessEraseAction(uint8_t command)
       {
         countEraseExit = 0;
       }    
-      if(ledCounter < 20) 
+      if(ledCounter < 10) 
       {
         ledCounter++;
       }
@@ -502,7 +502,7 @@ static void ProcessEraseAction(uint8_t command)
       {
         ledCounter = 0;
       }
-      if(ledCounter < 10) {
+      if(ledCounter < 5) {
         Leds_SetFrontBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS/2, 0);
         Leds_SetBackBrightness(MAX_BRIGHTNESS, MAX_BRIGHTNESS/2, 0);         
       } else {
@@ -557,7 +557,7 @@ static void ProcessEraseAction(uint8_t command)
       break;
     case 1: // Play a sound telling the user the sequence will be erased in a few seconds 
       Codec_PlayOnboardSound(TONE_TYPE_BLUEBOT_DELETEALL);
-      eraseAllState = 2;
+      eraseAllState = 3;
       ledCounter = 0;
       break;
     case 2: // Wait for the sound to finish while showing the user that the erase sequence will be performed in a few seconds

@@ -675,6 +675,16 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                         mp_stop_script();
                     } else if(ctxt->om->om_data[0] == PYTHON_WRITE_SAVE)
                     {
+                        if(ctxt->om->om_len != 2) // command + script id
+                        {
+                            ble_indicate_python_save(PYTHON_SAVE_ERROR);
+                            break;
+                        }
+                        if(ctxt->om->om_data[1] > 7) // script id range is 0..7
+                        {
+                            ble_indicate_python_save(PYTHON_SAVE_ERROR);
+                            break;
+                        }
                         if(mp_script_ready)
                         {
                             mp_save_script(mp_script, ctxt->om->om_data[1], mp_script_tot_len);

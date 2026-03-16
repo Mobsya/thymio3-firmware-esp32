@@ -26,7 +26,7 @@
 //-----------------------------------------------------------------------------
 
 #define FIRMWARE_VERSION_MAJOR 1
-#define FIRMWARE_VERSION_MINOR 0
+#define FIRMWARE_VERSION_MINOR 3
 
 #define MIN_LIMIT_SPEED        -600
 #define MAX_LIMIT_SPEED         600

@@ -372,3 +372,10 @@ void Gyroscope_GetCalibration(int16_t* values){
 void Gyroscope_SetCalibration(int16_t* values){
 	memcpy(ZeroGyro, values, 6);
 }
+
+//_____________________________________________________________________________
+
+void Gyroscope_SaveCalibrationOffsets(void)
+{
+	Settings_WriteZeroOffGyro(ZeroGyro);
+}

@@ -215,6 +215,8 @@ void ANN_Start(void)
 
   // Display level of wheights
   Leds_SetCircleBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+  Leds_SetLegoFrontBrightness(0, 0, 0, 0, 0, 0, 0, 0);
+  Leds_SetLegoBackBrightness(0, 0, 0, 0, 0, 0, 0, 0);
 }
 
 //_____________________________________________________________________________

@@ -22,6 +22,7 @@
 //-----------------------------------------------------------------------------
 
 #include <stdint.h>
+#include "esp_err.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -54,8 +55,8 @@ typedef uint8_t T_I2CBus;
 //! \brief     Initialize the I2C protocol
 //! \pre       None
 //! \param     None
-//! \return    None
-extern void I2C_Init(void);
+//! \return    Error in case I2C is blocked.
+extern int I2C_Init(void);
 
 //! \brief     Write a byte
 //! \pre       First initialize the I2C protocol
@@ -78,7 +79,7 @@ extern uint8_t I2C_ReadByte(uint8_t slaveAddress, uint8_t registerAddress);
 //! \param     data - Data to write
 //! \param     size - Size of the data
 //! \return    None
-extern void I2C_WriteToAddress(uint8_t slaveAddress, uint8_t registerAddress, uint8_t* data, uint16_t size);
+extern esp_err_t I2C_WriteToAddress(uint8_t slaveAddress, uint8_t registerAddress, uint8_t* data, uint16_t size);
 
 //! \brief     Read data from a specific register
 //! \pre       First initialize the I2C protocol
@@ -87,7 +88,7 @@ extern void I2C_WriteToAddress(uint8_t slaveAddress, uint8_t registerAddress, ui
 //! \param     data - Data to read
 //! \param     size - Size of the data
 //! \return    None
-extern void I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t registerAddress, uint8_t* data, uint16_t size);
+extern esp_err_t I2C_ReadFromAddress(uint8_t slaveAddress, uint8_t registerAddress, uint8_t* data, uint16_t size);
 
 //! \brief     Get the bus status
 //! \pre       First initialize the I2C protocol
