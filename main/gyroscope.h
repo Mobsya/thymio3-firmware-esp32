@@ -23,6 +23,7 @@
 #define LSM6DS3US 0
 #define LSM6DS3TR 1
 #define LSM6DS0 2
+#define GYRO_NOT_AVAILABLE 3
 
 #include "imu_common.h"
 #include "lsm6ds3us.h"

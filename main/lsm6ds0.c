@@ -24,7 +24,7 @@
 #include "esp_log.h"
 
 #include "lsm6ds0.h"
-
+#include "common.h"
 #include "i2c.h"
 #include "imu_common.h"
 #include "gyroscope.h"
@@ -828,7 +828,12 @@ uint16_t LSM6DS0_ReadBufferedAngularPosition(void)
     	GyroBuffer[0][i] = (int16_t)((uint16_t)temp_data[1u] << 8u) | temp_data[0u];
     	GyroBuffer[1][i] = (int16_t)((uint16_t)temp_data[3u] << 8u) | temp_data[2u];
     	GyroBuffer[2][i] = (int16_t)((uint16_t)temp_data[5u] << 8u) | temp_data[4u];
-    	i++;
+    	if (HARDWARE_VERSION >= 0xD)
+      {
+        GyroBuffer[1][i] = -GyroBuffer[1][i];
+        GyroBuffer[2][i] = -GyroBuffer[2][i];
+      }
+      i++;
     }
   }
 

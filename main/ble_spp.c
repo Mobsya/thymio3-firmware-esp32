@@ -23,6 +23,7 @@
 #include "freertos/semphr.h"
 #include "freertos/event_groups.h"
 #include "esp_timer.h"
+#include "soc/efuse_reg.h"
 /* BLE */
 #include "esp_nimble_hci.h"
 #include "nimble/nimble_port.h"
@@ -367,6 +368,7 @@ ble_spp_server_gap_event(struct ble_gap_event *event, void *arg)
         enter_micropython_mode();
         esp_ble_ota_fill_handle_table();
         Codec_PlayOnboardSound(TONE_TYPE_BLUETOOTH_CONNEXION);
+        Leds_SetDebugBrightness(0, 0, MAX_BRIGHTNESS);
         return 0;
 
     case BLE_GAP_EVENT_DISCONNECT:
@@ -386,6 +388,7 @@ ble_spp_server_gap_event(struct ble_gap_event *event, void *arg)
         }
         is_connect = false;
         xEventGroupSetBits(ind_ack_event_group, INDICATION_ERR_BIT);
+        Leds_SetDebugBrightness(0, 0, 0);
         return 0;
 
     case BLE_GAP_EVENT_CONN_UPDATE:
@@ -2812,6 +2815,13 @@ void ble_spp_init(void)
     int rc;
     char ble_name[32];
     uint8_t mac_addr[6] = {0};
+    
+    uint32_t blk3_rdata0;
+    uint32_t blk3_rdata1;
+    uint32_t blk3_rdata2;
+    uint8_t efuse_data[12];
+    char lot[3] = {0};
+    uint16_t pcb_id = 0;
 
     ind_ack_event_group = xEventGroupCreate();
 
@@ -2849,6 +2859,50 @@ void ble_spp_init(void)
     assert(rc == 0);
 
     /* Set the default device name. */
+    // The robot ID is stored in the first 96 bits (12 bytes) of EFUSE BLK3.
+    //
+    // Each entry is now 4 bytes:
+    //   - 2 bytes: lot letters (ASCII), e.g. 'B''A'
+    //   - 2 bytes: PCB ID number (binary uint16_t), e.g. 1
+    //
+    // Total layout:
+    //   Entry 0 -> bytes  0..3
+    //   Entry 1 -> bytes  4..7
+    //   Entry 2 -> bytes  8..11
+    //
+    // An invalid entry is identified by:
+    //   letters = 0xFFFF AND pcb_id = 0xFFFF
+    //
+    // Old entries should therefore be overwritten with all bits set to 1.
+    //
+    // Example valid ID:
+    //   "BA0001"    
+    // Read first 96 bits from BLK3
+    /*
+    blk3_rdata0 = REG_READ(EFUSE_BLK3_RDATA0_REG);
+    blk3_rdata1 = REG_READ(EFUSE_BLK3_RDATA1_REG);
+    blk3_rdata2 = REG_READ(EFUSE_BLK3_RDATA2_REG);
+    // Convert words into byte array (little endian)
+    memcpy(&efuse_data[0], &blk3_rdata0, 4);
+    memcpy(&efuse_data[4], &blk3_rdata1, 4);
+    memcpy(&efuse_data[8], &blk3_rdata2, 4);
+    // Search for first valid entry
+    for(int i = 0; i < 3; i++) {
+        uint8_t *entry = &efuse_data[i * 4];
+        uint16_t lot_raw = entry[0] | (entry[1] << 8);
+        uint16_t id_raw  = entry[2] | (entry[3] << 8);
+        // Valid entry found
+        if((lot_raw != 0xFFFF) && (id_raw != 0xFFFF)) {
+            lot[0] = entry[0];
+            lot[1] = entry[1];
+            lot[2] = '\0';
+            pcb_id = id_raw;
+            break;
+        }
+    }
+    snprintf(ble_name, sizeof(ble_name), "THYMIO-%s%04u", lot, pcb_id);
+    */
+    
     rc = esp_read_mac(mac_addr, ESP_MAC_BT); // Get the Bluetooth MAC address
     if (rc == ESP_OK) {
         // Format the name string. The last two bytes of the MAC are used here.
@@ -2858,6 +2912,7 @@ void ble_spp_init(void)
         // Set a default name as a fallback.
         strcpy(ble_name, "THYMIO-UNKNOWN");
     }
+    
     rc = ble_svc_gap_device_name_set(ble_name);
     assert(rc == 0);
 

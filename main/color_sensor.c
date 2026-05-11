@@ -171,6 +171,18 @@ void ColorSensor_ReadColor(void)
 {
   if(colorSensorType == COLOR_SENSOR_NOT_AVAILABLE)
   {
+    Color = E_Color_Unknown;
+    Hsv.Hue = 0;
+    Hsv.Saturation = 0;
+    Hsv.Value = 0;
+    RawColor.Red = 0;
+    RawColor.Green = 0;
+    RawColor.Blue = 0;
+    RawColor.Clear = 0;
+    vmVariables.color_raw[0] = 0;
+    vmVariables.color_raw[1] = 0;
+    vmVariables.color_raw[2] = 0;
+    vmVariables.color_raw[3] = 0;    
     return;
   }
   else if(colorSensorType == COLOR_SENSOR_TCS3701)

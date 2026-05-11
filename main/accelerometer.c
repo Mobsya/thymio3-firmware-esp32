@@ -21,7 +21,7 @@
 #include "esp_log.h"
 
 #include "accelerometer.h"
-
+#include "common.h"
 #include "aseba_esp32.h"
 #include "gpio.h"
 #include "i2c.h"
@@ -75,6 +75,8 @@ void Accelerometer_Init(void)
 	} else if(data == 0x6C) {
 		currAcc = LSM6DS0;
 		LSM6DS0_InitAccelerometer();
+	} else {
+		currAcc = ACC_NOT_AVAILABLE;
 	}
 
   ESP_LOGI(Tag, "Accelerometer is initialized");
@@ -84,12 +86,26 @@ void Accelerometer_Init(void)
 
 void Accelerometer_ReadAcceleration(void)
 {
-	if(currAcc == LSM6DS3US) {
+	if(currAcc == ACC_NOT_AVAILABLE) {
+		Acceleration.X = 0;
+		Acceleration.Y = 0;
+		Acceleration.Z = 0;
+		vmVariables.acc[0] = 0;
+  		vmVariables.acc[1] = 0;
+  		vmVariables.acc[2] = 0;
+		return;
+	} else if(currAcc == LSM6DS3US) {
 		LSM6DS3US_ReadAcceleration(&Acceleration);
 	} else if(currAcc == LSM6DS3TR) {
 		LSM6DS3TR_ReadAcceleration(&Acceleration);
 	} else if(currAcc == LSM6DS0) {
 		LSM6DS0_ReadAcceleration(&Acceleration);
+	}
+
+	if(HARDWARE_VERSION >= 0x0D)
+	{
+		Acceleration.Y = -Acceleration.Y;
+		Acceleration.Z = -Acceleration.Z;
 	}
 
   vmVariables.acc[0] = Acceleration.X;

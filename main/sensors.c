@@ -159,11 +159,6 @@ static void RunSensorsTask(void* arg)
 
   ESP_LOGI(Tag, "Start Sensors Task");
 
-  if (Accelerometer_CheckManufacturerId() != E_Error_None)
-  {
-    ESP_LOGE(Tag, "Accelerometer/Gyroscope error");
-  }
-
   while (1)
   {
     time_start = esp_timer_get_time();

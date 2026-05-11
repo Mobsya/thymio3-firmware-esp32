@@ -22,7 +22,7 @@
 #include "esp_log.h"
 
 #include "gyroscope.h"
-
+#include "common.h"
 #include "aseba_esp32.h"
 #include "settings.h"
 #include "i2c.h"
@@ -95,6 +95,8 @@ void Gyroscope_Init(void)
 	} else if(data == 0x6C) {
 		currGyro = LSM6DS0;
 		LSM6DS0_InitGyroscope(offset);
+	} else {
+		currGyro = GYRO_NOT_AVAILABLE;
 	}
 
   ESP_LOGI(Tag, "Gyroscope is initialized");
@@ -104,13 +106,27 @@ void Gyroscope_Init(void)
 
 void Gyroscope_ReadAngularVelocity(void)
 {
-	if(currGyro == LSM6DS3US) {
+	if(currGyro == GYRO_NOT_AVAILABLE) {
+		AngularVelocity.X = 0;
+		AngularVelocity.Y = 0;
+		AngularVelocity.Z = 0;
+		vmVariables.gyro[0] = 0;
+  		vmVariables.gyro[1] = 0;
+  		vmVariables.gyro[2] = 0;
+		return;
+	} else if(currGyro == LSM6DS3US) {
 		LSM6DS3US_ReadAngularVelocity(&AngularVelocity);
 	} else if(currGyro == LSM6DS3TR) {
 		LSM6DS3TR_ReadAngularVelocity(&AngularVelocity);
 	} else if(currGyro == LSM6DS0) {
 		LSM6DS0_ReadAngularVelocity(&AngularVelocity);
 	}
+
+	if(HARDWARE_VERSION >= 0x0D)
+	{
+		AngularVelocity.Y = -AngularVelocity.Y;
+		AngularVelocity.Z = -AngularVelocity.Z;
+	}	
 
   vmVariables.gyro[0] = AngularVelocity.X;
   vmVariables.gyro[1] = AngularVelocity.Y;
@@ -158,7 +174,15 @@ void Gyroscope_ReadAngle(void)
 		return;
 	}
 
-	if(currGyro == LSM6DS3US) {
+	if(currGyro == GYRO_NOT_AVAILABLE) {
+		Angle[0] = 0;
+		Angle[1] = 0;
+		Angle[2] = 0;
+		vmVariables.angle[0] = 0;
+  		vmVariables.angle[1] = 0;
+  		vmVariables.angle[2] = 0;
+		return;
+	} else if(currGyro == LSM6DS3US) {
 		numReadSamples = LSM6DS3US_ReadBufferedAngularPosition();
 	} else if(currGyro == LSM6DS3TR) {
 		numReadSamples = LSM6DS3TR_ReadBufferedAngularPosition();

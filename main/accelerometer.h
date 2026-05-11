@@ -23,6 +23,7 @@
 #define LSM6DS3US 0
 #define LSM6DS3TR 1
 #define LSM6DS0 2
+#define ACC_NOT_AVAILABLE 3
 
 #include "error.h"
 #include "imu_common.h"
