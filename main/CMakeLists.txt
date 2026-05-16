@@ -128,8 +128,8 @@ set(COMPONENT_SRCS
 
 #set(COMPONENT_EMBED_FILES server_certs/ca_cert.pem favicon.ico upload_script.html a3_44100.mp3 alarm_44100.mp3 b3_44100.mp3 bad_44100.mp3 blop_44100.mp3 bye_44100.mp3 c3_44100.mp3 chicken.mp3 d3_44100.mp3 e3_44100.mp3 f3_44100.mp3 fall_44100.mp3 g3_44100.mp3 good_44100.mp3 detect_44100.mp3 magic_44100.mp3 tick_44100.mp3)
 set(COMPONENT_EMBED_FILES server_certs/ca_cert.pem favicon.ico upload_script.html)
-set(COMPONENT_ADD_INCLUDEDIRS ".")
-set(COMPONENT_ADD_INCLUDEDIRS ". aseba ../components")
+
+set(COMPONENT_ADD_INCLUDEDIRS ". ./aseba ../components")
 
 register_component()
 

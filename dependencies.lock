@@ -1,0 +1,27 @@
+dependencies:
+  espressif/ble_ota:
+    component_hash: 1415ffdf0ff3169d52b668f5da8c3dd60932938f07a28c54ffbc0e8901dbf7ba
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 0.1.16
+  espressif/cmake_utilities:
+    component_hash: 351350613ceafba240b761b4ea991e0f231ac7a9f59a9ee901f751bddc0bb18f
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 0.5.3
+  espressif/esp_encrypted_img:
+    component_hash: 0540cba087bcdabf0a4ac09e95e3ed44687157c4120fc4cfd4fc548673f56b1e
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 2.5.1
+  idf:
+    component_hash: null
+    source:
+      type: idf
+    version: 4.4.4
+manifest_hash: 23067032a0204bc4e542f474535b7e54103815b1b26c2e35bc2369ef12068145
+target: esp32
+version: 1.0.0
