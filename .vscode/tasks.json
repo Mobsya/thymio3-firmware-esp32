@@ -3,36 +3,110 @@
     // for the documentation about the tasks.json format
     "version": "2.0.0",
     "tasks": [
+        // {
+        //     "label": "thymio3-firmware-esp32: idf.py version and PATH",
+        //     "type": "shell",
+        //     "problemMatcher": "$gcc",
+        //     "command": ". ../esp/esp-adf/esp-idf/export.sh; idf.py --version; echo $PATH",
+        //     "options": {
+        //         "cwd": "${workspaceFolder}",
+        //         // "windows": {
+        //         //     "shell": {
+        //         //         "executable": "cmd.exe",
+        //         //         "args": ["/d", "/C"]
+        //         //     }
+        //         // },
+        //     },        
+        // },
+        // {
+        //     "label": "thymio3-firmware-esp32: List IDF environment variables",
+        //     "type": "shell",
+        //     "problemMatcher": "$gcc",
+        //     "command": "pwd",
+        // },
         {
-            "label": "build",
+            "label": "thymio3-firmware-esp32: 1. Init/Update recursively git submodules",
             "type": "shell",
             "problemMatcher": "$gcc",
-            "command": "cmake --build ${workspaceFolder}/build"
+            "command": "git submodule update --init --recursive"
         },
         {
-            "label": "flash",
+            "label": "thymio3-firmware-esp32: 2. Build MicroPython cross-compiler",
             "type": "shell",
             "problemMatcher": "$gcc",
-            //"command": "cmake --build ${workspaceFolder}/build --target flash"
-            "command": "idf.py flash -b 115200 -B ${workspaceFolder}/build -C ${workspaceFolder}"
+            "command": "make V=1 -C mpy-cross",
+            // "command": "clang --version",
+            "options": {
+                "cwd": "${workspaceFolder}/components/mp_component/micropython",
+                // "windows": {
+                //     "shell": {
+                //         "executable": "cmd.exe",
+                //         "args": ["/d", "/C"]
+                //     }
+                // },
+            },
         },
         {
-            "label": "monitor",
-            "type": "shell",
-            "command": "idf.py monitor",
-            "problemMatcher": []
-        },
-        {
-            "label": "menuconfig",
-            "type": "shell",
-            "command": "idf.py -B ${workspaceFolder}/build menuconfig",
-            "problemMatcher": []
-        },
-        {
-            "label": "clean",
+            "label": "thymio3-firmware-esp32: 3. Make ESP32 MicroPython submodules",
             "type": "shell",
             "problemMatcher": "$gcc",
-            "command": "cmake --build ${workspaceFolder}/build --target clean"
-        }
+            "command": "make submodules",
+            // "command": "clang --version",
+            "options": {
+                "cwd": "${workspaceFolder}/components/mp_component/micropython/ports/esp32",
+                // "windows": {
+                //     "shell": {
+                //         "executable": "cmd.exe",
+                //         "args": ["/d", "/C"]
+                //     }
+                // },
+            },
+        },
+        // {
+        //     "label": "thymio3-firmware-esp32: 4. Build ESP32 firmware (4 .bin files)",
+        //     "type": "shell",
+        //     "problemMatcher": "$gcc",
+        //     "command": "idf.py build",
+        //     // "command": "clang --version",
+        //     "options": {
+        //         "cwd": "${workspaceFolder}",
+        //         // "windows": {
+        //         //     "shell": {
+        //         //         "executable": "cmd.exe",
+        //         //         "args": ["/d", "/C"]
+        //         //     }
+        //         // },
+        //     },
+        // },
+        //     "label": "thymio3-firmware-esp32: build",
+        //     "type": "shell",
+        //     "problemMatcher": "$gcc",
+        //     "command": "cmake --build ${workspaceFolder}/build"
+        // },
+        // {
+        //     "label": "thymio3-firmware-esp32: flash",
+        //     "type": "shell",
+        //     "problemMatcher": "$gcc",
+        //     //"command": "cmake --build ${workspaceFolder}/build --target flash"
+        //     "command": "idf.py flash -b 115200 -B ${workspaceFolder}/build -C ${workspaceFolder}"
+        // },
+        // {
+        //     "label": "thymio3-firmware-esp32: monitor",
+        //     "type": "shell",
+        //     "command": "idf.py monitor",
+        //     "problemMatcher": []
+        // },
+        // {
+        //     "label": "thymio3-firmware-esp32: menuconfig",
+        //     "type": "shell",
+        //     "command": "idf.py -B ${workspaceFolder}/build menuconfig",
+        //     "problemMatcher": []
+        // },
+        // {
+        //     "label": "thymio3-firmware-esp32: clean",
+        //     "type": "shell",
+        //     "problemMatcher": "$gcc",
+        //     "command": "idf.py --help"
+        // }
     ]
 }

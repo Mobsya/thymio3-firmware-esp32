@@ -160,6 +160,20 @@ uint8_t* Buttons_GetStatus(void)
 
 //_____________________________________________________________________________
 
+uint16_t* Buttons_GetRaw(void)
+{
+  return ButtonRaw;
+}
+
+//_____________________________________________________________________________
+
+uint16_t* Buttons_GetFiltered(void)
+{
+  return ButtonFiltered;
+}
+
+//_____________________________________________________________________________
+
 void Buttons_UpdateStatus(void)
 {
   static uint8_t oldButtonStatus[BUTTONS_NUM] = {0u, 0u, 0u, 0u, 0u};

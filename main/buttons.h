@@ -67,6 +67,18 @@ extern void Buttons_Init(void);
 //! \return    The status of the buttons
 extern uint8_t* Buttons_GetStatus(void);
 
+//! \brief     Get the button raw values
+//! \pre       First initialize the buttons
+//! \param     None
+//! \return    The raw values of the buttons
+extern uint16_t* Buttons_GetRaw(void);
+
+//! \brief     Get the button filtered values
+//! \pre       First initialize the buttons
+//! \param     None
+//! \return    The filtered values of the buttons
+extern uint16_t* Buttons_GetFiltered(void);
+
 //! \brief     Update the button status
 //! \pre       First initialize the buttons
 //! \param     None
