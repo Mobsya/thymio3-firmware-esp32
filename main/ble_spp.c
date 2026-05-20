@@ -2878,7 +2878,6 @@ void ble_spp_init(void)
     // Example valid ID:
     //   "BA0001"    
     // Read first 96 bits from BLK3
-    /*
     blk3_rdata0 = REG_READ(EFUSE_BLK3_RDATA0_REG);
     blk3_rdata1 = REG_READ(EFUSE_BLK3_RDATA1_REG);
     blk3_rdata2 = REG_READ(EFUSE_BLK3_RDATA2_REG);
@@ -2901,8 +2900,8 @@ void ble_spp_init(void)
         }
     }
     snprintf(ble_name, sizeof(ble_name), "THYMIO-%s%04u", lot, pcb_id);
-    */
     
+    /*
     rc = esp_read_mac(mac_addr, ESP_MAC_BT); // Get the Bluetooth MAC address
     if (rc == ESP_OK) {
         // Format the name string. The last two bytes of the MAC are used here.
@@ -2912,7 +2911,7 @@ void ble_spp_init(void)
         // Set a default name as a fallback.
         strcpy(ble_name, "THYMIO-UNKNOWN");
     }
-    
+    */
     rc = ble_svc_gap_device_name_set(ble_name);
     assert(rc == 0);
 
