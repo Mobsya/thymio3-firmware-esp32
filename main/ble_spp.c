@@ -2816,9 +2816,9 @@ void ble_spp_init(void)
     char ble_name[32];
     uint8_t mac_addr[6] = {0};
     
-    uint32_t blk3_rdata0;
-    uint32_t blk3_rdata1;
     uint32_t blk3_rdata2;
+    uint32_t blk3_rdata6;
+    uint32_t blk3_rdata7;
     uint8_t efuse_data[12];
     char lot[3] = {0};
     uint16_t pcb_id = 0;

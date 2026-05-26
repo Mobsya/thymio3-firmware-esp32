@@ -26,7 +26,7 @@
 //-----------------------------------------------------------------------------
 
 #define FIRMWARE_VERSION_MAJOR 1
-#define FIRMWARE_VERSION_MINOR 5
+#define FIRMWARE_VERSION_MINOR 6
 
 #define HARDWARE_VERSION 0xD //0xC
 
