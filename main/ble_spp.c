@@ -2859,32 +2859,26 @@ void ble_spp_init(void)
     assert(rc == 0);
 
     /* Set the default device name. */
-    // The robot ID is stored in the first 96 bits (12 bytes) of EFUSE BLK3.
+    // The robot ID is stored in DATA2 (1st entry), DATA6 (1st recovery entry) and DATA7 (2nd recovery entry) registers of EFUSE BLK3 (total 96 bits).
     //
-    // Each entry is now 4 bytes:
+    // Each entry is 4 bytes:
     //   - 2 bytes: lot letters (ASCII), e.g. 'B''A'
     //   - 2 bytes: PCB ID number (binary uint16_t), e.g. 1
+    //   - => "BA0001" would be represented as 0x42 0x41 0x01 0x00 in little endian
     //
-    // Total layout:
-    //   Entry 0 -> bytes  0..3
-    //   Entry 1 -> bytes  4..7
-    //   Entry 2 -> bytes  8..11
-    //
-    // An invalid entry is identified by:
-    //   letters = 0xFFFF AND pcb_id = 0xFFFF
-    //
+    // An invalid entry is identified by lot = 0xFFFF AND pcb_id = 0xFFFF
     // Old entries should therefore be overwritten with all bits set to 1.
     //
     // Example valid ID:
     //   "BA0001"    
-    // Read first 96 bits from BLK3
-    blk3_rdata0 = REG_READ(EFUSE_BLK3_RDATA0_REG);
-    blk3_rdata1 = REG_READ(EFUSE_BLK3_RDATA1_REG);
+    // Read all entries from BLK3
     blk3_rdata2 = REG_READ(EFUSE_BLK3_RDATA2_REG);
+    blk3_rdata6 = REG_READ(EFUSE_BLK3_RDATA6_REG);
+    blk3_rdata7 = REG_READ(EFUSE_BLK3_RDATA7_REG);
     // Convert words into byte array (little endian)
-    memcpy(&efuse_data[0], &blk3_rdata0, 4);
-    memcpy(&efuse_data[4], &blk3_rdata1, 4);
-    memcpy(&efuse_data[8], &blk3_rdata2, 4);
+    memcpy(&efuse_data[0], &blk3_rdata2, 4);
+    memcpy(&efuse_data[4], &blk3_rdata6, 4);
+    memcpy(&efuse_data[8], &blk3_rdata7, 4);
     // Search for first valid entry
     for(int i = 0; i < 3; i++) {
         uint8_t *entry = &efuse_data[i * 4];
