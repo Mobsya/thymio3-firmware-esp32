@@ -34,7 +34,7 @@
 #define B_LEDS_BATTERY  (1 << 4) // Implemented on STM
 #define B_LEDS_CIRCLE   (1 << 5) // Not implemented
 #define B_LEDS_ACC      (1 << 6)
-#define B_LEDS_RGB      (1 << 7) // Not implemented
+#define B_LEDS_RGB      (1 << 7)
 #define B_LED_MIC       (1 << 8) // Implemented on STM, 2 bits [9 8]
 #define B_LED_MIC_STATE (1 << 9) // [0 0] => manual setting LED OFF, [1 0] => manual setting LED ON, [x 1] => LED ON when volume > threshold
 #define B_LED_RC5       (1 << 10)
@@ -44,8 +44,7 @@
 #define B_LEDS_TEST 	(1 << 14)
 #define B_PYTHON        (1 << 15) // Menu Python
 
-#define B_ALWAYS    (B_LEDS_BATTERY | B_LEDS_BUTTON | B_SOUND_BUTTON | B_LEDS_CIRCLE | B_LED_RC5)  // TODO (B_LEDS_BATTERY | B_LEDS_RC5 | B_SOUND_BUTTON | B_LEDS_BUTTON)
-// B_LEDS_RGB not used
+#define B_ALWAYS    (B_LEDS_BATTERY | B_LEDS_BUTTON | B_SOUND_BUTTON | B_LEDS_CIRCLE | B_LED_RC5 | B_LEDS_RGB)
 // B_LEDS_CIRCLE not used
 // B_LEDS_BATTERY not used
 

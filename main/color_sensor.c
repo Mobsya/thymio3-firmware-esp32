@@ -456,27 +456,27 @@ static void UpdateColor(T_HSV hsv)
   {
     if(hsv.Value > 20)
     {
-      if (((hsv.Hue >= 0) && (hsv.Hue <= 20)) || ((hsv.Hue > 350) && (hsv.Hue <= 360))) // red [350..20], delta=30
+      if (((hsv.Hue >= 0) && (hsv.Hue <= 10)) || ((hsv.Hue > 350) && (hsv.Hue <= 360))) // red ]350..10], delta=20
       {
         Color = E_Color_Red;
       }
-      else if (hsv.Hue <= 57) // yellow ]20..57], delta=37
+      else if (hsv.Hue <= 30) // yellow ]10..30], delta=20
       {
         Color = E_Color_Yellow;
       }
-      else if (hsv.Hue <= 120) // green ]57..120], delta=63
+      else if (hsv.Hue <= 80) // green ]30..80], delta=50
       {
         Color = E_Color_Green;
       }
-      else if (hsv.Hue <= 200) // cyan ]120..200], delta=80
+      else if (hsv.Hue <= 210) // cyan ]80..210], delta=130
       {
         Color = E_Color_Cyan;
       }
-      else if (hsv.Hue <= 268) // blue ]200..268], delta=68
+      else if (hsv.Hue <= 260) // blue ]210..260], delta=50
       {
         Color = E_Color_Blue;
       }
-      else if (hsv.Hue <= 350) // purple ]268..350], delta=82
+      else if (hsv.Hue <= 350) // purple ]260..350], delta=90
       {
         Color = E_Color_Purple;
       }

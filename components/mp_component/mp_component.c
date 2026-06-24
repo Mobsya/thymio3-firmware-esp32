@@ -788,12 +788,17 @@ soft_reset:
                 ble_indicate_download((uint8_t *)read_file_data, read_file_len);    
                 break;
             case 15: // firmware info
+            {
+                char esp32_ver[16] = {0};
+
                 mp_component_state = -1;
                 memset(json_mem_info, 0, sizeof(json_mem_info));           
 
+                Common_GetFirmwareVersionString(esp32_ver, sizeof(esp32_ver));
+
                 snprintf(&json_mem_info[3], sizeof(json_mem_info)-3,
-                        "{\"esp32_ver\": %d, \"stm32_ver\": %d}",
-                        Common_GetFirmwareVersion(), 0);
+                        "{\"esp32_ver\": \"%s\", \"stm32_ver\": %d}",
+                        esp32_ver, 0);
 
                 json_mem_info_len = strlen(&json_mem_info[3]);                        
                 json_mem_info[0] = DEV_INFO_IND_FIRMWARE_RES;
@@ -804,6 +809,7 @@ soft_reset:
                 ble_indicate_dev_info((uint8_t *)json_mem_info, json_mem_info_len);
                 ESP_LOG_BUFFER_CHAR("mp_component", &json_mem_info[3], json_mem_info_len-3);
                 break;   
+            }
             case 16: // reset
                 mp_component_state = -1;
                 mp_need_reset = 1;

@@ -97,8 +97,7 @@ void Musician_Start(void)
 {
   Settings_GetGroundBlackSettings(groundThr);
   groundThr[0] += GROUND_EDGE_OFFSET;
-  groundThr[1] += GROUND_EDGE_OFFSET;  
-  Behavior_Enable(B_LEDS_RGB);
+  groundThr[1] += GROUND_EDGE_OFFSET;
   Codec_Stop();
   current_instrument = PLAY_TONE;
   Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
@@ -109,7 +108,6 @@ void Musician_Start(void)
 void Musician_Stop(void)
 {
   Common_SetTargetSpeed(0, 0);
-  Behavior_Disable(B_LEDS_RGB);
   Leds_SetColorSensorBrightness(0, 0, 0);
   Codec_Stop();
   Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0);

@@ -20,13 +20,15 @@
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
+#include <stdio.h>
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
 #define FIRMWARE_VERSION_MAJOR 1
-#define FIRMWARE_VERSION_MINOR 7
+#define FIRMWARE_VERSION_MINOR 8
+#define FIRMWARE_VERSION_PATCH 0
 
 #define HARDWARE_VERSION 0xD //0xC
 
@@ -117,10 +119,29 @@ extern uint8_t Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8
 //! \return    None
 extern void Common_SetGroundThr(int16_t* values);
 
-//! \brief     Get the firmware version
+//! \brief     Get the firmware version major
 //! \pre       None
 //! \param     None
-//! \return    Firmware version (major*100 + minor)
-uint16_t Common_GetFirmwareVersion(void);
+//! \return    Firmware version major
+uint16_t Common_GetFirmwareVersionMajor(void);
+
+//! \brief     Get the firmware version minor
+//! \pre       None
+//! \param     None
+//! \return    Firmware version minor
+uint16_t Common_GetFirmwareVersionMinor(void);
+
+//! \brief     Get the firmware version patch
+//! \pre       None
+//! \param     None
+//! \return    Firmware version patch
+uint16_t Common_GetFirmwareVersionPatch(void);
+
+//! \brief     Get the firmware version string
+//! \pre       None
+//! \param     versionString - Pointer to the string where the version will be stored
+//! \param     size - Size of the string
+//! \return    None
+void Common_GetFirmwareVersionString(char* versionString, size_t size);
 
 #endif // COMMON_H_

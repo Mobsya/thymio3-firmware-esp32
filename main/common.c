@@ -309,7 +309,25 @@ void Common_SetGroundThr(int16_t* values)
   groundThr[1] = values[1] + GROUND_EDGE_OFFSET;
 }
 
-uint16_t Common_GetFirmwareVersion(void)
+uint16_t Common_GetFirmwareVersionMajor(void)
 {
-  return (uint16_t)(FIRMWARE_VERSION_MAJOR * 100 + FIRMWARE_VERSION_MINOR);
+  return FIRMWARE_VERSION_MAJOR;
+}
+
+uint16_t Common_GetFirmwareVersionMinor(void)
+{
+  return FIRMWARE_VERSION_MINOR;
+}
+
+uint16_t Common_GetFirmwareVersionPatch(void)
+{
+  return FIRMWARE_VERSION_PATCH;
+}
+
+void Common_GetFirmwareVersionString(char* versionString, size_t size)
+{
+  if (versionString == NULL || size == 0) {
+        return;
+  }
+  snprintf(versionString, size, "%d.%d.%d", FIRMWARE_VERSION_MAJOR, FIRMWARE_VERSION_MINOR, FIRMWARE_VERSION_PATCH);
 }
