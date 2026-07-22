@@ -35,7 +35,7 @@
 #include "i2c.h"
 #include "settings.h"
 #include "groove.h"
-
+//#include "../components/mp_component/mp_component.h"
 #include "es8374.h"
 #include "pins_def.h"
 
@@ -109,6 +109,8 @@ void Sensors_Init(void)
 
 void Sensors_Start(void)
 {
+  //mp_arm_state_watchpoint(); // Debug: arm a watchpoint on the mp_state_ctx struct to detect stack overflows or other misbehaviors from the sensors task (run on another CORE than Micropython task)
+
   xTaskCreatePinnedToCore(
     RunSensorsTask,  // Function to implement the task
     "sensors",       // Name of the task
@@ -181,6 +183,16 @@ static void RunSensorsTask(void* arg)
 		if((time_end - time_start) < 62500) { // Run task @ 16 Hz like in T2 (acc rate)
 			vTaskDelay((62500 - (time_end - time_start))/1000 / portTICK_PERIOD_MS);
 		}
+
+    // Debug: print the stack high water mark of the sensors task to check if it is close to the limit (which would indicate a stack overflow risk)    
+    // static UBaseType_t minFree = 0xFFFFFFFF;
+    // UBaseType_t hw = uxTaskGetStackHighWaterMark(NULL);
+    // if (hw < minFree)
+    // {
+    //     minFree = hw;
+    //     ESP_LOGE("sensors", "stack high water mark = %u word (%u byte)",
+    //             (unsigned)hw, (unsigned)(hw * sizeof(StackType_t)));
+    // }
   }
 }
 

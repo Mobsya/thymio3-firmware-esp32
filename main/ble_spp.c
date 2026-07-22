@@ -585,9 +585,23 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                         break;      
                     }
                     mp_script_seq_id_prev++;
+
+                    uint16_t chunk = OS_MBUF_PKTLEN(ctxt->om) - 2u; // Each packet contains also a sequence id (2 bytes)
+
+                    if ((uint32_t)mp_script_curr_len + chunk > mp_script_tot_len)
+                    {
+                        ESP_LOGE(TAG, "script overflow: curr=%u chunk=%u tot=%u",
+                                    mp_script_curr_len, chunk, mp_script_tot_len);
+                        mp_receiving_script = false;
+                        mp_script_curr_len = 0;
+                        ble_indicate_python_load(FILE_LOAD_TOO_BIG);
+                        Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
+                        break;
+                    }
+
                     // copy remaining chunk of data
-                    os_mbuf_copydata(ctxt->om, 2, OS_MBUF_PKTLEN(ctxt->om) - 2, mp_script + mp_script_curr_len);
-                    mp_script_curr_len += OS_MBUF_PKTLEN(ctxt->om) - 2; // Each packet contains also a sequence id (2 bytes)
+                    os_mbuf_copydata(ctxt->om, 2, chunk, mp_script + mp_script_curr_len);
+                    mp_script_curr_len += chunk; 
                     if(mp_script_curr_len == mp_script_tot_len)
                     {
                         mp_receiving_script = false;                        
@@ -639,6 +653,13 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                             // copy first chunk of data
                             os_mbuf_copydata(ctxt->om, 9, OS_MBUF_PKTLEN(ctxt->om) - 9, mp_script + mp_script_curr_len);
                             mp_script_curr_len += OS_MBUF_PKTLEN(ctxt->om) - 9; // Firt packet contains also command id (1); script len (2), crc (4), sequence id (2) = 9 bytes                        
+                            if (mp_script_curr_len > mp_script_tot_len)
+                            {
+                                mp_receiving_script = false;
+                                ble_indicate_python_load(FILE_LOAD_TOO_BIG);
+                                Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
+                                break;
+                            }
                             if(mp_script_curr_len == mp_script_tot_len) // All the script data received in the first packet (small script)
                             {
                                 mp_receiving_script = false;                        
@@ -1028,9 +1049,20 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                         break;      
                     }
                     fs_seq_id_prev++;
+                    uint16_t chunk = OS_MBUF_PKTLEN(ctxt->om) - 2; // Each packet contains also a sequence id (2 bytes)
+                    if ((uint64_t)fs_curr_len + chunk > fs_tot_len)
+                    {
+                        fs_receiving_file = false;
+                        ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_TOO_BIG);
+                        Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
+                        free(fs_data);
+                        fs_data = NULL;
+                        break;
+                    }
+
                     // copy remaining chunk of data
-                    os_mbuf_copydata(ctxt->om, 2, OS_MBUF_PKTLEN(ctxt->om) - 2, fs_data + fs_curr_len);
-                    fs_curr_len += OS_MBUF_PKTLEN(ctxt->om) - 2; // Each packet contains also a sequence id (2 bytes)
+                    os_mbuf_copydata(ctxt->om, 2, chunk, fs_data + fs_curr_len);
+                    fs_curr_len += chunk;
                     if(fs_curr_len == fs_tot_len)
                     {
                         fs_receiving_file = false;                        
@@ -1071,11 +1103,12 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                             free(fs_data);
                             fs_data = NULL;
                         }
-                        fs_data = malloc(fs_tot_len);
+                        fs_data = malloc(fs_tot_len); //heap_caps_malloc(fs_tot_len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT); //malloc(fs_tot_len);
                         if(fs_data == NULL)
                         {
                             ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_TOO_BIG);
                             Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
+                            ESP_LOGE(TAG,"FS_WRITE_LOAD: cannot allocate memory for file of size %d", fs_tot_len);
                         }
                         else if(fs_seq_id != 0)
                         {
@@ -1092,6 +1125,15 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                             // copy first chunk of data
                             os_mbuf_copydata(ctxt->om, 11, OS_MBUF_PKTLEN(ctxt->om) - 11, fs_data + fs_curr_len);
                             fs_curr_len += OS_MBUF_PKTLEN(ctxt->om) - 11; // Firt packet contains also command id (1); file len (4), crc (4), sequence id (2) = 11 bytes                        
+                            if (fs_curr_len > fs_tot_len)
+                            {
+                                fs_receiving_file = false;
+                                ble_indicate_fs(FS_IND_LOAD_RES, FS_LOAD_TOO_BIG);
+                                Codec_PlayOnboardSound(TONE_TYPE_CODEERROR);
+                                free(fs_data);
+                                fs_data = NULL;
+                                break;
+                            }
                             if(fs_curr_len == fs_tot_len) // All the file data received in the first packet (small file)
                             {
                                 fs_receiving_file = false;                        
@@ -2394,16 +2436,19 @@ void ble_indicate_fs_list(uint8_t *data, uint16_t len)
             os_mbuf_copyinto(txom, FS_SUBSEQUENT_PACKET_HEADER_LEN, current_data_ptr, chunk_payload_len);
         }
 
-        // Send the indication. NimBLE takes ownership of txom on success (rc == 0).
+        uint16_t sent_len = os_mbuf_len(txom); // Read before sending, as os_mbuf_len(txom) will be 0 after ble_gattc_indicate_custom() is called.
+
+        // Send the indication. NimBLE takes always (success or not) ownership of txom. Never free (os_mbuf_free_chain) manually.
         rc = ble_gattc_indicate_custom(connection_handle, ble_fs_val_handle, txom);
-        
+        txom = NULL;
+
         free(ind_buf_data); // free ind_buf_data alloc #1 or alloc #2
         ind_buf_data = NULL;
 
         if (rc == 0)
         {
             ESP_LOGI(TAG, "FS list indication sent successfully: Seq ID %d, Total Len %d, Payload %d",
-                     seq_id, os_mbuf_len(txom), chunk_payload_len);
+                     seq_id, sent_len, chunk_payload_len);
 
             // Update state for the next chunk
             current_data_ptr += chunk_payload_len;
@@ -2415,7 +2460,7 @@ void ble_indicate_fs_list(uint8_t *data, uint16_t len)
         {
             ESP_LOGE(TAG, "FS list error in sending indication: Seq ID %d, rc=%d. Freeing mbuf.", seq_id, rc);
             // Must free the mbuf chain manually on failure, as NimBLE did not take ownership.
-            os_mbuf_free_chain(txom);
+            //os_mbuf_free_chain(txom);
             //ble_indicate_fs_list_err();   // Do not indicate error to the client here, it could be confused with sequence ids. The client will notice the missing packets by itself with a timeout.
             mp_list_files_free_buffer();
             return; // Stop sending on first failure
@@ -2553,8 +2598,9 @@ void ble_indicate_download(uint8_t *data, uint32_t len)
         }
 
         xEventGroupClearBits(ind_ack_event_group, INDICATION_ACK_BIT|INDICATION_ERR_BIT);
-        // Send the indication. NimBLE takes ownership of txom on success (rc == 0).
+        // Send the indication. NimBLE takes always (success or not) ownership of txom. Never free (os_mbuf_free_chain) manually.
         rc = ble_gattc_indicate_custom(connection_handle, ble_fs_val_handle, txom);
+        txom = NULL;
         bits = xEventGroupWaitBits(ind_ack_event_group, INDICATION_ACK_BIT|INDICATION_ERR_BIT, pdTRUE, pdFALSE, pdMS_TO_TICKS(5000)); // Wait for the indication ack or timeout after 5 seconds   
         free(ind_buf_data); // free ind_buf_data alloc #1 or alloc #2
         ind_buf_data = NULL;
@@ -2590,7 +2636,7 @@ void ble_indicate_download(uint8_t *data, uint32_t len)
         {
             ESP_LOGE(TAG, "FS download error in sending indication: Seq ID %d, rc=%d. Freeing mbuf.", seq_id, rc);
             // Must free the mbuf chain manually on failure, as NimBLE did not take ownership.
-            os_mbuf_free_chain(txom);
+            //os_mbuf_free_chain(txom);
             //ble_indicate_fs_list_err();   // Do not indicate error to the client here, it could be confused with sequence ids. The client will notice the missing packets by itself with a timeout.
             mp_read_file_free_buffer();
             return; // Stop sending on first failure
@@ -2635,13 +2681,14 @@ static void send_ble_data_fragmented(uint8_t *data, size_t len, uint8_t *tx_buf)
 
         // Send as indication
         int rc = ble_gattc_indicate_custom(connection_handle, ble_python_stdout_val_handle, txom);
+        txom = NULL;
         
         if (rc == 0) {
             // Success, NimBLE takes ownership of txom
             ESP_LOGD(TAG, "Sent %d bytes of stdout", chunk_size);
         } else {
             // Failure, we must free txom
-            os_mbuf_free_chain(txom);
+            //os_mbuf_free_chain(txom);
             ESP_LOGE(TAG, "Error sending stdout indication: %d", rc);
             // If we're disconnected, is_connect will be false and we'll break
             // Otherwise, we'll just drop this packet

@@ -841,9 +841,10 @@ uint16_t LSM6DS3TR_ReadBufferedAngularPosition(void)
   uint16_t length = 0x00u;
   uint16_t pattern = 0x00u;
 
-  uint8_t i = 0u;
-  uint8_t j = 0u;
-  uint8_t k = 0u;
+  uint16_t i = 0u;
+  uint16_t j = 0u;
+  uint16_t k = 0u;
+  uint16_t n = 0u;
 
   uint16_t numSamples = 0u;
 
@@ -851,6 +852,8 @@ uint16_t LSM6DS3TR_ReadBufferedAngularPosition(void)
   uint8_t pat[2] = {0u, 0u};
 
   static bool first = false;
+
+  uint16_t badPattern = 0u;
 
   if (!first)
   {
@@ -863,14 +866,29 @@ uint16_t LSM6DS3TR_ReadBufferedAngularPosition(void)
   length = (uint16_t)((uint16_t)(len[1] & 0x07) << 8) | len[0];
   //ESP_LOGI(Tag, "length=%d", length);
 
+  if ((len[1] & 0x40u) != 0u)   /* OVER_RUN: inconsistent data, discard */
+  {
+    ESP_LOGW(Tag, "FIFO overrun, flush");
+    UpdateFifoMode(E_FifoMode_Bypass);
+    UpdateFifoMode(E_FifoMode_Continuous);
+    return 0u;
+  }
+
+  if (length > 3u * GYRO_BUFFER_SIZE)
+  {
+    /* Backlog exceeding capacity: the samples are seconds old.
+       Integrating them would skew the angle; better to start fresh. */
+    ESP_LOGW(Tag, "FIFO backlog=%u word (~%u ms), flush",
+             length, (unsigned)(length * 1000u / 312u));
+    UpdateFifoMode(E_FifoMode_Bypass);
+    UpdateFifoMode(E_FifoMode_Continuous);
+    return 0u;
+  }  
+
   if (length > 0u)
   {
     numSamples = ((length / 3) * 3);  // Get a multiple of 3 (entire part) for the XYZ samples (get maximum number of complete triplets).
     //ESP_LOGI(Tag, "numSamples=%d", numSamples);
-
-    if (numSamples >= 3*GYRO_BUFFER_SIZE) {
-    	numSamples = 3*GYRO_BUFFER_SIZE;
-    }
 
     for (uint16_t index = 0u; index < numSamples; index++)
     {
@@ -881,31 +899,49 @@ uint16_t LSM6DS3TR_ReadBufferedAngularPosition(void)
 
       if (pattern == 0)
       {
-        GyroBuffer[0][i] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
-        i++;
+        if (i < GYRO_BUFFER_SIZE)
+        {
+          GyroBuffer[0][i] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
+          i++;
+        }
       }
       else if (pattern == 1)
       {
-        GyroBuffer[1][j] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
-        if (HARDWARE_VERSION >= 0xD)
+        if (j < GYRO_BUFFER_SIZE)
         {
-          GyroBuffer[1][j] = -GyroBuffer[1][j];
-        }        
-        j++;
+          GyroBuffer[1][j] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
+          if (HARDWARE_VERSION >= 0xD)
+          {
+            GyroBuffer[1][j] = -GyroBuffer[1][j];
+          }        
+          j++;
+        }
       }
-      else
+      else if (pattern == 2)
       {
-        GyroBuffer[2][k] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
-        if (HARDWARE_VERSION >= 0xD)
+        if (k < GYRO_BUFFER_SIZE)
         {
-          GyroBuffer[2][k] = -GyroBuffer[2][k];
-        }        
-        k++;
+          GyroBuffer[2][k] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
+          if (HARDWARE_VERSION >= 0xD)
+          {
+            GyroBuffer[2][k] = -GyroBuffer[2][k];
+          }
+          k++;
+        }
       }
+      else // pattern > 2: not valid pattern (desync FIFO, overrun, failed I2C read). Discard.
+      {
+        badPattern++;
+      }
+    }
+    if (badPattern > 0u)
+    {
+      ESP_LOGI(Tag, "FIFO %u word discarded with pattern > 2", badPattern);
     }
   }
 
-  return (numSamples / 3);  // Number of XYZ samples
+  n = (i < j) ? i : j;
+  return (n < k) ? n : k;  // Return the minimum number of samples read for each axis
 }
 
 //_____________________________________________________________________________

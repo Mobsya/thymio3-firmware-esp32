@@ -56,6 +56,7 @@
 #include "esp_task.h"
 #include "soc/cpu.h"
 #include "esp_log.h"
+#include "esp_debug_helpers.h"
 
 //#include "py/obj.h"
 //MP_REGISTER_ROOT_POINTER(mp_obj_t native_code_pointers);
@@ -281,6 +282,13 @@ soft_reset:
     mp_stack_set_limit(MP_TASK_STACK_SIZE - MP_TASK_STACK_LIMIT_MARGIN);
     gc_init(mp_task_heap, mp_task_heap + mp_task_heap_size);
     mp_init();
+    
+    // Debugging: print the heap size and the stack pointer when "mp_module_builtins_override_dict" is written to. 
+    // This is useful to check if the struct is poisoned by a stack overflow or others misbehaviors.
+    //void *wp = (void *)&MP_STATE_VM(mp_module_builtins_override_dict);
+    //ESP_LOGW("dbg", "watch %p (off %d in mp_state_ctx)", wp, (int)((uint8_t *)wp - (uint8_t *)&mp_state_ctx));
+    //esp_set_watchpoint(0, wp, 4, ESP_WATCHPOINT_STORE);
+
     mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_lib));
     readline_init0();
 
@@ -331,6 +339,9 @@ soft_reset:
                         if (ret & PYEXEC_FORCED_EXIT) {
                             goto soft_reset_exit;
                         }
+                        turnOffAllSensors();
+                        Codec_Stop();
+                        break; 
                     }
                     if (Accelerometer_IsTapDetected()) { // If the user make a tap then avoid starting the main.py script and enable the behaviors menu
                         Behavior_Disable(B_LEDS_LEGO_KITT);
@@ -494,7 +505,7 @@ soft_reset:
                     ble_indicate_python_save(PYTHON_SAVE_ERROR);
                 }
                 break;
-            case 10: // save file
+            case 10: // save file               
                 mp_component_state = -1; // Execute the command only once            
                 if (nlr_push(&nlr) == 0) {
                     // Check if there is enough space in the filesystem
@@ -587,6 +598,8 @@ soft_reset:
                 break;
             case 12: // list files
                 mp_component_state = -1; // Execute the command only once
+                free(json_buf); // free(NULL) is legal
+                json_buf = NULL;
                 json_buf = calloc(JSON_BUFFER_SIZE, sizeof(char));
                 if(json_buf == NULL) {
                     ESP_LOGE("mp_component", "Failed to allocate memory for JSON buffer");
@@ -639,7 +652,7 @@ soft_reset:
                 } else { // Exception raised
                     mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
                     ble_indicate_fs_list_err();
-                    free(json_buf);
+                    mp_list_files_free_buffer();
                     break;
                 }
                 ESP_LOG_BUFFER_CHAR("mp_component", json_buf, strlen(json_buf));
@@ -1027,6 +1040,16 @@ void mp_reset(void)
         mp_component_state = 16;
         xEventGroupSetBits(mp_component_event_group, EVT_EXEC_MODE);
     }
+}
+
+void mp_arm_state_watchpoint(void)
+{
+    esp_set_watchpoint(0, (void *)&MP_STATE_VM(mp_module_builtins_override_dict), 4, ESP_WATCHPOINT_STORE);                        
+}
+
+void *mp_get_state_ctx_addr(void)
+{
+    return (void *)&mp_state_ctx;
 }
 
 MP_REGISTER_ROOT_POINTER(mp_obj_t native_code_pointers);

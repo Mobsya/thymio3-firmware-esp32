@@ -791,14 +791,11 @@ uint16_t LSM6DS0_ReadBufferedAngularPosition(void)
   uint8_t temp_data[7u] = {0u};
   uint16_t length = 0x00u;
 
-  uint8_t i = 0u;
-  uint8_t j = 0u;
-  uint8_t k = 0u;
+  uint16_t i = 0u;
 
   uint16_t numSamples = 0u;
 
   uint8_t len[2] = {0u, 0u};
-  uint8_t pat[2] = {0u, 0u};
 
   static bool first = false;
 
@@ -813,17 +810,40 @@ uint16_t LSM6DS0_ReadBufferedAngularPosition(void)
   length = (uint16_t)((uint16_t)(len[1] & 0x03) << 8) | len[0];
   //ESP_LOGD(Tag, "length=%d", length);
 
+  if ((len[1] & 0x40u) != 0u)  /* OVER_RUN: inconsistent data, discard */
+  {
+    ESP_LOGW(Tag, "FIFO overrun, flush");
+    UpdateFifoMode(E_FifoMode_Bypass);
+    UpdateFifoMode(E_FifoMode_Continuous);
+    return 0u;
+  }
+
+  if (length > GYRO_BUFFER_SIZE)
+  {
+    /* Backlog exceeding capacity: the samples are seconds old.
+       Integrating them would skew the angle; better to start fresh. */
+    ESP_LOGW(Tag, "FIFO backlog=%u samples, flush", length);
+    UpdateFifoMode(E_FifoMode_Bypass);
+    UpdateFifoMode(E_FifoMode_Continuous);
+    return 0u;
+  }
+
   if (length > 0u)
   {
     numSamples = length; // Fifo format: TAG + 6 bytes for the XYZ samples.
     //ESP_LOGD(Tag, "numSamples=%d", numSamples);
 
-    if (numSamples >= 3*GYRO_BUFFER_SIZE) {
-    	numSamples = 3*GYRO_BUFFER_SIZE;
+    if (numSamples > GYRO_BUFFER_SIZE) {
+    	numSamples = GYRO_BUFFER_SIZE;
     }
 
     for (uint16_t index = 0u; index < numSamples; index++)
     {
+      if (i >= GYRO_BUFFER_SIZE)
+      {
+        break;
+      }
+
     	I2C_ReadFromAddress(SLAVE_ADDRESS, FIFO_DATA_OUT_L_REG_ADDRESS, temp_data, 7u);
     	GyroBuffer[0][i] = (int16_t)((uint16_t)temp_data[1u] << 8u) | temp_data[0u];
     	GyroBuffer[1][i] = (int16_t)((uint16_t)temp_data[3u] << 8u) | temp_data[2u];
@@ -837,7 +857,7 @@ uint16_t LSM6DS0_ReadBufferedAngularPosition(void)
     }
   }
 
-  return (numSamples);  // Number of XYZ samples
+  return i;  // Number of XYZ samples
 }
 
 //_____________________________________________________________________________

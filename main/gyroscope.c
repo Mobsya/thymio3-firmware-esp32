@@ -149,9 +149,15 @@ static void CalculateAngle(int32_t* angle, uint16_t number)
   int32_t sum[3] = {0, 0, 0};
   int64_t gyroCorr[3] = {0, 0, 0};
   //ESP_LOGI(Tag, "number=%d", number);
+  
+  if (number > GYRO_BUFFER_SIZE)   // Safety measure
+  {
+    number = GYRO_BUFFER_SIZE;
+  }
+
   for (uint8_t axis = 0u; axis < 3u; axis++)
   {
-    for (uint8_t index = 0u; index < number; index++)
+    for (uint16_t index = 0u; index < number; index++)
     {
       sum[axis] += GyroBuffer[axis][index];
     }

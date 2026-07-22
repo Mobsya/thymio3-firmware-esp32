@@ -15,6 +15,7 @@ void mp_read_file_free_buffer(void);
 void mp_mem_info(void);
 void mp_firmware_info(void);
 void mp_reset(void);
+void mp_arm_state_watchpoint(void); // Set a watchpoint on the mp_state_ctx struct to detect stack overflows or other misbehaviors (from the other CORE)
 
 // Check if the script mainID.py is present. ID is from 1 to 7.
 uint8_t script_is_present(uint8_t id);
