@@ -14,8 +14,6 @@
 //! \license This project is released under the GNU Lesser General Public License
 //_____________________________________________________________________________
 
-
-
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
@@ -23,7 +21,7 @@
 #include "freertos/semphr.h"
 #include "freertos/event_groups.h"
 #include "esp_timer.h"
-#include "soc/efuse_reg.h"
+#include "efuse_id.h"
 /* BLE */
 #include "esp_nimble_hci.h"
 #include "nimble/nimble_port.h"
@@ -52,6 +50,7 @@
 #include "aseba_esp32.h"
 #include "codec.h"
 #include "behavior.h"
+#include "stdint.h"
 
 static const char *TAG = "THYMIO_BLUETOOTH";
 
@@ -2810,18 +2809,17 @@ size_t ble_spp_stdout_write(const void *data, size_t size)
     return size; // Success
 }
 
-void ble_spp_init(void)
-{
+void ble_spp_init(void) {
     int rc;
     char ble_name[32];
     uint8_t mac_addr[6] = {0};
-    
-    uint32_t blk3_rdata2;
-    uint32_t blk3_rdata6;
-    uint32_t blk3_rdata7;
-    uint8_t efuse_data[12];
     char lot[3] = {0};
-    uint16_t pcb_id = 0;
+
+	// esp_log_level_set("*", ESP_LOG_NONE);
+	//esp_log_level_set("*", ESP_LOG_ERROR);
+	esp_log_level_set("*", ESP_LOG_INFO);
+	//esp_log_level_set("*", ESP_LOG_DEBUG);
+	//esp_log_level_set("*", ESP_LOG_VERBOSE);
 
     ind_ack_event_group = xEventGroupCreate();
 
@@ -2855,7 +2853,7 @@ void ble_spp_init(void)
 */
 
     rc = gatt_svr_init();
-    ESP_LOGI("BLE_SPP", "Init failed with return code: %d", rc);
+    ESP_LOGI("BLE_SPP", "Return code of Init Gatt server: %d", rc);
     assert(rc == 0);
 
     /* Set the default device name. */
@@ -2872,40 +2870,50 @@ void ble_spp_init(void)
     // Example valid ID:
     //   "BA0001"    
     // Read all entries from BLK3
-    blk3_rdata2 = REG_READ(EFUSE_BLK3_RDATA2_REG);
-    blk3_rdata6 = REG_READ(EFUSE_BLK3_RDATA6_REG);
-    blk3_rdata7 = REG_READ(EFUSE_BLK3_RDATA7_REG);
+
+    // blk3_rdata2 = REG_READ(EFUSE_BLK3_RDATA2_REG);
+    // blk3_rdata6 = REG_READ(EFUSE_BLK3_RDATA6_REG);
+    // blk3_rdata7 = REG_READ(EFUSE_BLK3_RDATA7_REG);
+    // ESP_ERROR_CHECK(esp_efuse_read_block(EFUSE_BLK3, &blk3_rdata2, 2 * 32, 32));
+    // ESP_ERROR_CHECK(esp_efuse_read_block(EFUSE_BLK3, &blk3_rdata6, 6 * 32, 32));
+    // ESP_ERROR_CHECK(esp_efuse_read_block(EFUSE_BLK3, &blk3_rdata7, 7 * 32, 32));
     // Convert words into byte array (little endian)
-    memcpy(&efuse_data[0], &blk3_rdata2, 4);
-    memcpy(&efuse_data[4], &blk3_rdata6, 4);
-    memcpy(&efuse_data[8], &blk3_rdata7, 4);
-    // Search for first valid entry
-    for(int i = 0; i < 3; i++) {
-        uint8_t *entry = &efuse_data[i * 4];
-        uint16_t lot_raw = entry[0] | (entry[1] << 8);
-        uint16_t id_raw  = entry[2] | (entry[3] << 8);
-        // Valid entry found
-        if((lot_raw != 0xFFFF) && (id_raw != 0xFFFF)) {
-            lot[0] = entry[0];
-            lot[1] = entry[1];
-            lot[2] = '\0';
-            pcb_id = id_raw;
-            break;
-        }
-    }
-    snprintf(ble_name, sizeof(ble_name), "THYMIO-%s%04u", lot, pcb_id);
-    
-    /*
-    rc = esp_read_mac(mac_addr, ESP_MAC_BT); // Get the Bluetooth MAC address
-    if (rc == ESP_OK) {
-        // Format the name string. The last two bytes of the MAC are used here.
-        snprintf(ble_name, sizeof(ble_name), "THYMIO-%02X%02X", mac_addr[4], mac_addr[5]);
+    // memcpy(&efuse_data[0], &blk3_rdata2, 4);
+    // memcpy(&efuse_data[4], &blk3_rdata6, 4);
+    // memcpy(&efuse_data[8], &blk3_rdata7, 4);
+
+    // Display how many available entries are in EFUSE BLK3
+    ESP_LOGI(TAG, "Available EFUSE BLK3 entries: %d", getAvailableEfuseEntries());
+    // Get the ID from the first valid entry (if any)
+    t3_id_t ID;
+    ID.id = getCurrentEfuseID();
+    if (ID.id == NO_ID) {
+        ESP_LOGW(TAG, "No valid ID found but still available entries in EFUSE BLK3");
+        snprintf(ble_name, sizeof(ble_name), "T3-00000000");
+    } else if (ID.id == INVALID_ID) {
+        ESP_LOGE(TAG, "No valid ID found and no available entries in EFUSE BLK3");
+        snprintf(ble_name, sizeof(ble_name), "T3-FFFFFFFF");
     } else {
-        // Handle the error if reading the MAC fails.
-        // Set a default name as a fallback.
-        strcpy(ble_name, "THYMIO-UNKNOWN");
+        uint16_t pcb_id = ID.parts.number;
+        lot[0] = ID.parts.lot[0];
+        lot[1] = ID.parts.lot[1];
+        lot[2] = '\0'; // Null-terminate the string
+        ESP_LOGI(TAG, "Current ID in EFUSE BLK3: %s%05u", lot, pcb_id);
+        snprintf(ble_name, sizeof(ble_name), "T3-%s%05u", lot, pcb_id);
     }
-    */
+
+    // rc = esp_read_mac(mac_addr, ESP_MAC_BT); // Get the Bluetooth MAC address
+    // size_t len = strlen(ble_name);
+    // if (rc == ESP_OK) {
+    //     // Format the name string. The last two bytes of the MAC are used here.
+    //     snprintf(ble_name + len, sizeof(ble_name) - len, "-%02X:%02X:%02X:%02X:%02X:%02X", mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
+    //      mac_addr[4], mac_addr[5]);
+    // } else {
+    //     // Handle the error if reading the MAC fails.
+    //     // Set a default name as a fallback.
+    //     snprintf(ble_name + len, sizeof(ble_name) - len, "-UnknowMacAddr");
+    // }
+
     rc = ble_svc_gap_device_name_set(ble_name);
     assert(rc == 0);
 
@@ -2918,4 +2926,10 @@ void ble_spp_init(void)
     xTaskCreate(&ota_task, "ota_task", OTA_TASK_SIZE, NULL, 5, NULL);
 
     ble_spp_stdout_init();
+
+	esp_log_level_set("*", ESP_LOG_NONE);
+	//esp_log_level_set("*", ESP_LOG_ERROR);
+	// esp_log_level_set("*", ESP_LOG_INFO);
+	//esp_log_level_set("*", ESP_LOG_DEBUG);
+	//esp_log_level_set("*", ESP_LOG_VERBOSE);
 }

@@ -482,12 +482,12 @@ static void UpdateColor(T_HSV hsv)
       }
       else
       {
-        Color = E_Color_Unknown;
+        Color = E_Color_Unknown;  // Is it possible to get here? No sense to have this case, but just in case...
       }
     }
-    else
+    else  
     {
-      Color = E_Color_Unknown;
+      Color = E_Color_Black;
     }
   }
 }
