@@ -2940,7 +2940,7 @@ void ble_spp_init(void)
             break;
         }
     }
-    snprintf(ble_name, sizeof(ble_name), "THYMIO-%s%04u", lot, pcb_id);
+    snprintf(ble_name, sizeof(ble_name), "T3-%s%05u", lot, pcb_id);
     
     /*
     rc = esp_read_mac(mac_addr, ESP_MAC_BT); // Get the Bluetooth MAC address
