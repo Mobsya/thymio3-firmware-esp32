@@ -129,7 +129,7 @@ extern void STM32_SetProxIRValues(int16_t* buffer, uint16_t position);
 //! \return    None
 extern T_ProxIR STM32_GetProxIRValues(void);
 
-extern void STM32_SetGroundThr(int16_t* white, int16_t* black);
+extern void STM32_SetGroundRange(int16_t* white, int16_t* black);
 
 extern void STM32_SetGroundIRValues(int16_t* buffer, uint16_t position);
 

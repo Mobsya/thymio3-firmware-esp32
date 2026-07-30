@@ -274,9 +274,11 @@ uint8_t Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue
   if(first)
   {
     first = false;
-    Settings_GetGroundBlackSettings(groundThr);
-    groundThr[0] += GROUND_EDGE_OFFSET;
-    groundThr[1] += GROUND_EDGE_OFFSET;
+    //Settings_GetGroundBlackSettings(groundThr);
+    //groundThr[0] += GROUND_EDGE_OFFSET;
+    //groundThr[1] += GROUND_EDGE_OFFSET;
+    groundThr[0] = 300; // Calibrated ground values range is 0..1023, thus 300 is a good threshold to detect the table edge
+    groundThr[1] = 300;
     ESP_LOGI(Tag, "ground thr: l=%d r=%d", groundThr[0], groundThr[1]);
   }
 

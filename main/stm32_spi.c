@@ -390,7 +390,7 @@ T_ProxIR STM32_GetProxIRValues(void)
 
 //_____________________________________________________________________________
 
-void STM32_SetGroundThr(int16_t* white, int16_t* black)
+void STM32_SetGroundRange(int16_t* white, int16_t* black)
 {
   memcpy(groundsWhite, white, 4);
   memcpy(groundsBlack, black, 4);
@@ -438,7 +438,7 @@ void STM32_SetGroundIRValues(int16_t* buffer, uint16_t position)
   temp = GroundIR.LeftDelta - groundsBlack[0];
   if(temp < 0)
   {
-    GroundIR.LeftDelta = 0;
+    GroundIR.LeftDelta = 0; // Or update the ground black calibration??
   }
   else
   {

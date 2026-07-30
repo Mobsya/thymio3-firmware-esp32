@@ -59,16 +59,14 @@
 // Private Data
 //-----------------------------------------------------------------------------
 //static const char* Tag = "line_tracker";
-static int16_t ground_left_black = 500;
-static int16_t ground_left_white = 650;
-static int16_t ground_right_black = 500;
-static int16_t ground_right_white = 650;
+static int16_t ground_left_black = 300; // Calibrated ground values range is 0..1023, thus 300 is a good threshold to detect black surfaces
+static int16_t ground_left_white = 700; // Calibrated ground values range is 0..1023, thus 700 is a good threshold to detect white surfaces
+static int16_t ground_right_black = 300;
+static int16_t ground_right_white = 700;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
-
-static bool CalibrateLevelUsingButtons();
 
 static void GetLineSensorsState(uint8_t* state);
 
@@ -93,29 +91,7 @@ void LineTracker_Init(void)
 
 void LineTracker_Start(void)
 {
-  int16_t groundOffsets[2];
-  Settings_GetGroundBlackSettings(groundOffsets);
-  ground_left_black = groundOffsets[0] + GROUND_THR;
-  if(ground_left_black > 1023)
-  {
-    ground_left_black = 1023;
-  }
-  ground_right_black = groundOffsets[1] + GROUND_THR;
-  if(ground_right_black > 1023)
-  {
-    ground_right_black = 1023;
-  }  
-  Settings_GetGroundWhiteSettings(groundOffsets);
-  ground_left_white = groundOffsets[0] - GROUND_THR;
-  if(ground_left_white < 0)
-  {
-    ground_left_white = 0;
-  }
-  ground_right_white = groundOffsets[1] - GROUND_THR;
-  if(ground_right_white < 0)
-  {
-    ground_right_white = 0;
-  }  
+
 }
 
 //_____________________________________________________________________________
@@ -136,69 +112,12 @@ void LineTracker_Run(void)
   // Cyan pulse
   Leds_SetBodyBrightness(0u, brightness, brightness);
 
-  //if (!CalibrateLevelUsingButtons())
-  //{
-    // Calibration is not in progress
+  GetLineSensorsState(state);
 
-    GetLineSensorsState(state);
+  GetLineDirection(state, &dir);
 
-    GetLineDirection(state, &dir);
+  SetTargetAccordingToDirection(&dir);
 
-    SetTargetAccordingToDirection(&dir);
-  //}
-}
-
-//_____________________________________________________________________________
-
-static bool CalibrateLevelUsingButtons()
-{
-  uint8_t* buttonState;
-  bool calibrationIsInProgress = false;
-  bool calibrationFailed = false;
-
-  buttonState = Buttons_GetStatus();
-
-  // Calibration feature
-  if (buttonState[E_Button_Backward] && buttonState[E_Button_Forward]) // Forward + backward => black
-  {
-    ground_left_black = vmVariables.ground_delta[0] + GROUND_THR;  // Add GROUND_THR offset
-    ground_right_black = vmVariables.ground_delta[1] + GROUND_THR;
-    if((ground_left_black > 1024) || (ground_right_black > 1024)) {
-      calibrationFailed = true;
-    } else {
-      calibrationFailed = false;
-    }
-    calibrationIsInProgress = true;
-    //ESP_LOGD(Tag, "black: l=%d, r=%d", ground_left_black, ground_right_black);
-  }
-
-  if (buttonState[E_Button_Left] && buttonState[E_Button_Right]) // Left + right => white
-  {
-    ground_left_white = vmVariables.ground_delta[0] - GROUND_THR; // Subtract GROUND_THR offset
-    ground_right_white = vmVariables.ground_delta[1] - GROUND_THR;
-    if((ground_left_white < 0) || (ground_right_white < 0)) {
-      calibrationFailed = true;
-    } else {
-      calibrationFailed = false;
-    }    
-    calibrationIsInProgress = true;
-    //ESP_LOGD(Tag, "white: l=%d, r=%d", ground_left_white, ground_right_white);
-  }
-
-  // if the user is trying to calibrate, then don't try to move
-  if (calibrationIsInProgress)
-  {
-    Leds_SetCircleBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-    Common_SetTargetSpeed(0, 0);
-  }
-  if(calibrationFailed) { // Signal the user that the calibration failed
-    Leds_SetLegoFrontBrightness(0u, 0u, 0u, MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0u, 0u, 0u);
-  } else {
-    //Leds_SetLegoFrontBrightness(MAX_BRIGHTNESS, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
-    Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-  }
-
-  return calibrationIsInProgress;
 }
 
 //_____________________________________________________________________________

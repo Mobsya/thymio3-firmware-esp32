@@ -1165,8 +1165,8 @@ static void ExitSetting(T_Setting setting)
         Codec_PlayOnboardSound(TONE_TYPE_BAD);
       }      
       Settings_SetGroundBlackSettings(Setting.GroundBlack);
-      Common_SetGroundThr(Setting.GroundBlack);
-      STM32_SetGroundThr(Setting.GroundWhite, Setting.GroundBlack);
+      //Common_SetGroundThr(Setting.GroundBlack);
+      STM32_SetGroundRange(Setting.GroundWhite, Setting.GroundBlack);
       ESP_LOGI(Tag, "Ground calib white: %d, %d black: %d, %d", Setting.GroundWhite[0], Setting.GroundWhite[1], Setting.GroundBlack[0], Setting.GroundBlack[1]);
       break;
 

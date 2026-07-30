@@ -40,8 +40,8 @@
 #define DEFAULT_OFFSET_GYRO_Y 0
 #define DEFAULT_OFFSET_GYRO_Z 0
 #define DEFAULT_GYRO_ROT_FACTOR 0
-#define DEFAULT_GROUND_BLACK 500
-#define DEFAULT_GROUND_WHITE 650
+#define DEFAULT_GROUND_BLACK 35
+#define DEFAULT_GROUND_WHITE 300
 #define DEFAULT_MOT15CM 9000000 // Duration of the movement = 1800000 [us] -> TIMER_SCALE * 1800000 [us] = 9000000 (timer_group)
 
 //-----------------------------------------------------------------------------

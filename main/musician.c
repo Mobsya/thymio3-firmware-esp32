@@ -95,9 +95,11 @@ void Musician_Init(void)
 
 void Musician_Start(void)
 {
-  Settings_GetGroundBlackSettings(groundThr);
-  groundThr[0] += GROUND_EDGE_OFFSET;
-  groundThr[1] += GROUND_EDGE_OFFSET;
+  //Settings_GetGroundBlackSettings(groundThr);
+  //groundThr[0] += GROUND_EDGE_OFFSET;
+  //groundThr[1] += GROUND_EDGE_OFFSET;
+  groundThr[0] = 300; // Calibrated ground values range is 0..1023, thus 300 is a good threshold to detect the table edge
+  groundThr[1] = 300;
   Codec_Stop();
   current_instrument = PLAY_TONE;
   Leds_SetLegoFrontBrightness(0u, 0u, 0u, 0u, 0u, 0u, 0u, MAX_BRIGHTNESS);
