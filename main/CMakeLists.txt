@@ -34,6 +34,8 @@ set(COMPONENT_SRCS
     drawer.h
     dsp.c
     dsp.h
+    efuse_id.c
+    efuse_id.h
     error.h
     explorer.c
     explorer.h

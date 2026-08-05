@@ -28,9 +28,9 @@
 
 #define FIRMWARE_VERSION_MAJOR 1
 #define FIRMWARE_VERSION_MINOR 8
-#define FIRMWARE_VERSION_PATCH 4
+#define FIRMWARE_VERSION_PATCH "5E"
 
-#define HARDWARE_VERSION 0xD //0xC
+#define HARDWARE_VERSION 0xE //Only for Chinese version of Thymio III boards
 
 #define MIN_LIMIT_SPEED        -600
 #define MAX_LIMIT_SPEED         600

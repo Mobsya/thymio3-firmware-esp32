@@ -331,5 +331,6 @@ void Common_GetFirmwareVersionString(char* versionString, size_t size)
   if (versionString == NULL || size == 0) {
         return;
   }
-  snprintf(versionString, size, "%d.%d.%d", FIRMWARE_VERSION_MAJOR, FIRMWARE_VERSION_MINOR, FIRMWARE_VERSION_PATCH);
+  // Allow to use a string for the patch version, e.g. "beta" or "rc1"
+  snprintf(versionString, size, "%d.%d.%s", FIRMWARE_VERSION_MAJOR, FIRMWARE_VERSION_MINOR, FIRMWARE_VERSION_PATCH);
 }
