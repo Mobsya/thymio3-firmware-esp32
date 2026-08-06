@@ -1,131 +1,70 @@
 set(COMPONENT_SRCS
     accelerometer.c
-    accelerometer.h
     angle_controller.c
-    angle_controller.h
     ann.c
-    ann.h
     aseba_esp32.c
-    aseba_esp32.h
-    aseba_esp32_user.h
     aseba.c
-    aseba.h
     attentive.c
-    attentive.h
     audio_tone_uri.c
-    audio_tone_uri.h
     behavior.c
-    behavior.h
     bh1745nuc.c
-    bh1745nuc.h
     ble_spp.c
-    pins_def.h
     buttons.c
-    buttons.h
     codec.c
-    codec.h
     color_sensor.c
-    color_sensor.h
     comm.c
-    comm.h
     common.c
-    common.h
     drawer.c
-    drawer.h
     dsp.c
-    dsp.h
     efuse_id.c
-    efuse_id.h
-    error.h
     explorer.c
-    explorer.h
     fearful.c
-    fearful.h
     fifo.c
-    fifo.h
     file_server.c
-    file_server.h
     file_system.c
-    file_system.h
     friendly.c
-    friendly.h
     gpio.c
-    gpio.h
     groove.c
-    groove.h
     gyroscope.c
-    gyroscope.h
     i2c.c
-    i2c.h
     leds.c
-    leds.h
     line_tracker.c
-    line_tracker.h
     lsm6ds3us.c
-    lsm6ds3us.h
     lsm6ds3tr.c
-    lsm6ds3tr.h
     lsm6ds0.c
-    lsm6ds0.h    
     main.c
     mode.c
-    mode.h
     musician.c
-    musician.h
     natives.c
     obedient.c
-    obedient.h
     #painter.c
-    #painter.h
     power.c
-    power.h
     python_handler.c
-    python_handler.h
     rc5.c
-    rc5.h
     sensors.c
-    sensors.h
     sequence.c
-    sequence.h
+    serial_protocol.c
     settings.c
-    settings.h
     shift_registers.c
-    shift_registers.h
     sn74hc595.c
-    sn74hc595.h
     spi.c
-    spi.h
     stm32_spi.c
-    stm32_spi.h
     #tcp_server.c
-    #tcp_server.h
     tcs3701.c
-    tcs3701.h
     test.c
-    test.h
     thymio-buffer.c
-    thymio-buffer.h
     thymio_natives.c
-    thymio_natives.h
     timer_hw.c
-    timer_hw.h
     timer_sw.c
-    timer_sw.h
     uart.c
-    uart.h
     utility.c
-    utility.h
     vm-buffer.c
     vm.c
     ../components/thymio-nn/nn/nn.c
-    ../components/thymio-nn/nn/nn.h
     ../components/thymio-nn/nn/nn-alloc-stdlib.c
-    ../components/thymio-nn/nn/nn-alloc.h
     ../components/thymio-nn/thymio/nn-descriptions.c
     ../components/thymio-nn/thymio/nn-natives.c
-    ../components/thymio-nn/thymio/nn-natives.h
     wifi_handler.c
-    wifi_handler.h
 )
 
 #set(COMPONENT_EMBED_FILES server_certs/ca_cert.pem favicon.ico upload_script.html a3_44100.mp3 alarm_44100.mp3 b3_44100.mp3 bad_44100.mp3 blop_44100.mp3 bye_44100.mp3 c3_44100.mp3 chicken.mp3 d3_44100.mp3 e3_44100.mp3 f3_44100.mp3 fall_44100.mp3 g3_44100.mp3 good_44100.mp3 detect_44100.mp3 magic_44100.mp3 tick_44100.mp3)

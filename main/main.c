@@ -66,6 +66,7 @@
 //#include "ble_python_handler.h"
 #include "wifi_handler.h"
 #include "py/runtime.h"
+#include "serial_protocol.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -413,6 +414,8 @@ int app_main(void)
   ble_spp_init();
 
   Codec_PlayOnboardSound(TONE_TYPE_INTRO);
+
+  xTaskCreatePinnedToCore(serial_protocol_task, "json_serial", 4096, NULL, 5, NULL, 0);
 
   //wifi_init();
 
