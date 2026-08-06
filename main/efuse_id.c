@@ -89,7 +89,7 @@ static efuse_entry_t efuse_entries[ENTRIES_NUMBER] = {
 // Functions Implementation
 //-----------------------------------------------------------------------------
 
-uint32_t getCurrentEfuseID(void){
+uint32_t getCurrentID(void){
     uint32_t currentEfuseID = INVALID_ID;
     for (uint8_t i = 0; i < ENTRIES_NUMBER; i++) {
         if (efuse_entries[i].data == INVALID_ID) {
@@ -105,7 +105,7 @@ uint32_t getCurrentEfuseID(void){
 
 //_____________________________________________________________________________
 
-id_error_t setCurrentEfuseID(uint32_t new_id) {
+id_error_t setCurrentID(uint32_t new_id) {
     uint32_t efuse_data = INVALID_ID;
     
     if ((new_id == INVALID_ID) || (new_id == NO_ID)) {
@@ -119,7 +119,7 @@ id_error_t setCurrentEfuseID(uint32_t new_id) {
             continue; // Skip invalid entries
         }
         // Read the content of the current entry in EFUSE BLK3
-        uint32_t efuse_data = esp_efuse_read_reg(EFUSE_BLK3, efuse_entries[i].offset);
+        efuse_data = esp_efuse_read_reg(EFUSE_BLK3, efuse_entries[i].offset);
         ESP_LOGI(TAG, "Content read in EFUSE BLK3 DATA%d : 0x%08X\n", efuse_entries[i].offset, efuse_data);
         if(efuse_data == INVALID_ID) {
             ESP_LOGI(TAG, INDENT "Actual slot content INVALID_ID\n");
@@ -171,8 +171,8 @@ id_error_t setCurrentEfuseID(uint32_t new_id) {
 
 //_____________________________________________________________________________
 
-int8_t killCurrentEfuseID(void) {
-    if (getAvailableEfuseEntries() >= 2) { // At least one entry must be available to write a new id after killing the current entry
+int8_t killCurrentID(void) {
+    if (getAvailableEntries() >= 2) { // At least one entry must be available to write a new id after killing the current entry
         ESP_LOGI(TAG, "There is at least one free entry to write a new ID after killing the current entry");
     } else {
         ESP_LOGE(TAG, "There is no more free entry to write a new ID after killing the current entry");
@@ -209,13 +209,15 @@ int8_t killCurrentEfuseID(void) {
 
 //_____________________________________________________________________________
 
-uint8_t getAvailableEfuseEntries(void) {
+uint8_t getAvailableEntries(void) {
     uint8_t usable_entries = 0;
     for (uint8_t i = 0; i < ENTRIES_NUMBER; i++) {
+        if (efuse_entries[i].data == INVALID_ID)
+            continue; // Skip defined invalid entries
         uint32_t efuse_data = esp_efuse_read_reg(EFUSE_BLK3, efuse_entries[i].offset);
-        if ((efuse_entries[i].data != INVALID_ID) && (efuse_data != INVALID_ID)) {
-            usable_entries++; // Entry is usable
-        }
+        ESP_LOGI(TAG, "ID in EFUSE BLK3 DATA%d = 0X%08X\n", efuse_entries[i].offset, efuse_data);
+        if (efuse_data != INVALID_ID)
+            usable_entries++; // Entry is valid or free
     }
     return usable_entries;
 }

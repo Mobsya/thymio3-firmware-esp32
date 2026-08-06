@@ -99,7 +99,7 @@ typedef union {
  * Else NO_ID if the first available entry is not used (no id programmed yet)
  * Else INVALID_ID if all entries are killed
  */
-uint32_t getCurrentEfuseID(void);
+uint32_t getCurrentID(void);
 
 /**
  * @brief Sets id of Thymio3
@@ -119,7 +119,7 @@ uint32_t getCurrentEfuseID(void);
  * FAILED_TO_PROGRAM_ID if programming the eFuse failed
  * ERROR_TO_PROGRAM_ID else
  */
-id_error_t setCurrentEfuseID(uint32_t new_id);
+id_error_t setCurrentID(uint32_t new_id);
 
 /**
  * @brief Kills the current entry in the eFuse to allow a new id to be written in
@@ -128,7 +128,7 @@ id_error_t setCurrentEfuseID(uint32_t new_id);
  * @return 0 if the entry was killed successfully and there is a free entry to write
  * a new id, -1 if the entry has not been killed because there is no more free entry
  */
-int8_t killCurrentEfuseID(void);
+int8_t killCurrentID(void);
 
 /**
  * @brief Returns the available id entries number for the Thymio3 id in the eFuse,
@@ -142,6 +142,6 @@ int8_t killCurrentEfuseID(void);
  * 
  * @return The available entries number for the Thymio3 id in the eFuse (0..3)
  */
-uint8_t getAvailableEfuseEntries(void);
+uint8_t getAvailableEntries(void);
 
 #endif // EFUSE_ID_H_

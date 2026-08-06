@@ -2929,10 +2929,10 @@ void ble_spp_init(void) {
     // memcpy(&efuse_data[8], &blk3_rdata7, 4);
 
     // Display how many available entries are in EFUSE BLK3
-    ESP_LOGI(TAG, "Available EFUSE BLK3 entries: %d", getAvailableEfuseEntries());
+    ESP_LOGI(TAG, "Available EFUSE BLK3 entries: %d", getAvailableEntries());
     // Get the ID from the first valid entry (if any)
     t3_id_t ID;
-    ID.id = getCurrentEfuseID();
+    ID.id = getCurrentID();
     if (ID.id == NO_ID) {
         ESP_LOGW(TAG, "No valid ID found but still available entries in EFUSE BLK3");
         snprintf(ble_name, sizeof(ble_name), "THYMIO3-UndefID");
