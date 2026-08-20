@@ -263,13 +263,13 @@ void Leds_SetLegoProgress(uint8_t progress);
 
 //! \brief     Set the brightness of front lego LEDs based on current value showing a "progress bar"
 //! \pre       First initialize the LEDs
-//! \param     progress: min 0 = all LEDs turned off, max 8 = all front LEDs turned on, 1..8 = turn on LEDs progressively starting
+//! \param     progress: min 0 = all LEDs turned off, max 8 = all front LEDs turned on, 1..8 = turn on LEDs progressively
 //! \return    None
 void Leds_SetLegoFrontProgress(uint8_t progress);
 
 //! \brief     Set the brightness of back lego LEDs based on current value showing a "progress bar"
 //! \pre       First initialize the LEDs
-//! \param     progress: min 0 = all LEDs turned off, max 8 = all back LEDs turned on, 1..8 = turn on LEDs progressively starting
+//! \param     progress: min 0 = all LEDs turned off, max 8 = all back LEDs turned on, 1..8 = turn on LEDs progressively
 //! \return    None
 void Leds_SetLegoBackProgress(uint8_t progress);
 

@@ -29,9 +29,12 @@
 #define FIRMWARE_VERSION_MAJOR 1
 #define FIRMWARE_VERSION_MINOR 8
 // The PATCH version is a string because it can be a number or a letter (e.g. 1.8.6a)
-#define FIRMWARE_VERSION_PATCH "7"
+#define FIRMWARE_VERSION_PATCH "8"
 
-#define HARDWARE_VERSION 0xD
+// Hardware version:
+// - 0xC: previous gyroscope orientation
+// - 0xD: new gyroscope orientation (from 2026 Spring production)
+#define HARDWARE_VERSION 0x0D
 
 #define MIN_LIMIT_SPEED        -600
 #define MAX_LIMIT_SPEED         600

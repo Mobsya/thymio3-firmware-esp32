@@ -66,6 +66,7 @@
 //#include "ble_python_handler.h"
 #include "wifi_handler.h"
 #include "py/runtime.h"
+#include "prod_serial.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -406,6 +407,8 @@ int app_main(void)
   Comm_Start();
 
   Leds_Start();
+
+  ProdSerial_WaitAndRun();
 
   init_micropython();
   //nvs_flash_init();  // NVS (needed for BLE and WiFi) is initialized in micropython 
