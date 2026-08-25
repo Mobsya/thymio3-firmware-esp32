@@ -29,7 +29,7 @@
 #define FIRMWARE_VERSION_MAJOR 1
 #define FIRMWARE_VERSION_MINOR 8
 // The PATCH version is a string because it can be a number or a letter (e.g. 1.8.6a)
-#define FIRMWARE_VERSION_PATCH "8"
+#define FIRMWARE_VERSION_PATCH "9"
 
 // Hardware version:
 // - 0xC: previous gyroscope orientation

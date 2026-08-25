@@ -28,6 +28,7 @@
 #include "aseba_esp32.h"
 #include "pins_def.h"
 #include "spi.h"
+#include "angle_controller.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -700,6 +701,9 @@ void SetMotorTargets(int16_t left, int16_t right)
 {
   Target.Left  = left;
   Target.Right = right;
+  if((Target.Left == 0) && (Target.Right == 0)) {
+    AngleController_Stop();
+  }
 }
 
 //_____________________________________________________________________________

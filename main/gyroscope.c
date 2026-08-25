@@ -27,11 +27,20 @@
 #include "settings.h"
 #include "i2c.h"
 #include "stm32_spi.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "sensors.h"   // for I2CMutex
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 #define STATIONARY_THR 650 // Threshold used for calibration: when value is lower than the threshold, then it means the robot is still and value can be used for calibration.
+
+#define CALIB_TARGET_SAMPLES   52 // half a second of data @ 104 Hz ODR
+#define CALIB_POLL_MS          100u // @ 104 Hz ODR we should get about 10 samples per poll
+#define CALIB_MAX_TRIALS       20u  // 20 * 100 ms = 2 s upper bound
+#define CALIB_SETTLE_MS        300u // Settling time before starting the acquisition
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -172,6 +181,64 @@ static void CalculateAngle(int32_t* angle, uint16_t number)
 
 //_____________________________________________________________________________
 
+//! \brief Read the gyroscope FIFO into GyroBuffer.
+//! \pre   The caller MUST already hold I2CMutex.
+static uint16_t ReadBufferedSamplesUnlocked(void)
+{
+    uint16_t num = 0;
+
+    if (currGyro == LSM6DS3US) {
+        num = LSM6DS3US_ReadBufferedAngularPosition();
+    } else if (currGyro == LSM6DS3TR) {
+        num = LSM6DS3TR_ReadBufferedAngularPosition();
+    } else if (currGyro == LSM6DS0) {
+        num = LSM6DS0_ReadBufferedAngularPosition();
+    }
+
+    if (num > GYRO_BUFFER_SIZE) { // Safety measure
+        num = GYRO_BUFFER_SIZE;
+    }
+
+    return num;
+}
+
+//_____________________________________________________________________________
+
+//! \brief Same as ReadBufferedSamplesUnlocked(), taking I2CMutex internally.
+//! \pre   The caller MUST NOT hold I2CMutex (the mutex is not recursive).
+static uint16_t ReadBufferedSamplesLocked(void)
+{
+    uint16_t num;
+
+    xSemaphoreTake(I2CMutex, portMAX_DELAY);
+    num = ReadBufferedSamplesUnlocked();
+    xSemaphoreGive(I2CMutex);
+
+    return num;
+}
+
+//_____________________________________________________________________________
+
+static void ReinitCurrentGyroLocked(void)
+{
+    // Recovers the sensor FIFO after an overrun or a pattern desync
+    int16_t offset = Settings_GetOffsetGyroSettings();
+
+    xSemaphoreTake(I2CMutex, portMAX_DELAY);
+
+    if (currGyro == LSM6DS3US) {
+        LSM6DS3US_InitGyroscope(offset);
+    } else if (currGyro == LSM6DS3TR) {
+        LSM6DS3TR_InitGyroscope(offset);
+    } else if (currGyro == LSM6DS0) {
+        LSM6DS0_InitGyroscope(offset);
+    }
+
+    xSemaphoreGive(I2CMutex);
+}
+
+//_____________________________________________________________________________
+
 void Gyroscope_ReadAngle(void)
 {
 	uint16_t numReadSamples = 0;
@@ -188,13 +255,10 @@ void Gyroscope_ReadAngle(void)
   		vmVariables.angle[1] = 0;
   		vmVariables.angle[2] = 0;
 		return;
-	} else if(currGyro == LSM6DS3US) {
-		numReadSamples = LSM6DS3US_ReadBufferedAngularPosition();
-	} else if(currGyro == LSM6DS3TR) {
-		numReadSamples = LSM6DS3TR_ReadBufferedAngularPosition();
-	} else if(currGyro == LSM6DS0) {
-		numReadSamples = LSM6DS0_ReadBufferedAngularPosition();
 	}
+
+	// Called from the sensors task, which already holds I2CMutex
+	numReadSamples = ReadBufferedSamplesUnlocked();
 
 	if(continuousCalibrationEnabled) {
 		if(GetLeftSpeed()==0 && GetRightSpeed()==0 && STM32_GetLeftMotorTarget()==0 && STM32_GetRightMotorTarget()==0) { // Avoid calibrating when the robot is moving, this is especially useful when robot is moving slowly
@@ -293,28 +357,49 @@ void Gyroscope_ResetAngle(void)
 //_____________________________________________________________________________
 
 bool Gyroscope_Calibrate(void) {
-	static uint16_t numSamplesCalib = 0;
+	uint16_t numSamplesCalib = 0;
 	uint16_t numReadSamples = 0;
 	uint8_t trials = 0;
 
+    if (currGyro == GYRO_NOT_AVAILABLE) {
+        ESP_LOGE(Tag, "Manual calibration refused: gyroscope not available");
+        return false;
+    }
+
 	if(continuousCalibrationEnabled) {	// Do not mix continuous calibration with manual calibration
 		numSamplesCalib = 0;
+		ESP_LOGW(Tag, "Manual calibration refused: continuous calibration is enabled");
 		return false;
 	}
+
+    if (I2CMutex == NULL) { // Sensors_Init() did not run or the I2C bus failed to start
+        ESP_LOGE(Tag, "Manual calibration refused: I2C mutex is not available");
+        return false;
+    }	
 
 	ZeroGyroSum[0] = 0;
 	ZeroGyroSum[1] = 0;
 	ZeroGyroSum[2] = 0;
-	calibrationInProgress = true;
+
+    // Raise the flag inside the mutex so that a sensors cycle already in progress
+    // completes before Gyroscope_ReadAngle() starts skipping the FIFO read.
+    xSemaphoreTake(I2CMutex, portMAX_DELAY);
+    calibrationInProgress = true;
+    xSemaphoreGive(I2CMutex);
+
+    // Drop everything acquired before this call: the robot may still have been
+    // moving, and a flash write may have left the FIFO in overrun.
+    (void)ReadBufferedSamplesLocked();
+    vTaskDelay(CALIB_SETTLE_MS / portTICK_PERIOD_MS);
+    (void)ReadBufferedSamplesLocked();
+
 	while(1) {
-		if(currGyro == LSM6DS3US) {		
-			numReadSamples = LSM6DS3US_ReadBufferedAngularPosition();
-		} else if(currGyro == LSM6DS3TR) {
-			numReadSamples = LSM6DS3TR_ReadBufferedAngularPosition();
-		} else if(currGyro == LSM6DS0) {
-			numReadSamples = LSM6DS0_ReadBufferedAngularPosition();
-		}
+
+        numReadSamples = ReadBufferedSamplesLocked();
 		ESP_LOGE(Tag, "numReadSamples=%d", numReadSamples);
+        if (numReadSamples == 0u) {
+            continue;
+        }
 
 		for (uint8_t axis = 0u; axis < 3u; axis++)
 		{
@@ -326,7 +411,7 @@ bool Gyroscope_Calibrate(void) {
 
 		numSamplesCalib += numReadSamples;
 
-		if (numSamplesCalib >= 16)
+		if (numSamplesCalib >= CALIB_TARGET_SAMPLES)
 		{
 			for (uint8_t axis = 0u; axis < 3u; axis++)
 			{
@@ -339,10 +424,11 @@ bool Gyroscope_Calibrate(void) {
 			return true;
 		}
 
-		vTaskDelay(100 / portTICK_PERIOD_MS); // @ 104 Hz ODR we should get about 10 samples from gyro
+		vTaskDelay(CALIB_POLL_MS / portTICK_PERIOD_MS);
 		trials++;
-		if(trials >= 5) {
+		if(trials >= CALIB_MAX_TRIALS) {
 			ESP_LOGE(Tag, "Cannot calibrate gyro");
+			ReinitCurrentGyroLocked(); // The FIFO is very likely stuck
 			break; // We don't get 16 samples in 500 ms, it means something goes wrong so exit avoiding an infinite blocking loop.
 		}
 	}
@@ -356,6 +442,8 @@ void Gyroscope_ResetCalibration(void)
 {
 	for (uint8_t i = 0u; i < 3u; i++) {
 		ZeroGyro[i] = 0;
+		ZeroGyroSum[i] = 0;
+		ZeroGyroNumSamples[i] = 0;
   	}
 }
 

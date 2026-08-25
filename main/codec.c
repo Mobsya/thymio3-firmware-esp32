@@ -83,6 +83,7 @@
 #define TONE_PLAYER_BITS 16
 #define TONE_FRAME_SAMPLES 1024
 #define TONE_AMPLITUDE 7000
+#define TONE_MAX_FREQ 3000.0f
 
 #define DEFAULT_AUDIO_TASK_STACK (4 * 1024)
 #define DEFAULT_AUDIO_TASK_PRIO (5)
@@ -140,11 +141,13 @@ typedef struct AudioWavPlayer
 
 typedef struct {
     int16_t *buffer;
-    float freq;
-    float phase;
-    uint32_t duration_ms;
-    uint64_t samples_played;
-} tone_t;
+    T_ToneNote notes[TONE_MELODY_MAX_NOTES];
+    uint8_t num_notes;       // Number of valid notes in "notes"
+    uint8_t current_note;    // Index of the note currently played
+    uint32_t seq;            // Incremented each time the melody is replaced
+    float phase;             // Only accessed by the tone generator task
+    uint64_t samples_played; // Samples already played of the current note
+} tone_melody_t;
 
 int16_t tone_buffer[TONE_FRAME_SAMPLES] = {0};
 typedef struct AudioTonePlayer *T_TonePlayerHandle;
@@ -157,7 +160,7 @@ typedef struct AudioTonePlayer
   bool Run;      // Indicates if the pipeline event handling task is running
   uint8_t state; // Running (playing), paused
   bool Played;
-  tone_t *tone;
+  tone_melody_t *melody;
 } T_TonePlayer;
 
 typedef struct AudioRecorder *T_RecorderHandle;
@@ -194,6 +197,8 @@ static T_RecorderHandle Recorder = NULL;
 static T_OnboardPlayerHandle OnboardPlayer = NULL;
 static T_WavPlayerHandle WavPlayer = NULL;
 static T_TonePlayerHandle TonePlayer = NULL;
+// Protects the melody shared between the caller task and the tone generator task
+static portMUX_TYPE ToneMux = portMUX_INITIALIZER_UNLOCKED;
 
 // static int16_t buffer[4 * BUF_SIZE];
 
@@ -596,33 +601,53 @@ esp_err_t Codec_PlayRecorded(void)
 
 //_____________________________________________________________________________
 
-esp_err_t Codec_PlayTone(float freq, uint32_t duration_ms)
+esp_err_t Codec_PlayToneMelody(const T_ToneNote *notes, uint8_t num_notes)
 {
   esp_err_t err = 0;
+
   if ((OnboardPlayer == NULL) || (Recorder == NULL) || (Mp3Player == NULL) || (WavPlayer == NULL) || (TonePlayer == NULL))
   {
     return ESP_FAIL;
-  }  
-  // return; // Used for debugging
-  //if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED) || (TonePlayer->state != STATE_STOPPED))
+  }
+
+  if ((notes == NULL) || (num_notes == 0) || (num_notes > TONE_MELODY_MAX_NOTES))
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  // The tone player state is not tested on purpose: if it is already running, the melody
+  // is replaced on the fly (this keeps the previous "Codec_PlayTone" behavior).
   if ((OnboardPlayer->state != STATE_STOPPED) || (WavPlayer->state != STATE_STOPPED) || (Mp3Player->state != STATE_STOPPED) || (Recorder->state != STATE_STOPPED))
-  { // If tone player is running, allow to change frequency and duration on the fly
+  {
     return ESP_FAIL;
   }
 
-  if(freq > 3000.0f) {
-    freq = 3000.0f; // Limit to 3 KHz
-  }
-
-  TonePlayer->tone->freq = freq;
-  TonePlayer->tone->duration_ms = duration_ms;
-  TonePlayer->tone->samples_played = 0;
-  //TonePlayer->tone->phase = 0;
-  ESP_LOGI(Tag, "Tone start %.1f Hz, %ums", freq, duration_ms);
-
-  if(TonePlayer->state == STATE_RUNNING)
+  portENTER_CRITICAL(&ToneMux);
+  for (uint8_t i = 0; i < num_notes; i++)
   {
-    return err; // Tone already playing, change only the frequency and duration
+    float freq = notes[i].freq_Hz;
+    if (freq > TONE_MAX_FREQ)
+    {
+      freq = TONE_MAX_FREQ; // Limit to 3 KHz
+    }
+    if (freq < 0.0f)
+    {
+      freq = 0.0f; // Negative frequencies are treated as rests
+    }
+    TonePlayer->melody->notes[i].freq_Hz = freq;
+    TonePlayer->melody->notes[i].duration_ms = notes[i].duration_ms;
+  }
+  TonePlayer->melody->num_notes = num_notes;
+  TonePlayer->melody->current_note = 0;
+  TonePlayer->melody->samples_played = 0;
+  TonePlayer->melody->seq++;
+  portEXIT_CRITICAL(&ToneMux);
+
+  ESP_LOGI(Tag, "Melody start: %u note(s), first one %.1f Hz, %ums", num_notes, notes[0].freq_Hz, notes[0].duration_ms);
+
+  if (TonePlayer->state == STATE_RUNNING)
+  {
+    return err; // Tone player already running, only the melody has been replaced
   }
   else if (TonePlayer->Run)
   {
@@ -942,68 +967,104 @@ _wav_init_failed:
 
 static int tone_process(audio_element_handle_t self, char *in_buffer, int in_len)
 {
-    //ESP_LOGI(Tag, "tone_process called");
-    int rsize = 0;
+    tone_melody_t *melody = TonePlayer->melody;
+    T_ToneNote note = {0};
+    int samples_to_gen = 0;
+    uint32_t seq = 0;
+    bool melody_done = false;
 
-    /* keep element alive even when idle */
-//    if (TonePlayer->state != STATE_RUNNING) {
-//    //    vTaskDelay(pdMS_TO_TICKS(10));
-//        return AEL_IO_OK;
-//    }
+    // Take a consistent snapshot of the note to be played: the melody can be replaced at any
+    // time by "Codec_PlayToneMelody", which runs in another task. The loop also skips the notes
+    // that are already completed, so that the melody is played without any gap between notes.
+    portENTER_CRITICAL(&ToneMux);
+    seq = melody->seq;
+    while (1)
+    {
+        if (melody->current_note >= melody->num_notes)
+        { // All the notes have been played
+            melody_done = true;
+            break;
+        }
 
-    float phase_inc = 2 * M_PI * TonePlayer->tone->freq / TONE_PLAYER_RATE;
-    for (int i = 0; i < TONE_FRAME_SAMPLES; i++) {
-        //float s = sin(TonePlayer->tone->phase); // sine wave
-        //int16_t val = (int16_t)(TONE_AMPLITUDE * s);
-        //int16_t val = (sin(TonePlayer->tone->phase) > 0 ? TONE_AMPLITUDE : -TONE_AMPLITUDE); // square wave
-        float s = sin(TonePlayer->tone->phase) + (1.0/3.0)*sin(TonePlayer->tone->phase*3) + (1.0/5.0)*sin(TonePlayer->tone->phase*5); // soft square wave to avoid "ringing" effect
-        int16_t val = (int16_t)(TONE_AMPLITUDE * s);
-        //ESP_LOGI(Tag, "i=%d, phase=%f, sin=%f, val=%d", i, t->phase, s, val);
-        TonePlayer->tone->buffer[i] = val;
-        TonePlayer->tone->phase += phase_inc;
-        if (TonePlayer->tone->phase >= 2 * M_PI)
-        { 
-          TonePlayer->tone->phase -= 2 * M_PI;
+        note = melody->notes[melody->current_note];
+
+        if (note.duration_ms == 0)
+        { // 0 means play forever, a full frame is always generated
+            samples_to_gen = TONE_FRAME_SAMPLES;
+            break;
+        }
+
+        uint64_t tot_samples = ((uint64_t)TONE_PLAYER_RATE * note.duration_ms) / 1000;
+        if (melody->samples_played >= tot_samples)
+        { // Current note is over, move to the next one (notes shorter than one sample are simply skipped)
+            melody->current_note++;
+            melody->samples_played = 0;
+            continue;
+        }
+
+        uint64_t remaining_samples = tot_samples - melody->samples_played;
+        if (remaining_samples < (uint64_t)TONE_FRAME_SAMPLES)
+        {
+            samples_to_gen = (int)remaining_samples;
+        }
+        else
+        {
+            samples_to_gen = TONE_FRAME_SAMPLES;
+        }
+        break;
+    }
+    portEXIT_CRITICAL(&ToneMux);
+
+    if (melody_done)
+    {
+        ESP_LOGI(Tag, "Melody finished");
+        return AEL_IO_DONE;
+    }
+
+    if (note.freq_Hz <= 0.0f)
+    { // A frequency of 0 is a rest: output silence and keep the phase at 0, so that the next note starts without any click
+        memset(melody->buffer, 0, samples_to_gen * sizeof(int16_t));
+        melody->phase = 0;
+    }
+    else
+    { // The phase is intentionally not reset between notes, to avoid a discontinuity (click) on the note change
+        float phase_inc = 2 * M_PI * note.freq_Hz / TONE_PLAYER_RATE;
+        for (int i = 0; i < samples_to_gen; i++)
+        {
+            float s = sin(melody->phase) + (1.0/3.0)*sin(melody->phase*3) + (1.0/5.0)*sin(melody->phase*5); // soft square wave to avoid "ringing" effect
+            melody->buffer[i] = (int16_t)(TONE_AMPLITUDE * s);
+            melody->phase += phase_inc;
+            if (melody->phase >= 2 * M_PI)
+            {
+                melody->phase -= 2 * M_PI;
+            }
         }
     }
 
-    int bytes_to_play = 0;
-    uint64_t tot_samples = 0;
-    if (TonePlayer->tone->duration_ms > 0) { // 0 means play forever
-      tot_samples = (uint64_t)12* TonePlayer->tone->duration_ms; // (uint64_t)TONE_PLAYER_RATE * TonePlayer->tone->duration_ms / 1000;
-      uint64_t remaining_samples = tot_samples - TonePlayer->tone->samples_played;
-      if(remaining_samples < TONE_FRAME_SAMPLES) 
-      {
-          bytes_to_play = remaining_samples * sizeof(int16_t);
-      }
-      else 
-      {
-          bytes_to_play = TONE_FRAME_SAMPLES * sizeof(int16_t);
-      }
-    } else {
-      bytes_to_play = TONE_FRAME_SAMPLES * sizeof(int16_t);
+    int rsize = audio_element_output(self, (char *)melody->buffer, samples_to_gen * sizeof(int16_t));
+    if (rsize <= 0)
+    { // Error, abort or pipeline stopped: nothing has been played
+        return rsize;
     }
-    rsize = audio_element_output(self, (char *)TonePlayer->tone->buffer, bytes_to_play);
 
-    //ESP_LOGI(Tag, "tone_process output %d bytes", bytes);
-    //ESP_LOG_BUFFER_HEX(Tag, t->buffer, bytes);
-
-    TonePlayer->tone->samples_played += (bytes_to_play / sizeof(int16_t));
-    if(TonePlayer->tone->duration_ms > 0) { // 0 means play forever
-      if(TonePlayer->tone->samples_played == tot_samples)
-      {
-        ESP_LOGI(Tag, "Tone finished %.1f Hz", TonePlayer->tone->freq);
-        return AEL_IO_DONE;
-      }
+    portENTER_CRITICAL(&ToneMux);
+    if (melody->seq == seq)
+    { // Do not account these samples if the melody has been replaced in the meantime
+        melody->samples_played += (uint64_t)(rsize / sizeof(int16_t));
     }
+    portEXIT_CRITICAL(&ToneMux);
+
     return rsize;
 }
 
 static esp_err_t tone_open(audio_element_handle_t self)
 {
     ESP_LOGI(Tag, "tone_open called");
-    TonePlayer->tone->phase = 0;
-    TonePlayer->tone->samples_played = 0;
+    portENTER_CRITICAL(&ToneMux);
+    TonePlayer->melody->current_note = 0;
+    TonePlayer->melody->samples_played = 0;
+    portEXIT_CRITICAL(&ToneMux);
+    TonePlayer->melody->phase = 0;
     return ESP_OK;
 }
 
@@ -1040,12 +1101,12 @@ static T_TonePlayerHandle InitTonePlayer(void)
   ap->ToneGenerator = audio_element_init(&cfg);
   AUDIO_MEM_CHECK(Tag, ap->ToneGenerator, goto _tone_init_failed);
 
-  ap->tone = calloc(1, sizeof(tone_t));
-  if(!ap->tone) {
-      ESP_LOGE(Tag, "tone_t calloc failed");
+  ap->melody = calloc(1, sizeof(tone_melody_t));
+  if(!ap->melody) {
+      ESP_LOGE(Tag, "tone_melody_t calloc failed");
       goto _tone_init_failed;
   }
-  ap->tone->buffer = tone_buffer;
+  ap->melody->buffer = tone_buffer;
 
   ESP_LOGI(Tag, "[1.2] Create I2S stream to write audio data to codec chip");
   i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();

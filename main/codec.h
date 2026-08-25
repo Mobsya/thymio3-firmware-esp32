@@ -22,15 +22,25 @@
 //-----------------------------------------------------------------------------
 #include "esp_err.h"
 #include "audio_tone_uri.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 #define MAX_RECORD_SIZE 240000 // 12 KHz sampling rate * 2 bytes per sample * 10 seconds
+#define TONE_MELODY_MAX_NOTES 5 // Maximum number of notes of a melody
 
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
+
+//! \brief Single note of a melody
+typedef struct
+{
+  float freq_Hz;        //!< Tone frequency in [Hz], limited to 3 KHz; 0 means silence (rest)
+  uint32_t duration_ms; //!< Tone duration in [ms]; 0 means play forever (only meaningful for the last note)
+} T_ToneNote;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
@@ -72,12 +82,14 @@ esp_err_t Codec_PlayMP3File(uint8_t* mp3, uint32_t num_bytes);
 //! \return    Error code
 extern esp_err_t Codec_PlayWAVFile(uint8_t* wav, uint32_t num_bytes);
 
-//! \brief     Play a TONE from RAM memory
+//! \brief     Play a melody of tones from RAM memory. The melody is played up to
+//!            the end without interruptions; a new call replaces the melody currently playing.
 //! \pre       First initialize the codec
-//! \param     freq - up to 3 KHz
-//! \param     duration_ms - duration in ms, 0 for infinite
+//! \param     notes - array of notes (frequency + duration), frequency is limited to 3 KHz,
+//!                    a frequency of 0 is a rest (silence), a duration of 0 means infinite
+//! \param     num_notes - number of notes, from 1 to TONE_MELODY_MAX_NOTES
 //! \return    Error code
-extern esp_err_t Codec_PlayTone(float freq, uint32_t duration_ms);
+extern esp_err_t Codec_PlayToneMelody(const T_ToneNote *notes, uint8_t num_notes);
 
 //! \brief     Get the played time [s/10] of a MP3 file  (from the SPI file system)
 //! \pre       First initialize the codec
@@ -156,6 +168,18 @@ esp_err_t  Codec_Resume(void);
 //! \param     None
 //! \return    None
 void  Codec_ClearEvents(void);
+
+//! \brief     Play a single tone from RAM memory. This is a shortcut for a melody composed
+//!            by a single note, kept for backward compatibility.
+//! \pre       First initialize the codec
+//! \param     freq - up to 3 KHz, 0 means silence
+//! \param     duration_ms - duration in ms, 0 for infinite
+//! \return    Error code
+static inline esp_err_t Codec_PlayTone(float freq, uint32_t duration_ms)
+{
+  T_ToneNote note = { .freq_Hz = freq, .duration_ms = duration_ms };
+  return Codec_PlayToneMelody(&note, 1);
+}
 
 //void playMarioTheme(void);
 

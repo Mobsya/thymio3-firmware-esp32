@@ -49,10 +49,11 @@ static const char* Tag = "angle_controller";
 static int32_t targetAngle = 0;
 static float targetAngleFloat = 0.0;
 static int16_t maxSpeed = 500;
-static bool rotationInProgress = false;
-static int16_t lastError = 0;
+static volatile bool rotationInProgress = false;
+static int32_t lastError = 0;
 static int32_t rotation_angle_90_ = 0;
 //static float lastErrorFloat = 0.0;
+static bool stopPending = false;   // rotation was running on the previous call
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -109,8 +110,17 @@ int16_t AngleController_Update(int16_t target_deg, int16_t maxSpeed)
 void AngleController_Update()
 {
   if(!rotationInProgress) {
+    if (stopPending)
+    {
+      // The rotation ended or was aborted: make sure no stale output survives a
+      // race with the SPI task, then release the motors.
+      stopPending = false;
+      Common_SetTargetSpeed(0, 0);
+    }
     return;
   }
+  stopPending = true;
+  
   int32_t measure = Gyroscope_GetAngleZ();
   int32_t error = (targetAngle - measure) / 182;
   int32_t proportional = (KP * error);
@@ -208,7 +218,6 @@ void AngleController_Start(int16_t angleDeg, int16_t max) {
 //_____________________________________________________________________________
 
 void AngleController_Stop() {
-  Common_SetTargetSpeed(0, 0);
   rotationInProgress = false;
 }
 
