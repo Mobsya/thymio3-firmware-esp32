@@ -61,6 +61,17 @@ extern void AngleController_Update();
 //! \return    None
 void AngleController_Start(int16_t angleDeg, int16_t max);
 
+//! \brief     Start the angle controller towards an absolute angle
+//! \pre       First initialize the angle controller
+//! \param     angleDeg - Target angle on the Z-axis, absolute, i.e. referred to
+//!                       the origin set by the last Gyroscope_ResetAngle() call.
+//!                       It may exceed +-360 degrees. Positive values for
+//!                       counterclockwise rotations, negative values for
+//!                       clockwise rotations.
+//! \param     max - Maximum speed used by the controller
+//! \return    None
+void AngleController_StartAbsolute(int16_t angleDeg, int16_t max);
+
 //! \brief     Stop the angle controller
 //! \pre       First initialize the angle controller
 //! \param     None

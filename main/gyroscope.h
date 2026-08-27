@@ -75,17 +75,19 @@ extern void Gyroscope_ReadAngle(void);
 //! \return    Angular velocity on the Z-axis
 extern int16_t Gyroscope_GetAngularVelocityZ(void);
 
-//! \brief     Get the angle on Z-axis
+//! \brief     Get the raw angle on Z-axis. This is a free-running accumulator:
+//!            it is never wrapped and only Gyroscope_ResetAngle() clears it.
 //! \pre       First initialize the gyroscope
 //! \param     None
 //! \return    Angle on the Z-axis
 extern int32_t Gyroscope_GetAngleZ(void);
 //extern float Gyroscope_GetAngleZFloat(void);
 
-//! \brief     Get the angle in degrees on Z-axis. Range is [180;-180]
+//! \brief     Get the angle in degrees on Z-axis. This is a free-running value:
+//!            it is never wrapped and only Gyroscope_ResetAngle() clears it.
 //! \pre       First initialize the gyroscope
 //! \param     None
-//! \return    Angle on the Z-axis
+//! \return    Wrapped angle on the Z-axis, in degrees
 extern int16_t Gyroscope_GetAngleZ_deg(void);
 
 //! \brief     Reset the angle

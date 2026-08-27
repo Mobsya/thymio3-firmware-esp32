@@ -106,6 +106,7 @@ static int16_t StepsPerPolygon[16] = {1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 0, 0, 
 //static bool useGyroCalib = true;
 static uint8_t StartFromProxState = 0;
 static uint8_t StartFromProxCount = 0;
+static int16_t TargetHeading = 0; // Absolute heading of the current drawing, in degrees
 static uint64_t motionDurations[2]; // Timer ticks to travels forward and backward
 
 //-----------------------------------------------------------------------------
@@ -121,6 +122,8 @@ static void DrawParallelogram(void);
 static void DrawStar7(void);
 static void Draw8shape(void);
 static void DrawPolygon(void);
+
+static void RotateToNextHeading(int16_t stepDeg, int16_t maxSpeed);
 
 //! \brief     Change body color based on color detected by color sensor.
 //! \param     None
@@ -170,6 +173,23 @@ bool StartFromProx()
   }
   return false;
 }
+
+//! \brief     Rotate to the next absolute heading of the current drawing.
+//! \details   The target heading accumulates the steps of the drawing
+//!            and is always reached in absolute terms, relative to the angle
+//!            reset at the beginning of the drawing. This way the drift
+//!            accumulated during the forward motion is compensated at every
+//!            rotation instead of adding up along the drawing.
+//! \param     stepDeg - Delta angle of this step, in degrees
+//! \param     maxSpeed - Maximum speed used by the angle controller
+//! \return    None
+static void RotateToNextHeading(int16_t stepDeg, int16_t maxSpeed)
+{
+  TargetHeading += stepDeg;
+  AngleController_StartAbsolute(TargetHeading, maxSpeed);
+}
+
+//_____________________________________________________________________________
 
 void Drawer_Init(void)
 {
@@ -500,6 +520,7 @@ static void DrawRectangle(void)
   {
   case 0:
     Gyroscope_ResetAngle(); // Start from 0 degrees
+    TargetHeading = 0; // Start from 0 degrees
     StepsCounter = 0;
     DrawState = 1;
     break;
@@ -523,7 +544,7 @@ static void DrawRectangle(void)
   case 2: // Wait forward motion end, start rotation
     if(!Behavior_IsMotionInProgress())
     {
-      AngleController_Start(90, MAX_ROTATION_SPEED2);
+      RotateToNextHeading(90, MAX_ROTATION_SPEED2);
       delayMotorStopped = 0;
       DrawState = 3;
     }
@@ -567,6 +588,7 @@ static void DrawDiamond(void)
   {
   case 0:
     Gyroscope_ResetAngle(); // Start from 0 degrees
+    TargetHeading = 0; // Start from 0 degrees
     StepsCounter = 0;
     DrawState = 1;
     break;
@@ -585,11 +607,11 @@ static void DrawDiamond(void)
     {
       if((StepsCounter==1) || (StepsCounter==3)) // acute edge
       {
-        AngleController_Start(60, MAX_ROTATION_SPEED2);
+        RotateToNextHeading(60, MAX_ROTATION_SPEED2);
       }
       else // obtuse angle
       {
-        AngleController_Start(120, MAX_ROTATION_SPEED2);
+        RotateToNextHeading(120, MAX_ROTATION_SPEED2);
       }
       delayMotorStopped = 0;
       DrawState = 3;
@@ -634,6 +656,7 @@ static void DrawTrapezoid(void)
   {
   case 0:
     Gyroscope_ResetAngle(); // Start from 0 degrees
+    TargetHeading = 0; // Start from 0 degrees
     StepsCounter = 0;
     DrawState = 1;
     break;
@@ -659,11 +682,11 @@ static void DrawTrapezoid(void)
     {
       if((StepsCounter==0) || (StepsCounter==1))
       {
-        AngleController_Start(42, MAX_ROTATION_SPEED2);
+        RotateToNextHeading(42, MAX_ROTATION_SPEED2);
       }
       else
       {
-        AngleController_Start(138, MAX_ROTATION_SPEED2);
+        RotateToNextHeading(138, MAX_ROTATION_SPEED2);
       }
       delayMotorStopped = 0;
       DrawState = 3;
@@ -709,6 +732,7 @@ static void DrawStar5(void)
   {
   case E_DrawStarState_Init:
     Gyroscope_ResetAngle(); // Start from 0 degrees
+    TargetHeading = 0; // Start from 0 degrees
     DrawState = E_DrawStarState_DrawFw;
     break;
 
@@ -724,7 +748,7 @@ static void DrawStar5(void)
   case E_DrawStarState_WaitDrawFw:
     if(!Behavior_IsMotionInProgress())
     {
-      AngleController_Start((180-36), MAX_ROTATION_SPEED2);
+      RotateToNextHeading((180-36), MAX_ROTATION_SPEED2);
       delayMotorStopped = 0;
       DrawState = E_DrawStarState_WaitFwRot;
     }
@@ -769,6 +793,7 @@ static void DrawParallelogram(void)
   {
   case 0:
     Gyroscope_ResetAngle(); // Start from 0 degrees
+    TargetHeading = 0; // Start from 0 degrees
     StepsCounter = 0;
     DrawState = 1;
     break;
@@ -794,11 +819,11 @@ static void DrawParallelogram(void)
     {
       if((StepsCounter==1) || (StepsCounter==3)) // acute edge
       {
-        AngleController_Start(60, MAX_ROTATION_SPEED2);
+        RotateToNextHeading(60, MAX_ROTATION_SPEED2);
       }
       else // obtuse angle
       {
-        AngleController_Start(120, MAX_ROTATION_SPEED2);
+        RotateToNextHeading(120, MAX_ROTATION_SPEED2);
       }
       delayMotorStopped = 0;
       DrawState = 3;
@@ -844,6 +869,7 @@ static void DrawStar7(void)
   {
   case E_DrawStarState_Init:
     Gyroscope_ResetAngle(); // Start from 0 degrees
+    TargetHeading = 0; // Start from 0 degrees
     DrawState = E_DrawStarState_DrawFw;
     break;
 
@@ -859,7 +885,7 @@ static void DrawStar7(void)
   case E_DrawStarState_WaitDrawFw:
     if(!Behavior_IsMotionInProgress())
     {
-      AngleController_Start((180-26), MAX_ROTATION_SPEED2);
+      RotateToNextHeading((180-26), MAX_ROTATION_SPEED2);
       delayMotorStopped = 0;
       DrawState = E_DrawStarState_WaitFwRot;
     }
@@ -961,6 +987,7 @@ static void DrawPolygon(void)
   {
   case E_DrawPolygonState_Init:
     Gyroscope_ResetAngle(); // Start from 0 degrees
+    TargetHeading = 0; // Start from 0 degrees
     StepsCounter = 0;
     DrawPolygonState = E_DrawPolygonState_DrawFw;
     break;
@@ -995,7 +1022,7 @@ static void DrawPolygon(void)
         Codec_PlayOnboardSound(TONE_TYPE_DRAW_END); // Emit sound when the motion ends       
         break;
       }
-      AngleController_Start(DegreesPerStepPolygon[StepsIndex], MAX_ROTATION_SPEED2);
+      RotateToNextHeading(DegreesPerStepPolygon[StepsIndex], MAX_ROTATION_SPEED2);
       delayMotorStopped = 0;
       DrawPolygonState = E_DrawPolygonState_WaitFwRot;
     }

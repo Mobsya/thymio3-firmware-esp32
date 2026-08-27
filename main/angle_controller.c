@@ -59,6 +59,8 @@ static bool stopPending = false;   // rotation was running on the previous call
 // Private Functions Prototypes
 //-----------------------------------------------------------------------------
 
+static void StartRotation(int32_t targetTicks, int16_t max);
+
 //-----------------------------------------------------------------------------
 // Inline Code Definition
 //-----------------------------------------------------------------------------
@@ -205,14 +207,55 @@ void AngleController_Update()
 
 //_____________________________________________________________________________
 
-void AngleController_Start(int16_t angleDeg, int16_t max) {
-  Gyroscope_ResetAngle();
+//! \brief     Arm the controller for a new rotation.
+//! \param     targetTicks - Target angle, in gyroscope ticks
+//! \param     max - Maximum speed used by the controller
+//! \return    None
+static void StartRotation(int32_t targetTicks, int16_t max)
+{
+  targetAngle = targetTicks;
   lastError = 0;
   //lastErrorFloat = 0.0;
-  targetAngle = ((int32_t)angleDeg)*rotation_angle_90_/90; // Convert to a range that is usable by the angle controller.
-  //targetAngleFloat = ((float)angleDeg)*(rotation_angle_90_*1.0)/90.0; // Instead of dividing by 2 "AngleFloat" we can multiply by 2 this value when using 250 dps for the gyro?
   maxSpeed = max;
+
+  // Written last: the update task only reads the parameters above once this
+  // flag is set.
   rotationInProgress = true;
+}
+
+//_____________________________________________________________________________
+
+void AngleController_Start(int16_t angleDeg, int16_t max) {
+  int32_t relativeAngle = 0;
+
+  // Keep the requested rotation within a single turn. The C '%' operator
+  // truncates toward zero, so the sign of the request is preserved:
+  // 450 -> 90, -450 -> -90, 720 -> 0. Exactly +-360 is left untouched so that
+  // a full turn can still be requested explicitly.
+  if ((angleDeg > 360) || (angleDeg < -360))
+  {
+    angleDeg = (int16_t)(angleDeg % 360);
+  }
+
+  // Convert to a range that is usable by the angle controller.
+  relativeAngle = ((int32_t)angleDeg) * rotation_angle_90_ / 90;
+
+  // The target is relative to the current heading: the gyroscope accumulator is
+  // deliberately NOT reset, so the angle reported to the user stays continuous
+  // across rotations and any reference set by the user survives.
+  // The accumulator is free-running (no wrap-around), which is what allows the
+  // error in AngleController_Update() to stay monotonic even for a full turn.
+  StartRotation(Gyroscope_GetAngleZ() + relativeAngle, max);
+}
+
+//_____________________________________________________________________________
+
+void AngleController_StartAbsolute(int16_t angleDeg, int16_t max) {
+  // The target is absolute, i.e. referred to the origin set by the last
+  // Gyroscope_ResetAngle() call. No modulo is applied: an absolute heading may
+  // legitimately exceed one turn (a 7-pointed star accumulates 1078 degrees),
+  // and folding it would send the robot the wrong way.
+  StartRotation(((int32_t)angleDeg) * rotation_angle_90_ / 90, max);
 }
 
 //_____________________________________________________________________________

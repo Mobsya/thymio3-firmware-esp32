@@ -112,6 +112,7 @@ static uint8_t PlayStatePrepareCount = 0;
 static bool PlayStatePrepareToPlay = false;
 static uint8_t LegoLedBlinkCount = 0;
 static uint8_t StartFromProxState = 0;
+static int16_t TargetHeading = 0; // Absolute heading of the current sequence, in degrees
 uint64_t motionDurations[2]; // Timer ticks to travels 15 cm forward and backward
 
 //-----------------------------------------------------------------------------
@@ -197,6 +198,19 @@ static void LaunchPlayAnimation(uint8_t next);
 //! \return    None
 static void LaunchPauseAnimation(void);
 
+//! \brief     Reset the angle reference at the beginning of a sequence replay
+//! \pre       First initialize the mode
+//! \param     None
+//! \return    None
+static void StartSequenceHeading(void);
+
+//! \brief     Rotate to the next absolute heading of the current sequence
+//! \pre       First initialize the mode
+//! \param     stepDeg - Delta angle of this step, in degrees
+//! \param     maxSpeed - Maximum speed used by the angle controller
+//! \return    None
+static void RotateToNextHeading(int16_t stepDeg, int16_t maxSpeed);
+
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -205,6 +219,37 @@ static void LaunchPauseAnimation(void);
 //-----------------------------------------------------------------------------
 // Functions Implementation
 //-----------------------------------------------------------------------------
+
+//! \brief     Reset the angle reference at the beginning of a sequence replay.
+//! \details   Every replay starts from a clean 0 degrees origin, so that the
+//!            absolute headings below are referred to the initial orientation
+//!            of the robot.
+//! \param     None
+//! \return    None
+static void StartSequenceHeading(void)
+{
+  Gyroscope_ResetAngle(); // Start from 0 degrees
+  TargetHeading = 0;
+}
+
+//_____________________________________________________________________________
+
+//! \brief     Rotate to the next absolute heading of the current sequence.
+//! \details   The target heading accumulates the steps of the sequence
+//!            and is always reached in absolute terms, relative to the origin
+//!            set by StartSequenceHeading(). This way the drift accumulated
+//!            during the forward and backward motions is compensated at every
+//!            rotation instead of adding up along the sequence.
+//! \param     stepDeg - Delta angle of this step, in degrees
+//! \param     maxSpeed - Maximum speed used by the angle controller
+//! \return    None
+static void RotateToNextHeading(int16_t stepDeg, int16_t maxSpeed)
+{
+  TargetHeading += stepDeg;
+  AngleController_StartAbsolute(TargetHeading, maxSpeed);
+}
+
+//_____________________________________________________________________________
 
 void Sequence_Init(void)
 {
@@ -387,6 +432,7 @@ static void RecordSequence(void)
   {
     RecordSequenceIsFinished = true;
     State = E_State_Play;
+    StartSequenceHeading();
     //PlayStatePrepareCount = 0;
     //PlayStatePrepareToPlay = true;
     //PlayState = E_PlayState_Prepare;
@@ -417,6 +463,7 @@ static void RecordSequence(void)
         {
           RecordSequenceIsFinished = true;
           State = E_State_Play;
+          StartSequenceHeading();
           PlayState = E_PlayState_Replay;
           StartFromProxState = 0;
         }
@@ -766,7 +813,7 @@ static void HandleReplay(void)
       if (Current == (1u << E_Button_Left))
       {
         RotationIsInProgress = true;
-        AngleController_Start(90, MAX_ROTATION_SPEED);
+        RotateToNextHeading(90, MAX_ROTATION_SPEED);
         RotationCompletedDelay = 0;
         PlayState = E_PlayState_Rotation;
       }
@@ -774,7 +821,7 @@ static void HandleReplay(void)
       if (Current == (1u << E_Button_Right))
       {
         RotationIsInProgress = true;
-        AngleController_Start(-90, MAX_ROTATION_SPEED);
+        RotateToNextHeading(-90, MAX_ROTATION_SPEED);
         RotationCompletedDelay = 0;
         PlayState = E_PlayState_Rotation;
       }
