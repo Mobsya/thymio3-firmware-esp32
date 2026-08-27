@@ -29,7 +29,7 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 #define MAX_RECORD_SIZE 240000 // 12 KHz sampling rate * 2 bytes per sample * 10 seconds
-#define TONE_MELODY_MAX_NOTES 5 // Maximum number of notes of a melody
+#define TONE_MELODY_MAX_NOTES 6 // Maximum number of notes of a melody
 
 //-----------------------------------------------------------------------------
 // Types Definitions
