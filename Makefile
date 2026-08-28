@@ -5,6 +5,10 @@ IDF_TARGET ?= esp32
 BUILD_DIR ?= build
 DIST_DIR ?= dist
 FIRMWARE_PROJECT_NAME ?= thymio3-esp32-firmware
+FIRMWARE_VERSION_FILE ?= main/common.h
+ARTIFACT_PREFIX ?= ESP32
+RELEASE_DATE ?=
+COMMIT_HASH ?=
 
 export ADF_REPO
 export ADF_REF
@@ -13,6 +17,10 @@ export IDF_TARGET
 export BUILD_DIR
 export DIST_DIR
 export FIRMWARE_PROJECT_NAME
+export FIRMWARE_VERSION_FILE
+export ARTIFACT_PREFIX
+export RELEASE_DATE
+export COMMIT_HASH
 
 .DEFAULT_GOAL := help
 
@@ -37,7 +45,11 @@ package:
 		--build-dir "$(BUILD_DIR)" \
 		--dist-dir "$(DIST_DIR)" \
 		--project-name "$(FIRMWARE_PROJECT_NAME)" \
-		--idf-target "$(IDF_TARGET)"
+		--idf-target "$(IDF_TARGET)" \
+		--version-file "$(FIRMWARE_VERSION_FILE)" \
+		--artifact-prefix "$(ARTIFACT_PREFIX)" \
+		--release-date "$(RELEASE_DATE)" \
+		--commit-hash "$(COMMIT_HASH)"
 
 release: firmware
 	@$(MAKE) package

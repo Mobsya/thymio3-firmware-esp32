@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import os
@@ -28,6 +29,26 @@ def parse_args() -> argparse.Namespace:
         default=os.environ.get("FIRMWARE_PROJECT_NAME", "thymio3-esp32-firmware"),
     )
     parser.add_argument("--idf-target", default=os.environ.get("IDF_TARGET", "esp32"))
+    parser.add_argument(
+        "--version-file",
+        default=os.environ.get("FIRMWARE_VERSION_FILE", "main/common.h"),
+        help="Header containing FIRMWARE_VERSION_* defines.",
+    )
+    parser.add_argument(
+        "--artifact-prefix",
+        default=os.environ.get("ARTIFACT_PREFIX", "ESP32"),
+        help="Prefix used in release artifact file names.",
+    )
+    parser.add_argument(
+        "--release-date",
+        default=os.environ.get("RELEASE_DATE"),
+        help="Release date for artifact names, in YYYY-MM-DD format. Defaults to today in UTC.",
+    )
+    parser.add_argument(
+        "--commit-hash",
+        default=os.environ.get("COMMIT_HASH"),
+        help="Commit hash for artifact names. Defaults to the current Git commit.",
+    )
     return parser.parse_args()
 
 
@@ -79,6 +100,75 @@ def relative_or_absolute(path: Path) -> str:
         return str(path)
 
 
+def strip_line_comment(value: str) -> str:
+    return value.split("//", 1)[0].strip()
+
+
+def parse_define_value(raw_value: str) -> str:
+    value = strip_line_comment(raw_value)
+    token = value.split(None, 1)[0]
+
+    if token.startswith('"'):
+        try:
+            parsed = ast.literal_eval(token)
+        except (SyntaxError, ValueError):
+            fail(f"could not parse firmware version string: {token}")
+        return str(parsed)
+
+    return token
+
+
+def read_firmware_version(version_file: Path) -> str:
+    if not version_file.exists():
+        fail(f"firmware version header not found: {version_file}")
+
+    defines: dict[str, str] = {}
+    define_re = re.compile(r"^\s*#\s*define\s+(FIRMWARE_VERSION_(?:MAJOR|MINOR|PATCH))\s+(.+?)\s*$")
+
+    for line in version_file.read_text(encoding="utf-8").splitlines():
+        match = define_re.match(line)
+        if match:
+            defines[match.group(1)] = parse_define_value(match.group(2))
+
+    required = ["FIRMWARE_VERSION_MAJOR", "FIRMWARE_VERSION_MINOR", "FIRMWARE_VERSION_PATCH"]
+    missing = [name for name in required if name not in defines]
+    if missing:
+        fail(f"missing firmware version define(s) in {version_file}: {', '.join(missing)}")
+
+    version = ".".join(defines[name] for name in required)
+    return sanitize_component(version, "firmware version")
+
+
+def release_date(value: str | None) -> str:
+    if value is None or value == "":
+        return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        fail(f"release date must use YYYY-MM-DD format: {value}")
+
+    return value
+
+
+def commit_hash(value: str | None) -> str:
+    if value is None or value == "":
+        value = os.environ.get("GITHUB_SHA") or git_value("rev-parse", "--short=7", "HEAD")
+
+    if value is None or value == "":
+        fail("could not determine commit hash for artifact name")
+
+    if re.fullmatch(r"[0-9a-fA-F]{8,}", value):
+        value = value[:7]
+
+    return sanitize_component(value, "commit hash")
+
+
+def sanitize_component(value: str, label: str) -> str:
+    sanitized = re.sub(r"[^A-Za-z0-9._-]+", "-", value).strip("-")
+    if not sanitized:
+        fail(f"{label} cannot be empty after sanitization")
+    return sanitized
+
+
 def artifact_role(project_name: str, source: Path, offset: str) -> str:
     lower_path = str(source).lower()
     lower_name = source.name.lower()
@@ -98,14 +188,18 @@ def artifact_role(project_name: str, source: Path, offset: str) -> str:
     return stem or f"offset-{lower_offset.replace('0x', '')}"
 
 
-def artifact_name(project_name: str, role: str, offset: str, used: set[str]) -> str:
-    base = f"{project_name}-{role}.bin"
+def artifact_name(release_basename: str, role: str, offset: str, used: set[str]) -> str:
+    if role == "app":
+        base = f"{release_basename}.bin"
+    else:
+        base = f"{release_basename}-{role}.bin"
+
     if base not in used:
         used.add(base)
         return base
 
     suffix = offset.lower().replace("0x", "").replace("/", "-")
-    name = f"{project_name}-{role}-{suffix}.bin"
+    name = f"{release_basename}-{role}-{suffix}.bin"
     used.add(name)
     return name
 
@@ -227,6 +321,12 @@ def main() -> None:
     dist_dir = resolve_path(args.dist_dir)
     project_name = args.project_name
     idf_target = args.idf_target
+    version_file = resolve_path(args.version_file)
+    firmware_version = read_firmware_version(version_file)
+    release_date_value = release_date(args.release_date)
+    commit_hash_value = commit_hash(args.commit_hash)
+    artifact_prefix = sanitize_component(args.artifact_prefix, "artifact prefix")
+    release_basename = f"{artifact_prefix}-{release_date_value}-{commit_hash_value}-{firmware_version}"
 
     if not build_dir.exists():
         fail(f"build directory does not exist: {build_dir}")
@@ -250,7 +350,7 @@ def main() -> None:
         merge_flash_args = generated_flash_args
         merge_args_source = "flasher_args.json"
 
-    merged_name = f"{project_name}-full-flash.bin"
+    merged_name = f"{release_basename}-full-flash.bin"
     merged_path = dist_dir / merged_name
     merge_tool = run_merge_bin(build_dir, merged_path, idf_target, merge_flash_args)
 
@@ -259,7 +359,7 @@ def main() -> None:
     for offset, file_name in source_entries:
         source = resolve_flash_file(build_dir, file_name)
         role = artifact_role(project_name, source, offset)
-        dest_name = artifact_name(project_name, role, offset, used_names)
+        dest_name = artifact_name(release_basename, role, offset, used_names)
         dest = dist_dir / dest_name
         shutil.copy2(source, dest)
         packaged_entries.append(
@@ -278,6 +378,11 @@ def main() -> None:
 
     manifest = {
         "project": project_name,
+        "firmware_version": firmware_version,
+        "release_date": release_date_value,
+        "commit_hash": commit_hash_value,
+        "artifact_prefix": artifact_prefix,
+        "release_basename": release_basename,
         "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "git": {
             "commit": os.environ.get("GITHUB_SHA") or git_value("rev-parse", "HEAD"),
@@ -292,6 +397,7 @@ def main() -> None:
         },
         "build": {
             "build_dir": relative_or_absolute(build_dir),
+            "version_file": relative_or_absolute(version_file),
             "merge_args_source": merge_args_source,
             "merge_tool": merge_tool,
             "write_flash_args": write_args,
