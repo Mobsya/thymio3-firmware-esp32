@@ -99,6 +99,8 @@ set(COMPONENT_SRCS
     spi.h
     stm32_spi.c
     stm32_spi.h
+    straight_controller.c
+    straight_controller.h
     #tcp_server.c
     #tcp_server.h
     tcs3701.c

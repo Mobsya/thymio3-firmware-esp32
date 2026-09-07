@@ -34,6 +34,7 @@
 #include "timer_sw.h"
 #include "timer_hw.h"
 #include "behavior.h"
+#include "straight_controller.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -280,6 +281,7 @@ void Sequence_Stop(void)
 {
   Common_SetTargetSpeed(0, 0);
   AngleController_Stop();
+  StraightController_Stop();
 }
 
 //_____________________________________________________________________________
@@ -797,7 +799,7 @@ static void HandleReplay(void)
         TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[1]);
         TimerHw_Start(1, 1);
         Behavior_SetMotionInProgress(true);
-        Common_SetTargetSpeed(-MOVEMENT_SPEED, -MOVEMENT_SPEED); // TODO Check why the speed in backward direction is slower
+        StraightController_StartAbsolute(TargetHeading, -MOVEMENT_SPEED);
         PlayState = E_PlayState_Movement;
       }
 
@@ -806,7 +808,7 @@ static void HandleReplay(void)
         TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]);
         TimerHw_Start(1, 1);
         Behavior_SetMotionInProgress(true);
-        Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
+        StraightController_StartAbsolute(TargetHeading, MOVEMENT_SPEED);
         PlayState = E_PlayState_Movement;
       }
 

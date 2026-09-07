@@ -36,6 +36,7 @@
 #include "color_sensor.h"
 #include "settings.h"
 #include "behavior.h"
+#include "straight_controller.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -217,6 +218,7 @@ void Drawer_Stop(void)
 {
   Common_SetTargetSpeed(0, 0);
   AngleController_Stop();
+  StraightController_Stop();
   State = E_State_Idle;
   StepsIndex = 0;
   drawSelection = DRAW_POLYGONS;
@@ -240,7 +242,7 @@ void Drawer_Run(void)
     Leds_SetLegoBackProgress(StepsIndex+1-8);
   }
 
-  ESP_LOGE(Tag, "buttonState[E_Button_Forward] = %d", buttonState[E_Button_Forward]);
+  ESP_LOGD(Tag, "buttonState[E_Button_Forward] = %d", buttonState[E_Button_Forward]);
 
   switch (State)
   {
@@ -526,8 +528,8 @@ static void DrawRectangle(void)
     break;
 
   case 1: // Start forward motion
-    Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
     Behavior_SetMotionInProgress(true);
+    StraightController_StartAbsolute(TargetHeading, MOVEMENT_SPEED);
     if((StepsCounter==1) || (StepsCounter==3)) // long edge
     {
       TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]*3/2);
@@ -594,8 +596,8 @@ static void DrawDiamond(void)
     break;
 
   case 1: // Start forward motion
-    Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
     Behavior_SetMotionInProgress(true);
+    StraightController_StartAbsolute(TargetHeading, MOVEMENT_SPEED);
     TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]);
     TimerHw_Reset_Counter(1, 1);  
     TimerHw_Start(1, 1);
@@ -662,8 +664,8 @@ static void DrawTrapezoid(void)
     break;
 
   case 1: // Start forward motion
-    Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
     Behavior_SetMotionInProgress(true);
+    StraightController_StartAbsolute(TargetHeading, MOVEMENT_SPEED);
     if((StepsCounter==3)) // major base
     {
       TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]*5/2);
@@ -737,8 +739,8 @@ static void DrawStar5(void)
     break;
 
   case E_DrawStarState_DrawFw:
-    Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
     Behavior_SetMotionInProgress(true);
+    StraightController_StartAbsolute(TargetHeading, MOVEMENT_SPEED);
     TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]);
     TimerHw_Reset_Counter(1, 1);  
     TimerHw_Start(1, 1);
@@ -799,8 +801,8 @@ static void DrawParallelogram(void)
     break;
 
   case 1: // Start forward motion
-    Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
     Behavior_SetMotionInProgress(true);
+    StraightController_StartAbsolute(TargetHeading, MOVEMENT_SPEED);
     if((StepsCounter==1) || (StepsCounter==3)) // long edge
     {
       TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]*3/2);
@@ -874,8 +876,8 @@ static void DrawStar7(void)
     break;
 
   case E_DrawStarState_DrawFw:
-    Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
     Behavior_SetMotionInProgress(true);
+    StraightController_StartAbsolute(TargetHeading, MOVEMENT_SPEED);
     TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]);
     TimerHw_Reset_Counter(1, 1);  
     TimerHw_Start(1, 1);
@@ -993,8 +995,8 @@ static void DrawPolygon(void)
     break;
 
   case E_DrawPolygonState_DrawFw:
-    Common_SetTargetSpeed(MOVEMENT_SPEED, MOVEMENT_SPEED);
     Behavior_SetMotionInProgress(true);
+    StraightController_StartAbsolute(TargetHeading, MOVEMENT_SPEED);
     if(StepsIndex >= 5) // From pentagon onward, reduce the size to be able to draw within an A4 sheet
     {
       TimerHw_Set_Alarm_Ticks(1, 1, motionDurations[0]/2);

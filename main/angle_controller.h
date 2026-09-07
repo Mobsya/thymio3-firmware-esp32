@@ -24,7 +24,7 @@
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
-#define ROTATION_ANGLE_90 16383  //!< Rotation angle corresponding to 90 degrees (0x3FFF)
+#define ROTATION_ANGLE_90 16384  //!< Rotation angle corresponding to 90 degrees
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -33,6 +33,7 @@
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
+extern int32_t rotation_angle_90_;
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -59,7 +60,7 @@ extern void AngleController_Update();
 //! \param     angleDeg - Target of the angle on the Z-axis, this is relative to the current position. Positive values for counterclockwise rotations, negative values for clockwise rotations.
 //! \param     max - Maximum speed used by the controller
 //! \return    None
-void AngleController_Start(int16_t angleDeg, int16_t max);
+bool AngleController_Start(int16_t angleDeg, int16_t max);
 
 //! \brief     Start the angle controller towards an absolute angle
 //! \pre       First initialize the angle controller
@@ -70,7 +71,7 @@ void AngleController_Start(int16_t angleDeg, int16_t max);
 //!                       clockwise rotations.
 //! \param     max - Maximum speed used by the controller
 //! \return    None
-void AngleController_StartAbsolute(int16_t angleDeg, int16_t max);
+bool AngleController_StartAbsolute(int16_t angleDeg, int16_t max);
 
 //! \brief     Stop the angle controller
 //! \pre       First initialize the angle controller
@@ -95,5 +96,19 @@ void AngleController_UpdateRotFactor(int16_t factor);
 //! \param     None
 //! \return    Rotation factor
 int32_t AngleController_GetRotFactor(void);
+
+//! \brief     Start a relative rotation using an arbitrary speed pair.
+//! \param     angleDeg - Rotation to perform, in degrees, relative to the current heading
+//! \param     left - Left motor speed applied at full controller output
+//! \param     right - Right motor speed applied at full controller output
+//! \return    true if the rotation was armed, false if the request is invalid
+bool AngleController_StartWithSpeeds(int16_t angleDeg, int16_t left, int16_t right);
+
+//! \brief     Start an absolute rotation using an arbitrary speed pair.
+//! \param     angleDeg - Target heading, in degrees, relative to the last angle reset
+//! \param     left - Left motor speed applied at full controller output
+//! \param     right - Right motor speed applied at full controller output
+//! \return    true if the rotation was armed, false if the request is invalid
+bool AngleController_StartAbsoluteWithSpeeds(int16_t angleDeg, int16_t left, int16_t right);
 
 #endif // ANGLE_CONTROLLER_H_

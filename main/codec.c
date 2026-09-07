@@ -35,6 +35,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 
 #include "esp_log.h"
 
@@ -139,14 +140,23 @@ typedef struct AudioWavPlayer
   bool Played;
 } T_WavPlayer;
 
+typedef struct
+{
+    float freq_Hz;        // Already clamped to [0, TONE_MAX_FREQ]
+    uint32_t tot_samples; // Note duration converted to samples; 0 means play forever
+} tone_note_t;
+
 typedef struct {
     int16_t *buffer;
-    T_ToneNote notes[TONE_MELODY_MAX_NOTES];
+    // --- Shared with the caller task, protected by "ToneMutex" ---
+    tone_note_t notes[TONE_MELODY_MAX_NOTES];
     uint8_t num_notes;       // Number of valid notes in "notes"
-    uint8_t current_note;    // Index of the note currently played
     uint32_t seq;            // Incremented each time the melody is replaced
-    float phase;             // Only accessed by the tone generator task
-    uint64_t samples_played; // Samples already played of the current note
+    // --- Owned by the tone generator task only, no protection needed ---
+    uint32_t played_seq;     // Sequence number of the melody currently being played
+    uint8_t current_note;    // Index of the note currently played
+    uint32_t samples_played; // Samples already played of the current note
+    float phase;
 } tone_melody_t;
 
 int16_t tone_buffer[TONE_FRAME_SAMPLES] = {0};
@@ -197,8 +207,10 @@ static T_RecorderHandle Recorder = NULL;
 static T_OnboardPlayerHandle OnboardPlayer = NULL;
 static T_WavPlayerHandle WavPlayer = NULL;
 static T_TonePlayerHandle TonePlayer = NULL;
-// Protects the melody shared between the caller task and the tone generator task
-static portMUX_TYPE ToneMux = portMUX_INITIALIZER_UNLOCKED;
+// Protects the melody shared between the caller task and the tone generator task. A mutex is
+// enough because both sides run in task context: unlike a critical section, it does not disable
+// the interrupts. Never call "Codec_PlayToneMelody" from an ISR.
+static SemaphoreHandle_t ToneMutex = NULL;
 
 // static int16_t buffer[4 * BUF_SIZE];
 
@@ -622,7 +634,9 @@ esp_err_t Codec_PlayToneMelody(const T_ToneNote *notes, uint8_t num_notes)
     return ESP_FAIL;
   }
 
-  portENTER_CRITICAL(&ToneMux);
+  tone_melody_t *melody = TonePlayer->melody;
+
+  xSemaphoreTake(ToneMutex, portMAX_DELAY);
   for (uint8_t i = 0; i < num_notes; i++)
   {
     float freq = notes[i].freq_Hz;
@@ -634,14 +648,21 @@ esp_err_t Codec_PlayToneMelody(const T_ToneNote *notes, uint8_t num_notes)
     {
       freq = 0.0f; // Negative frequencies are treated as rests
     }
-    TonePlayer->melody->notes[i].freq_Hz = freq;
-    TonePlayer->melody->notes[i].duration_ms = notes[i].duration_ms;
+
+    // The sample count is computed here, once per melody, to keep the generator loop free of
+    // 64-bit divisions. A duration of 0 gives 0 samples, which means "play forever".
+    uint64_t tot_samples = ((uint64_t)TONE_PLAYER_RATE * notes[i].duration_ms) / 1000;
+    if (tot_samples > UINT32_MAX)
+    {
+      tot_samples = UINT32_MAX;
+    }
+    
+    melody->notes[i].freq_Hz = freq;
+    melody->notes[i].tot_samples = (uint32_t)tot_samples;
   }
-  TonePlayer->melody->num_notes = num_notes;
-  TonePlayer->melody->current_note = 0;
-  TonePlayer->melody->samples_played = 0;
-  TonePlayer->melody->seq++;
-  portEXIT_CRITICAL(&ToneMux);
+  melody->num_notes = num_notes;
+  melody->seq++; // The generator restarts from the first note as soon as it sees the new sequence
+  xSemaphoreGive(ToneMutex);
 
   ESP_LOGI(Tag, "Melody start: %u note(s), first one %.1f Hz, %ums", num_notes, notes[0].freq_Hz, notes[0].duration_ms);
 
@@ -968,16 +989,23 @@ _wav_init_failed:
 static int tone_process(audio_element_handle_t self, char *in_buffer, int in_len)
 {
     tone_melody_t *melody = TonePlayer->melody;
-    T_ToneNote note = {0};
+    float freq = 0.0f;
     int samples_to_gen = 0;
-    uint32_t seq = 0;
     bool melody_done = false;
+    bool infinite_note = false;
 
-    // Take a consistent snapshot of the note to be played: the melody can be replaced at any
-    // time by "Codec_PlayToneMelody", which runs in another task. The loop also skips the notes
-    // that are already completed, so that the melody is played without any gap between notes.
-    portENTER_CRITICAL(&ToneMux);
-    seq = melody->seq;
+    // Take a consistent snapshot of the note to be played: the melody can be replaced at any time
+    // by "Codec_PlayToneMelody", which runs in another task. Only "seq", "num_notes" and "notes"
+    // are shared, and the loop below only does integer comparisons, so the lock is held for a very
+    // short time. The loop also skips the notes that are already completed, so that the melody is
+    // played without any gap between notes.
+    xSemaphoreTake(ToneMutex, portMAX_DELAY);
+    if (melody->played_seq != melody->seq)
+    { // The melody has been replaced, restart from its first note
+        melody->played_seq = melody->seq;
+        melody->current_note = 0;
+        melody->samples_played = 0;
+    }
     while (1)
     {
         if (melody->current_note >= melody->num_notes)
@@ -986,34 +1014,28 @@ static int tone_process(audio_element_handle_t self, char *in_buffer, int in_len
             break;
         }
 
-        note = melody->notes[melody->current_note];
+        const tone_note_t *note = &melody->notes[melody->current_note];
+        freq = note->freq_Hz;
 
-        if (note.duration_ms == 0)
+        if (note->tot_samples == 0)
         { // 0 means play forever, a full frame is always generated
+            infinite_note = true;
             samples_to_gen = TONE_FRAME_SAMPLES;
             break;
         }
 
-        uint64_t tot_samples = ((uint64_t)TONE_PLAYER_RATE * note.duration_ms) / 1000;
-        if (melody->samples_played >= tot_samples)
+        if (melody->samples_played >= note->tot_samples)
         { // Current note is over, move to the next one (notes shorter than one sample are simply skipped)
             melody->current_note++;
             melody->samples_played = 0;
             continue;
         }
 
-        uint64_t remaining_samples = tot_samples - melody->samples_played;
-        if (remaining_samples < (uint64_t)TONE_FRAME_SAMPLES)
-        {
-            samples_to_gen = (int)remaining_samples;
-        }
-        else
-        {
-            samples_to_gen = TONE_FRAME_SAMPLES;
-        }
+        uint32_t remaining_samples = note->tot_samples - melody->samples_played;
+        samples_to_gen = (remaining_samples < (uint32_t)TONE_FRAME_SAMPLES) ? (int)remaining_samples : TONE_FRAME_SAMPLES;
         break;
     }
-    portEXIT_CRITICAL(&ToneMux);
+    xSemaphoreGive(ToneMutex);
 
     if (melody_done)
     {
@@ -1021,14 +1043,14 @@ static int tone_process(audio_element_handle_t self, char *in_buffer, int in_len
         return AEL_IO_DONE;
     }
 
-    if (note.freq_Hz <= 0.0f)
+    if (freq <= 0.0f)
     { // A frequency of 0 is a rest: output silence and keep the phase at 0, so that the next note starts without any click
         memset(melody->buffer, 0, samples_to_gen * sizeof(int16_t));
         melody->phase = 0;
     }
     else
     { // The phase is intentionally not reset between notes, to avoid a discontinuity (click) on the note change
-        float phase_inc = 2 * M_PI * note.freq_Hz / TONE_PLAYER_RATE;
+        float phase_inc = 2 * M_PI * freq / TONE_PLAYER_RATE;
         for (int i = 0; i < samples_to_gen; i++)
         {
             float s = sin(melody->phase) + (1.0/3.0)*sin(melody->phase*3) + (1.0/5.0)*sin(melody->phase*5); // soft square wave to avoid "ringing" effect
@@ -1047,12 +1069,13 @@ static int tone_process(audio_element_handle_t self, char *in_buffer, int in_len
         return rsize;
     }
 
-    portENTER_CRITICAL(&ToneMux);
-    if (melody->seq == seq)
-    { // Do not account these samples if the melody has been replaced in the meantime
-        melody->samples_played += (uint64_t)(rsize / sizeof(int16_t));
+    // No lock here: the playback progress belongs to this task only. If the melody has been
+    // replaced in the meantime, the next frame detects the new sequence number and restarts,
+    // discarding this counter anyway. Infinite notes are not accounted, to avoid any wrap-around.
+    if (!infinite_note)
+    {
+        melody->samples_played += (uint32_t)(rsize / sizeof(int16_t));
     }
-    portEXIT_CRITICAL(&ToneMux);
 
     return rsize;
 }
@@ -1060,10 +1083,9 @@ static int tone_process(audio_element_handle_t self, char *in_buffer, int in_len
 static esp_err_t tone_open(audio_element_handle_t self)
 {
     ESP_LOGI(Tag, "tone_open called");
-    portENTER_CRITICAL(&ToneMux);
+    // The playback progress is private to the tone generator task, which is the one calling this. No mutex needed.
     TonePlayer->melody->current_note = 0;
     TonePlayer->melody->samples_played = 0;
-    portEXIT_CRITICAL(&ToneMux);
     TonePlayer->melody->phase = 0;
     return ESP_OK;
 }
@@ -1100,6 +1122,12 @@ static T_TonePlayerHandle InitTonePlayer(void)
   //cfg.stack_in_ext = true;
   ap->ToneGenerator = audio_element_init(&cfg);
   AUDIO_MEM_CHECK(Tag, ap->ToneGenerator, goto _tone_init_failed);
+
+  ToneMutex = xSemaphoreCreateMutex();
+  if (!ToneMutex) {
+      ESP_LOGE(Tag, "ToneMutex creation failed");
+      goto _tone_init_failed;
+  }
 
   ap->melody = calloc(1, sizeof(tone_melody_t));
   if(!ap->melody) {

@@ -2861,11 +2861,7 @@ void ble_spp_init(void) {
     uint8_t mac_addr[6] = {0};
     char lot[3] = {0};
 
-	// esp_log_level_set("*", ESP_LOG_NONE);
-	//esp_log_level_set("*", ESP_LOG_ERROR);
-	esp_log_level_set("*", ESP_LOG_INFO);
-	//esp_log_level_set("*", ESP_LOG_DEBUG);
-	//esp_log_level_set("*", ESP_LOG_VERBOSE);
+	esp_log_level_set(TAG, ESP_LOG_INFO);
 
     ind_ack_event_group = xEventGroupCreate();
 
@@ -2973,9 +2969,5 @@ void ble_spp_init(void) {
 
     ble_spp_stdout_init();
 
-	esp_log_level_set("*", ESP_LOG_NONE);
-	//esp_log_level_set("*", ESP_LOG_ERROR);
-	// esp_log_level_set("*", ESP_LOG_INFO);
-	//esp_log_level_set("*", ESP_LOG_DEBUG);
-	//esp_log_level_set("*", ESP_LOG_VERBOSE);
+	esp_log_level_set(TAG, ESP_LOG_NONE);
 }

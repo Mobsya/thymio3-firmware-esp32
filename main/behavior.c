@@ -48,6 +48,7 @@
 #include "stm32_spi.h"
 #include "timer_hw.h"
 #include "timer_sw.h"
+#include "straight_controller.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -140,6 +141,7 @@ static uint8_t updateSettingsState = 0;
 static uint8_t ledUpdateCount = 0;
 static uint8_t ledUpdatePos = 0;
 bool motionInProgress = false;
+static volatile bool motionRunning = false; // True while the timed motion is driving the motors
 T_TimerSw *StopTimer = NULL; //!< Timer used to add a delay at the end of a movement
 
 // Motors left/right calibration
@@ -273,6 +275,7 @@ void IRAM_ATTR ISR_TimerExpired(void *para)
        and update the alarm time for the timer with without reload */
     if (timer_intr & TIMER_INTR_T1) {
         timer_group_clr_intr_status_in_isr(TIMER_GROUP_1, TIMER_1);
+        motionRunning = false;   // Cleared first: a closed loop checking this flag must not write speeds after the stop below
         Common_SetTargetSpeed(0, 0);
         TimerSw_StartTimerOnce(StopTimer, STOP_DURATION_US);
         TimerHw_Stop(1, 1);
@@ -418,6 +421,7 @@ static void RunBehaviorTask(void* arg)
     time_start = esp_timer_get_time();
     RunBehaviors();
     AngleController_Update();
+    StraightController_Update();
 		time_end = esp_timer_get_time();
 		//printf("%lld usec\n", time_end - time_start);
 		if((time_end - time_start) < 20000) { // Run behavior task @ 50 Hz like in T2
@@ -2567,4 +2571,10 @@ bool Behavior_IsMotionInProgress(void)
 void Behavior_SetMotionInProgress(bool value)
 {
   motionInProgress = value;
+  motionRunning = value;
+}
+
+bool Behavior_IsMotionRunning(void)
+{
+  return motionRunning;
 }

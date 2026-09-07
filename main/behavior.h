@@ -110,6 +110,16 @@ extern void Behavior_PlaySoundAlarm(uint8_t type);
 bool Behavior_IsMotionInProgress(void);
 void Behavior_SetMotionInProgress(bool value);
 
+//! \brief     Check if the motors are still being driven by a timed motion.
+//! \details   Unlike Behavior_IsMotionInProgress(), this flag is cleared by the
+//!            timer ISR as soon as the travel distance is reached, i.e. before
+//!            the stop pause that follows the motion. A closed loop driving the
+//!            motors during the motion must use this one, otherwise it would
+//!            keep writing speeds after the ISR released them.
+//! \pre       None
+//! \param     None
+//! \return    true while the timed motion is actually driving the motors
+bool Behavior_IsMotionRunning(void);
 
 
 #endif // BEHAVIOR_H_

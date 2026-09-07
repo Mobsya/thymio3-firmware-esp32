@@ -31,6 +31,7 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "sensors.h"   // for I2CMutex
+#include "angle_controller.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -296,7 +297,7 @@ void Gyroscope_ReadAngle(void)
   {
     vmVariables.angle[index] = Angle[index];
 
-    Angle_deg[index] = ((Angle[index] * 90) / 16384);
+    Angle_deg[index] = ((Angle[index] * 90) / rotation_angle_90_);
 
     vmVariables.angle_deg[index] = Angle_deg[index];
   }
