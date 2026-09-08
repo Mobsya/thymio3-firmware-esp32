@@ -27,9 +27,9 @@
 //-----------------------------------------------------------------------------
 
 #define FIRMWARE_VERSION_MAJOR 1
-#define FIRMWARE_VERSION_MINOR 9
+#define FIRMWARE_VERSION_MINOR 10
 // The PATCH version is a string because it can be a number or a letter (e.g. 1.8.6a)
-#define FIRMWARE_VERSION_PATCH "2"
+#define FIRMWARE_VERSION_PATCH "0"
 
 // Hardware version:
 // - 0xC: previous gyroscope orientation
@@ -38,6 +38,8 @@
 
 #define MIN_LIMIT_SPEED        -600
 #define MAX_LIMIT_SPEED         600
+
+#define GROUND_EDGE_THRESHOLD 180 // Calibrated ground values range is 0..1023, thus 150 is a good threshold to detect the table edge
 
 #define when(cond) if(({static unsigned char prev; \
                         unsigned char c = !!(cond); \

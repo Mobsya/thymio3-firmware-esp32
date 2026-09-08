@@ -32,8 +32,6 @@
 // Constants/Macros Definitions
 //-----------------------------------------------------------------------------
 
-#define GROUND_EDGE_OFFSET 100
-
 //-----------------------------------------------------------------------------
 // Types Definitions
 //-----------------------------------------------------------------------------
@@ -274,11 +272,8 @@ uint8_t Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue
   if(first)
   {
     first = false;
-    //Settings_GetGroundBlackSettings(groundThr);
-    //groundThr[0] += GROUND_EDGE_OFFSET;
-    //groundThr[1] += GROUND_EDGE_OFFSET;
-    groundThr[0] = 300; // Calibrated ground values range is 0..1023, thus 300 is a good threshold to detect the table edge
-    groundThr[1] = 300;
+    groundThr[0] = GROUND_EDGE_THRESHOLD; 
+    groundThr[1] = GROUND_EDGE_THRESHOLD;
     ESP_LOGI(Tag, "ground thr: l=%d r=%d", groundThr[0], groundThr[1]);
   }
 
@@ -307,8 +302,8 @@ uint8_t Common_HandleTableEdgeDetection(uint8_t red, uint8_t green, uint8_t blue
 
 void Common_SetGroundThr(int16_t* values)
 {
-  groundThr[0] = values[0] + GROUND_EDGE_OFFSET;
-  groundThr[1] = values[1] + GROUND_EDGE_OFFSET;
+  groundThr[0] = values[0];
+  groundThr[1] = values[1];
 }
 
 uint16_t Common_GetFirmwareVersionMajor(void)
