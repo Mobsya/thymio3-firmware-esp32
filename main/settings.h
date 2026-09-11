@@ -20,6 +20,8 @@
 //-----------------------------------------------------------------------------
 // Include Section
 //-----------------------------------------------------------------------------
+#include <stdbool.h>
+#include <stdint.h>
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -42,7 +44,13 @@
 #define DEFAULT_GYRO_ROT_FACTOR 0
 #define DEFAULT_GROUND_BLACK 35
 #define DEFAULT_GROUND_WHITE 300
-#define DEFAULT_MOT15CM 9000000 // Duration of the movement = 1800000 [us] -> TIMER_SCALE * 1800000 [us] = 9000000 (timer_group)
+#define DEFAULT_MOT15CM 9000000 // Duration of the movement = 1800000 [us] -> TIMER_SCALE * 1800000 [us] = 9000000 (timer ticks)
+// Hardware versions:
+// - 0x0C: previous gyroscope/accelerometer orientation
+// - 0x0D: new gyroscope/accelerometer orientation (from 2026 Spring production): the Y and Z axes are inverted
+#define HARDWARE_VERSION_0C 0x0C
+#define HARDWARE_VERSION_0D 0x0D
+#define DEFAULT_HARDWARE_VERSION HARDWARE_VERSION_0D
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -62,11 +70,18 @@ typedef struct
   int16_t GroundBlack[2]; //!< ground left black, ground right black
   int16_t GroundWhite[2]; //!< ground left white, ground right white
   uint64_t Mot15cm[2];    //!< Timer value for forward [0] and backward[0] motion to travel 15 cm
+  uint8_t HardwareVersion; //!< Robot hardware version (HARDWARE_VERSION_0C, HARDWARE_VERSION_0D)
 } T_Settings;
 
 //-----------------------------------------------------------------------------
 // Exported Global Data
 //-----------------------------------------------------------------------------
+
+//! \brief True when the IMU Y and Z axes must be inverted, that is when the hardware version is
+//!        HARDWARE_VERSION_0D or newer. This flag is cached from the hardware version setting to
+//!        avoid a function call for each sample read from the gyroscope FIFO. It is updated by
+//!        Settings_SetHardwareVersionSettings().
+extern bool InvertYZ;
 
 //-----------------------------------------------------------------------------
 // Inline Code Definition
@@ -208,6 +223,12 @@ extern void Settings_SetZeroOffGyroSettings(int16_t* values);
 //! \return    None
 extern void Settings_SetGyroRotFactorSettings(int16_t factor);
 
+//! \brief     Set the hardware version (do not save in flash) and update the InvertYZ flag
+//! \pre       First initialize the settings
+//! \param     version - Hardware version (HARDWARE_VERSION_0C, HARDWARE_VERSION_0D)
+//! \return    None
+extern void Settings_SetHardwareVersionSettings(uint8_t version);
+
 //! \brief     Set the ground black offset (do not save in flash)
 //! \pre       First initialize the settings
 //! \param     offsets
@@ -346,6 +367,12 @@ extern void Settings_GetZeroOffGyroSettings(int16_t* values);
 //! \return    None
 extern int16_t Settings_GetGyroRotFactorSettings(void);
 
+//! \brief     Get the hardware version
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    Hardware version (HARDWARE_VERSION_0C, HARDWARE_VERSION_0D)
+extern uint8_t Settings_GetHardwareVersionSettings(void);
+
 //! \brief     Get the ground black offset (do not save in flash)
 //! \pre       First initialize the settings
 //! \param     offsets
@@ -417,6 +444,12 @@ extern void Settings_LoadZeroOffGyroFile(void);
 //! \param     None
 //! \return    None
 extern void Settings_LoadGyroRotFactorFile(void);
+
+//! \brief     Load the hardware version settings file, if it doesn't exist create it with the default value.
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_LoadHardwareVersionFile(void);
 
 //! \brief     Load the grounds black offsets settings file, if it doesn't exist create it with default values.
 //! \pre       First initialize the settings
@@ -490,6 +523,12 @@ extern int Settings_WriteZeroOffGyro(int16_t* values);
 //! \return    error (0=no error)
 extern int Settings_WriteGyroRotFactor(int16_t factor);
 
+//! \brief     Write the hardware version to the settings file
+//! \pre       First initialize the settings
+//! \param     version - Hardware version (HARDWARE_VERSION_0C, HARDWARE_VERSION_0D)
+//! \return    error (0=no error)
+extern int Settings_WriteHardwareVersion(uint8_t version);
+
 //! \brief     Write the grounds black offsets settings file
 //! \pre       First initialize the settings
 //! \param     offsets
@@ -561,6 +600,12 @@ extern void Settings_ReadZeroOffGyro(int16_t* values);
 //! \param     None
 //! \return    None
 extern int16_t Settings_ReadGyroRotFactor();
+
+//! \brief     Read the hardware version from the settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    Hardware version stored in flash
+extern uint8_t Settings_ReadHardwareVersion(void);
 
 //! \brief     Read the ground black offsets from the settings file
 //! \pre       First initialize the settings
@@ -634,6 +679,12 @@ extern void Settings_EraseZeroOffGyroFile(void);
 //! \return    None
 extern void Settings_EraseGyroRotFactorFile(void);
 
+//! \brief     Erase the hardware version settings file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void Settings_EraseHardwareVersionFile(void);
+
 //! \brief     Erase the ground black offsets settings file
 //! \pre       First initialize the settings
 //! \param     None
@@ -663,6 +714,12 @@ extern void WriteFactoryZeroOffGyro(void);
 //! \param     None
 //! \return    None
 extern void WriteFactoryGyroRotFactor(void);
+
+//! \brief     Write the default hardware version to the file
+//! \pre       First initialize the settings
+//! \param     None
+//! \return    None
+extern void WriteFactoryHardwareVersion(void);
 
 //! \brief     Write the default motors corrections to the file
 //! \pre       First initialize the settings

@@ -63,6 +63,13 @@ extern void Accelerometer_Init(void);
 //! \return    None
 extern void Accelerometer_ReadAcceleration(void);
 
+//! \brief     Read the raw acceleration directly from the sensor, without applying the hardware
+//!            version axes correction and without updating the Aseba variables
+//! \pre       First initialize the accelerometer. The caller must handle the I2C mutex.
+//! \param     acceleration - Raw acceleration values read from the sensor
+//! \return    True if the acceleration has been read, false if the accelerometer is not available
+extern bool Accelerometer_ReadRawAcceleration(T_Axis* acceleration);
+
 //! \brief     Get last acceleration read
 //! \pre       First initialize the accelerometer
 //! \param     None

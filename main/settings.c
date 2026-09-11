@@ -42,6 +42,8 @@
 
 static T_Settings Settings;
 
+bool InvertYZ = (DEFAULT_HARDWARE_VERSION >= HARDWARE_VERSION_0D);
+
 //-----------------------------------------------------------------------------
 // Private Data
 //-----------------------------------------------------------------------------
@@ -60,6 +62,7 @@ static const char* FileZeroOffGyro = "/spiffs/zero_off_gyro.dat";
 static const char* FileGyroRotFactor = "/spiffs/gyro_rot.dat";
 static const char* FileGroundBlack = "/spiffs/ground_black.dat";
 static const char* FileGroundWhite = "/spiffs/ground_white.dat";
+static const char* FileHardwareVersion = "/spiffs/hw_version.dat";
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -75,6 +78,8 @@ static const char* FileGroundWhite = "/spiffs/ground_white.dat";
 
 void Settings_Init(void)
 {
+  Settings_LoadHardwareVersionFile();
+  ESP_LOGI(Tag, "Hardware version: 0x%02X (invert Y,Z axes: %d)", Settings.HardwareVersion, (int)InvertYZ);
   Settings_LoadMotorsFile();
   ESP_LOGI(Tag, "Motors: %d, %d", Settings.Motors[0], Settings.Motors[1]);
   Settings_LoadOffsetGyroFile();
@@ -297,6 +302,16 @@ void Settings_SetGyroRotFactorSettings(int16_t factor)
 
 //_____________________________________________________________________________
 
+void Settings_SetHardwareVersionSettings(uint8_t version)
+{
+  Settings.HardwareVersion = version;
+
+  // Cache the axes orientation to avoid reading the setting for each sample
+  InvertYZ = (Settings.HardwareVersion >= HARDWARE_VERSION_0D);
+}
+
+//_____________________________________________________________________________
+
 void Settings_SetGroundBlackSettings(int16_t* values)
 {
   memcpy(Settings.GroundBlack, values, 4);
@@ -459,6 +474,13 @@ int16_t Settings_GetGyroRotFactorSettings(void)
 
 //_____________________________________________________________________________
 
+uint8_t Settings_GetHardwareVersionSettings(void)
+{
+  return Settings.HardwareVersion;
+}
+
+//_____________________________________________________________________________
+
 void Settings_GetGroundBlackSettings(int16_t* values)
 {
   memcpy(values, Settings.GroundBlack, 4);
@@ -606,6 +628,33 @@ void Settings_LoadGyroRotFactorFile(void)
 
 //_____________________________________________________________________________
 
+void Settings_LoadHardwareVersionFile(void)
+{
+  uint8_t version = 0u;
+
+  if (FileSystem_CreateFile(FileHardwareVersion))
+  {
+    WriteFactoryHardwareVersion();
+  }
+  else
+  {
+    version = Settings_ReadHardwareVersion();
+
+    if ((version != HARDWARE_VERSION_0C) && (version != HARDWARE_VERSION_0D))
+    {
+      // Empty or corrupted file: restore the default hardware version
+      ESP_LOGW(Tag, "Invalid hardware version in flash (0x%02X), restore the default one", version);
+      WriteFactoryHardwareVersion();
+    }
+    else
+    {
+      Settings_SetHardwareVersionSettings(version);
+    }
+  }
+}
+
+//_____________________________________________________________________________
+
 void Settings_LoadGroundBlackFile(void)
 {
   if (FileSystem_CreateFile(FileGroundBlack))
@@ -721,6 +770,15 @@ int Settings_WriteGyroRotFactor(int16_t factor)
 
 //_____________________________________________________________________________
 
+int Settings_WriteHardwareVersion(uint8_t version)
+{
+  uint8_t input = version;
+
+  return FileSystem_Write(FileHardwareVersion, &input, sizeof(uint8_t));
+}
+
+//_____________________________________________________________________________
+
 
 int Settings_WriteGroundBlack(int16_t* offsets)
 {
@@ -828,6 +886,17 @@ int16_t Settings_ReadGyroRotFactor()
 
 //_____________________________________________________________________________
 
+uint8_t Settings_ReadHardwareVersion(void)
+{
+  uint8_t output = 0u;
+
+  FileSystem_Read(FileHardwareVersion, &output, sizeof(uint8_t));
+
+  return output;
+}
+
+//_____________________________________________________________________________
+
 void Settings_ReadGroundBlack(int16_t* values)
 {
   FileSystem_Read(FileGroundBlack, values, 4);
@@ -908,6 +977,13 @@ void Settings_EraseZeroOffGyroFile(void)
 void Settings_EraseGyroRotFactorFile(void)
 {
   FileSystem_EraseFile(FileGyroRotFactor);
+}
+
+//_____________________________________________________________________________
+
+void Settings_EraseHardwareVersionFile(void)
+{
+  FileSystem_EraseFile(FileHardwareVersion);
 }
 
 //_____________________________________________________________________________
@@ -1031,6 +1107,17 @@ void WriteFactoryGyroRotFactor(void)
   FileSystem_Write(FileGyroRotFactor, &input, sizeof(int16_t));
 
   Settings.GyroRotFactor = DEFAULT_GYRO_ROT_FACTOR;
+}
+
+//_____________________________________________________________________________
+
+void WriteFactoryHardwareVersion(void)
+{
+  uint8_t input = DEFAULT_HARDWARE_VERSION;
+
+  FileSystem_Write(FileHardwareVersion, &input, sizeof(uint8_t));
+
+  Settings_SetHardwareVersionSettings(DEFAULT_HARDWARE_VERSION);
 }
 
 //_____________________________________________________________________________

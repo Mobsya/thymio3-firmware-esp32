@@ -97,7 +97,6 @@ set(MICROPY_SOURCE_PORT
     ${MICROPY_DIR}/ports/esp32/thymio_proximity.c
     ${MICROPY_DIR}/ports/esp32/thymio_ground.c
     ${MICROPY_DIR}/ports/esp32/thymio_motors.c
-    ${MICROPY_DIR}/ports/esp32/thymio_filesystem.c
     ${MICROPY_DIR}/ports/esp32/thymio_sound.c
     ${MICROPY_DIR}/ports/esp32/thymio_leds_lego_front.c
     ${MICROPY_DIR}/ports/esp32/thymio_leds_lego_back.c
@@ -110,7 +109,8 @@ set(MICROPY_SOURCE_PORT
     ${MICROPY_DIR}/ports/esp32/thymio_leds_buttons.c
     ${MICROPY_DIR}/ports/esp32/thymio_led_receiver.c
     ${MICROPY_DIR}/ports/esp32/thymio_led_mic.c
-    ${MICROPY_DIR}/ports/esp32/thymio_led_color.c
+    ${MICROPY_DIR}/ports/esp32/thymio_led_color.c    
+    ${MICROPY_DIR}/ports/esp32/thymio_led_mic.c
     ${MICROPY_DIR}/ports/esp32/thymio_i2c.c
     ${MICROPY_DIR}/ports/esp32/modthymio.c
 )

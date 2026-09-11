@@ -32,6 +32,7 @@
 #include "freertos/semphr.h"
 #include "sensors.h"   // for I2CMutex
 #include "angle_controller.h"
+#include "accelerometer.h"   // for the raw acceleration used to detect the hardware version
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -42,6 +43,10 @@
 #define CALIB_POLL_MS          100u // @ 104 Hz ODR we should get about 10 samples per poll
 #define CALIB_MAX_TRIALS       20u  // 20 * 100 ms = 2 s upper bound
 #define CALIB_SETTLE_MS        300u // Settling time before starting the acquisition
+
+#define HW_DETECT_SAMPLES        5u    // Number of accelerometer samples averaged to detect the hardware version
+#define HW_DETECT_SAMPLE_MS     10u    // Delay between two accelerometer samples
+#define HW_DETECT_MIN_ABS_Z   8000     // About 0.5 g with a 2 g full scale: below this value the robot is not flat enough to be trusted
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -132,7 +137,7 @@ void Gyroscope_ReadAngularVelocity(void)
 		LSM6DS0_ReadAngularVelocity(&AngularVelocity);
 	}
 
-	if(HARDWARE_VERSION >= 0x0D)
+	if(InvertYZ)	// Hardware version 0x0D and newer have the Y and Z axes inverted
 	{
 		AngularVelocity.Y = -AngularVelocity.Y;
 		AngularVelocity.Z = -AngularVelocity.Z;
@@ -357,6 +362,59 @@ void Gyroscope_ResetAngle(void)
 
 //_____________________________________________________________________________
 
+//! \brief Detect the hardware version from the accelerometer Z axis and store it in the settings.
+//!        On hardware version up to 0x0C the raw Z axis reads about +16384 (1 g) when the robot is flat on
+//!        its wheels, while from hardware version 0x0D the Y and Z axes are inverted, thus the raw Z
+//!        axis reads about -16384. The stored version is left untouched when the reading cannot be
+//!        trusted (robot tilted, held or moving) and the flash is written only when the version changes.
+//! \pre   The robot MUST be still and in its normal position.
+//! \pre   The caller MUST NOT hold I2CMutex (the mutex is not recursive).
+static void DetectHardwareVersion(void)
+{
+    T_Axis acceleration;
+    bool isRead = false;
+    int32_t sum = 0;
+    int32_t average = 0;
+    uint8_t version = 0u;
+
+    for (uint8_t index = 0u; index < HW_DETECT_SAMPLES; index++)
+    {
+        xSemaphoreTake(I2CMutex, portMAX_DELAY);
+        isRead = Accelerometer_ReadRawAcceleration(&acceleration);
+        xSemaphoreGive(I2CMutex);
+
+        if (!isRead)
+        {
+            ESP_LOGW(Tag, "Hardware version detection skipped: accelerometer is not available");
+            return;
+        }
+
+        sum += acceleration.Z;
+
+        vTaskDelay(HW_DETECT_SAMPLE_MS / portTICK_PERIOD_MS);
+    }
+
+    average = sum / (int32_t)HW_DETECT_SAMPLES;
+
+    if (abs(average) < HW_DETECT_MIN_ABS_Z)
+    {
+        // The robot is tilted, held or moving: the reading cannot be used to detect the hardware version
+        ESP_LOGW(Tag, "Hardware version detection skipped: acc Z = %d", (int)average);
+        return;
+    }
+
+    version = (average < 0) ? HARDWARE_VERSION_0D : HARDWARE_VERSION_0C;
+
+    if (version != Settings_GetHardwareVersionSettings())
+    {
+        Settings_SetHardwareVersionSettings(version);   // Also updates the InvertYZ flag
+        Settings_WriteHardwareVersion(version);         // Write to flash only when the version changes
+        ESP_LOGI(Tag, "Hardware version updated to 0x%02X (acc Z = %d)", version, (int)average);
+    }
+}
+
+//_____________________________________________________________________________
+
 bool Gyroscope_Calibrate(void) {
 	uint16_t numSamplesCalib = 0;
 	uint16_t numReadSamples = 0;
@@ -387,6 +445,11 @@ bool Gyroscope_Calibrate(void) {
     xSemaphoreTake(I2CMutex, portMAX_DELAY);
     calibrationInProgress = true;
     xSemaphoreGive(I2CMutex);
+
+	// We know that the robot is still and in its correct position, thus we can check the Z axis value
+	// of the accelerometer to distinguish the hardware version. This is done before acquiring the
+	// calibration samples because the sign of the Y and Z gyroscope axes depends on the hardware version.
+	DetectHardwareVersion();
 
     // Drop everything acquired before this call: the robot may still have been
     // moving, and a flash write may have left the FIFO in overrun.

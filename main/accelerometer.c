@@ -25,6 +25,7 @@
 #include "aseba_esp32.h"
 #include "gpio.h"
 #include "i2c.h"
+#include "settings.h"
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -102,7 +103,7 @@ void Accelerometer_ReadAcceleration(void)
 		LSM6DS0_ReadAcceleration(&Acceleration);
 	}
 
-	if(HARDWARE_VERSION >= 0x0D)
+	if(InvertYZ)	// Hardware version 0x0D and newer have the Y and Z axes inverted
 	{
 		Acceleration.Y = -Acceleration.Y;
 		Acceleration.Z = -Acceleration.Z;
@@ -113,6 +114,26 @@ void Accelerometer_ReadAcceleration(void)
   vmVariables.acc[2] = Acceleration.Z;
 
   //SET_EVENT(EVENT_ACC);
+}
+
+//_____________________________________________________________________________
+
+bool Accelerometer_ReadRawAcceleration(T_Axis* acceleration)
+{
+	if(currAcc == ACC_NOT_AVAILABLE) {
+		acceleration->X = 0;
+		acceleration->Y = 0;
+		acceleration->Z = 0;
+		return false;
+	} else if(currAcc == LSM6DS3US) {
+		LSM6DS3US_ReadAcceleration(acceleration);
+	} else if(currAcc == LSM6DS3TR) {
+		LSM6DS3TR_ReadAcceleration(acceleration);
+	} else if(currAcc == LSM6DS0) {
+		LSM6DS0_ReadAcceleration(acceleration);
+	}
+
+	return true;
 }
 
 //_____________________________________________________________________________

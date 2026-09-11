@@ -685,6 +685,7 @@ static int  ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle, str
                     {
                         if(mp_script_ready)
                         {
+                            Codec_Stop(); // If the PC interface start just after upload, then the sound is still playing and it needs to be stopped before executing the script.
                             mp_exec_script_from_ram(mp_script);
                         }
                         else

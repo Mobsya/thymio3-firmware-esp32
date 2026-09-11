@@ -28,6 +28,7 @@
 #include "i2c.h"
 #include "imu_common.h"
 #include "gyroscope.h"
+#include "settings.h"   // for the InvertYZ flag
 
 //-----------------------------------------------------------------------------
 // Constants/Macros Definitions
@@ -887,7 +888,7 @@ uint16_t LSM6DS3US_ReadBufferedAngularPosition(void)
         if (j < GYRO_BUFFER_SIZE)
         {
           GyroBuffer[1][j] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
-          if (HARDWARE_VERSION >= 0xD)
+          if (InvertYZ)   // Hardware version 0x0D and newer have the Y and Z axes inverted
           {
             GyroBuffer[1][j] = -GyroBuffer[1][j];
           }        
@@ -899,7 +900,7 @@ uint16_t LSM6DS3US_ReadBufferedAngularPosition(void)
         if (k < GYRO_BUFFER_SIZE)
         {
           GyroBuffer[2][k] = (int16_t)((uint16_t)position[1u] << 8u) | position[0u];
-          if (HARDWARE_VERSION >= 0xD)
+          if (InvertYZ)   // Hardware version 0x0D and newer have the Y and Z axes inverted
           {
             GyroBuffer[2][k] = -GyroBuffer[2][k];
           }
