@@ -1,6 +1,7 @@
 ADF_REPO ?= https://github.com/Mobsya/esp-adf.git
 ADF_REF ?= release/v2.4
 ADF_PATH ?= $(CURDIR)/.deps/esp-adf_release2.4
+DEPS_CLONE_DEPTH ?= 1
 IDF_TARGET ?= esp32
 BUILD_DIR ?= build
 DIST_DIR ?= dist
@@ -13,6 +14,7 @@ COMMIT_HASH ?=
 export ADF_REPO
 export ADF_REF
 export ADF_PATH
+export DEPS_CLONE_DEPTH
 export IDF_TARGET
 export BUILD_DIR
 export DIST_DIR

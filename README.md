@@ -39,6 +39,7 @@ Default build configuration:
 | `ADF_REPO` | `https://github.com/Mobsya/esp-adf.git` |
 | `ADF_REF` | `release/v2.4` |
 | `ADF_PATH` | `.deps/esp-adf_release2.4` |
+| `DEPS_CLONE_DEPTH` | `1` (shallow dependency history; `0` for full history) |
 | `IDF_TARGET` | `esp32` |
 | `BUILD_DIR` | `build` |
 | `DIST_DIR` | `dist` |
@@ -52,6 +53,36 @@ Override any variable on the command line when needed:
 ```sh
 ADF_PATH=/path/to/esp-adf_release2.4 make release
 ```
+
+ESP-ADF, its nested submodules (including ESP-IDF), and the firmware's submodules
+use shallow clones by default. Updates fetch only the requested ADF branch or tag,
+without downloading every tag, and keep submodules at their recorded commits.
+This reduces Git history on disk without omitting source files or sound assets.
+Use a larger depth when more history is needed, or disable the depth limit for
+fresh dependency clones:
+
+```sh
+make release DEPS_CLONE_DEPTH=0
+```
+
+Existing checkouts are reused; changing the depth does not automatically reclaim
+their disk space or restore missing history. To replace a full ESP-ADF checkout,
+first build with a new dependency directory:
+
+```sh
+make clean
+make release ADF_PATH="$PWD/.deps/esp-adf-shallow"
+```
+
+After verifying the new build and preserving any local dependency edits, the old
+`.deps/esp-adf_release2.4` directory can be removed to reclaim its space. Continue
+using the new `ADF_PATH` for subsequent commands. `make clean` is needed when
+switching dependency paths because CMake caches absolute paths.
+
+ESP-IDF's installer supports shallow checkouts by reading its version header when
+Git tags are unavailable. A fresh shallow checkout of this fork may therefore use
+an `idf4.4_*` Python environment instead of the old Git-derived `idf3.2_*` name;
+`make setup` installs the matching environment automatically.
 
 Release artifact names are generated from `FIRMWARE_VERSION_MAJOR`,
 `FIRMWARE_VERSION_MINOR`, and `FIRMWARE_VERSION_PATCH` in `main/common.h`, plus
@@ -75,7 +106,7 @@ interpreter:
 IDF_BOOTSTRAP_PYTHON="$(pyenv prefix 3.12.9)/bin/python" make setup
 ```
 
-ESP-IDF 3.2 also expects the legacy `pkg_resources` module. If `make firmware`
+The bundled ESP-IDF also expects the legacy `pkg_resources` module. If `make firmware`
 fails during `export.sh` with `pkg_resources cannot be imported`, rerun
 `make setup`; the setup script repairs the private ESP-IDF Python environment
 with a compatible `setuptools` version.
@@ -128,6 +159,10 @@ The `Firmware Build` workflow currently runs only through manual dispatch. It
 calls `make release` and uploads `dist/` as a workflow artifact. The workflow
 contains a commented `v*` tag trigger that can be enabled later to attach the
 same files to GitHub Releases for tagged builds.
+
+CI uses the same shallow dependency setup as local builds. Its cache namespace
+includes the clone depth and excludes the older caches containing full histories.
+The firmware repository itself retains full history for release metadata.
 
 GitHub only shows the manual `Run workflow` button after the workflow file
 exists on the repository's default branch. You can still choose which branch or

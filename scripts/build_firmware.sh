@@ -10,6 +10,9 @@ REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 : "${IDF_TARGET:=esp32}"
 : "${BUILD_DIR:=build}"
 
+# shellcheck source=firmware_git.sh
+source "${SCRIPT_DIR}/firmware_git.sh"
+
 abs_path() {
     case "$1" in
         /*) printf '%s\n' "$1" ;;
@@ -29,7 +32,7 @@ if [ -d "$PYTHON_SHIM_DIR" ]; then
 fi
 
 printf 'Initializing firmware submodules\n'
-git -C "$REPO_ROOT" submodule update --init --recursive
+update_dependency_submodules "$REPO_ROOT"
 
 MICROPY_DIR="${REPO_ROOT}/components/mp_component/micropython"
 if [ ! -d "$MICROPY_DIR" ]; then

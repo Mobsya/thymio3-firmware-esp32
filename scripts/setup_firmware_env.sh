@@ -10,6 +10,9 @@ REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 : "${IDF_TARGET:=esp32}"
 : "${IDF_BOOTSTRAP_PYTHON:=}"
 
+# shellcheck source=firmware_git.sh
+source "${SCRIPT_DIR}/firmware_git.sh"
+
 abs_path() {
     case "$1" in
         /*) printf '%s\n' "$1" ;;
@@ -135,34 +138,7 @@ require_command bash
 mkdir -p "$(dirname "$ADF_PATH")"
 configure_python_for_idf
 
-if [ ! -d "${ADF_PATH}/.git" ]; then
-    if [ -e "$ADF_PATH" ] && [ -n "$(find "$ADF_PATH" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
-        printf 'error: %s exists but is not an ESP-ADF git checkout\n' "$ADF_PATH" >&2
-        exit 1
-    fi
-
-    printf 'Cloning ESP-ADF %s into %s\n' "$ADF_REF" "$ADF_PATH"
-    git clone --recursive -b "$ADF_REF" "$ADF_REPO" "$ADF_PATH"
-else
-    printf 'Using ESP-ADF checkout at %s\n' "$ADF_PATH"
-    current_url="$(git -C "$ADF_PATH" config --get remote.origin.url || true)"
-    if [ -n "$current_url" ] && [ "$current_url" != "$ADF_REPO" ]; then
-        printf 'warning: ESP-ADF remote is %s, expected %s\n' "$current_url" "$ADF_REPO" >&2
-    fi
-
-    if [ "${ADF_SKIP_UPDATE:-0}" != "1" ]; then
-        if git -C "$ADF_PATH" fetch --tags origin "$ADF_REF:refs/remotes/origin/$ADF_REF"; then
-            git -C "$ADF_PATH" checkout -B "$ADF_REF" "origin/$ADF_REF"
-        elif git -C "$ADF_PATH" fetch --tags origin "$ADF_REF"; then
-            git -C "$ADF_PATH" checkout "$ADF_REF"
-        else
-            printf 'warning: could not update ESP-ADF; continuing with existing checkout\n' >&2
-        fi
-    fi
-
-    git -C "$ADF_PATH" submodule sync --recursive
-    git -C "$ADF_PATH" submodule update --init --recursive
-fi
+checkout_adf_dependency
 
 IDF_INSTALL="${ADF_PATH}/esp-idf/install.sh"
 if [ ! -f "$IDF_INSTALL" ]; then
