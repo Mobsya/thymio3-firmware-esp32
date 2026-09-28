@@ -18,6 +18,9 @@
 // Include Section
 //-----------------------------------------------------------------------------
 #include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <math.h>
 
 #include "esp_log.h"
 
@@ -47,6 +50,10 @@
 #define HW_DETECT_SAMPLES        5u    // Number of accelerometer samples averaged to detect the hardware version
 #define HW_DETECT_SAMPLE_MS     10u    // Delay between two accelerometer samples
 #define HW_DETECT_MIN_ABS_Z   8000     // About 0.5 g with a 2 g full scale: below this value the robot is not flat enough to be trusted
+
+#define CONT_CALIB_WINDOW_SAMPLES   208u // 2 s of contiguous still data @ 104 Hz ODR
+#define CONT_CALIB_SETTLE_SAMPLES    31u // About 300 ms discarded each time the robot becomes still
+#define CONT_CALIB_MAX_GYRO_P2P     200  // Max gyroscope raw peak-to-peak per axis within a window (tune on data logged at rest)
 
 //-----------------------------------------------------------------------------
 // Types Definitions
@@ -80,7 +87,22 @@ int32_t Div = 1;
 int32_t Offset = 0;
 
 bool calibrationInProgress = false;
-bool continuousCalibrationEnabled = false;
+bool continuousCalibrationEnabled = true;
+
+// Continuous calibration state: accessed only by the sensors task, except
+// ContCalibRestartPending which is the handshake with the other tasks.
+static portMUX_TYPE ContCalibMux = portMUX_INITIALIZER_UNLOCKED;
+static bool ContCalibRestartPending = true;   // Protected by ContCalibMux
+
+static int32_t ContCalibGyroSum[3];
+static int16_t ContCalibGyroMin[3];
+static int16_t ContCalibGyroMax[3];
+static uint16_t ContCalibNumGyroSamples = 0u;
+
+static uint16_t ContCalibSettleSamples = 0u;
+
+static float ContCalibBias[3];                // Filtered bias, kept in float to avoid rounding errors
+static bool ContCalibBiasValid = false;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -245,6 +267,157 @@ static void ReinitCurrentGyroLocked(void)
 
 //_____________________________________________________________________________
 
+//! \brief Discard the current continuous calibration window.
+//! \param restartSettle true when the robot was (or may have been) moving.
+static void ContCalibResetWindow(bool restartSettle)
+{
+    for (uint8_t axis = 0u; axis < 3u; axis++)
+    {
+        ContCalibGyroSum[axis] = 0;
+        ContCalibGyroMin[axis] = INT16_MAX;
+        ContCalibGyroMax[axis] = INT16_MIN;
+    }
+
+    ContCalibNumGyroSamples = 0u;
+
+    if (restartSettle)
+    {
+        ContCalibSettleSamples = 0u;
+    }
+}
+
+//_____________________________________________________________________________
+
+//! \brief Feed one FIFO batch (already in GyroBuffer) to the continuous calibration.
+//!        A window is made of contiguous batches in which the motors are stopped and
+//!        every gyroscope sample is below STATIONARY_THR; any other batch discards the
+//!        window. A complete window is also rejected if its peak-to-peak spread is
+//!        too large (robot held or carried with the motors stopped).
+//! \pre   Must be called only from the sensors task.
+static void ContinuousCalibrationUpdate(uint16_t numSamples)
+{
+    bool restart = false;
+    bool isStill = true;
+
+    // Handshake with Enable/Reset/SetCalibration, which run in other tasks
+    portENTER_CRITICAL(&ContCalibMux);
+    restart = ContCalibRestartPending;
+    ContCalibRestartPending = false;
+    portEXIT_CRITICAL(&ContCalibMux);
+
+    if (restart)
+    {
+        ContCalibResetWindow(true);
+        ContCalibBiasValid = false;   // The next complete window replaces the bias
+    }
+
+    if (numSamples == 0u)
+    {
+        return;
+    }
+
+    // Motors must be stopped, both measured speed and target: this is especially
+    // useful when the robot is moving slowly
+    if ((GetLeftSpeed() != 0) || (GetRightSpeed() != 0) ||
+        (STM32_GetLeftMotorTarget() != 0) || (STM32_GetRightMotorTarget() != 0))
+    {
+        ContCalibResetWindow(true);
+        return;
+    }
+
+    // Every sample of every axis of the batch must be below the threshold,
+    // otherwise the whole window is discarded (no truncated average)
+    for (uint16_t index = 0u; (index < numSamples) && isStill; index++)
+    {
+        for (uint8_t axis = 0u; axis < 3u; axis++)
+        {
+            if (abs(GyroBuffer[axis][index]) >= STATIONARY_THR)
+            {
+                isStill = false;
+                break;
+            }
+        }
+    }
+
+    if (!isStill)
+    {
+        ContCalibResetWindow(true);
+        return;
+    }
+
+    // Skip the first samples after the robot becomes still (residual oscillations)
+    if (ContCalibSettleSamples < CONT_CALIB_SETTLE_SAMPLES)
+    {
+        ContCalibSettleSamples += numSamples;
+        return;
+    }
+
+    // Accumulate the gyroscope batch and track its min/max for the peak-to-peak check
+    for (uint8_t axis = 0u; axis < 3u; axis++)
+    {
+        for (uint16_t index = 0u; index < numSamples; index++)
+        {
+            int16_t value = GyroBuffer[axis][index];
+
+            ContCalibGyroSum[axis] += value;
+
+            if (value < ContCalibGyroMin[axis])
+            {
+                ContCalibGyroMin[axis] = value;
+            }
+            if (value > ContCalibGyroMax[axis])
+            {
+                ContCalibGyroMax[axis] = value;
+            }
+        }
+    }
+    ContCalibNumGyroSamples += numSamples;
+
+    if (ContCalibNumGyroSamples < CONT_CALIB_WINDOW_SAMPLES)
+    {
+        return;
+    }
+
+    // Window complete: reject it if the peak-to-peak spread is too large
+    // (robot held in hand or carried with the motors stopped)
+    for (uint8_t axis = 0u; axis < 3u; axis++)
+    {
+        if ((ContCalibGyroMax[axis] - ContCalibGyroMin[axis]) > CONT_CALIB_MAX_GYRO_P2P)
+        {
+            isStill = false;
+        }
+    }
+
+    if (!isStill)
+    {
+        ContCalibResetWindow(true);
+        return;
+    }
+
+    // Update the bias: the first window after a restart replaces it, then low pass filter
+    for (uint8_t axis = 0u; axis < 3u; axis++)
+    {
+        float average = (float)ContCalibGyroSum[axis] / (float)ContCalibNumGyroSamples;
+
+        if (!ContCalibBiasValid)
+        {
+            ContCalibBias[axis] = average;
+        }
+        else
+        {
+            ContCalibBias[axis] = (0.5f * ContCalibBias[axis]) + (0.5f * average);
+        }
+
+        ZeroGyro[axis] = (int16_t)lroundf(ContCalibBias[axis]);
+        //ESP_LOGI(Tag, "Index: %d, ZeroGyro: %d", axis, ZeroGyro[axis]);
+    }
+
+    ContCalibBiasValid = true;
+    ContCalibResetWindow(false);   // The robot is still: no new settling needed
+}
+
+//_____________________________________________________________________________
+
 void Gyroscope_ReadAngle(void)
 {
 	uint16_t numReadSamples = 0;
@@ -267,33 +440,7 @@ void Gyroscope_ReadAngle(void)
 	numReadSamples = ReadBufferedSamplesUnlocked();
 
 	if(continuousCalibrationEnabled) {
-		if(GetLeftSpeed()==0 && GetRightSpeed()==0 && STM32_GetLeftMotorTarget()==0 && STM32_GetRightMotorTarget()==0) { // Avoid calibrating when the robot is moving, this is especially useful when robot is moving slowly
-			for (uint8_t axis = 0u; axis < 3u; axis++)
-			{
-				for (uint16_t index = 0u; index < numReadSamples; index++)
-				{
-					if(abs(GyroBuffer[axis][index]) < STATIONARY_THR) {
-						ZeroGyroSum[axis] += GyroBuffer[axis][index];
-						ZeroGyroNumSamples[axis]++;
-					}
-				}
-			}
-
-			if ((ZeroGyroNumSamples[0] >= 208) && (ZeroGyroNumSamples[1] >= 208) && (ZeroGyroNumSamples[2] >= 208))	// With ODR=104 hz, then we get at least 2 seconds of data for calibration
-			{
-				for (uint8_t axis = 0u; axis < 3u; axis++)
-				{
-					if(ZeroGyro[axis] == 0) { // First time take the average of the raw values
-						ZeroGyro[axis] = ZeroGyroSum[axis]/ZeroGyroNumSamples[axis];
-					} else { // Then apply a low pass filter (0.5*prev + 0.5*new)
-						ZeroGyro[axis] = (ZeroGyro[axis]>>1) + ((ZeroGyroSum[axis]/ZeroGyroNumSamples[axis])>>1);
-					}
-					ZeroGyroSum[axis] = 0;
-					ZeroGyroNumSamples[axis] = 0;
-					//ESP_LOGE(Tag, "Index: %d, ZeroGyro: %d", axis, ZeroGyro[axis]);
-				}
-			}
-		}
+		ContinuousCalibrationUpdate(numReadSamples);
 	}
 
 	CalculateAngle(Angle, numReadSamples);
@@ -509,6 +656,10 @@ void Gyroscope_ResetCalibration(void)
 		ZeroGyroSum[i] = 0;
 		ZeroGyroNumSamples[i] = 0;
   	}
+
+    portENTER_CRITICAL(&ContCalibMux);
+    ContCalibRestartPending = true;
+    portEXIT_CRITICAL(&ContCalibMux);
 }
 
 //_____________________________________________________________________________
@@ -530,11 +681,12 @@ void Gyroscope_SetOffset(int32_t offset)
 //_____________________________________________________________________________
 
 void Gyroscope_EnableContinuousCalib(void) {
-	for (uint8_t i = 0u; i < 3u; i++) {
-		ZeroGyroSum[i] = 0;
-		ZeroGyroNumSamples[i] = 0;
-  	}
-	continuousCalibrationEnabled = true;
+    // The window state is owned by the sensors task: only request a restart here,
+    // so that a manual calibration or a sensors cycle in progress is never corrupted.
+    portENTER_CRITICAL(&ContCalibMux);
+    ContCalibRestartPending = true;
+    continuousCalibrationEnabled = true;
+    portEXIT_CRITICAL(&ContCalibMux);
 }
 
 //_____________________________________________________________________________
@@ -553,6 +705,10 @@ void Gyroscope_GetCalibration(int16_t* values){
 
 void Gyroscope_SetCalibration(int16_t* values){
 	memcpy(ZeroGyro, values, 6);
+
+    portENTER_CRITICAL(&ContCalibMux);
+    ContCalibRestartPending = true;
+    portEXIT_CRITICAL(&ContCalibMux);
 }
 
 //_____________________________________________________________________________

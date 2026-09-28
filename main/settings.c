@@ -98,15 +98,7 @@ void Settings_Init(void)
   ESP_LOGI(Tag, "Mot 15 cm timer values: %lld, %lld", Settings.Mot15cm[0], Settings.Mot15cm[1]);
   Settings_LoadZeroOffGyroFile();
   ESP_LOGI(Tag, "Gyro offset x,y,z: %d,%d,%d", Settings.ZeroOffGyro[0], Settings.ZeroOffGyro[1], Settings.ZeroOffGyro[2]);  
-  // Enable gyro continuous auto calibration only if there is no calibration saved.
-  if((Settings.ZeroOffGyro[0]==DEFAULT_OFFSET_GYRO_X) && (Settings.ZeroOffGyro[1]==DEFAULT_OFFSET_GYRO_Y) && (Settings.ZeroOffGyro[2]==DEFAULT_OFFSET_GYRO_Z))
-  {
-    Gyroscope_EnableContinuousCalib();
-  } 
-  else
-  {
-    Gyroscope_SetCalibration(Settings.ZeroOffGyro);
-  }
+  Gyroscope_SetCalibration(Settings.ZeroOffGyro);
   Settings_LoadGyroRotFactorFile();
   ESP_LOGI(Tag, "Gyro rot factor: %d", Settings.GyroRotFactor);  
   Settings_LoadGroundBlackFile();

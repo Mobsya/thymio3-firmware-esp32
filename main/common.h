@@ -29,7 +29,7 @@
 #define FIRMWARE_VERSION_MAJOR 1
 #define FIRMWARE_VERSION_MINOR 10
 // The PATCH version is a string because it can be a number or a letter (e.g. 1.8.6a)
-#define FIRMWARE_VERSION_PATCH "1"
+#define FIRMWARE_VERSION_PATCH "2"
 
 #define MIN_LIMIT_SPEED        -600
 #define MAX_LIMIT_SPEED         600
