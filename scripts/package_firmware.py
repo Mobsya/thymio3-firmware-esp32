@@ -350,7 +350,7 @@ def main() -> None:
         merge_flash_args = generated_flash_args
         merge_args_source = "flasher_args.json"
 
-    merged_name = f"{release_basename}-full-flash.bin"
+    merged_name = f"FULL-{release_basename}.bin"
     merged_path = dist_dir / merged_name
     merge_tool = run_merge_bin(build_dir, merged_path, idf_target, merge_flash_args)
 
