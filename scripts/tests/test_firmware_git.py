@@ -163,6 +163,71 @@ class FirmwareGitTests(unittest.TestCase):
         self.assertIn("not an ESP-ADF git checkout", result.stderr)
         self.assertEqual(marker.read_text(encoding="ascii"), "keep")
 
+    def make_firmware_source(self):
+        micropython = self.new_repo("micropython")
+        for path in ("lib/berkeley-db-1.xx", "lib/micropython-lib"):
+            self.git(micropython, "submodule", "add", self.leaf.as_uri(), path)
+            self.git(micropython / path, "checkout", "--detach", self.leaf_pin)
+        self.git(micropython, "submodule", "add", self.idf.as_uri(), "lib/pico-sdk")
+        micropython_pin = self.commit(micropython, "pinned micropython")
+        self.commit(micropython, "newer micropython")
+
+        firmware = self.new_repo("firmware")
+        for path in ("components/esp32-wifi-manager", "components/thymio-nn"):
+            self.git(firmware, "submodule", "add", self.leaf.as_uri(), path)
+            self.git(firmware / path, "checkout", "--detach", self.leaf_pin)
+        mp_path = "components/mp_component/micropython"
+        self.git(firmware, "submodule", "add", micropython.as_uri(), mp_path)
+        self.git(firmware / mp_path, "checkout", "--detach", micropython_pin)
+        self.commit(firmware, "firmware dependencies")
+        return firmware, micropython_pin
+
+    def test_firmware_initializes_only_required_submodules_at_requested_depth(self):
+        firmware, micropython_pin = self.make_firmware_source()
+        for depth in ("1", "0"):
+            with self.subTest(depth=depth):
+                checkout = self.root / ("firmware checkout depth " + depth)
+                self.git(self.root, "clone", "--no-recurse-submodules", firmware.as_uri(), str(checkout))
+                mp = checkout / "components/mp_component/micropython"
+                for _ in range(2):
+                    result = self.run_helper(
+                        'update_firmware_submodules "$FIRMWARE_PATH"',
+                        FIRMWARE_PATH=str(checkout),
+                        DEPS_CLONE_DEPTH=depth,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    for path, expected in (
+                        (checkout / "components/esp32-wifi-manager", self.leaf_pin),
+                        (checkout / "components/thymio-nn", self.leaf_pin),
+                        (mp, micropython_pin),
+                        (mp / "lib/berkeley-db-1.xx", self.leaf_pin),
+                        (mp / "lib/micropython-lib", self.leaf_pin),
+                    ):
+                        self.assertEqual(self.git(path, "rev-parse", "HEAD"), expected)
+                        self.assertEqual(
+                            self.git(path, "rev-parse", "--is-shallow-repository"),
+                            "true" if depth == "1" else "false",
+                        )
+                    self.assertFalse((mp / "lib/pico-sdk/.git").exists())
+                    self.assertFalse((mp / "lib/pico-sdk/content.txt").exists())
+                    mp_git_dir = Path(self.git(mp, "rev-parse", "--absolute-git-dir"))
+                    self.assertFalse((mp_git_dir / "modules/lib/pico-sdk").exists())
+
+    def test_firmware_preserves_existing_unused_submodule_edits(self):
+        firmware, _ = self.make_firmware_source()
+        checkout = self.root / "existing firmware checkout"
+        self.git(self.root, "clone", "--recurse-submodules", firmware.as_uri(), str(checkout))
+        unused = checkout / "components/mp_component/micropython/lib/pico-sdk"
+        edited = unused / "content.txt"
+        edited.write_text("local SDK edits\n", encoding="ascii")
+        result = self.run_helper(
+            'update_firmware_submodules "$FIRMWARE_PATH"',
+            FIRMWARE_PATH=str(checkout),
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(edited.read_text(encoding="ascii"), "local SDK edits\n")
+        self.assertTrue((unused / "nested/.git").exists())
+
 
 @unittest.skipUnless((IDF_SOURCE / "tools/idf_tools.py").exists(), "requires local ESP-IDF checkout")
 class ShallowIdfVersionTests(unittest.TestCase):

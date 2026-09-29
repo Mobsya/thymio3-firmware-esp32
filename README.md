@@ -54,6 +54,13 @@ Override any variable on the command line when needed:
 ADF_PATH=/path/to/esp-adf_release2.4 make release
 ```
 
+The firmware build initializes the top-level submodules, then only MicroPython's
+ESP32 dependencies: `lib/berkeley-db-1.xx` and `lib/micropython-lib`. This avoids
+downloading the large SDKs and nested dependencies for other processors.
+ESP-ADF and its dependencies continue to be initialized recursively.
+Previously downloaded unused MicroPython submodules are left in place; this
+change reduces fresh checkout size but does not automatically reclaim disk space.
+
 ESP-ADF, its nested submodules (including ESP-IDF), and the firmware's submodules
 use shallow clones by default. Updates fetch only the requested ADF branch or tag,
 without downloading every tag, and keep submodules at their recorded commits.

@@ -32,7 +32,7 @@ if [ -d "$PYTHON_SHIM_DIR" ]; then
 fi
 
 printf 'Initializing firmware submodules\n'
-update_dependency_submodules "$REPO_ROOT"
+update_firmware_submodules "$REPO_ROOT"
 
 MICROPY_DIR="${REPO_ROOT}/components/mp_component/micropython"
 if [ ! -d "$MICROPY_DIR" ]; then
@@ -54,9 +54,6 @@ set -u
 
 printf 'Building MicroPython cross compiler\n'
 make -C "${MICROPY_DIR}/mpy-cross"
-
-printf 'Updating MicroPython ESP32 port submodules\n'
-make -C "${MICROPY_DIR}/ports/esp32" submodules
 
 printf 'Building firmware for %s\n' "$IDF_TARGET"
 cd "$REPO_ROOT"

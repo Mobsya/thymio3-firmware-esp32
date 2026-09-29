@@ -9,15 +9,26 @@ export DEPS_CLONE_DEPTH
 
 update_dependency_submodules() {
     local repo_path="$1"
-    local update_args=(submodule update --init --recursive)
+    shift
+    local update_args=(submodule update --init)
     if [ "$DEPS_CLONE_DEPTH" != "0" ]; then
         update_args+=(--depth "$DEPS_CLONE_DEPTH")
     else
         update_args+=(--no-recommend-shallow)
     fi
 
-    git -C "$repo_path" submodule sync --recursive
-    git -C "$repo_path" "${update_args[@]}"
+    # Callers select recursion or specific paths; default to top-level only.
+    git -C "$repo_path" submodule sync "$@"
+    git -C "$repo_path" "${update_args[@]}" "$@"
+}
+
+update_firmware_submodules() {
+    local repo_path="$1"
+    update_dependency_submodules "$repo_path"
+
+    # Match ports/esp32/Makefile without fetching SDKs for other processors.
+    update_dependency_submodules "${repo_path}/components/mp_component/micropython" -- \
+        lib/berkeley-db-1.xx lib/micropython-lib
 }
 
 checkout_adf_dependency() {
@@ -53,5 +64,5 @@ checkout_adf_dependency() {
         fi
     fi
 
-    update_dependency_submodules "$ADF_PATH"
+    update_dependency_submodules "$ADF_PATH" --recursive
 }
