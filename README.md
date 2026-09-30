@@ -1,27 +1,182 @@
-# Installation of the software development environment
+# Thymio 3 ESP32 Firmware
 
-## Old software development environment
+## Quick build
 
-[https://dl.espressif.com/dl/esp32_win32_msys2_environment_and_toolchain-20180110.zip](https://dl.espressif.com/dl/esp32_win32_msys2_environment_and_toolchain-20180110.zip)
+The firmware build is wrapped in repo-owned commands so local builds and GitHub
+Actions use the same pipeline.
+
+Prerequisites for local builds:
+
+- macOS or Linux
+- Git
+- Python 3
+- CMake, Ninja, Make, and a C compiler toolchain
+
+Build and package release artifacts:
+
+```sh
+make release
+```
+
+The first run clones ESP-ADF into `.deps/esp-adf_release2.4`, installs the
+embedded ESP-IDF tools, initializes firmware submodules, builds MicroPython's
+`mpy-cross`, builds the ESP32 firmware, and packages release files into `dist/`.
+
+Useful targets:
+
+```sh
+make setup     # Clone/install ESP-ADF and ESP-IDF tools
+make firmware  # Build firmware into build/
+make package   # Package an existing build into dist/
+make release   # Build firmware and package release artifacts
+make clean     # Remove build/ and dist/
+```
+
+Default build configuration:
+
+| Variable | Default |
+| --- | --- |
+| `ADF_REPO` | `https://github.com/Mobsya/esp-adf.git` |
+| `ADF_REF` | `release/v2.4` |
+| `ADF_PATH` | `.deps/esp-adf_release2.4` |
+| `DEPS_CLONE_DEPTH` | `1` (shallow dependency history; `0` for full history) |
+| `IDF_TARGET` | `esp32` |
+| `BUILD_DIR` | `build` |
+| `DIST_DIR` | `dist` |
+| `FIRMWARE_VERSION_FILE` | `main/common.h` |
+| `ARTIFACT_PREFIX` | `ESP32` |
+| `RELEASE_DATE` | today's UTC date |
+| `COMMIT_HASH` | current Git commit short SHA |
+
+Override any variable on the command line when needed:
+
+```sh
+ADF_PATH=/path/to/esp-adf_release2.4 make release
+```
+
+The firmware build initializes the top-level submodules, then only MicroPython's
+ESP32 dependencies: `lib/berkeley-db-1.xx` and `lib/micropython-lib`. This avoids
+downloading the large SDKs and nested dependencies for other processors.
+ESP-ADF and its dependencies continue to be initialized recursively.
+Previously downloaded unused MicroPython submodules are left in place; this
+change reduces fresh checkout size but does not automatically reclaim disk space.
+
+ESP-ADF, its nested submodules (including ESP-IDF), and the firmware's submodules
+use shallow clones by default. Updates fetch only the requested ADF branch or tag,
+without downloading every tag, and keep submodules at their recorded commits.
+This reduces Git history on disk without omitting source files or sound assets.
+Use a larger depth when more history is needed, or disable the depth limit for
+fresh dependency clones:
+
+```sh
+make release DEPS_CLONE_DEPTH=0
+```
+
+Existing checkouts are reused; changing the depth does not automatically reclaim
+their disk space or restore missing history. To replace a full ESP-ADF checkout,
+first build with a new dependency directory:
+
+```sh
+make clean
+make release ADF_PATH="$PWD/.deps/esp-adf-shallow"
+```
+
+After verifying the new build and preserving any local dependency edits, the old
+`.deps/esp-adf_release2.4` directory can be removed to reclaim its space. Continue
+using the new `ADF_PATH` for subsequent commands. `make clean` is needed when
+switching dependency paths because CMake caches absolute paths.
+
+ESP-IDF's installer supports shallow checkouts by reading its version header when
+Git tags are unavailable. A fresh shallow checkout of this fork may therefore use
+an `idf4.4_*` Python environment instead of the old Git-derived `idf3.2_*` name;
+`make setup` installs the matching environment automatically.
+
+Release artifact names are generated from `FIRMWARE_VERSION_MAJOR`,
+`FIRMWARE_VERSION_MINOR`, and `FIRMWARE_VERSION_PATCH` in `main/common.h`, plus
+the current Git commit.
+Override the date when producing an official release:
+
+```sh
+RELEASE_DATE=2026-08-28 make release
+```
+
+Override the prefix or commit hash when needed:
+
+```sh
+ARTIFACT_PREFIX=ESP COMMIT_HASH=abc1234 make package
+```
+
+If ESP-IDF picks an incompatible system Python, point setup at a known-good
+interpreter:
+
+```sh
+IDF_BOOTSTRAP_PYTHON="$(pyenv prefix 3.12.9)/bin/python" make setup
+```
+
+The bundled ESP-IDF also expects the legacy `pkg_resources` module. If `make firmware`
+fails during `export.sh` with `pkg_resources cannot be imported`, rerun
+`make setup`; the setup script repairs the private ESP-IDF Python environment
+with a compatible `setuptools` version.
+
+Python 3.11 or 3.12 is preferred when available because ESP-IDF skips its old
+`gdbgui` dependency on those versions. If you must use Python 3.10, `make setup`
+also pins the old debug dependency chain to versions compatible with ESP-IDF's
+checker.
+
+## Release artifacts
+
+`make package` creates `dist/` with:
+
+- `ESP32-YYYY-MM-DD-commit-version.bin`
+- `ESP32-YYYY-MM-DD-commit-version-bootloader.bin`
+- `ESP32-YYYY-MM-DD-commit-version-partition-table.bin`
+- `ESP32-YYYY-MM-DD-commit-version-ota-data.bin` when generated by ESP-IDF
+- `ESP32-YYYY-MM-DD-commit-version-audio-tone.bin`
+- `FULL-ESP32-YYYY-MM-DD-commit-version.bin`
+- `flash_args`
+- `flasher_args.json`
+- `manifest.json`
+- `SHA256SUMS`
+
+The application-only `.bin` contains the compiled firmware, including MicroPython,
+and is about 1.2 MB. The full-flash image also includes the bootloader, partition
+table, OTA metadata, and the built-in sounds from `main/audio/audio_tone.bin`.
+The sounds are placed in the `flash_tone` partition defined in `partitions.csv`
+(currently at `0x680000`). With the current sound assets, the merged image is
+about 7.77 MiB, including padding between flash regions.
+
+The build checks that the sound binary fits its partition and registers it in
+ESP-IDF's flash metadata. `make package` uses that metadata to generate the merged
+image with `esptool.py merge_bin` and package the individual binaries. Run
+`make release` once after updating an older checkout to refresh the build metadata.
+
+To flash individual binaries from `dist/`, source ESP-IDF and run:
+
+```sh
+esptool.py --chip esp32 write_flash @flash_args
+```
+
+The merged image is intended to be written at offset `0x0`. Flashing it also
+overwrites the gaps between binaries, including filesystem and settings regions.
+Use the individual binaries via `flash_args` to preserve data in other partitions.
+
+## GitHub Actions
+
+The `Firmware Build` workflow currently runs only through manual dispatch. It
+calls `make release` and uploads `dist/` as a workflow artifact. The workflow
+contains a commented `v*` tag trigger that can be enabled later to attach the
+same files to GitHub Releases for tagged builds.
+
+CI uses the same shallow dependency setup as local builds. Its cache namespace
+includes the clone depth and excludes the older caches containing full histories.
+The firmware repository itself retains full history for release metadata.
+
+GitHub only shows the manual `Run workflow` button after the workflow file
+exists on the repository's default branch. You can still choose which branch or
+tag to run from the GitHub UI once the workflow is available.
+
+## Legacy environment notes
 
 ## Latest software development environment
 
 [https://docs.espressif.com/projects/esp-idf/en/latest/get-started/](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/)
-
-# Installation of the IDE
-
-You can install an IDE (Eclipse or others) or use a simple text editor.
-
-[https://www.eclipse.org/eclipseide/](https://www.eclipse.org/eclipseide/)
-
-# Compile, build, monitor
-
-- Open mingw32
-- Run the script
-	- /flash_eclipse.sh
-	- /compile_eclipse.sh
-	- /monitor_eclipse.sh
-	- /menuconfig_eclispe.sh
-	- /erase_eclipse.sh
-	- /partition_eclipse.sh
-	- /gen_spiffs_bin.sh

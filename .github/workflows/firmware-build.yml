@@ -1,0 +1,99 @@
+name: Firmware Build
+
+on:
+  workflow_dispatch:
+  # Enable this later to build and publish firmware on version tags:
+  # push:
+  #   tags:
+  #     - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: firmware-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      ADF_REPO: https://github.com/Mobsya/esp-adf.git
+      ADF_REF: release/v2.4
+      ADF_PATH: ${{ github.workspace }}/.deps/esp-adf_release2.4
+      DEPS_CLONE_DEPTH: '1'
+      IDF_TARGET: esp32
+      BUILD_DIR: build
+      DIST_DIR: dist
+      FIRMWARE_PROJECT_NAME: thymio3-esp32-firmware
+
+    steps:
+      - name: Checkout firmware
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          # The shared build script initializes submodules at DEPS_CLONE_DEPTH.
+          submodules: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            bash \
+            bison \
+            build-essential \
+            ccache \
+            cmake \
+            dfu-util \
+            flex \
+            git \
+            gperf \
+            libffi-dev \
+            libssl-dev \
+            libusb-1.0-0 \
+            ninja-build \
+            python-is-python3 \
+            python3 \
+            python3-pip \
+            python3-venv \
+            python3-virtualenv \
+            wget
+
+      - name: Restore ESP toolchain cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            .deps/esp-adf_release2.4
+            ~/.espressif
+          key: ${{ runner.os }}-esp-adf-release-v2.4-deps-v2-depth-${{ env.DEPS_CLONE_DEPTH }}-${{ hashFiles('.gitmodules', 'scripts/setup_firmware_env.sh', 'scripts/firmware_git.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-esp-adf-release-v2.4-deps-v2-depth-${{ env.DEPS_CLONE_DEPTH }}-
+
+      - name: Build release artifacts
+        run: make release
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: thymio3-esp32-firmware-${{ github.run_id }}
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --title "$GITHUB_REF_NAME" \
+              --notes "Automated firmware build for $GITHUB_SHA"
+          fi
