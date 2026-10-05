@@ -162,10 +162,10 @@ Use the individual binaries via `flash_args` to preserve data in other partition
 
 ## GitHub Actions
 
-The `Firmware Build` workflow currently runs only through manual dispatch. It
-calls `make release` and uploads `dist/` as a workflow artifact. The workflow
-contains a commented `v*` tag trigger that can be enabled later to attach the
-same files to GitHub Releases for tagged builds.
+The `Firmware Build` workflow runs when a tag matching `v*` is pushed or through
+manual dispatch. It calls `make release` and uploads `dist/` as a workflow
+artifact. For `v*` tags, it also creates or updates the GitHub Release and
+attaches the same files.
 
 CI uses the same shallow dependency setup as local builds. Its cache namespace
 includes the clone depth and excludes the older caches containing full histories.

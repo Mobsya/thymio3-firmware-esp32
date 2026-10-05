@@ -2,10 +2,9 @@ name: Firmware Build
 
 on:
   workflow_dispatch:
-  # Enable this later to build and publish firmware on version tags:
-  # push:
-  #   tags:
-  #     - 'v*'
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
