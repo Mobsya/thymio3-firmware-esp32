@@ -326,7 +326,8 @@ def main() -> None:
     release_date_value = release_date(args.release_date)
     commit_hash_value = commit_hash(args.commit_hash)
     artifact_prefix = sanitize_component(args.artifact_prefix, "artifact prefix")
-    release_basename = f"{artifact_prefix}-{release_date_value}-{commit_hash_value}-{firmware_version}"
+    artifact_date = release_date_value.replace("-", "")
+    release_basename = f"{artifact_prefix}-{artifact_date}-{commit_hash_value}-{firmware_version}"
 
     if not build_dir.exists():
         fail(f"build directory does not exist: {build_dir}")
