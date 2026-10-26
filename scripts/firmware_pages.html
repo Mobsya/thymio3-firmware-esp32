@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Thymio 3 ESP32 firmware releases, browser downloads, and SHA-256 checksums.">
+  <title>Thymio 3 · Firmware releases</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; color: #1c2c3d; background: #f4f7fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; line-height: 1.6; }
+    main { max-width: 960px; margin: auto; padding: 48px 24px; }
+    a { color: #1559a1; text-underline-offset: 3px; }
+    a:hover { color: #103d6b; }
+    a:focus-visible, summary:focus-visible { outline: 3px solid #1876c9; outline-offset: 4px; }
+    header { margin-bottom: 32px; }
+    .eyebrow { color: #526376; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; font-size: .8rem; }
+    h1 { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.15; margin: 12px 0 20px; letter-spacing: -.03em; }
+    h2 { font-size: 1.35rem; margin: 0; overflow-wrap: anywhere; }
+    header > p { max-width: 640px; }
+    nav { display: flex; gap: 24px; flex-wrap: wrap; }
+    .latest { padding: 12px 16px; background: #e6f2ec; border-radius: 8px; }
+    .release { background: white; border: 1px solid #dce3eb; border-radius: 12px; padding: 24px; margin: 24px 0; scroll-margin-top: 24px; }
+    .release-heading { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .badge { font-size: .75rem; padding: 3px 10px; border-radius: 20px; font-weight: 650; white-space: nowrap; }
+    .stable { color: #15583c; background: #e6f2ec; }
+    .preview { color: #744c06; background: #fff2d2; }
+    .release-meta { font-size: .85rem; color: #526376; margin: 8px 0 20px; overflow-wrap: anywhere; }
+    .assets { list-style: none; padding: 0; margin: 0; }
+    .assets > li { border-top: 1px solid #e3e8ee; padding: 18px 0; }
+    .assets > li:last-child { padding-bottom: 0; }
+    .assets > li.application { background: #f0f6fc; border-radius: 8px; border: 1px solid #c8dcef; padding: 16px; margin-bottom: 16px; }
+    .asset-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+    .asset-heading > div { min-width: 0; }
+    .role { display: block; font-size: .8rem; color: #526376; margin-bottom: 3px; }
+    .application .role { color: #1559a1; font-weight: 650; }
+    .filename { font-weight: 600; overflow-wrap: anywhere; }
+    .size { flex-shrink: 0; color: #526376; font-size: .8rem; font-variant-numeric: tabular-nums; }
+    details { font-size: .8rem; margin-top: 8px; }
+    summary { cursor: pointer; color: #526376; width: fit-content; }
+    code { display: block; overflow-wrap: anywhere; margin-top: 8px; }
+    footer { color: #526376; font-size: .85rem; margin-top: 32px; }
+    .empty { padding: 24px; border: 1px dashed #b5c4d4; border-radius: 12px; }
+    @media (max-width: 600px) {
+      main { padding: 32px 16px; }
+      .release { padding: 20px 16px; }
+      .asset-heading { flex-direction: column; gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">Thymio 3 · ESP32</div>
+      <h1>Firmware releases</h1>
+      <p>Download firmware for Thymio 3. Application images are highlighted for Bluetooth updates; full flash images and individual components are listed alongside them.</p>
+      <nav aria-label="Catalog resources">
+        <a href="releases.json">JSON catalog</a>
+        <a href="$repository_url">Source repository</a>
+      </nav>
+      $latest_link
+    </header>
+    $release_sections
+    <footer>Files are mirrored from published GitHub Releases. Expand a checksum to verify a download.</footer>
+  </main>
+</body>
+</html>

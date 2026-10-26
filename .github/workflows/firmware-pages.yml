@@ -1,0 +1,86 @@
+name: Firmware Pages
+
+on:
+  workflow_dispatch:
+  # GITHUB_TOKEN release uploads do not trigger release-event workflows.
+  workflow_run:
+    workflows: ['Firmware Build']
+    types: [completed]
+  release:
+    types: [published, edited, deleted, unpublished, released, prereleased]
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/firmware-pages.yml'
+      - 'scripts/build_firmware_pages.py'
+      - 'scripts/firmware_pages.html'
+      - 'scripts/tests/test_firmware_pages.py'
+
+permissions:
+  contents: read
+
+# Rebuild the complete catalog within this lock so an older snapshot cannot
+# finish deploying after a newer one. Let in-progress deployments finish.
+concurrency:
+  group: firmware-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Checkout catalog implementation
+        uses: actions/checkout@v6
+        with:
+          # Never execute code from a release tag or the triggering build.
+          ref: master
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Test catalog generator
+        run: python3 -m unittest discover -s scripts/tests -p 'test_firmware_pages.py' -v
+
+      - name: Get Pages URL
+        id: pages
+        uses: actions/configure-pages@v6
+
+      - name: Mirror release files and build catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: >-
+          python3 scripts/build_firmware_pages.py
+          --repository "$GITHUB_REPOSITORY"
+          --base-url "$PAGES_BASE_URL"
+          --output-dir _site
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+          include-hidden-files: true
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
