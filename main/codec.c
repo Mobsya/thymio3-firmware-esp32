@@ -1580,6 +1580,7 @@ static void RunRecordTask(void *arg)
         {
           audio_element_set_ringbuf_done(Recorder->I2SStream);
           second_recorded = 0;
+          Behavior_Disable(B_LED_MIC_STATE); // Turn off MIC LED
         }
       }
 
@@ -1641,7 +1642,8 @@ static void RunRecordTask(void *arg)
   //Sensors_buttons_resume();
   Recorder->Recorded = true;
   Recorder->state = STATE_STOPPED;
-  Behavior_Disable(B_LED_MIC_STATE); // Turn off MIC LED
+
+  Behavior_Enable(B_LED_MIC);
   
   vTaskDelete(NULL);
 }

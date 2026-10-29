@@ -126,6 +126,7 @@ static int16_t groundsDeltaCalib[2];
 
 static int16_t Vbat = 0;
 static uint8_t clap_count = 0;
+static int16_t mic_threshold = 0;
 
 //-----------------------------------------------------------------------------
 // Private Functions Prototypes
@@ -337,13 +338,14 @@ int16_t STM32_GetMicrophoneIntensity(void)
 void STM32_SetMicrophoneThreshold(int16_t threshold)
 {
   vmVariables.micro_tresh = threshold;
+  mic_threshold = threshold;
 }
 
 //_____________________________________________________________________________
 
 int16_t STM32_GetMicrophoneThreshold(void)
 {
-  return vmVariables.micro_tresh;
+  return mic_threshold;
 }
 
 //_____________________________________________________________________________

@@ -122,6 +122,7 @@ void Mode_Init(bool enableVM)
   }
 */
   Behavior_Enable(B_ALWAYS); // | B_MODE | B_SETTING);
+  STM32_SetMicrophoneThreshold(256); // Default value for the microphone threshold
 
   if (!first)
   {
@@ -345,17 +346,14 @@ static void StartMode(T_Mode mode)
       break;
 
     case E_Mode_Friendly:
-      Behavior_Enable(B_LEDS_PROX);
-      Drawer_Start();
+      Friendly_Start();
       break;
 
     case E_Mode_Explorer:
-      Behavior_Enable(B_LEDS_PROX);
       Explorer_Start();
       break;
 
     case E_Mode_Fearful:
-      Behavior_Enable(B_LEDS_PROX);
       Behavior_Enable(B_LEDS_ACC);
       Behavior_Enable(B_LEDS_LEGO_GYRO);
       Fearful_Start();
@@ -363,37 +361,29 @@ static void StartMode(T_Mode mode)
 
     case E_Mode_Attentive:
       Attentive_Start();
-      Behavior_Enable(B_LEDS_PROX);
       break;
 
     case E_Mode_Investigator:
       LineTracker_Start();
-      Behavior_Enable(B_LEDS_PROX);
       break;
 
     case E_Mode_Obedient:
       Obedient_Start();
-      Behavior_Enable(B_LEDS_PROX);
       break;
 
     case E_Mode_Painter:
-      Behavior_Enable(B_LEDS_PROX);
       Drawer_Start();
       break;
 
     case E_Mode_Sequence:
-      Behavior_Enable(B_LEDS_PROX);
-      Behavior_Enable(B_LED_RC5);
       Sequence_Start();
       break;
 
     case E_Mode_Musician:
-      //Behavior_Enable(B_LEDS_PROX);
       Musician_Start();
       break;
 
     case E_Mode_NN:
-      Behavior_Enable(B_LEDS_PROX);
       ANN_Start();
       break;
 
@@ -420,55 +410,44 @@ static void ExitMode(T_Mode mode)
 
     case E_Mode_Friendly:
       Friendly_Stop();
-      Behavior_Disable(B_LEDS_PROX);
       break;
 
     case E_Mode_Explorer:
       Explorer_Stop();
-      Behavior_Disable(B_LEDS_PROX);
       break;
 
     case E_Mode_Fearful:
       Fearful_Stop();
-      Behavior_Disable(B_LEDS_PROX);
       Behavior_Disable(B_LEDS_ACC);
       Behavior_Disable(B_LEDS_LEGO_GYRO);      
       break;
 
     case E_Mode_Attentive:
       Attentive_Stop();
-      Behavior_Disable(B_LEDS_PROX);
       break;
 
     case E_Mode_Investigator:
       LineTracker_Stop();
-      Behavior_Disable(B_LEDS_PROX);
       break;
 
     case E_Mode_Obedient:
       Obedient_Stop();
-      Behavior_Disable(B_LEDS_PROX);
       break;
 
     case E_Mode_Painter:
       Drawer_Stop();
-      Behavior_Disable(B_LEDS_PROX);
       break;
 
     case E_Mode_Sequence:
       Sequence_Stop();
-      Behavior_Disable(B_LEDS_PROX);
-      Behavior_Disable(B_LED_RC5);
       break;
 
     case E_Mode_Musician:
       Musician_Stop();
-      Behavior_Disable(B_LEDS_PROX);
       break;
 
     case E_Mode_NN:
       ANN_Stop();
-      Behavior_Disable(B_LEDS_PROX);
       break;
 
     default:
