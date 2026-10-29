@@ -53,7 +53,12 @@ source "$IDF_EXPORT"
 set -u
 
 printf 'Building MicroPython cross compiler\n'
-make -C "${MICROPY_DIR}/mpy-cross"
+mpy_cross_args=(-C "${MICROPY_DIR}/mpy-cross")
+if [ -n "${MPY_CROSS_CC:-}" ]; then
+    # Pass CC on the command line: MicroPython overrides environment-only CC.
+    mpy_cross_args+=("CC=${MPY_CROSS_CC}")
+fi
+make "${mpy_cross_args[@]}"
 
 printf 'Building firmware for %s\n' "$IDF_TARGET"
 cd "$REPO_ROOT"

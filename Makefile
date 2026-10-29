@@ -3,6 +3,7 @@ ADF_REF ?= release/v2.4
 ADF_PATH ?= $(CURDIR)/.deps/esp-adf_release2.4
 DEPS_CLONE_DEPTH ?= 1
 IDF_TARGET ?= esp32
+MPY_CROSS_CC ?=
 BUILD_DIR ?= build
 DIST_DIR ?= dist
 FIRMWARE_PROJECT_NAME ?= thymio3-esp32-firmware
@@ -16,6 +17,7 @@ export ADF_REF
 export ADF_PATH
 export DEPS_CLONE_DEPTH
 export IDF_TARGET
+export MPY_CROSS_CC
 export BUILD_DIR
 export DIST_DIR
 export FIRMWARE_PROJECT_NAME

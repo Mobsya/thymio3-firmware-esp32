@@ -41,6 +41,7 @@ Default build configuration:
 | `ADF_PATH` | `.deps/esp-adf_release2.4` |
 | `DEPS_CLONE_DEPTH` | `1` (shallow dependency history; `0` for full history) |
 | `IDF_TARGET` | `esp32` |
+| `MPY_CROSS_CC` | MicroPython's platform default (`clang` on macOS, `gcc` on Linux) |
 | `BUILD_DIR` | `build` |
 | `DIST_DIR` | `dist` |
 | `FIRMWARE_VERSION_FILE` | `main/common.h` |
@@ -52,6 +53,13 @@ Override any variable on the command line when needed:
 
 ```sh
 ADF_PATH=/path/to/esp-adf_release2.4 make release
+```
+
+`MPY_CROSS_CC` selects only the host compiler used to build `mpy-cross`; ESP-IDF
+selects the ESP32 compiler separately. For example, on Linux with GCC 13 installed:
+
+```sh
+make release MPY_CROSS_CC=gcc-13
 ```
 
 The firmware build initializes the top-level submodules, then only MicroPython's
@@ -170,8 +178,15 @@ manual dispatch. It calls `make release` and uploads `dist/` as a workflow
 artifact. For `v*` tags, it also creates or updates the GitHub Release and
 attaches the same files.
 
+The firmware job uses Ubuntu 24.04 and explicitly selects GCC 13 for `mpy-cross`.
+The pinned MicroPython source triggers GCC 15's
+`-Wunterminated-string-initialization` warning, which its `-Werror` turns into a
+build failure. Pinning the host compiler avoids this incompatibility while keeping
+the existing warning checks enabled.
+
 CI uses the same shallow dependency setup as local builds. Its cache namespace
-includes the clone depth and excludes the older caches containing full histories.
+includes the runner OS, architecture, Ubuntu version, and clone depth to avoid
+reusing tools from a different host environment or older full-history caches.
 The firmware repository itself retains full history for release metadata.
 
 GitHub only shows the manual `Run workflow` button after the workflow file

@@ -15,7 +15,8 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Keep the legacy ESP-ADF/MicroPython build on a stable host toolchain.
+    runs-on: ubuntu-24.04
 
     env:
       ADF_REPO: https://github.com/Mobsya/esp-adf.git
@@ -23,6 +24,8 @@ jobs:
       ADF_PATH: ${{ github.workspace }}/.deps/esp-adf_release2.4
       DEPS_CLONE_DEPTH: '1'
       IDF_TARGET: esp32
+      # GCC 15+ rejects the pinned MicroPython's string initializers under -Werror.
+      MPY_CROSS_CC: gcc-13
       BUILD_DIR: build
       DIST_DIR: dist
       FIRMWARE_PROJECT_NAME: thymio3-esp32-firmware
@@ -51,6 +54,7 @@ jobs:
             cmake \
             dfu-util \
             flex \
+            gcc-13 \
             git \
             gperf \
             libffi-dev \
@@ -63,6 +67,7 @@ jobs:
             python3-venv \
             python3-virtualenv \
             wget
+          gcc-13 --version
 
       - name: Restore ESP toolchain cache
         uses: actions/cache@v5
@@ -70,9 +75,9 @@ jobs:
           path: |
             .deps/esp-adf_release2.4
             ~/.espressif
-          key: ${{ runner.os }}-esp-adf-release-v2.4-deps-v2-depth-${{ env.DEPS_CLONE_DEPTH }}-${{ hashFiles('.gitmodules', 'scripts/setup_firmware_env.sh', 'scripts/firmware_git.sh') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-ubuntu24.04-esp-adf-release-v2.4-deps-v2-depth-${{ env.DEPS_CLONE_DEPTH }}-${{ hashFiles('.gitmodules', 'scripts/setup_firmware_env.sh', 'scripts/firmware_git.sh') }}
           restore-keys: |
-            ${{ runner.os }}-esp-adf-release-v2.4-deps-v2-depth-${{ env.DEPS_CLONE_DEPTH }}-
+            ${{ runner.os }}-${{ runner.arch }}-ubuntu24.04-esp-adf-release-v2.4-deps-v2-depth-${{ env.DEPS_CLONE_DEPTH }}-
 
       - name: Build release artifacts
         run: make release
