@@ -167,6 +167,7 @@ char fs_filename[FILENAME_MAX_LEN] = {0};
 static uint32_t fs_tot_len = 0;
 static uint32_t fs_curr_len = 0;
 static bool fs_receiving_file = false;
+static volatile bool fs_sending_file = false; // True while a file content or the files list is sent to the client
 static uint32_t fs_crc = 0;
 static uint16_t fs_seq_id = 0;
 static uint16_t fs_seq_id_prev = 0;
@@ -1769,7 +1770,11 @@ static void bt_rx_tx_task(void *pvParameters)
             }
         }
 
-        if(bt_most_sensors_stream_en)
+        // Pause the sensors streaming during a file exchange (script, audio, file system) to leave the BLE buffers to the transfer.
+        // The stream enable flags are not modified, so at the end the last state set by the client is used.
+        bool file_exchange = mp_receiving_script || receiving_audio || fs_receiving_file || fs_sending_file;
+
+        if(bt_most_sensors_stream_en && !file_exchange)
         {
             memset(bt_tx_data, 0x00, MAX_BT_TX_BUFF);
             bt_tx_data[0] = STREAM_NOTIFY_MOST_SENSORS;
@@ -1869,7 +1874,7 @@ static void bt_rx_tx_task(void *pvParameters)
             }
         }
 
-        if(bt_others_sensors_stream_en)
+        if(bt_others_sensors_stream_en && !file_exchange)
         {
             memset(bt_tx_data, 0x00, MAX_BT_TX_BUFF);
             bt_tx_data[0] = STREAM_NOTIFY_OTHERS_SENSORS;
@@ -2329,7 +2334,7 @@ void ble_indicate_fs_list_err(void)
     }
 }
 
-void ble_indicate_fs_list(uint8_t *data, uint16_t len)
+static void ble_indicate_fs_list_chunks(uint8_t *data, uint16_t len)
 {
     int rc = 0;
     uint16_t bytes_sent = 0;
@@ -2473,6 +2478,13 @@ void ble_indicate_fs_list(uint8_t *data, uint16_t len)
     mp_list_files_free_buffer();
 }
 
+void ble_indicate_fs_list(uint8_t *data, uint16_t len)
+{
+    fs_sending_file = true; // Pause the sensors streaming during the transfer
+    ble_indicate_fs_list_chunks(data, len);
+    fs_sending_file = false;
+}
+
 void ble_indicate_dev_info(uint8_t *data, uint16_t len)
 {
     int rc = 0;
@@ -2489,7 +2501,7 @@ void ble_indicate_dev_info(uint8_t *data, uint16_t len)
     }
 }
 
-void ble_indicate_download(uint8_t *data, uint32_t len)
+static void ble_indicate_download_chunks(uint8_t *data, uint32_t len)
 {
     int rc = 0;
     uint16_t bytes_sent = 0;
@@ -2647,6 +2659,13 @@ void ble_indicate_download(uint8_t *data, uint32_t len)
         ESP_LOGI(TAG, "FS download indication fully sent: %d total data bytes in %d packets", len, seq_id);
     }
     mp_read_file_free_buffer();
+}
+
+void ble_indicate_download(uint8_t *data, uint32_t len)
+{
+    fs_sending_file = true; // Pause the sensors streaming during the transfer
+    ble_indicate_download_chunks(data, len);
+    fs_sending_file = false;
 }
 
 

@@ -213,6 +213,33 @@ T_Color ColorSensor_GetColor(void)
 
 //_____________________________________________________________________________
 
+void ColorSensor_GetLedColor(T_Color color, uint8_t brightness, uint8_t *red, uint8_t *green, uint8_t *blue)
+{
+  // RGB actuated for each color, expressed for the maximum brightness (MAX_BRIGHTNESS).
+  // This is the only place where to change these values.
+  static const uint8_t LedColor[E_Color_Unknown + 1][3] = {
+    [E_Color_Red]     = {MAX_BRIGHTNESS, 0,              0},
+    [E_Color_Orange]  = {MAX_BRIGHTNESS, 5,              0},
+    [E_Color_LightGreen]   = {8,              MAX_BRIGHTNESS, 0},
+    [E_Color_DarkGreen]    = {0,              MAX_BRIGHTNESS, 0},
+    [E_Color_Blue]    = {0,              0,              MAX_BRIGHTNESS},
+    [E_Color_Purple]  = {MAX_BRIGHTNESS, 0,              MAX_BRIGHTNESS},
+    [E_Color_White]   = {MAX_BRIGHTNESS, MAX_BRIGHTNESS, MAX_BRIGHTNESS},
+    [E_Color_Black]   = {0,              0,              0},
+    [E_Color_Unknown] = {0,              0,              0},
+  };
+
+  if (color > E_Color_Unknown)
+  {
+    color = E_Color_Unknown;
+  }
+  *red = (LedColor[color][0] * brightness) / MAX_BRIGHTNESS;
+  *green = (LedColor[color][1] * brightness) / MAX_BRIGHTNESS;
+  *blue = (LedColor[color][2] * brightness) / MAX_BRIGHTNESS;
+}
+
+//_____________________________________________________________________________
+
 T_HSV ColorSensor_GetHsv(void)
 {
   return Hsv;
@@ -460,17 +487,17 @@ static void UpdateColor(T_HSV hsv)
       {
         Color = E_Color_Red;
       }
-      else if (hsv.Hue <= 30) // yellow ]10..30], delta=20
+      else if (hsv.Hue <= 30) // orange ]10..30], delta=20
       {
-        Color = E_Color_Yellow;
+        Color = E_Color_Orange;
       }
-      else if (hsv.Hue <= 80) // green ]30..80], delta=50
+      else if (hsv.Hue <= 80) // light green ]30..80], delta=50
       {
-        Color = E_Color_Green;
+        Color = E_Color_LightGreen;
       }
-      else if (hsv.Hue <= 210) // cyan ]80..210], delta=130
+      else if (hsv.Hue <= 210) // dark green ]80..210], delta=130
       {
-        Color = E_Color_Cyan;
+        Color = E_Color_DarkGreen;
       }
       else if (hsv.Hue <= 260) // blue ]210..260], delta=50
       {

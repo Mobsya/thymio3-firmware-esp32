@@ -34,9 +34,9 @@
 typedef enum
 {
   E_Color_Red,
-  E_Color_Yellow,
-  E_Color_Green,
-  E_Color_Cyan,
+  E_Color_Orange,
+  E_Color_LightGreen,
+  E_Color_DarkGreen,
   E_Color_Blue,
   E_Color_Purple,
   E_Color_White,
@@ -88,6 +88,14 @@ extern void ColorSensor_ReadColor(void);
 //! \param     None
 //! \return    Color
 extern T_Color ColorSensor_GetColor(void);
+
+//! \brief     Get the RGB brightness to actuate on the LEDs to show a color
+//! \details   The values are defined in a single table (see color_sensor.c) and scaled by "brightness".
+//! \param     color - Color to show
+//! \param     brightness - Max brightness (0..MAX_BRIGHTNESS)
+//! \param     red, green, blue - Brightness to apply on each channel
+//! \return    None
+extern void ColorSensor_GetLedColor(T_Color color, uint8_t brightness, uint8_t *red, uint8_t *green, uint8_t *blue);
 
 //! \brief     Check the color sensor
 //! \pre       First initialize the color sensor

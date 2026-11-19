@@ -284,13 +284,13 @@ void Musician_Run(void)
     }
   }
 
-  if(color == E_Color_Yellow)
+  if(color == E_Color_Orange)
   {
     if(colorCount >= NEW_COLOR_THR)
     {
       if(showColor != color)
       {
-        showColor = E_Color_Yellow;   
+        showColor = E_Color_Orange;   
         switch(current_instrument)
         {
           case PLAY_TONE:            
@@ -368,13 +368,13 @@ void Musician_Run(void)
     }
   }
 
-  if(color == E_Color_Green)
+  if(color == E_Color_LightGreen)
   {
     if(colorCount >= NEW_COLOR_THR)
     {
       if(showColor != color)
       {
-        showColor = E_Color_Green;  
+        showColor = E_Color_LightGreen;  
         switch(current_instrument)
         {
           case PLAY_TONE:
@@ -452,13 +452,13 @@ void Musician_Run(void)
     }
   }
 
-  if(color == E_Color_Cyan)
+  if(color == E_Color_DarkGreen)
   {
     if(colorCount >= NEW_COLOR_THR)
     {
       if(showColor != color)
       {
-        showColor = E_Color_Cyan;  
+        showColor = E_Color_DarkGreen;  
         switch(current_instrument)
         {
           case PLAY_TONE:

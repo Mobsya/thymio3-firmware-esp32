@@ -1061,34 +1061,9 @@ static void DrawPolygon(void)
 //_____________________________________________________________________________
 
 void HandleBodyColor(T_Color color, uint8_t brightness) {
-  if(color == E_Color_Red)
-  {
-    Leds_SetBodyBrightness(brightness, 0u, 0u);
-  }
-  else if(color == E_Color_Yellow)
-  {
-    Leds_SetBodyBrightness(brightness, brightness, 0u);
-  }
-  else if(color == E_Color_Green)
-  {
-    Leds_SetBodyBrightness(0u, brightness, 0u);
-  }
-  else if(color == E_Color_Blue)
-  {
-    Leds_SetBodyBrightness(0u, 0u, brightness);
-  }
-  else if(color == E_Color_Purple)
-  {
-    Leds_SetBodyBrightness(brightness, 0u, brightness);
-  }
-  else if(color == E_Color_White)
-  {
-    Leds_SetBodyBrightness(brightness, brightness, brightness);
-  }
-  else //if(color == E_Color_Unknown)
-  {
-    Leds_SetBodyBrightness(0u, 0u, 0u);
-  }
+  uint8_t red, green, blue;
+  ColorSensor_GetLedColor(color, brightness, &red, &green, &blue);
+  Leds_SetBodyBrightness(red, green, blue);
 }
 
 
